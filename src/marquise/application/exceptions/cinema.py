@@ -5,6 +5,18 @@ from __future__ import annotations
 from marquise.application.exceptions.base import ApplicationError
 
 
+class CinemaAlreadyExistsError(ApplicationError):
+    """Raised when attempting to create a cinema with a duplicate name+address."""
+
+    pass
+
+
+class CinemaNotFoundError(ApplicationError):
+    """Raised when a requested cinema does not exist in the repository."""
+
+    pass
+
+
 class CinemaIdAlreadyExistsError(ApplicationError):
     """Raised when a generated cinema ID already exists in the repository.
 

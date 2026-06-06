@@ -8,7 +8,10 @@ from __future__ import annotations
 
 from typing import Optional
 
-from marquise.application.exceptions import CinemaIdAlreadyExistsError
+from marquise.application.exceptions import (
+    CinemaIdAlreadyExistsError,
+    CinemaNotFoundError,
+)
 from marquise.application.repositories import CinemaRepository
 from marquise.domain.entities import Cinema
 from marquise.domain.value_objects import CinemaId
@@ -54,6 +57,7 @@ class SupabaseCinemaRepository(CinemaRepository):
                 name=cinema.name,
                 address=cinema.address,
                 city=cinema.city,
+                website=cinema.website,
             )
         except GatewayError as exc:
             raise CinemaIdAlreadyExistsError(str(exc)) from exc
@@ -97,6 +101,55 @@ class SupabaseCinemaRepository(CinemaRepository):
         """
         return await self._gateway.exists_by_id(cinema_id=str(cinema_id))
 
+    async def find_all(self, name_filter: str | None = None) -> list[Cinema]:
+        """Retrieve all cinemas, optionally filtered by name.
+
+        Args:
+            name_filter: An optional substring to match against cinema names
+                (case-insensitive). If None, all cinemas are returned.
+
+        Returns:
+            A list of matching cinema entities.
+        """
+        rows = await self._gateway.find_all(name_filter=name_filter)
+        return [self._to_entity(row) for row in rows]
+
+    async def update(self, cinema: Cinema) -> Cinema:
+        """Update an existing cinema via the gateway.
+
+        Args:
+            cinema: The cinema entity with updated fields.
+
+        Returns:
+            The updated cinema entity.
+
+        Raises:
+            CinemaNotFoundError: If no cinema with the given ID exists in
+                the database.
+        """
+        try:
+            data = await self._gateway.update(
+                cinema_id=str(cinema.id),
+                name=cinema.name,
+                address=cinema.address,
+                city=cinema.city,
+                website=cinema.website,
+            )
+        except GatewayError as exc:
+            raise CinemaNotFoundError(str(exc)) from exc
+        return self._to_entity(data)
+
+    async def delete(self, cinema_id: CinemaId) -> bool:
+        """Delete a cinema by its unique identifier.
+
+        Args:
+            cinema_id: The ID of the cinema to delete.
+
+        Returns:
+            True if a cinema was deleted, False otherwise.
+        """
+        return await self._gateway.delete(cinema_id=str(cinema_id))
+
     @staticmethod
     def _to_entity(data: dict) -> Cinema:
         """Map a raw gateway dict to a Cinema domain entity.
@@ -112,4 +165,5 @@ class SupabaseCinemaRepository(CinemaRepository):
             name=data["name"],
             address=data["address"],
             city=data["city"],
+            website=data["website"],
         )

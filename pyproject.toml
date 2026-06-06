@@ -1,13 +1,19 @@
 [project]
 name = "marquise"
-version = "0.2.0"
+version = "0.3.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "asyncpg>=0.31.0",
     "python-dotenv>=1.2.2",
+    "questionary>=2.1.1",
+    "supabase>=2.31.0",
+    "typer>=0.26.7",
 ]
+
+[project.scripts]
+marquise = "marquise.infrastructure.cli.app:app"
 
 [dependency-groups]
 dev = [
