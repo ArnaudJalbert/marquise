@@ -17,12 +17,14 @@ class Cinema:
         name: Display name of the cinema.
         address: Street address (optional).
         city: City where the cinema is located (optional).
+        website: Cinema's website URL (optional).
     """
 
     id: CinemaId
     name: str
     address: Optional[str] = None
     city: Optional[str] = None
+    website: Optional[str] = None
 
     def __post_init__(self) -> None:
         """Validate cinema data after initialization.

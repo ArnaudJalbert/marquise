@@ -17,7 +17,12 @@ class CinemaGateway(Protocol):
     """
 
     async def save(
-        self, cinema_id: str, name: str, address: Optional[str], city: Optional[str]
+        self,
+        cinema_id: str,
+        name: str,
+        address: Optional[str],
+        city: Optional[str],
+        website: Optional[str] = None,
     ) -> dict:
         """Insert a cinema row.
 
@@ -26,6 +31,7 @@ class CinemaGateway(Protocol):
             name: Display name of the cinema.
             address: Street address (optional).
             city: City where the cinema is located (optional).
+            website: Cinema website URL (optional).
 
         Returns:
             The inserted row as a dict.
@@ -68,5 +74,53 @@ class CinemaGateway(Protocol):
 
         Returns:
             True if a row with that ID exists, False otherwise.
+        """
+        ...
+
+    async def update(
+        self,
+        cinema_id: str,
+        name: str,
+        address: Optional[str],
+        city: Optional[str],
+        website: Optional[str] = None,
+    ) -> dict:
+        """Update an existing cinema row.
+
+        Args:
+            cinema_id: The ID of the cinema to update.
+            name: Updated display name.
+            address: Updated street address (optional).
+            city: Updated city (optional).
+            website: Updated website URL (optional).
+
+        Returns:
+            The updated row as a dict.
+
+        Raises:
+            GatewayError: If no row with the given ``cinema_id`` exists.
+        """
+        ...
+
+    async def delete(self, cinema_id: str) -> bool:
+        """Delete a cinema by its ID.
+
+        Args:
+            cinema_id: The ID of the cinema to delete.
+
+        Returns:
+            True if a row was deleted, False otherwise.
+        """
+        ...
+
+    async def find_all(self, name_filter: str | None = None) -> list[dict]:
+        """Retrieve all cinemas, optionally filtered by name.
+
+        Args:
+            name_filter: An optional substring to match against cinema names
+                (case-insensitive). If None, all cinemas are returned.
+
+        Returns:
+            A list of dicts representing cinema rows.
         """
         ...

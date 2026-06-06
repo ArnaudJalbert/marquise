@@ -11,6 +11,11 @@ class Settings:
 
     Attributes:
         database_url: Full PostgreSQL connection string used by asyncpg.
+        supabase_url: Supabase project URL for the auth client.
+        supabase_publishable_key: Supabase publishable API key for the auth
+            client.
     """
 
     database_url: str
+    supabase_url: str
+    supabase_publishable_key: str

@@ -6,10 +6,12 @@ from dataclasses import dataclass
 from typing import Optional
 from uuid import uuid4
 
-from marquise.application.exceptions import CinemaIdAlreadyExistsError
+from marquise.application.exceptions import (
+    CinemaAlreadyExistsError,
+    CinemaIdAlreadyExistsError,
+)
 from marquise.application.repositories import CinemaRepository
 from marquise.domain.entities import Cinema
-from marquise.domain.exceptions import CinemaAlreadyExistsError
 from marquise.domain.value_objects import CinemaId
 
 
@@ -28,11 +30,13 @@ class CreateCinemaUseCase:
             name: Display name of the cinema (required, non-empty).
             address: Street address (optional).
             city: City where the cinema is located (optional).
+            website: Cinema's website URL (optional).
         """
 
         name: str
         address: Optional[str] = None
         city: Optional[str] = None
+        website: Optional[str] = None
 
         def __post_init__(self) -> None:
             """Validate input data.
@@ -47,6 +51,8 @@ class CreateCinemaUseCase:
                 raise ValueError("address must not be empty when provided")
             if self.city is not None and not self.city.strip():
                 raise ValueError("city must not be empty when provided")
+            if self.website is not None and not self.website.strip():
+                raise ValueError("website must not be empty when provided")
 
     @dataclass(frozen=True, slots=True)
     class OutputData:
@@ -57,18 +63,20 @@ class CreateCinemaUseCase:
             name: Display name of the cinema.
             address: Street address (optional).
             city: City where the cinema is located (optional).
+            website: Cinema's website URL (optional).
         """
 
         id: str
         name: str
         address: Optional[str] = None
         city: Optional[str] = None
+        website: Optional[str] = None
 
         def __post_init__(self) -> None:
             """Validate output data.
 
             Raises:
-                ValueError: If id or name is empty, or if address/city
+                ValueError: If id or name is empty, or if address/city/website
                     are provided but whitespace-only.
             """
             if not self.id.strip():
@@ -79,6 +87,8 @@ class CreateCinemaUseCase:
                 raise ValueError("address must not be empty when provided")
             if self.city is not None and not self.city.strip():
                 raise ValueError("city must not be empty when provided")
+            if self.website is not None and not self.website.strip():
+                raise ValueError("website must not be empty when provided")
 
     def __init__(self, cinema_repository: CinemaRepository) -> None:
         """Initialize the use case.
@@ -123,6 +133,7 @@ class CreateCinemaUseCase:
             name=request.name,
             address=request.address,
             city=request.city,
+            website=request.website,
         )
 
         try:
@@ -138,4 +149,5 @@ class CreateCinemaUseCase:
             name=saved.name,
             address=saved.address,
             city=saved.city,
+            website=saved.website,
         )
