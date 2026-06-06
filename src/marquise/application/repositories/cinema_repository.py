@@ -65,3 +65,45 @@ class CinemaRepository(ABC):
             True if a cinema with that ID exists, False otherwise.
         """
         ...
+
+    @abstractmethod
+    async def find_all(self, name_filter: str | None = None) -> list[Cinema]:
+        """Retrieve all cinemas, optionally filtered by name.
+
+        Args:
+            name_filter: An optional substring to match against cinema names
+                (case-insensitive). If None, all cinemas are returned.
+
+        Returns:
+            A list of cinema entities matching the filter.
+        """
+        ...
+
+    @abstractmethod
+    async def update(self, cinema: Cinema) -> Cinema:
+        """Update an existing cinema.
+
+        Args:
+            cinema: The cinema entity with updated fields. The ID must match
+                an existing cinema.
+
+        Returns:
+            The updated cinema as returned by the data store.
+
+        Raises:
+            CinemaNotFoundError: If no cinema with the given ID exists.
+        """
+        ...
+
+    @abstractmethod
+    async def delete(self, cinema_id: CinemaId) -> bool:
+        """Delete a cinema by its unique identifier.
+
+        Args:
+            cinema_id: The ID of the cinema to delete.
+
+        Returns:
+            True if a cinema was deleted, False if no cinema with that ID
+            was found.
+        """
+        ...

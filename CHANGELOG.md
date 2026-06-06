@@ -1,5 +1,50 @@
 # Changelog
 
+## 0.3.0 (2026-06-06)
+
+### Highlights
+
+- **CLI Application**: New Typer-based CLI with `marquise auth` and `marquise cinema` subcommands
+- **Authentication Flow**: `SupabaseAuthService` with email/password login, token refresh, and session persistence to `~/.marquise/auth.json`
+- **Full Cinema CRUD**: Create, list (with name filter), update, and delete cinemas via CLI
+- **Dependency Injection Container**: Central `Container` class replaces old `dependencies.py` — manages lifecycle (initialize/shutdown), no more module-level singletons
+- **`website` Field**: Added to `Cinema` entity, all DTOs, gateway SQL, and repository mappings
+- **AGENTS.md §11.6**: New "No Module-Level Mutable State" rule enforces per-call DI
+- **Exception Isolation**: Domain exceptions no longer leak past the application boundary — use cases raise `ApplicationError` subclasses only
+
+### New Features
+
+- **CLI — Auth**: `marquise auth login` (prompts for email/password), `marquise auth logout`, `marquise auth status`
+- **CLI — Cinema**: `marquise cinema create` (prompts for name/address/city/website), `marquise cinema list` (with `--name` filter), `marquise cinema delete`, `marquise cinema update`
+- **Use Cases**: `DeleteCinemaUseCase`, `ListCinemasUseCase`, `UpdateCinemaUseCase` — each with validated `InputData`/`OutputData` inner classes
+- **Gateway Protocol**: `CinemaGateway` expanded with `update()`, `delete()`, `find_all()` methods; `save()` now accepts `website`
+- **Gateway Implementation**: `SupabaseCinemaGateway` — SQL for `UPDATE`, `DELETE`, `SELECT ... ORDER BY name`, and `LIKE`-based name filter
+- **Repository Interface**: `CinemaRepository` — `find_all()`, `update()`, `delete()` added
+- **Repository Implementation**: `SupabaseCinemaRepository` — delegates to gateway, maps `GatewayError` → `CinemaNotFoundError` on update
+- **Auth Protocol**: `AuthService` protocol + `AuthSession` dataclass in `interface_adapters/repositories/protocols/auth.py`
+- **Auth Implementation**: `SupabaseAuthService` with admin role verification and automatic token refresh on expiry
+- **Controllers**: `AuthController` wraps auth service; `CinemaController` wraps all cinema use cases with `validate_admin()` guard
+- **Dependency Injection**: `Container` class in `infrastructure/di/container.py` wires settings → gateways → repositories → use cases → controllers
+- **Settings**: Added `supabase_url` and `supabase_publishable_key` fields
+
+### Breaking
+
+- `infrastructure/supabase/dependencies.py` removed — use `Container` from `infrastructure/di/container.py` instead
+- `CinemaAlreadyExistsError` and `CinemaNotFoundError` moved from `domain.exceptions` to `application.exceptions` — use cases and repository implementations now raise application-layer exceptions only
+- `DeleteCinemaUseCase.execute` and `CreateCinemaUseCase.execute` now raise `ApplicationError` subclasses instead of `DomainError` subclasses
+
+### Documentation
+
+- **AGENTS.md §11.7**: New "Domain Exceptions Must Not Leak" rule with examples
+
+### Testing
+
+- **Use Cases**: Unit tests for `DeleteCinemaUseCase`, `ListCinemasUseCase`, `UpdateCinemaUseCase` with mocked repositories
+- **Repository**: Unit tests for `find_all`, `update`, `delete` on `SupabaseCinemaRepository` (including `CinemaNotFoundError` path)
+- **Gateway**: Integration tests for `update`, `delete`, `find_all` on `SupabaseCinemaGateway`
+- **Website Field**: All existing tests updated to include `website` parameter
+- **Input/Output Validation**: Tests for website empty/whitespace rejection in both `InputData` and `OutputData`
+
 ## 0.2.0 (2026-06-06)
 
 ### Highlights

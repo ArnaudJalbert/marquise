@@ -6,11 +6,13 @@ from unittest.mock import create_autospec
 
 import pytest
 
-from marquise.application.exceptions import CinemaIdAlreadyExistsError
+from marquise.application.exceptions import (
+    CinemaAlreadyExistsError,
+    CinemaIdAlreadyExistsError,
+)
 from marquise.application.repositories import CinemaRepository
 from marquise.application.use_cases import CreateCinemaUseCase
 from marquise.domain.entities import Cinema
-from marquise.domain.exceptions import CinemaAlreadyExistsError
 from marquise.domain.value_objects import CinemaId
 
 
@@ -24,11 +26,15 @@ async def test_create_cinema_saves_and_returns_response() -> None:
         name="Test Cinema",
         address="123 Test St",
         city="Montreal",
+        website="https://example.com",
     )
 
     use_case = CreateCinemaUseCase(cinema_repository=mock_repo)
     request = CreateCinemaUseCase.InputData(
-        name="Test Cinema", address="123 Test St", city="Montreal"
+        name="Test Cinema",
+        address="123 Test St",
+        city="Montreal",
+        website="https://example.com",
     )
 
     response = await use_case.execute(request)
@@ -37,6 +43,7 @@ async def test_create_cinema_saves_and_returns_response() -> None:
     assert response.name == "Test Cinema"
     assert response.address == "123 Test St"
     assert response.city == "Montreal"
+    assert response.website == "https://example.com"
     mock_repo.find_by_name_and_address.assert_awaited_once_with(
         name="Test Cinema", address="123 Test St"
     )

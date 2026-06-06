@@ -10,6 +10,12 @@ import pytest
 from marquise.infrastructure.supabase.config import Settings
 from marquise.infrastructure.supabase.database import Database, sanitize_dsn
 
+_TEST_SETTINGS = Settings(
+    database_url="postgresql://user:pass@localhost:5432/test",
+    supabase_url="https://test.supabase.co",
+    supabase_publishable_key="sb_publishable_test",
+)
+
 
 def test_sanitize_dsn_clean_unchanged() -> None:
     """Verify a DSN without special characters is unchanged."""
@@ -52,7 +58,7 @@ async def test_connect_creates_pool(monkeypatch: pytest.MonkeyPatch) -> None:
     create_pool = AsyncMock(return_value=mock_pool)
     monkeypatch.setattr(asyncpg, "create_pool", create_pool)
 
-    db = Database(Settings(database_url="postgresql://user:pass@localhost:5432/test"))
+    db = Database(_TEST_SETTINGS)
     await db.connect()
 
     create_pool.assert_awaited_once()
@@ -66,7 +72,7 @@ async def test_disconnect_closes_pool(monkeypatch: pytest.MonkeyPatch) -> None:
     create_pool = AsyncMock(return_value=mock_pool)
     monkeypatch.setattr(asyncpg, "create_pool", create_pool)
 
-    db = Database(Settings(database_url="postgresql://user:pass@localhost:5432/test"))
+    db = Database(_TEST_SETTINGS)
     await db.connect()
     await db.disconnect()
 
@@ -76,13 +82,13 @@ async def test_disconnect_closes_pool(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.mark.asyncio
 async def test_disconnect_when_not_connected() -> None:
     """Verify disconnect is safe to call when never connected."""
-    db = Database(Settings(database_url="postgresql://user:pass@localhost:5432/test"))
+    db = Database(_TEST_SETTINGS)
     await db.disconnect()
 
 
 def test_pool_before_connect_raises() -> None:
     """Verify accessing pool before connect raises RuntimeError."""
-    db = Database(Settings(database_url="postgresql://user:pass@localhost:5432/test"))
+    db = Database(_TEST_SETTINGS)
     with pytest.raises(RuntimeError, match="Database not connected"):
         _ = db.pool
 
@@ -90,6 +96,12 @@ def test_pool_before_connect_raises() -> None:
 def test_constructor_sanitizes_dsn() -> None:
     """Verify the constructor sanitizes the DSN upfront."""
     dsn = "postgresql://user:pw#abc@host:5432/db"
-    db = Database(Settings(database_url=dsn))
+    db = Database(
+        Settings(
+            database_url=dsn,
+            supabase_url="https://test.supabase.co",
+            supabase_publishable_key="sb_publishable_test",
+        )
+    )
     assert db._dsn != dsn
     assert "%23" in db._dsn
