@@ -11,6 +11,7 @@ from marquise.domain.value_objects import MovieId
 
 
 def test_movie_creation() -> None:
+    """Verify that a Movie can be created with all fields populated."""
     movie = Movie(
         id=MovieId(value="mov-123"),
         title="Inception",
@@ -26,6 +27,7 @@ def test_movie_creation() -> None:
 
 
 def test_movie_rejects_empty_title() -> None:
+    """Verify that creating a Movie with an empty title raises ValueError."""
     with pytest.raises(ValueError, match="Movie title cannot be empty"):
         Movie(
             id=MovieId(value="mov-123"),
@@ -37,6 +39,7 @@ def test_movie_rejects_empty_title() -> None:
 
 
 def test_movie_rejects_no_directors() -> None:
+    """Verify that a Movie must have at least one director."""
     with pytest.raises(ValueError, match="Movie must have at least one director"):
         Movie(
             id=MovieId(value="mov-123"),
@@ -48,6 +51,7 @@ def test_movie_rejects_no_directors() -> None:
 
 
 def test_movie_rejects_empty_director_name() -> None:
+    """Verify that a Movie rejects a director with an empty name."""
     with pytest.raises(ValueError, match="Director name cannot be empty"):
         Movie(
             id=MovieId(value="mov-123"),
@@ -59,6 +63,7 @@ def test_movie_rejects_empty_director_name() -> None:
 
 
 def test_movie_rejects_non_positive_duration() -> None:
+    """Verify that Movie duration must be positive."""
     with pytest.raises(ValueError, match="Movie duration must be positive"):
         Movie(
             id=MovieId(value="mov-123"),
@@ -71,6 +76,7 @@ def test_movie_rejects_non_positive_duration() -> None:
 
 
 def test_movie_allows_none_duration() -> None:
+    """Verify that Movie duration can be None (unknown)."""
     movie = Movie(
         id=MovieId(value="mov-123"),
         title="Inception",
@@ -83,6 +89,7 @@ def test_movie_allows_none_duration() -> None:
 
 
 def test_is_recent_returns_true_for_recent_movie() -> None:
+    """Verify is_recent returns True for a movie released within the last year."""
     movie = Movie(
         id=MovieId(value="mov-123"),
         title="Recent Movie",
@@ -94,6 +101,7 @@ def test_is_recent_returns_true_for_recent_movie() -> None:
 
 
 def test_is_recent_returns_false_for_old_movie() -> None:
+    """Verify is_recent returns False for a movie older than one year."""
     movie = Movie(
         id=MovieId(value="mov-123"),
         title="Old Movie",
@@ -105,6 +113,7 @@ def test_is_recent_returns_false_for_old_movie() -> None:
 
 
 def test_is_recent_with_custom_years() -> None:
+    """Verify is_recent accepts a custom lookback window."""
     movie = Movie(
         id=MovieId(value="mov-123"),
         title="Barely Recent",

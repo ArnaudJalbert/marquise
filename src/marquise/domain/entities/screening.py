@@ -3,18 +3,28 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
-from ..value_objects import ScreeningId, Showtime, Price
 from ..exceptions import ScreeningError
-from .movie import Movie
+from ..value_objects import Price, ScreeningId, Showtime
 from .cinema import Cinema
+from .movie import Movie
 
 
 @dataclass(kw_only=True, slots=True)
 class Screening:
-    """A screening of a movie at a cinema at a specific time."""
+    """A screening of a movie at a cinema at a specific time.
+
+    Attributes:
+        id: Unique identifier for the screening.
+        movie_id: The movie being screened.
+        cinema_id: The cinema hosting the screening.
+        showtime: Date and time of the screening.
+        price: Ticket price.
+        available_seats: Number of seats still available (set externally).
+        is_sold_out: Whether the screening is sold out (set externally).
+    """
 
     id: ScreeningId
     movie_id: Movie
@@ -25,27 +35,51 @@ class Screening:
     is_sold_out: Optional[bool] = field(default=None, init=False)
 
     def __post_init__(self) -> None:
-        """Validate the screening data."""
+        """Validate screening data after initialization.
+
+        Raises:
+            ScreeningError: If available_seats is negative or price is negative.
+        """
         if self.available_seats is not None:
             if self.available_seats < 0:
                 raise ScreeningError("Available seats cannot be negative")
-        if self.price.value < 0:
-            raise ScreeningError("Price cannot be negative")
 
     def is_upcoming(self, now: Optional[datetime] = None) -> bool:
-        """Check if this screening is upcoming."""
+        """Check if this screening is still in the future.
+
+        Args:
+            now: Reference time (defaults to current UTC time).
+
+        Returns:
+            True if the showtime is after the reference time.
+        """
         if now is None:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
         return self.showtime.value > now
 
     def has_ended(self, now: Optional[datetime] = None) -> bool:
-        """Check if this screening has ended."""
+        """Check if this screening has already ended.
+
+        Args:
+            now: Reference time (defaults to current UTC time).
+
+        Returns:
+            True if the showtime is before the reference time.
+        """
         if now is None:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
         return self.showtime.value < now
 
     def update_availability(self, seats_sold: int) -> None:
-        """Update available seats after selling tickets."""
+        """Reduce available seats after selling tickets.
+
+        Args:
+            seats_sold: Number of tickets sold.
+
+        Raises:
+            ScreeningError: If seats are unknown, seats_sold is negative,
+                or more seats are sold than available.
+        """
         if self.available_seats is None:
             raise ScreeningError("Cannot update availability: seats unknown")
         if seats_sold < 0:

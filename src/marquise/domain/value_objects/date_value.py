@@ -1,4 +1,4 @@
-"""Showtime value object."""
+"""Date value object."""
 
 from __future__ import annotations
 
@@ -8,13 +8,24 @@ from datetime import datetime
 
 @dataclass(frozen=True, slots=True)
 class DateValue:
-    """Date for a value object"""
+    """An immutable datetime wrapper for value objects.
+
+    Attributes:
+        value: The underlying datetime value.
+    """
 
     value: datetime
 
     @classmethod
     def from_datetime(cls, dt: datetime) -> DateValue:
-        """Create a Showtime from a datetime."""
+        """Create a DateValue from a datetime instance.
+
+        Args:
+            dt: The datetime to wrap.
+
+        Returns:
+            A new DateValue instance.
+        """
         return cls(value=dt)
 
     def __str__(self) -> str:

@@ -11,7 +11,17 @@ from ..value_objects import MovieId
 
 @dataclass(kw_only=True, slots=True)
 class Movie:
-    """Represents a movie with its core details."""
+    """A movie with its core details.
+
+    Attributes:
+        id: Unique identifier for the movie.
+        title: Official title of the movie.
+        release_date: Theatrical release date.
+        directors: Tuple of director names.
+        cast: Tuple of cast member names.
+        duration_minutes: Runtime in minutes (optional).
+        description: Plot synopsis (optional).
+    """
 
     id: MovieId
     title: str
@@ -22,7 +32,12 @@ class Movie:
     description: Optional[str] = None
 
     def __post_init__(self) -> None:
-        """Validate movie data."""
+        """Validate movie data after initialization.
+
+        Raises:
+            ValueError: If the title is empty, no directors are provided,
+                a director name is empty, or duration is non-positive.
+        """
         if not self.title.strip():
             raise ValueError("Movie title cannot be empty")
         if not self.directors:
@@ -33,7 +48,14 @@ class Movie:
             raise ValueError("Movie duration must be positive")
 
     def is_recent(self, years: int = 1) -> bool:
-        """Check if the movie was released within the last specified years."""
+        """Check if the movie was released within the last specified years.
+
+        Args:
+            years: Number of years to consider as "recent" (default 1).
+
+        Returns:
+            True if the movie's release date is within the given window.
+        """
         from datetime import datetime, timedelta
 
         cutoff_date = datetime.now().date() - timedelta(days=years * 365)
