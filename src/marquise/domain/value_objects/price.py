@@ -7,13 +7,31 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True, slots=True)
 class Price:
-    """Price of a screening."""
+    """An immutable monetary value for a screening ticket.
+
+    Attributes:
+        value: The price as a float.
+    """
 
     value: float
 
+    def __post_init__(self) -> None:
+        if self.value < 0:
+            raise ValueError("Price cannot be negative")
+
     @classmethod
     def from_float(cls, amount: float) -> Price:
-        """Create a Price from a float."""
+        """Create a Price from a float with validation.
+
+        Args:
+            amount: The ticket price.
+
+        Returns:
+            A new Price instance.
+
+        Raises:
+            ValueError: If the amount is negative.
+        """
         if amount < 0:
             raise ValueError("Price cannot be negative")
         return cls(value=amount)

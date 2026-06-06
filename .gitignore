@@ -17,3 +17,6 @@ wheels/
 
 # Jetbrains files
 /.idea/
+
+# Documentation
+site/

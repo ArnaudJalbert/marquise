@@ -9,4 +9,7 @@ from .date_value import DateValue
 
 @dataclass(frozen=True, slots=True)
 class ReleaseDate(DateValue):
-    """Release date of a movie."""
+    """Release date of a movie.
+
+    Wraps a datetime value representing when a movie was released.
+    """
