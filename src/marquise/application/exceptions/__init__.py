@@ -1,15 +1,9 @@
-"""Application-layer exceptions for Marquise."""
+"""Application exception re-exports."""
 
-from __future__ import annotations
+from marquise.application.exceptions.base import ApplicationError
+from marquise.application.exceptions.cinema import CinemaIdAlreadyExistsError
 
-
-class ApplicationError(Exception):
-    """Base class for all application-layer exceptions."""
-
-    pass
-
-
-class CinemaIdAlreadyExistsError(ApplicationError):
-    """Raised when a generated cinema ID already exists in the repository."""
-
-    pass
+__all__ = [
+    "ApplicationError",
+    "CinemaIdAlreadyExistsError",
+]

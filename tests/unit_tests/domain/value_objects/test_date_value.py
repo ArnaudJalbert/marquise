@@ -9,22 +9,26 @@ from marquise.domain.value_objects.date_value import DateValue
 
 
 def test_date_value_from_datetime() -> None:
+    """Verify DateValue can be created via the from_datetime classmethod."""
     dt = datetime(2026, 6, 6, 12, 0, 0)
     dv = DateValue.from_datetime(dt)
     assert dv.value == dt
 
 
 def test_date_value_str() -> None:
+    """Verify the string representation is ISO 8601."""
     dv = DateValue(value=datetime(2026, 6, 6, 12, 0, 0))
     assert str(dv) == "2026-06-06T12:00:00"
 
 
 def test_date_value_hash() -> None:
+    """Verify DateValue hashing is based on value equality."""
     dv1 = DateValue(value=datetime(2026, 6, 6, 12, 0, 0))
     dv2 = DateValue(value=datetime(2026, 6, 6, 12, 0, 0))
     assert hash(dv1) == hash(dv2)
 
 
 def test_showtime_inherits_from_date_value() -> None:
+    """Verify Showtime is a subclass of DateValue."""
     showtime = Showtime(value=datetime(2026, 6, 6, 12, 0, 0))
     assert isinstance(showtime, DateValue)

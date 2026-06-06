@@ -7,7 +7,11 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True, slots=True)
 class IdValue:
-    """Unique identifier for a value object."""
+    """An immutable string identifier for domain entities.
+
+    Attributes:
+        value: The unique string identifier.
+    """
 
     value: str
 

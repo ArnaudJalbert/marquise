@@ -9,4 +9,7 @@ from .date_value import DateValue
 
 @dataclass(frozen=True, slots=True)
 class Showtime(DateValue):
-    """Time of a screening."""
+    """Date and time of a screening.
+
+    Wraps a datetime value representing when a screening takes place.
+    """

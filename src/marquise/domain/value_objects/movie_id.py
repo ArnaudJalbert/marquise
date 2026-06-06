@@ -9,4 +9,7 @@ from .id_value import IdValue
 
 @dataclass(frozen=True, slots=True)
 class MovieId(IdValue):
-    """Unique identifier for a movie."""
+    """Unique identifier for a movie.
+
+    Wraps a string value that uniquely identifies a movie entity.
+    """

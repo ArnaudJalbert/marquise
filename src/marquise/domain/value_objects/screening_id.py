@@ -7,7 +7,11 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True, slots=True)
 class ScreeningId:
-    """Unique identifier for a screening."""
+    """Unique identifier for a screening.
+
+    Attributes:
+        value: The unique string identifier for the screening.
+    """
 
     value: str
 

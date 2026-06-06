@@ -1,23 +1,65 @@
 # Changelog
 
+## 0.2.0 (2026-06-06)
+
+### Highlights
+
+- **Gateway Protocol Pattern**: `CinemaGateway` protocol decouples infrastructure SQL from entity mapping
+- **Robust Error Handling**: `UniqueViolationError` → `GatewayError` → `CinemaIdAlreadyExistsError` with descriptive messages
+- **Price Self-Validation**: `Price` value object now validates non-negative in `__post_init__`
+- **Infrastructure Hardening**: `sanitize_dsn()` handles `@` in passwords, `load_dotenv()` moved from import-time to first-call
+- **100% Core Coverage**: domain, application, and interface_adapters layers fully covered
+
+### Breaking
+
+- `SupabaseCinemaRepository` moved from `interface_adapters/repositories/` root into `supabase/` subdirectory
+- Old `application/dtos/` directory removed — DTOs are now inner classes of use cases
+- `exists_by_id` no longer called proactively in `CreateCinemaUseCase` (UUID collision handled by DB constraint)
+- `save()` in `SupabaseCinemaGateway` is now a pure `INSERT` (was `UPSERT`) — raises `GatewayError` on PK collision
+
 ## 0.1.0 (2026-06-06)
 
 ### Domain Layer
 
 - **Entities**: `Cinema`, `Movie`, `Screening` with full validation in `__post_init__`
-- **Value Objects**: `CinemaId`, `MovieId`, `ScreeningId`, `Showtime`, `ReleaseDate`, `Price`, `DateValue`, `IdValue`
+- **Value Objects**: `CinemaId`, `MovieId`, `ScreeningId`, `Showtime`, `ReleaseDate`, `Price`, `DateValue`, `IdValue` — `Price` validates non-negative in `__post_init__`
 - **Domain Exceptions**: `DomainException`, `MovieError`, `CinemaError`, `ScreeningError`, `MovieNotFoundError`, `CinemaNotFoundError`, `CinemaAlreadyExistsError`, `ScreeningNotFoundError`
 
 ### Application Layer
 
-- **Use Case**: `CreateCinemaUseCase` with duplicate name+address detection and UUID collision handling
-- **DTOs**: `CreateCinemaRequest`, `CreateCinemaResponse` (frozen dataclasses with validation)
-- **Repository Interface**: `CinemaRepository` (abstract, async methods for save/find/exists)
+- **Use Case**: `CreateCinemaUseCase` with duplicate name+address detection — UUID collision handled via DB constraint + descriptive `CinemaIdAlreadyExistsError`
+- **DTOs**: `CreateCinemaUseCase.InputData` / `OutputData` (frozen dataclasses with validation, inner classes of the use case)
+- **Repository Interface**: `CinemaRepository` (abstract, async methods for `save` / `find_by_id` / `find_by_name_and_address` / `exists_by_id`)
 - **Application Exceptions**: `ApplicationError`, `CinemaIdAlreadyExistsError`
+
+### Interface Adapters Layer
+
+- **Gateway Protocol**: `CinemaGateway` — `typing.Protocol` defining the data-access contract (returns plain dicts, no domain/ORM types)
+- **Gateway Error**: `GatewayError` — wraps infrastructure-level failures (e.g. `UniqueViolationError`)
+- **Repository Implementation**: `SupabaseCinemaRepository` — maps gateway dicts ↔ domain entities, catches `GatewayError` → `CinemaIdAlreadyExistsError`
+- **Architecture**: Clean separation — gateway (SQL) in `infrastructure`, protocol + adapter in `interface_adapters`
+- **Deleted**: Old flat `SupabaseCinemaRepository`, unused `application/dtos/` directory
+
+### Infrastructure Layer
+
+- **Database**: `Database` class managing asyncpg connection pool (connect/disconnect/pool property)
+- **DSN Sanitization**: `sanitize_dsn()` — robust percent-encoding of special characters in passwords (handles `#`, `@`, `%` with right-to-left greedy regex)
+- **Gateway**: `SupabaseCinemaGateway` — pure `INSERT` with `UniqueViolationError` → `GatewayError` wrapping
+- **Settings**: `Settings` frozen dataclass for `DATABASE_URL` env var
+- **Dependencies**: `get_settings()` — lazy `load_dotenv()` call at first invocation (no import-time side effects)
+
+### Documentation
+
+- `AGENTS.md` — comprehensive development guide covering Clean Architecture, layer responsibilities, coding standards, testing strategy, and process guidelines
+- `mkdocs.yml` + `docs/` — MkDocs site with Material theme, nav structure, and `mkdocstrings` plugin
+- `docs/todo.md` — tracked technical debt (Screening entity reference refactor)
+- `docs/setup/supabase-cinema-table.md` — Supabase table setup guide
 
 ### Testing
 
-- Full test coverage for all domain entities and value objects
-- Async tests for `CreateCinemaUseCase` with autospecced mocks
-- DTO validation tests
-- Application exception hierarchy tests
+- **Domain**: 100% coverage — all entities, value objects, and domain services tested
+- **Application**: 100% coverage — `CreateCinemaUseCase` async tests with `create_autospec` mocks, DTO input/output validation, exception hierarchy
+- **Interface Adapters**: 100% coverage — `SupabaseCinemaRepository` unit-tested with mocked `CinemaGateway` (including error-wrapping path)
+- **Infrastructure**: `sanitize_dsn()` tested with `#`, `@`, `%` in passwords; `Database` lifecycle tests (connect/disconnect/pool) with monkeypatched asyncpg
+- **Integration**: `SupabaseCinemaGateway` integration tests against real PostgreSQL table (requires `DATABASE_URL` env var)
+- **Conventions**: All tests are function-style (no test classes, per AGENTS.md §9.6)

@@ -52,7 +52,7 @@ Marquise strictly follows **Clean Architecture** (also known as Onion or Hexagon
 │   (Repository Implementations)         │
 ├─────────────────────────────────────────┤
 │   src/marquise/application/            │
-│   (Use Cases, DTOs, Repository Interfaces)│
+│   (Use Cases, Repository Interfaces)      │
 ├─────────────────────────────────────────┤
 │   src/marquise/domain/                 │
 │   (Entities, Value Objects, Rules)     │
@@ -82,10 +82,7 @@ Marquise strictly follows **Clean Architecture** (also known as Onion or Hexagon
 
 #### **Application Layer** (use cases, orchestrates domain)
 - **Use Cases** (or **Interactors**): Application-specific business rules. Each use case represents one user action (e.g., `GetShowtimesQuery`, `AddTheaterCommand`).
-- **DTOs** (Data Transfer Objects): Simple data containers for input/output of use cases
-  - Must use frozen dataclasses (`@dataclass(frozen=True, slots=True)`)
-  - Validation in `__post_init__` method
-  - Do NOT use Pydantic models in the application layer
+- **InputData / OutputData**: Data containers for use case input/output. Each use case MUST define `InputData` and `OutputData` as inner `@dataclass(frozen=True, slots=True)` classes. **Both `InputData` and `OutputData` MUST validate data in `__post_init__`** — this ensures fast failure at the boundary for invalid input and catches programming errors in output construction. The `execute` method MUST accept `InputData` and return `OutputData`. Usage: `CreateCinemaUseCase.InputData`, `CreateCinemaUseCase.OutputData`. Do NOT use Pydantic models in the application layer.
 - **Repository Interfaces**: Abstract base classes defining data access contracts (e.g., `ScreeningRepository`, `MovieRepository`)
 - **Application Service Interfaces**: Very thin coordination layer (optional, often use cases suffice)
 
@@ -108,7 +105,7 @@ Marquise strictly follows **Clean Architecture** (also known as Onion or Hexagon
 
 1. **No circular imports**: If you see them, architecture is broken
 2. **Domain never knows about databases, HTTP, or external systems**
-3. **Application never knows about databases or HTTP** (only use cases and DTOs)
+3. **Application never knows about databases or HTTP** (only use cases and their InputData/OutputData)
 4. **Infrastructure and interface_adapters implement interfaces defined in application**. They may depend on domain for entities.
 5. **Infrastructure depends on application** (use cases, DTOs) and on **interface_adapters** (repository implementations) to wire everything together. It's acceptable to import concrete classes from interface_adapters in infrastructure for type annotations and instantiation.
 
@@ -255,11 +252,141 @@ uv run ruff check --fix
 - Missing docstrings on public modules, classes, functions (add them)
 - Ambiguous variable names (use descriptive names)
 
-### 6.3 Test Coverage Requirements
+### 6.3 Docstrings (Google Style)
+
+**Every module, class, method, and function must have a Google-style docstring.**
+
+Rules:
+- **Module docstrings**: One-line summary at the top of every `.py` file.
+- **Class docstrings**: Description of the class followed by an ``Attributes:`` section listing public attributes with types and descriptions.
+- **Method/function docstrings**: Description, then ``Args:`` (one per parameter with type and description), ``Returns:`` (type and description), and ``Raises:`` (exception type and condition) as applicable. Use ``None`` return type for void methods.
+- **Test docstrings**: Every test function must have a docstring describing what scenario it tests.
+- **`__init__` docstrings**: Only include when parameters need explanation beyond the class docstring.
+- **Property docstrings**: Include when the property logic isn't obvious.
+- **One-line docstrings**: For trivial methods (e.g., a simple pass-through), a single-line docstring is acceptable.
+
+Google-style template:
+```python
+def fetch_cinemas(city: str, limit: int = 10) -> list[Cinema]:
+    """Retrieve cinemas in a given city.
+
+    Args:
+        city: The city to filter by (case-insensitive).
+        limit: Maximum number of results to return (default 10).
+
+    Returns:
+        A list of Cinema entities matching the filter.
+
+    Raises:
+        ValueError: If ``city`` is empty or whitespace-only.
+    """
+    ...
+```
+
+### 6.4 Package Conventions - `__init__.py` for Re-exports Only
+
+**`__init__.py` files must only re-export symbols from dedicated submodules.**
+They must not contain class or function definitions.
+
+**Correct** (`src/marquise/domain/exceptions/__init__.py`):
+```python
+from marquise.domain.exceptions.base import DomainError
+from marquise.domain.exceptions.cinema import CinemaError
+
+__all__ = ["CinemaError", "DomainError"]
+```
+
+**Forbidden** (`src/marquise/domain/exceptions/__init__.py`):
+```python
+class DomainError(Exception):
+    pass
+
+class CinemaError(DomainError):
+    pass
+```
+
+Each logical group of definitions lives in its own file:
+- `exceptions/base.py` — base exception class
+- `exceptions/cinema.py` — cinema-related exceptions
+- `exceptions/movie.py` — movie-related exceptions
+- etc.
+
+### 6.5 Infrastructure Technology Isolation
+
+Each external technology (database, API client, etc.) lives in its own
+subdirectory under ``src/marquise/infrastructure/`` and communicates with
+``interface_adapters`` through a **protocol** defined in
+``interface_adapters/``.
+
+**Pattern**:
+
+1. **Define a Protocol** in ``interface_adapters/`` — the pure Python
+   ``typing.Protocol`` that describes what the data layer must provide.
+   No infrastructure or SQL imports allowed.
+2. **Implement the Protocol** in ``infrastructure/<tech>/gateways/`` — the
+   concrete class that executes SQL, calls external APIs, etc.
+3. **Adapt in interface_adapters** — the repository implementation in
+   ``interface_adapters/`` takes the protocol as a dependency and handles
+   entity mapping only.
+
+**Example layout**:
+
+```
+interface_adapters/
+├── repositories/
+│   ├── protocols/                          ← Protocol definitions
+│   │   ├── __init__.py
+│   │   └── cinema.py                      ← CinemaGateway (Protocol)
+│   ├── supabase/
+│   │   ├── __init__.py
+│   │   └── cinema_repository.py            ← Adapts gateway → entities
+│   └── ...
+
+infrastructure/
+├── supabase/                               ← One dir per tech
+│   ├── __init__.py
+│   ├── config/
+│   ├── database.py
+│   ├── dependencies.py
+│   └── gateways/                           ← Protocol implementations
+│       ├── __init__.py
+│       └── cinema.py
+└── ...
+```
+
+**Rules**:
+- ``interface_adapters/`` never imports ``asyncpg``, SQL strings, or any
+  infrastructure module.
+- ``interface_adapters/repositories/protocols/`` uses only Python stdlib
+  and domain/application types.
+- ``infrastructure/<tech>/gateways/`` fully owns SQL/API logic and never
+  imports from ``domain/entities`` (returns plain dicts or primitive types).
+
+### 6.6 Testing by Layer — Unit vs Integration
+
+Because of the protocol pattern (Section 6.4), the test split is clear:
+
+| Layer | Test type | What it tests |
+|---|---|---|
+| ``domain/`` | Unit | Entities, value objects, domain services |
+| ``application/`` | Unit | Use cases, InputData/OutputData (repos mocked via ``create_autospec``) |
+| ``interface_adapters/`` | **Unit only** | Adapters map data — no SQL, no infrastructure imports |
+| ``infrastructure/<tech>/gateways/`` | Integration | Real database via gateway (not through the adapter) |
+
+**Key rules**:
+- ``interface_adapters/`` tests **must not** require a database connection.
+  They mock the gateway protocol (``create_autospec``). If a test needs a real
+  database, it belongs in ``tests/integration/`` under ``infrastructure/``.
+- ``tests/integration/`` mirrors ``src/marquise/infrastructure/``. Only
+  infrastructure classes (gateways, API clients, etc.) get integration tests.
+- There should be **zero** ``tests/integration/interface_adapters/`` — that
+  directory should not exist.
+
+### 6.7 Test Coverage Requirements
 
 **100% coverage required for**:
 - `src/marquise/domain/` layer (all entities, value objects, domain services)
-- `src/marquise/application/` layer (all use cases, DTOs, repository interfaces)
+- `src/marquise/application/` layer (all use cases, InputData/OutputData, repository interfaces)
 - `src/marquise/interface_adapters/` layer (all routes, request/response models)
 
 **Infrastructure layer** (database implementations, external API clients): coverage should be "good" but 100% not strictly required. However, integration tests must cover critical paths.
@@ -286,9 +413,7 @@ Open `htmlcov/index.html` to see uncovered lines. **No PR merges with uncovered 
 ```
 src/marquise/
 ├── application/
-│   └── dtos/
-│       ├── requests.py
-│       └── responses.py
+│   └── use_cases/ (each defines InputData/OutputData as inner classes)
 ├── interface_adapters/
 │   └── repositories/ (implementations)
 └── infrastructure/
@@ -303,49 +428,43 @@ src/marquise/
 
 ### 7.3 Creating an Endpoint - Step-by-Step
 
-**Step 1**: Define request/response Pydantic models in `src/marquise/application/dtos/`
+**Step 1**: Define `InputData` and `OutputData` as inner classes of the use case in `src/marquise/application/use_cases/`
 
 ```python
-# src/marquise/application/dtos/requests.py
-from pydantic import BaseModel, Field, validator
+# src/marquise/application/use_cases/get_showtimes.py
+from dataclasses import dataclass
 from datetime import date
-from typing import List
+from typing import Optional
 
-class GetShowtimesRequest(BaseModel):
-    """Query parameters for getting showtimes."""
-    theater_id: str = Field(..., min_length=1, description="Theater ID")
-    date: date = Field(..., description="Date to get showtimes for")
-    
-    @validator('theater_id')
-    def validate_theater_id(cls, v: str) -> str:
-        if not v.strip():
-            raise ValueError("Theater ID cannot be empty")
-        return v
+class GetShowtimesUseCase:
+    @dataclass(frozen=True, slots=True)
+    class InputData:
+        """Input data for getting showtimes."""
+        theater_id: str
+        date: date
 
-class CreateScreeningRequest(BaseModel):
-    movie_id: str
-    theater_id: str
-    start_time: datetime
-    availability: Optional[Dict[str, bool]] = None
-```
+        def __post_init__(self) -> None:
+            if not self.theater_id.strip():
+                raise ValueError("theater_id must not be empty")
 
-```python
-# src/marquise/application/dtos/responses.py
-from pydantic import BaseModel
-from datetime import datetime
-from typing import List, Optional
+    @dataclass(frozen=True, slots=True)
+    class OutputData:
+        """Output data containing showtimes."""
+        movie_title: str
+        theater_name: str
+        start_time: datetime
+        available_seats: int
+        price: float
 
-class ShowtimeResponse(BaseModel):
-    id: str
-    movie_title: str
-    theater_name: str
-    start_time: datetime
-    available_seats: int
-    price: float
-    
-class ErrorResponse(BaseModel):
-    detail: str
-    code: Optional[str] = None
+        def __post_init__(self) -> None:
+            if not self.movie_title.strip():
+                raise ValueError("movie_title must not be empty")
+            if not self.theater_name.strip():
+                raise ValueError("theater_name must not be empty")
+            if self.available_seats < 0:
+                raise ValueError("available_seats must not be negative")
+            if self.price < 0:
+                raise ValueError("price must not be negative")
 ```
 
 **Step 2**: Create route in `src/marquise/infrastructure/fastapi/routes/`
@@ -354,8 +473,6 @@ class ErrorResponse(BaseModel):
 # src/marquise/infrastructure/fastapi/routes/showtimes.py
 from fastapi import APIRouter, Depends, HTTPException, status
 from marquise.application.use_cases import GetShowtimesUseCase, CreateScreeningCommand
-from marquise.application.dtos.requests import GetShowtimesRequest, CreateScreeningRequest
-from marquise.application.dtos.responses import ShowtimeResponse, ErrorResponse
 from marquise.infrastructure.dependencies import get_showtimes_use_case
 
 router = APIRouter(prefix="/showtimes", tags=["showtimes"])
@@ -603,7 +720,6 @@ tests/
 │   │   └── services/
 │   ├── application/
 │   │   ├── use_cases/
-│   │   ├── dtos/
 │   │   └── repositories/
 │   └── infrastructure/
 │       └── fastapi/
@@ -696,7 +812,8 @@ async def test_get_showtimes_success() -> None:
     )
     
     # Act
-    result = await use_case.execute(theater_id="t1", date=date.today())
+    input_data = GetShowtimesUseCase.InputData(theater_id="t1", date=date.today())
+    result = await use_case.execute(input_data)
     
     # Assert
     assert len(result) == 1
@@ -939,25 +1056,47 @@ class PromotionRepository(ABC):
 
 **Scenario**: Add `ApplyPromotionUseCase` to validate and apply discount.
 
-**Step 1 - Create DTOs** (`src/marquise/application/dtos/`):
-```python
-from pydantic import BaseModel
-from datetime import date
-
-class ApplyPromotionRequest(BaseModel):
-    screening_id: str
-    promotion_code: str
-```
+**Step 1 - Define InputData and OutputData as inner classes** within the use case class in `src/marquise/application/use_cases/apply_promotion.py`:
 
 **Step 2 - Define use case** (`src/marquise/application/use_cases/apply_promotion.py`):
 ```python
+from dataclasses import dataclass
+
 from marquise.application.repositories import PromotionRepository, ScreeningRepository
-from marquise.domain.entities import Screening, Promotion
 from marquise.domain.value_objects import Money
-from marquise.application.dtos import DiscountedPriceOutputDTO
-```
 
 class ApplyPromotionUseCase:
+    @dataclass(frozen=True, slots=True)
+    class InputData:
+        screening_id: str
+        promotion_code: str
+
+        def __post_init__(self) -> None:
+            if not self.screening_id.strip():
+                raise ValueError("screening_id must not be empty")
+            if not self.promotion_code.strip():
+                raise ValueError("promotion_code must not be empty")
+
+    @dataclass(frozen=True, slots=True)
+    class OutputData:
+        screening_id: str
+        original_price: float
+        discounted_price: float
+        savings: float
+        promotion_code: str
+
+        def __post_init__(self) -> None:
+            if not self.screening_id.strip():
+                raise ValueError("screening_id must not be empty")
+            if not self.promotion_code.strip():
+                raise ValueError("promotion_code must not be empty")
+            if self.original_price < 0:
+                raise ValueError("original_price must not be negative")
+            if self.discounted_price < 0:
+                raise ValueError("discounted_price must not be negative")
+            if self.savings < 0:
+                raise ValueError("savings must not be negative")
+
     def __init__(
         self, 
         promotion_repo: PromotionRepository, 
@@ -966,14 +1105,14 @@ class ApplyPromotionUseCase:
         self.promotion_repo = promotion_repo
         self.screening_repo = screening_repo
     
-    async def execute(self, screening_id: str, promotion_code: str) -> DiscountedPriceOutputDTO:
+    async def execute(self, request: InputData) -> OutputData:
         """Apply promotion to screening and return discounted price."""
         # Fetch domain entities from repositories
-        screening = await self.screening_repo.find_by_id(screening_id)
+        screening = await self.screening_repo.find_by_id(request.screening_id)
         if not screening:
             raise ValueError("Screening not found")
         
-        promotion = await self.promotion_repo.find_by_code(promotion_code)
+        promotion = await self.promotion_repo.find_by_code(request.promotion_code)
         if not promotion:
             raise ValueError("Invalid promotion code")
         
@@ -983,8 +1122,8 @@ class ApplyPromotionUseCase:
         
         discounted_value = screening.price.value * (1 - promotion.discount_percentage / 100)
         
-        # Map domain entity data to output DTO
-        return DiscountedPriceOutputDTO(
+        # Map domain entity data to output
+        return self.OutputData(
             screening_id=str(screening.id.value),
             original_price=screening.price.value,
             discounted_price=discounted_value,
@@ -1011,8 +1150,6 @@ class ApplyPromotionUseCase:
 ```python
 from fastapi import APIRouter, Depends, HTTPException, status
 from marquise.application.use_cases import ApplyPromotionUseCase
-from marquise.application.dtos.requests import ApplyPromotionRequest
-from marquise.application.dtos.responses import DiscountedPriceResponse
 ```
 
 **Step 3**: Add mock for this route in `tests/unit_tests/infrastructure/fastapi/test_promotion_routes.py`
