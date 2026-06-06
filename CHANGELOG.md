@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.2.0 (2026-06-06)
+
+### Highlights
+
+- **Gateway Protocol Pattern**: `CinemaGateway` protocol decouples infrastructure SQL from entity mapping
+- **Robust Error Handling**: `UniqueViolationError` → `GatewayError` → `CinemaIdAlreadyExistsError` with descriptive messages
+- **Price Self-Validation**: `Price` value object now validates non-negative in `__post_init__`
+- **Infrastructure Hardening**: `sanitize_dsn()` handles `@` in passwords, `load_dotenv()` moved from import-time to first-call
+- **100% Core Coverage**: domain, application, and interface_adapters layers fully covered
+
+### Breaking
+
+- `SupabaseCinemaRepository` moved from `interface_adapters/repositories/` root into `supabase/` subdirectory
+- Old `application/dtos/` directory removed — DTOs are now inner classes of use cases
+- `exists_by_id` no longer called proactively in `CreateCinemaUseCase` (UUID collision handled by DB constraint)
+- `save()` in `SupabaseCinemaGateway` is now a pure `INSERT` (was `UPSERT`) — raises `GatewayError` on PK collision
+
 ## 0.1.0 (2026-06-06)
 
 ### Domain Layer
