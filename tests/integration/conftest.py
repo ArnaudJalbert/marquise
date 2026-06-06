@@ -40,7 +40,8 @@ async def db_pool(
                 id      TEXT PRIMARY KEY,
                 name    TEXT NOT NULL,
                 address TEXT,
-                city    TEXT
+                city    TEXT,
+                website TEXT
             )
             """
         )

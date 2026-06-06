@@ -6,7 +6,10 @@ from unittest.mock import AsyncMock, create_autospec
 
 import pytest
 
-from marquise.application.exceptions import CinemaIdAlreadyExistsError
+from marquise.application.exceptions import (
+    CinemaIdAlreadyExistsError,
+    CinemaNotFoundError,
+)
 from marquise.domain.entities import Cinema
 from marquise.domain.value_objects import CinemaId
 from marquise.interface_adapters.repositories.protocols.cinema import (
@@ -38,6 +41,7 @@ async def test_save(repo: SupabaseCinemaRepository, mock_gateway: AsyncMock) -> 
         "name": "Test Cinema",
         "address": "123 Test St",
         "city": "Montreal",
+        "website": "https://example.com",
     }
 
     cinema = Cinema(
@@ -45,13 +49,19 @@ async def test_save(repo: SupabaseCinemaRepository, mock_gateway: AsyncMock) -> 
         name="Test Cinema",
         address="123 Test St",
         city="Montreal",
+        website="https://example.com",
     )
     result = await repo.save(cinema)
 
     assert result.id == CinemaId(value="cin-001")
     assert result.name == "Test Cinema"
+    assert result.website == "https://example.com"
     mock_gateway.save.assert_awaited_once_with(
-        cinema_id="cin-001", name="Test Cinema", address="123 Test St", city="Montreal"
+        cinema_id="cin-001",
+        name="Test Cinema",
+        address="123 Test St",
+        city="Montreal",
+        website="https://example.com",
     )
 
 
@@ -67,6 +77,7 @@ async def test_save_raises_cinema_id_already_exists_on_gateway_error(
         name="Test Cinema",
         address="123 Test St",
         city="Montreal",
+        website="https://example.com",
     )
 
     with pytest.raises(CinemaIdAlreadyExistsError, match="ID collision"):
@@ -83,12 +94,14 @@ async def test_find_by_id(
         "name": "Test",
         "address": "123",
         "city": "Montreal",
+        "website": "https://example.com",
     }
 
     result = await repo.find_by_id(CinemaId(value="cin-001"))
 
     assert result is not None
     assert result.id == CinemaId(value="cin-001")
+    assert result.website == "https://example.com"
 
 
 @pytest.mark.asyncio
@@ -113,12 +126,14 @@ async def test_find_by_name_and_address(
         "name": "Unique",
         "address": "456 Ave",
         "city": "Montreal",
+        "website": "https://unique.example.com",
     }
 
     result = await repo.find_by_name_and_address(name="Unique", address="456 Ave")
 
     assert result is not None
     assert result.name == "Unique"
+    assert result.website == "https://unique.example.com"
 
 
 @pytest.mark.asyncio
@@ -155,3 +170,143 @@ async def test_exists_by_id_missing(
     result = await repo.exists_by_id(CinemaId(value="cin-missing"))
 
     assert result is False
+
+
+@pytest.mark.asyncio
+async def test_delete_delegates_to_gateway(
+    repo: SupabaseCinemaRepository, mock_gateway: AsyncMock
+) -> None:
+    """Verify delete delegates to the gateway and returns True on success."""
+    mock_gateway.delete.return_value = True
+
+    result = await repo.delete(CinemaId(value="cin-001"))
+
+    assert result is True
+    mock_gateway.delete.assert_awaited_once_with(cinema_id="cin-001")
+
+
+@pytest.mark.asyncio
+async def test_delete_missing(
+    repo: SupabaseCinemaRepository, mock_gateway: AsyncMock
+) -> None:
+    """Verify delete returns False when the gateway returns False."""
+    mock_gateway.delete.return_value = False
+
+    result = await repo.delete(CinemaId(value="cin-missing"))
+
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_update(repo: SupabaseCinemaRepository, mock_gateway: AsyncMock) -> None:
+    """Verify update delegates to the gateway and maps the result."""
+    mock_gateway.update.return_value = {
+        "id": "cin-001",
+        "name": "Updated Cinema",
+        "address": "456 New Ave",
+        "city": "Quebec",
+        "website": "https://updated.example.com",
+    }
+
+    cinema = Cinema(
+        id=CinemaId(value="cin-001"),
+        name="Updated Cinema",
+        address="456 New Ave",
+        city="Quebec",
+        website="https://updated.example.com",
+    )
+    result = await repo.update(cinema)
+
+    assert result.id == CinemaId(value="cin-001")
+    assert result.name == "Updated Cinema"
+    assert result.website == "https://updated.example.com"
+    mock_gateway.update.assert_awaited_once_with(
+        cinema_id="cin-001",
+        name="Updated Cinema",
+        address="456 New Ave",
+        city="Quebec",
+        website="https://updated.example.com",
+    )
+
+
+@pytest.mark.asyncio
+async def test_update_not_found(
+    repo: SupabaseCinemaRepository, mock_gateway: AsyncMock
+) -> None:
+    """Verify update raises CinemaNotFoundError when gateway raises GatewayError."""
+    mock_gateway.update.side_effect = GatewayError("not found")
+
+    cinema = Cinema(
+        id=CinemaId(value="cin-missing"),
+        name="Missing",
+        address=None,
+        city=None,
+        website=None,
+    )
+
+    with pytest.raises(CinemaNotFoundError, match="not found"):
+        await repo.update(cinema)
+
+
+@pytest.mark.asyncio
+async def test_find_all_without_filter(
+    repo: SupabaseCinemaRepository, mock_gateway: AsyncMock
+) -> None:
+    """Verify find_all without filter returns all mapped cinemas."""
+    mock_gateway.find_all.return_value = [
+        {
+            "id": "cin-001",
+            "name": "A Cinema",
+            "address": "123 St",
+            "city": "Montreal",
+            "website": None,
+        },
+        {
+            "id": "cin-002",
+            "name": "B Cinema",
+            "address": "456 Ave",
+            "city": "Quebec",
+            "website": "https://b.example.com",
+        },
+    ]
+
+    result = await repo.find_all()
+
+    assert len(result) == 2
+    assert result[0].name == "A Cinema"
+    assert result[1].name == "B Cinema"
+    mock_gateway.find_all.assert_awaited_once_with(name_filter=None)
+
+
+@pytest.mark.asyncio
+async def test_find_all_with_filter(
+    repo: SupabaseCinemaRepository, mock_gateway: AsyncMock
+) -> None:
+    """Verify find_all with filter delegates the filter to the gateway."""
+    mock_gateway.find_all.return_value = [
+        {
+            "id": "cin-001",
+            "name": "Cinema A",
+            "address": "123 St",
+            "city": "Montreal",
+            "website": None,
+        }
+    ]
+
+    result = await repo.find_all(name_filter="Cinema")
+
+    assert len(result) == 1
+    assert result[0].name == "Cinema A"
+    mock_gateway.find_all.assert_awaited_once_with(name_filter="Cinema")
+
+
+@pytest.mark.asyncio
+async def test_find_all_empty(
+    repo: SupabaseCinemaRepository, mock_gateway: AsyncMock
+) -> None:
+    """Verify find_all returns empty list when no cinemas match."""
+    mock_gateway.find_all.return_value = []
+
+    result = await repo.find_all()
+
+    assert result == []

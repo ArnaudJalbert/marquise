@@ -1214,6 +1214,76 @@ Infrastructure may have lower coverage but still must pass linting and have some
 - Put query logic in use cases - keep it in repositories
 - Mix ORM/driver specific types in domain - convert to domain types immediately
 
+### 11.6 No Module-Level Mutable State
+
+**Never** use module-level mutable state (global variables, module-level caches,
+singletons assigned to module names).
+
+**Forbidden**:
+```python
+# ❌ Forbidden — module-level mutable state
+_container: Container | None = None
+
+def get_container() -> Container:
+    global _container
+    if _container is None:
+        _container = Container()
+    return _container
+```
+
+Each CLI command runs in its own process — there is no benefit to caching
+across invocations.  Create your dependencies inline:
+
+```python
+# ✅ Correct — fresh instance per call
+@auth_app.command()
+def login(...) -> None:
+    controller = Container().auth_controller
+    ...
+```
+
+This also applies to any other form of module-level mutable state: global
+caches, shared configuration objects, or lazily-initialized singletons.
+If you need shared state, use a proper dependency injection container
+(``Container`` in ``infrastructure/di/``) that the caller creates and owns.
+
+### 11.7 Domain Exceptions Must Not Leak Past the Application Boundary
+
+**Use cases must catch domain exceptions and re-raise them as
+application-layer exceptions** (i.e. subclasses of ``ApplicationError``).
+Repository interfaces belong to the application layer, so their method
+signatures must also reference application exceptions, not domain ones.
+
+The domain layer's exception hierarchy is for entities and value objects
+only.  Allowing a ``DomainError`` to propagate through a use case ties
+outer layers (infrastructure routes, CLI commands) to domain internals.
+
+**Forbidden**:
+```python
+# ❌ Forbidden — domain exception leaks out of the use case
+from marquise.domain.exceptions import CinemaNotFoundError
+
+class DeleteCinemaUseCase:
+    async def execute(self, request: InputData) -> OutputData:
+        ...
+        raise CinemaNotFoundError(...)  # domain exception escaped!
+```
+
+**Correct**:
+```python
+# ✅ Correct — caught and re-raised as application exception
+from marquise.application.exceptions import CinemaNotFoundError
+
+class DeleteCinemaUseCase:
+    async def execute(self, request: InputData) -> OutputData:
+        ...
+        raise CinemaNotFoundError(...)  # application exception
+```
+
+A concrete repository implementation in ``interface_adapters/`` may import
+both domain and application exceptions, but it must only raise application
+exceptions for errors that cross layer boundaries (e.g. not-found, conflict).
+
 ## 12. Commands Reference
 
 **Format code**:

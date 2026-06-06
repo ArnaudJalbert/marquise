@@ -11,6 +11,9 @@ from marquise.interface_adapters.repositories.protocols.cinema import GatewayErr
 DEFAULT_SCHEMA = "marquise"
 
 
+_COLUMNS = "id, name, address, city, website"
+
+
 class SupabaseCinemaGateway:
     """Concrete cinema gateway that executes SQL against Supabase PostgreSQL.
 
@@ -33,7 +36,12 @@ class SupabaseCinemaGateway:
         self._table = f'"{schema}".cinemas'
 
     async def save(
-        self, cinema_id: str, name: str, address: Optional[str], city: Optional[str]
+        self,
+        cinema_id: str,
+        name: str,
+        address: Optional[str],
+        city: Optional[str],
+        website: Optional[str] = None,
     ) -> dict:
         """Insert a cinema row.
 
@@ -42,6 +50,7 @@ class SupabaseCinemaGateway:
             name: Display name of the cinema.
             address: Street address (optional).
             city: City where the cinema is located (optional).
+            website: Cinema website URL (optional).
 
         Returns:
             The inserted row as a dict.
@@ -53,14 +62,15 @@ class SupabaseCinemaGateway:
             try:
                 row = await conn.fetchrow(
                     f"""
-                    INSERT INTO {self._table} (id, name, address, city)
-                    VALUES ($1, $2, $3, $4)
-                    RETURNING id, name, address, city
+                    INSERT INTO {self._table} (id, name, address, city, website)
+                    VALUES ($1, $2, $3, $4, $5)
+                    RETURNING {_COLUMNS}
                     """,
                     cinema_id,
                     name,
                     address,
                     city,
+                    website,
                 )
             except asyncpg.exceptions.UniqueViolationError:
                 raise GatewayError(
@@ -79,7 +89,7 @@ class SupabaseCinemaGateway:
         """
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
-                f"SELECT id, name, address, city FROM {self._table} WHERE id = $1",
+                f"SELECT {_COLUMNS} FROM {self._table} WHERE id = $1",
                 cinema_id,
             )
         return dict(row) if row is not None else None
@@ -99,7 +109,7 @@ class SupabaseCinemaGateway:
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
                 f"""
-                SELECT id, name, address, city FROM {self._table}
+                SELECT {_COLUMNS} FROM {self._table}
                 WHERE name = $1 AND address IS NOT DISTINCT FROM $2
                 """,
                 name,
@@ -122,3 +132,88 @@ class SupabaseCinemaGateway:
                 cinema_id,
             )
         return bool(result)
+
+    async def delete(self, cinema_id: str) -> bool:
+        """Delete a cinema by its ID.
+
+        Args:
+            cinema_id: The ID of the cinema to delete.
+
+        Returns:
+            True if a row was deleted, False otherwise.
+        """
+        async with self._pool.acquire() as conn:
+            result = await conn.execute(
+                f"DELETE FROM {self._table} WHERE id = $1",
+                cinema_id,
+            )
+        return result != "DELETE 0"
+
+    async def update(
+        self,
+        cinema_id: str,
+        name: str,
+        address: Optional[str],
+        city: Optional[str],
+        website: Optional[str] = None,
+    ) -> dict:
+        """Update an existing cinema row.
+
+        Args:
+            cinema_id: The ID of the cinema to update.
+            name: Updated display name.
+            address: Updated street address (optional).
+            city: Updated city (optional).
+            website: Updated website URL (optional).
+
+        Returns:
+            The updated row as a dict.
+
+        Raises:
+            GatewayError: If no row with the given ``cinema_id`` exists.
+        """
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                f"""
+                UPDATE {self._table}
+                SET name = $2, address = $3, city = $4, website = $5
+                WHERE id = $1
+                RETURNING {_COLUMNS}
+                """,
+                cinema_id,
+                name,
+                address,
+                city,
+                website,
+            )
+        if row is None:
+            raise GatewayError(
+                f"A cinema with ID '{cinema_id}' was not found"
+            ) from None
+        return dict(row)
+
+    async def find_all(self, name_filter: str | None = None) -> list[dict]:
+        """Retrieve all cinemas, optionally filtered by name.
+
+        Args:
+            name_filter: An optional substring to match against cinema names
+                (case-insensitive). If None, all cinemas are returned.
+
+        Returns:
+            A list of dicts representing cinema rows.
+        """
+        async with self._pool.acquire() as conn:
+            if name_filter:
+                rows = await conn.fetch(
+                    f"""
+                    SELECT {_COLUMNS} FROM {self._table}
+                    WHERE LOWER(name) LIKE LOWER($1)
+                    ORDER BY name
+                    """,
+                    f"%{name_filter}%",
+                )
+            else:
+                rows = await conn.fetch(
+                    f"SELECT {_COLUMNS} FROM {self._table} ORDER BY name"
+                )
+        return [dict(r) for r in rows]

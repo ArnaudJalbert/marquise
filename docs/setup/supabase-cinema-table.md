@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS marquise.cinemas (
     id      TEXT PRIMARY KEY,
     name    TEXT NOT NULL,
     address TEXT,
-    city    TEXT
+    city    TEXT,
+    website TEXT
 );
 ```
 
@@ -44,6 +45,7 @@ private from the API layer.
 | `name`    | TEXT   | `NOT NULL`         | Cinema name                                     |
 | `address` | TEXT   | nullable           | Street address                                  |
 | `city`    | TEXT   | nullable           | City name (e.g. `"Montreal"`)                   |
+| `website` | TEXT   | nullable           | Cinema website URL (e.g. `"https://cinemaparadiso.com"`) |
 
 ## 3. Verify the table
 
@@ -63,6 +65,7 @@ Expected output:
 | marquise     | name        | text      | NO          |
 | marquise     | address     | text      | YES         |
 | marquise     | city        | text      | YES         |
+| marquise     | website     | text      | YES         |
 
 ## 4. Test schema (for integration tests)
 
@@ -76,7 +79,8 @@ CREATE TABLE IF NOT EXISTS "marquise-test".cinemas (
     id      TEXT PRIMARY KEY,
     name    TEXT NOT NULL,
     address TEXT,
-    city    TEXT
+    city    TEXT,
+    website TEXT
 );
 ```
 
