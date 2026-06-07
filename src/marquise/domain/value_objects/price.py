@@ -38,6 +38,3 @@ class Price:
 
     def __str__(self) -> str:
         return f"{self.value:.2f}"
-
-    def __hash__(self) -> int:
-        return hash(self.value)

@@ -1,6 +1,6 @@
 """Tests for IdValue value object."""
 
-from __future__ import annotations
+import pytest
 
 from marquise.domain.value_objects.id_value import IdValue
 
@@ -23,3 +23,15 @@ def test_id_value_hash_differs_for_different_values() -> None:
     idv1 = IdValue(value="id-1")
     idv2 = IdValue(value="id-2")
     assert hash(idv1) != hash(idv2)
+
+
+def test_id_value_rejects_empty_string() -> None:
+    """Verify IdValue rejects an empty string value."""
+    with pytest.raises(ValueError, match="value must not be empty or whitespace-only"):
+        IdValue(value="")
+
+
+def test_id_value_rejects_whitespace_only_string() -> None:
+    """Verify IdValue rejects a whitespace-only string value."""
+    with pytest.raises(ValueError, match="value must not be empty or whitespace-only"):
+        IdValue(value="   ")

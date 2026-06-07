@@ -15,8 +15,14 @@ class IdValue:
 
     value: str
 
+    def __post_init__(self) -> None:
+        """Validate that value is not empty or whitespace-only.
+
+        Raises:
+            ValueError: If value is empty or whitespace-only.
+        """
+        if not self.value.strip():
+            raise ValueError("value must not be empty or whitespace-only")
+
     def __str__(self) -> str:
         return self.value
-
-    def __hash__(self) -> int:
-        return hash(self.value)
