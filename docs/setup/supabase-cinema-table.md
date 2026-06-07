@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS "marquise-test".cinemas (
 From the project root:
 
 ```bash
-uv run pytest tests/integration -v
+uv run pytest tests/integration_tests -v
 ```
 
 All 8 tests should pass, confirming that:

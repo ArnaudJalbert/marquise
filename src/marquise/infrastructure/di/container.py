@@ -11,18 +11,44 @@ from typing import Optional
 import asyncpg
 from dotenv import load_dotenv
 
+from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
+from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
+from marquise.application.use_cases.delete_source import DeleteSourceUseCase
+from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
+from marquise.application.use_cases.list_registry_sources import (
+    ListRegistrySourcesUseCase,
+)
+from marquise.application.use_cases.list_sources import ListSourcesUseCase
+from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.infrastructure.auth.supabase_auth_service import SupabaseAuthService
 from marquise.infrastructure.controllers.auth_controller import AuthController
 from marquise.infrastructure.controllers.cinema_controller import CinemaController
+from marquise.infrastructure.controllers.source_controller import SourceController
+from marquise.infrastructure.sources.cinemacinema.gateways.source import (
+    CinemaCinemaSource,
+)
 from marquise.infrastructure.supabase.config.settings import Settings
 from marquise.infrastructure.supabase.database import Database
 from marquise.infrastructure.supabase.gateways.cinema import SupabaseCinemaGateway
+from marquise.infrastructure.supabase.gateways.cinema_source_assignment import (
+    SupabaseCinemaSourceAssignmentGateway,
+)
+from marquise.infrastructure.supabase.gateways.source_definition import (
+    SupabaseSourceDefinitionGateway,
+)
+from marquise.interface_adapters.repositories.source_registry import SourceRegistry
 from marquise.interface_adapters.repositories.supabase.cinema_repository import (
     SupabaseCinemaRepository,
+)
+from marquise.interface_adapters.repositories.supabase.cinema_source_assignment_repository import (  # noqa: E501
+    SupabaseCinemaSourceAssignmentRepository,
+)
+from marquise.interface_adapters.repositories.supabase.source_definition_repository import (  # noqa: E501
+    SupabaseSourceDefinitionRepository,
 )
 
 load_dotenv()
@@ -65,6 +91,7 @@ class Container:
         self._settings_provider = SettingsProvider()
         self._database: Optional[Database] = None
         self._pool: Optional[asyncpg.Pool] = None
+        self._registry: Optional[SourceRegistry] = None
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -130,6 +157,28 @@ class Container:
     def _cinema_gateway(self) -> SupabaseCinemaGateway:
         return SupabaseCinemaGateway(pool=self._pool_property)
 
+    @property
+    def _source_definition_gateway(self) -> SupabaseSourceDefinitionGateway:
+        return SupabaseSourceDefinitionGateway(pool=self._pool_property)
+
+    @property
+    def _cinema_source_assignment_gateway(
+        self,
+    ) -> SupabaseCinemaSourceAssignmentGateway:
+        return SupabaseCinemaSourceAssignmentGateway(pool=self._pool_property)
+
+    # ------------------------------------------------------------------
+    # Source Registry (cached)
+    # ------------------------------------------------------------------
+
+    @property
+    def _source_registry(self) -> SourceRegistry:
+        if self._registry is None:
+            registry = SourceRegistry()
+            registry.register("cinemacinema", CinemaCinemaSource())
+            self._registry = registry
+        return self._registry
+
     # ------------------------------------------------------------------
     # Repositories
     # ------------------------------------------------------------------
@@ -138,8 +187,22 @@ class Container:
     def _cinema_repository(self) -> SupabaseCinemaRepository:
         return SupabaseCinemaRepository(gateway=self._cinema_gateway)
 
+    @property
+    def _source_definition_repository(self) -> SupabaseSourceDefinitionRepository:
+        return SupabaseSourceDefinitionRepository(
+            gateway=self._source_definition_gateway
+        )
+
+    @property
+    def _cinema_source_assignment_repository(
+        self,
+    ) -> SupabaseCinemaSourceAssignmentRepository:
+        return SupabaseCinemaSourceAssignmentRepository(
+            gateway=self._cinema_source_assignment_gateway
+        )
+
     # ------------------------------------------------------------------
-    # Use cases
+    # Use cases — Cinema
     # ------------------------------------------------------------------
 
     @property
@@ -159,6 +222,47 @@ class Container:
         return UpdateCinemaUseCase(cinema_repository=self._cinema_repository)
 
     # ------------------------------------------------------------------
+    # Use cases — Source
+    # ------------------------------------------------------------------
+
+    @property
+    def _create_source_use_case(self) -> CreateSourceUseCase:
+        return CreateSourceUseCase(source_repository=self._source_definition_repository)
+
+    @property
+    def _list_sources_use_case(self) -> ListSourcesUseCase:
+        return ListSourcesUseCase(source_repository=self._source_definition_repository)
+
+    @property
+    def _list_registry_sources_use_case(self) -> ListRegistrySourcesUseCase:
+        return ListRegistrySourcesUseCase(registry=self._source_registry)
+
+    @property
+    def _delete_source_use_case(self) -> DeleteSourceUseCase:
+        return DeleteSourceUseCase(source_repository=self._source_definition_repository)
+
+    @property
+    def _assign_source_use_case(self) -> AssignSourceUseCase:
+        return AssignSourceUseCase(
+            cinema_repository=self._cinema_repository,
+            source_definition_repository=self._source_definition_repository,
+            assignment_repository=self._cinema_source_assignment_repository,
+        )
+
+    @property
+    def _unassign_source_use_case(self) -> UnassignSourceUseCase:
+        return UnassignSourceUseCase(
+            assignment_repository=self._cinema_source_assignment_repository
+        )
+
+    @property
+    def _get_cinema_source_use_case(self) -> GetCinemaSourceUseCase:
+        return GetCinemaSourceUseCase(
+            assignment_repository=self._cinema_source_assignment_repository,
+            source_definition_repository=self._source_definition_repository,
+        )
+
+    # ------------------------------------------------------------------
     # Controllers (public)
     # ------------------------------------------------------------------
 
@@ -174,4 +278,17 @@ class Container:
             delete_cinema_use_case=self._delete_cinema_use_case,
             list_cinemas_use_case=self._list_cinemas_use_case,
             update_cinema_use_case=self._update_cinema_use_case,
+        )
+
+    @property
+    def source_controller(self) -> SourceController:
+        return SourceController(
+            auth_controller=self.auth_controller,
+            create_source_use_case=self._create_source_use_case,
+            list_sources_use_case=self._list_sources_use_case,
+            delete_source_use_case=self._delete_source_use_case,
+            assign_source_use_case=self._assign_source_use_case,
+            unassign_source_use_case=self._unassign_source_use_case,
+            get_cinema_source_use_case=self._get_cinema_source_use_case,
+            list_registry_sources_use_case=self._list_registry_sources_use_case,
         )

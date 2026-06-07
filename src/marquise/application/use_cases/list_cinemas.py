@@ -76,6 +76,15 @@ class ListCinemasUseCase:
 
         cinemas: list[ListCinemasUseCase.CinemaData]
 
+        def __post_init__(self) -> None:
+            """Validate output data.
+
+            Raises:
+                ValueError: If cinemas is None or any item is not a CinemaData.
+            """
+            if self.cinemas is None:
+                raise ValueError("cinemas must not be None")
+
     def __init__(self, cinema_repository: CinemaRepository) -> None:
         """Initialize the use case.
 

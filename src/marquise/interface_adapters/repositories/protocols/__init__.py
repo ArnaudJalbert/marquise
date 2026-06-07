@@ -13,10 +13,22 @@ from marquise.interface_adapters.repositories.protocols.cinema import (
     CinemaGateway,
     GatewayError,
 )
+from marquise.interface_adapters.repositories.protocols.cinema_source_assignment import (  # noqa: E501
+    CinemaSourceAssignmentGateway as CinemaSourceAssignmentGateway,
+)
+from marquise.interface_adapters.repositories.protocols.showtime_source import (
+    ShowtimeSource,
+)
+from marquise.interface_adapters.repositories.protocols.source_definition import (
+    SourceDefinitionGateway,
+)
 
 __all__ = [
     "AuthService",
     "AuthSession",
     "CinemaGateway",
+    "CinemaSourceAssignmentGateway",
     "GatewayError",
+    "ShowtimeSource",
+    "SourceDefinitionGateway",
 ]
