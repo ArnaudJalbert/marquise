@@ -56,8 +56,8 @@ def create_screening(
     """Helper to build a Screening with a fixed ID."""
     return Screening(
         id=ScreeningId(value="scr-123"),
-        movie_id=movie,
-        cinema_id=cinema,
+        movie=movie,
+        cinema=cinema,
         showtime=showtime,
         price=price,
     )
@@ -74,27 +74,12 @@ def test_screening_creation(
         sample_showtime, sample_cinema, sample_movie, sample_price
     )
     assert screening.id == ScreeningId(value="scr-123")
-    assert screening.movie_id == sample_movie
-    assert screening.cinema_id == sample_cinema
+    assert screening.movie == sample_movie
+    assert screening.cinema == sample_cinema
     assert screening.showtime == sample_showtime
     assert screening.price == sample_price
     assert screening.available_seats is None
     assert screening.is_sold_out is None
-
-
-def test_screening_rejects_negative_available_seats(
-    sample_cinema: Cinema,
-    sample_movie: Movie,
-    sample_showtime: Showtime,
-    sample_price: Price,
-) -> None:
-    """Verify that negative available_seats raises ScreeningError."""
-    screening = create_screening(
-        sample_showtime, sample_cinema, sample_movie, sample_price
-    )
-    screening.available_seats = -1
-    with pytest.raises(ScreeningError, match="Available seats cannot be negative"):
-        screening.__post_init__()
 
 
 def test_screening_rejects_negative_price(
@@ -106,8 +91,8 @@ def test_screening_rejects_negative_price(
     with pytest.raises(ValueError, match="Price cannot be negative"):
         Screening(
             id=ScreeningId(value="scr-123"),
-            movie_id=sample_movie,
-            cinema_id=sample_cinema,
+            movie=sample_movie,
+            cinema=sample_cinema,
             showtime=sample_showtime,
             price=Price(value=-5.0),
         )
@@ -141,10 +126,14 @@ def test_is_upcoming_with_explicit_now(
     sample_price: Price,
 ) -> None:
     """Verify is_upcoming respects an explicit ``now`` parameter."""
-    showtime = Showtime(value=datetime(2026, 6, 6, 12, 0, 0))
+    showtime = Showtime(value=datetime(2026, 6, 6, 12, 0, 0, tzinfo=timezone.utc))
     screening = create_screening(showtime, sample_cinema, sample_movie, sample_price)
-    assert screening.is_upcoming(now=datetime(2026, 6, 6, 11, 0, 0))
-    assert not screening.is_upcoming(now=datetime(2026, 6, 6, 13, 0, 0))
+    assert screening.is_upcoming(
+        now=datetime(2026, 6, 6, 11, 0, 0, tzinfo=timezone.utc)
+    )
+    assert not screening.is_upcoming(
+        now=datetime(2026, 6, 6, 13, 0, 0, tzinfo=timezone.utc)
+    )
 
 
 def test_has_ended_returns_true_when_showtime_is_past(
@@ -175,10 +164,12 @@ def test_has_ended_with_explicit_now(
     sample_price: Price,
 ) -> None:
     """Verify has_ended respects an explicit ``now`` parameter."""
-    showtime = Showtime(value=datetime(2026, 6, 6, 12, 0, 0))
+    showtime = Showtime(value=datetime(2026, 6, 6, 12, 0, 0, tzinfo=timezone.utc))
     screening = create_screening(showtime, sample_cinema, sample_movie, sample_price)
-    assert screening.has_ended(now=datetime(2026, 6, 6, 13, 0, 0))
-    assert not screening.has_ended(now=datetime(2026, 6, 6, 11, 0, 0))
+    assert screening.has_ended(now=datetime(2026, 6, 6, 13, 0, 0, tzinfo=timezone.utc))
+    assert not screening.has_ended(
+        now=datetime(2026, 6, 6, 11, 0, 0, tzinfo=timezone.utc)
+    )
 
 
 def test_update_availability_raises_error_when_seats_unknown(

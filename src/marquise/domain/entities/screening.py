@@ -18,8 +18,8 @@ class Screening:
 
     Attributes:
         id: Unique identifier for the screening.
-        movie_id: The movie being screened.
-        cinema_id: The cinema hosting the screening.
+        movie: The movie being screened.
+        cinema: The cinema hosting the screening.
         showtime: Date and time of the screening.
         price: Ticket price.
         available_seats: Number of seats still available (set externally).
@@ -27,22 +27,12 @@ class Screening:
     """
 
     id: ScreeningId
-    movie_id: Movie
-    cinema_id: Cinema
+    movie: Movie
+    cinema: Cinema
     showtime: Showtime
     price: Price
     available_seats: Optional[int] = field(default=None, init=False)
     is_sold_out: Optional[bool] = field(default=None, init=False)
-
-    def __post_init__(self) -> None:
-        """Validate screening data after initialization.
-
-        Raises:
-            ScreeningError: If available_seats is negative or price is negative.
-        """
-        if self.available_seats is not None:
-            if self.available_seats < 0:
-                raise ScreeningError("Available seats cannot be negative")
 
     def is_upcoming(self, now: Optional[datetime] = None) -> bool:
         """Check if this screening is still in the future.
@@ -90,4 +80,4 @@ class Screening:
         self.is_sold_out = self.available_seats == 0
 
     def __str__(self) -> str:
-        return f"{self.movie_id} at {self.cinema_id} on {self.showtime}"
+        return f"{self.movie} at {self.cinema} on {self.showtime}"

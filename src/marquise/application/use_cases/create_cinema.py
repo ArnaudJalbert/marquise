@@ -6,10 +6,7 @@ from dataclasses import dataclass
 from typing import Optional
 from uuid import uuid4
 
-from marquise.application.exceptions import (
-    CinemaAlreadyExistsError,
-    CinemaIdAlreadyExistsError,
-)
+from marquise.application.exceptions import CinemaAlreadyExistsError
 from marquise.application.repositories import CinemaRepository
 from marquise.domain.entities import Cinema
 from marquise.domain.value_objects import CinemaId
@@ -113,8 +110,6 @@ class CreateCinemaUseCase:
         Raises:
             CinemaAlreadyExistsError: If a cinema with the same name
                 and address already exists.
-            CinemaIdAlreadyExistsError: If the generated UUID collides
-                with an existing ID (extremely rare).
         """
         existing = await self.cinema_repository.find_by_name_and_address(
             name=request.name,
@@ -136,13 +131,7 @@ class CreateCinemaUseCase:
             website=request.website,
         )
 
-        try:
-            saved = await self.cinema_repository.save(cinema)
-        except CinemaIdAlreadyExistsError:
-            raise CinemaIdAlreadyExistsError(
-                f"A cinema with ID '{cinema_id}' already exists — "
-                "extremely rare UUID collision. Please retry."
-            )
+        saved = await self.cinema_repository.save(cinema)
 
         return self.OutputData(
             id=str(saved.id),

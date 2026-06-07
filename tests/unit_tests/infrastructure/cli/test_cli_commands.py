@@ -7,9 +7,14 @@ from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 import pytest
 
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
+from marquise.application.use_cases.delete_source import DeleteSourceUseCase
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
+from marquise.application.use_cases.list_registry_sources import (
+    ListRegistrySourcesUseCase,
+)
 from marquise.infrastructure.controllers.auth_controller import AuthController
 from marquise.infrastructure.controllers.cinema_controller import CinemaController
+from marquise.infrastructure.controllers.source_controller import SourceController
 from marquise.interface_adapters.repositories.protocols.auth import AuthSession
 
 
@@ -130,6 +135,81 @@ def test_auth_login_failure(
 
     assert result.exit_code == 1
     assert "Login failed: Invalid credentials" in result.stderr
+
+
+def test_auth_login_from_env(
+    mock_container: MagicMock,
+    mock_auth_controller: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify auth login reads from env vars without prompting."""
+    from typer.testing import CliRunner
+
+    from marquise.infrastructure.cli.app import app
+
+    mock_auth_controller.login.return_value = AuthSession(
+        access_token="tok",
+        refresh_token="ref",
+        expires_at=9_999_999.0,
+        user_id="usr",
+        email="env@example.com",
+        is_admin=True,
+    )
+
+    monkeypatch.setenv("MARQUISE_EMAIL", "env@example.com")
+    monkeypatch.setenv("MARQUISE_PASSWORD", "s3cret")
+
+    with patch(
+        "marquise.infrastructure.cli.auth_commands.Container",
+        return_value=mock_container,
+    ):
+        runner = CliRunner()
+        result = runner.invoke(app, ["auth", "login"])
+
+    assert result.exit_code == 0
+    assert "Logged in as env@example.com (admin)" in result.stdout
+    mock_auth_controller.login.assert_called_once_with(  # type: ignore[attr-defined]
+        email="env@example.com", password="s3cret"
+    )
+
+
+def test_auth_login_cli_args_override_env(
+    mock_container: MagicMock,
+    mock_auth_controller: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify explicit CLI --email/--password override env vars."""
+    from typer.testing import CliRunner
+
+    from marquise.infrastructure.cli.app import app
+
+    mock_auth_controller.login.return_value = AuthSession(
+        access_token="tok",
+        refresh_token="ref",
+        expires_at=9_999_999.0,
+        user_id="usr",
+        email="cli@example.com",
+        is_admin=True,
+    )
+
+    monkeypatch.setenv("MARQUISE_EMAIL", "env@example.com")
+    monkeypatch.setenv("MARQUISE_PASSWORD", "should-not-be-used")
+
+    with patch(
+        "marquise.infrastructure.cli.auth_commands.Container",
+        return_value=mock_container,
+    ):
+        runner = CliRunner()
+        result = runner.invoke(
+            app,
+            ["auth", "login", "--email", "cli@example.com", "--password", "cli-pass"],
+        )
+
+    assert result.exit_code == 0
+    assert "Logged in as cli@example.com (admin)" in result.stdout
+    mock_auth_controller.login.assert_called_once_with(  # type: ignore[attr-defined]
+        email="cli@example.com", password="cli-pass"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1128,3 +1208,557 @@ def test_cinema_update_failure(
     assert result.exit_code == 1
     assert "Failed to update cinema" in result.stderr
     assert "Something went wrong" in result.stderr
+
+
+# ---------------------------------------------------------------------------
+# source registry
+# ---------------------------------------------------------------------------
+
+
+def _make_registry_source_entry(
+    name: str = "cinemacinema",
+) -> ListRegistrySourcesUseCase.SourceEntry:
+    """Helper to build a SourceEntry for test setup."""
+    from marquise.application.use_cases.list_registry_sources import (
+        ListRegistrySourcesUseCase,
+    )
+
+    return ListRegistrySourcesUseCase.SourceEntry(
+        name=name,
+    )
+
+
+def test_source_registry_show_sources(
+    mock_container: MagicMock,
+) -> None:
+    """Verify source registry command lists available sources with status."""
+    from typer.testing import CliRunner
+
+    from marquise.application.use_cases.list_registry_sources import (
+        ListRegistrySourcesUseCase,
+    )
+    from marquise.application.use_cases.list_sources import ListSourcesUseCase
+    from marquise.infrastructure.cli.app import app
+
+    mock_source_controller = create_autospec(SourceController, instance=True)
+    mock_source_controller.list_registry_sources = AsyncMock(
+        return_value=ListRegistrySourcesUseCase.OutputData(
+            sources=[_make_registry_source_entry()]
+        )
+    )
+    mock_source_controller.list_sources = AsyncMock(
+        return_value=ListSourcesUseCase.OutputData(sources=[])
+    )
+    mock_container.source_controller = mock_source_controller
+    mock_container.initialize = AsyncMock()
+    mock_container.shutdown = AsyncMock()
+
+    with patch(
+        "marquise.infrastructure.cli.source_commands.Container",
+        return_value=mock_container,
+    ):
+        runner = CliRunner()
+        result = runner.invoke(app, ["source", "list-available"])
+
+    assert result.exit_code == 0
+    assert "cinemacinema" in result.stdout
+    assert "—" in result.stdout
+    mock_source_controller.list_registry_sources.assert_awaited_once()
+    mock_container.initialize.assert_called_once()
+    mock_container.shutdown.assert_called_once()
+
+
+def test_source_registry_empty(
+    mock_container: MagicMock,
+) -> None:
+    """Verify source registry shows empty message when no sources."""
+    from typer.testing import CliRunner
+
+    from marquise.application.use_cases.list_registry_sources import (
+        ListRegistrySourcesUseCase,
+    )
+    from marquise.infrastructure.cli.app import app
+
+    mock_source_controller = create_autospec(SourceController, instance=True)
+    mock_source_controller.list_registry_sources = AsyncMock(
+        return_value=ListRegistrySourcesUseCase.OutputData(sources=[])
+    )
+    mock_container.source_controller = mock_source_controller
+    mock_container.initialize = AsyncMock()
+    mock_container.shutdown = AsyncMock()
+
+    with patch(
+        "marquise.infrastructure.cli.source_commands.Container",
+        return_value=mock_container,
+    ):
+        runner = CliRunner()
+        result = runner.invoke(app, ["source", "list-available"])
+
+    assert result.exit_code == 0
+    assert "No sources registered in the registry." in result.stdout
+    mock_source_controller.list_registry_sources.assert_awaited_once()
+    mock_container.initialize.assert_called_once()
+    mock_container.shutdown.assert_called_once()
+
+
+def test_source_registry_failure(
+    mock_container: MagicMock,
+) -> None:
+    """Verify source registry shows error on failure."""
+    from typer.testing import CliRunner
+
+    from marquise.infrastructure.cli.app import app
+
+    mock_source_controller = create_autospec(SourceController, instance=True)
+    mock_source_controller.list_registry_sources = AsyncMock(
+        side_effect=ValueError("Something went wrong")
+    )
+    mock_container.source_controller = mock_source_controller
+    mock_container.initialize = AsyncMock()
+    mock_container.shutdown = AsyncMock()
+
+    with patch(
+        "marquise.infrastructure.cli.source_commands.Container",
+        return_value=mock_container,
+    ):
+        runner = CliRunner()
+        result = runner.invoke(app, ["source", "list-available"])
+
+    assert result.exit_code == 1
+    assert "Failed to list registry sources: Something went wrong" in result.stderr
+
+
+# ---------------------------------------------------------------------------
+# source register
+# ---------------------------------------------------------------------------
+
+
+def test_source_register_new_source(
+    mock_container: MagicMock,
+) -> None:
+    """Verify source register creates a new source after prompting."""
+    from typer.testing import CliRunner
+
+    from marquise.application.use_cases.create_source import CreateSourceUseCase
+    from marquise.application.use_cases.list_registry_sources import (
+        ListRegistrySourcesUseCase,
+    )
+    from marquise.application.use_cases.list_sources import ListSourcesUseCase
+    from marquise.infrastructure.cli.app import app
+
+    mock_source_controller = create_autospec(SourceController, instance=True)
+    mock_source_controller.list_registry_sources = AsyncMock(
+        return_value=ListRegistrySourcesUseCase.OutputData(
+            sources=[_make_registry_source_entry()]
+        )
+    )
+    mock_source_controller.list_sources = AsyncMock(
+        return_value=ListSourcesUseCase.OutputData(sources=[])
+    )
+    mock_source_controller.create_source = AsyncMock(
+        return_value=CreateSourceUseCase.OutputData(
+            name="cinemacinema",
+            display_name="Cinéma Cinéma",
+            description="Showtimes for Beaubien, du Parc, and du Musée",
+        )
+    )
+    mock_container.source_controller = mock_source_controller
+    mock_container.initialize = AsyncMock()
+    mock_container.shutdown = AsyncMock()
+
+    with (
+        patch(
+            "marquise.infrastructure.cli.source_commands.Container",
+            return_value=mock_container,
+        ),
+        patch("marquise.infrastructure.cli.source_commands.questionary") as mock_q,
+    ):
+        mock_q.text.return_value.ask_async = AsyncMock(
+            side_effect=[
+                "Cinéma Cinéma",
+                "Showtimes for Beaubien, du Parc, and du Musée",
+            ]
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(app, ["source", "register"])
+
+    assert result.exit_code == 0
+    assert "cinemacinema" in result.stdout
+    assert "new" in result.stdout
+    assert "Created: cinemacinema" in result.stdout
+    mock_container.initialize.assert_called_once()
+    mock_container.shutdown.assert_called_once()
+    mock_source_controller.create_source.assert_awaited_once_with(
+        name="cinemacinema",
+        display_name="Cinéma Cinéma",
+        description="Showtimes for Beaubien, du Parc, and du Musée",
+    )
+
+
+def test_source_register_all_existing(
+    mock_container: MagicMock,
+) -> None:
+    """Verify source register shows all done when nothing new to add."""
+    from typer.testing import CliRunner
+
+    from marquise.application.use_cases.list_registry_sources import (
+        ListRegistrySourcesUseCase,
+    )
+    from marquise.application.use_cases.list_sources import (
+        ListSourcesUseCase,
+    )
+    from marquise.application.use_cases.list_sources import (
+        ListSourcesUseCase as ListSourcesUC,
+    )
+    from marquise.infrastructure.cli.app import app
+
+    mock_source_controller = create_autospec(SourceController, instance=True)
+    mock_source_controller.list_registry_sources = AsyncMock(
+        return_value=ListRegistrySourcesUseCase.OutputData(
+            sources=[_make_registry_source_entry()]
+        )
+    )
+    mock_source_controller.list_sources = AsyncMock(
+        return_value=ListSourcesUseCase.OutputData(
+            sources=[
+                ListSourcesUC.SourceData(
+                    name="cinemacinema",
+                    display_name="Cinéma Cinéma",
+                )
+            ]
+        )
+    )
+    mock_container.source_controller = mock_source_controller
+    mock_container.initialize = AsyncMock()
+    mock_container.shutdown = AsyncMock()
+
+    with patch(
+        "marquise.infrastructure.cli.source_commands.Container",
+        return_value=mock_container,
+    ):
+        runner = CliRunner()
+        result = runner.invoke(app, ["source", "register"])
+
+    assert result.exit_code == 0
+    assert "already registered" in result.stdout
+    assert "All registry sources are already" in result.stdout
+    mock_source_controller.create_source.assert_not_awaited()
+    mock_container.initialize.assert_called_once()
+    mock_container.shutdown.assert_called_once()
+
+
+def test_source_register_failure(
+    mock_container: MagicMock,
+) -> None:
+    """Verify source register shows error when create_source fails."""
+    from typer.testing import CliRunner
+
+    from marquise.application.use_cases.list_registry_sources import (
+        ListRegistrySourcesUseCase,
+    )
+    from marquise.application.use_cases.list_sources import ListSourcesUseCase
+    from marquise.infrastructure.cli.app import app
+
+    mock_source_controller = create_autospec(SourceController, instance=True)
+    mock_source_controller.list_registry_sources = AsyncMock(
+        return_value=ListRegistrySourcesUseCase.OutputData(
+            sources=[_make_registry_source_entry()]
+        )
+    )
+    mock_source_controller.list_sources = AsyncMock(
+        return_value=ListSourcesUseCase.OutputData(sources=[])
+    )
+    mock_source_controller.create_source = AsyncMock(
+        side_effect=ValueError("SourceAlreadyExistsError")
+    )
+    mock_container.source_controller = mock_source_controller
+    mock_container.initialize = AsyncMock()
+    mock_container.shutdown = AsyncMock()
+
+    with (
+        patch(
+            "marquise.infrastructure.cli.source_commands.Container",
+            return_value=mock_container,
+        ),
+        patch("marquise.infrastructure.cli.source_commands.questionary") as mock_q,
+    ):
+        mock_q.text.return_value.ask_async = AsyncMock(
+            side_effect=["Cinéma Cinéma", "Showtimes description"]
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(app, ["source", "register"])
+
+    assert result.exit_code == 0
+    assert "Failed: SourceAlreadyExistsError" in result.output
+    assert "  Failed: SourceAlreadyExistsError" in result.stderr
+
+
+# ---------------------------------------------------------------------------
+# source unregister
+# ---------------------------------------------------------------------------
+
+
+def test_source_unregister_success(
+    mock_container: MagicMock,
+) -> None:
+    """Verify source unregister removes selected sources after confirmation."""
+    from typer.testing import CliRunner
+
+    from marquise.application.use_cases.list_registry_sources import (
+        ListRegistrySourcesUseCase,
+    )
+    from marquise.application.use_cases.list_sources import (
+        ListSourcesUseCase,
+    )
+    from marquise.application.use_cases.list_sources import (
+        ListSourcesUseCase as ListSourcesUC,
+    )
+    from marquise.infrastructure.cli.app import app
+
+    mock_source_controller = create_autospec(SourceController, instance=True)
+    mock_source_controller.list_registry_sources = AsyncMock(
+        return_value=ListRegistrySourcesUseCase.OutputData(
+            sources=[_make_registry_source_entry()]
+        )
+    )
+    mock_source_controller.list_sources = AsyncMock(
+        return_value=ListSourcesUseCase.OutputData(
+            sources=[
+                ListSourcesUC.SourceData(
+                    name="cinemacinema",
+                    display_name="Cinéma Cinéma",
+                )
+            ]
+        )
+    )
+    mock_source_controller.delete_source = AsyncMock(
+        return_value=DeleteSourceUseCase.OutputData(source_name="cinemacinema")
+    )
+    mock_container.source_controller = mock_source_controller
+    mock_container.initialize = AsyncMock()
+    mock_container.shutdown = AsyncMock()
+
+    with (
+        patch(
+            "marquise.infrastructure.cli.source_commands.Container",
+            return_value=mock_container,
+        ),
+        patch("marquise.infrastructure.cli.source_commands.questionary") as mock_q,
+    ):
+        mock_q.checkbox.return_value.ask_async = AsyncMock(
+            return_value=["cinemacinema"]
+        )
+        mock_q.confirm.return_value.ask_async = AsyncMock(return_value=True)
+
+        runner = CliRunner()
+        result = runner.invoke(app, ["source", "unregister"])
+
+    assert result.exit_code == 0
+    assert "in registry" in result.stdout
+    assert "Removed: cinemacinema" in result.stdout
+    mock_container.initialize.assert_called_once()
+    mock_container.shutdown.assert_called_once()
+    mock_source_controller.delete_source.assert_awaited_once_with(
+        source_name="cinemacinema",
+    )
+
+
+def test_source_unregister_no_selection(
+    mock_container: MagicMock,
+) -> None:
+    """Verify source unregister bails when no sources are selected."""
+    from typer.testing import CliRunner
+
+    from marquise.application.use_cases.list_registry_sources import (
+        ListRegistrySourcesUseCase,
+    )
+    from marquise.application.use_cases.list_sources import (
+        ListSourcesUseCase,
+    )
+    from marquise.application.use_cases.list_sources import (
+        ListSourcesUseCase as ListSourcesUC,
+    )
+    from marquise.infrastructure.cli.app import app
+
+    mock_source_controller = create_autospec(SourceController, instance=True)
+    mock_source_controller.list_registry_sources = AsyncMock(
+        return_value=ListRegistrySourcesUseCase.OutputData(
+            sources=[_make_registry_source_entry()]
+        )
+    )
+    mock_source_controller.list_sources = AsyncMock(
+        return_value=ListSourcesUseCase.OutputData(
+            sources=[
+                ListSourcesUC.SourceData(
+                    name="cinemacinema",
+                    display_name="Cinéma Cinéma",
+                )
+            ]
+        )
+    )
+    mock_container.source_controller = mock_source_controller
+    mock_container.initialize = AsyncMock()
+    mock_container.shutdown = AsyncMock()
+
+    with (
+        patch(
+            "marquise.infrastructure.cli.source_commands.Container",
+            return_value=mock_container,
+        ),
+        patch("marquise.infrastructure.cli.source_commands.questionary") as mock_q,
+    ):
+        mock_q.checkbox.return_value.ask_async = AsyncMock(return_value=[])
+
+        runner = CliRunner()
+        result = runner.invoke(app, ["source", "unregister"])
+
+    assert result.exit_code == 0
+    assert "No sources selected." in result.stdout
+    mock_source_controller.delete_source.assert_not_awaited()
+
+
+def test_source_unregister_empty_db(
+    mock_container: MagicMock,
+) -> None:
+    """Verify source unregister bails when database has no sources."""
+    from typer.testing import CliRunner
+
+    from marquise.application.use_cases.list_sources import ListSourcesUseCase
+    from marquise.infrastructure.cli.app import app
+
+    mock_source_controller = create_autospec(SourceController, instance=True)
+    mock_source_controller.list_sources = AsyncMock(
+        return_value=ListSourcesUseCase.OutputData(sources=[])
+    )
+    mock_container.source_controller = mock_source_controller
+    mock_container.initialize = AsyncMock()
+    mock_container.shutdown = AsyncMock()
+
+    with patch(
+        "marquise.infrastructure.cli.source_commands.Container",
+        return_value=mock_container,
+    ):
+        runner = CliRunner()
+        result = runner.invoke(app, ["source", "unregister"])
+
+    assert result.exit_code == 0
+    assert "No sources registered in the database." in result.stdout
+    mock_source_controller.delete_source.assert_not_awaited()
+
+
+def test_source_unregister_cancelled_at_confirm(
+    mock_container: MagicMock,
+) -> None:
+    """Verify source unregister bails when user declines confirmation."""
+    from typer.testing import CliRunner
+
+    from marquise.application.use_cases.list_registry_sources import (
+        ListRegistrySourcesUseCase,
+    )
+    from marquise.application.use_cases.list_sources import (
+        ListSourcesUseCase,
+    )
+    from marquise.application.use_cases.list_sources import (
+        ListSourcesUseCase as ListSourcesUC,
+    )
+    from marquise.infrastructure.cli.app import app
+
+    mock_source_controller = create_autospec(SourceController, instance=True)
+    mock_source_controller.list_registry_sources = AsyncMock(
+        return_value=ListRegistrySourcesUseCase.OutputData(
+            sources=[_make_registry_source_entry()]
+        )
+    )
+    mock_source_controller.list_sources = AsyncMock(
+        return_value=ListSourcesUseCase.OutputData(
+            sources=[
+                ListSourcesUC.SourceData(
+                    name="cinemacinema",
+                    display_name="Cinéma Cinéma",
+                )
+            ]
+        )
+    )
+    mock_container.source_controller = mock_source_controller
+    mock_container.initialize = AsyncMock()
+    mock_container.shutdown = AsyncMock()
+
+    with (
+        patch(
+            "marquise.infrastructure.cli.source_commands.Container",
+            return_value=mock_container,
+        ),
+        patch("marquise.infrastructure.cli.source_commands.questionary") as mock_q,
+    ):
+        mock_q.checkbox.return_value.ask_async = AsyncMock(
+            return_value=["cinemacinema"]
+        )
+        mock_q.confirm.return_value.ask_async = AsyncMock(return_value=False)
+
+        runner = CliRunner()
+        result = runner.invoke(app, ["source", "unregister"])
+
+    assert result.exit_code == 0
+    assert "Cancelled." in result.stdout
+    mock_source_controller.delete_source.assert_not_awaited()
+
+
+def test_source_unregister_partial_failure(
+    mock_container: MagicMock,
+) -> None:
+    """Verify source unregister shows per-source errors on failure."""
+    from typer.testing import CliRunner
+
+    from marquise.application.use_cases.list_registry_sources import (
+        ListRegistrySourcesUseCase,
+    )
+    from marquise.application.use_cases.list_sources import (
+        ListSourcesUseCase,
+    )
+    from marquise.application.use_cases.list_sources import (
+        ListSourcesUseCase as ListSourcesUC,
+    )
+    from marquise.infrastructure.cli.app import app
+
+    mock_source_controller = create_autospec(SourceController, instance=True)
+    mock_source_controller.list_registry_sources = AsyncMock(
+        return_value=ListRegistrySourcesUseCase.OutputData(
+            sources=[_make_registry_source_entry()]
+        )
+    )
+    mock_source_controller.list_sources = AsyncMock(
+        return_value=ListSourcesUseCase.OutputData(
+            sources=[
+                ListSourcesUC.SourceData(
+                    name="cinemacinema",
+                    display_name="Cinéma Cinéma",
+                )
+            ]
+        )
+    )
+    mock_source_controller.delete_source = AsyncMock(
+        side_effect=ValueError("Something went wrong")
+    )
+    mock_container.source_controller = mock_source_controller
+    mock_container.initialize = AsyncMock()
+    mock_container.shutdown = AsyncMock()
+
+    with (
+        patch(
+            "marquise.infrastructure.cli.source_commands.Container",
+            return_value=mock_container,
+        ),
+        patch("marquise.infrastructure.cli.source_commands.questionary") as mock_q,
+    ):
+        mock_q.checkbox.return_value.ask_async = AsyncMock(
+            return_value=["cinemacinema"]
+        )
+        mock_q.confirm.return_value.ask_async = AsyncMock(return_value=True)
+
+        runner = CliRunner()
+        result = runner.invoke(app, ["source", "unregister"])
+
+    assert result.exit_code == 0
+    assert "Failed: Something went wrong" in result.output

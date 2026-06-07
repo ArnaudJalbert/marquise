@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.4.0 (2026-06-07)
+
+### Highlights
+
+- **Showtime Source Domain**: `SourceDefinition` and `CinemaSourceAssignment` entities, `SourceName` value object — model the dynamic mapping between cinemas and their showtime data providers
+- **Source Management CLI**: Full `marquise source` command tree — register, delete, list, assign, unassign, and query sources
+- **Dynamic Source Resolution**: `ShowtimeSource` protocol + `SourceRegistry` — decouples cinemas from their data providers; adding a new source is just code + DB registration
+- **Cinemacinema Source**: First concrete source implementation — scrapes `cinemacinema.ca` SvelteKit `__data.json` format (Cinémas Beaubien, du Parc, du Musée)
+- **Gateway Protocols for Sources**: `SourceDefinitionGateway` and `CinemaSourceAssignmentGateway` protocols in `interface_adapters`, with Supabase implementations
+- **100% Coverage**: Complete test suite for all new code across domain, application, and interface_adapters layers
+
+### New Features
+
+- **CLI — Source**: `marquise source register`, `marquise source delete`, `marquise source list-registered`, `marquise source assign`, `marquise source unassign`, `marquise source get-cinema-source`, `marquise source list-registry`
+- **Use Cases**: `CreateSourceUseCase`, `DeleteSourceUseCase`, `ListSourcesUseCase`, `AssignSourceUseCase`, `UnassignSourceUseCase`, `GetCinemaSourceUseCase`, `ListRegistrySourcesUseCase` — each with validated `InputData`/`OutputData` inner classes
+- **Gateway Protocols**: `SourceDefinitionGateway` (save, find_by_name, find_all, delete) and `CinemaSourceAssignmentGateway` (save, find_by_cinema, delete_by_cinema, find_all) — typed protocols in `interface_adapters/repositories/protocols/`
+- **Supabase Gateways**: `SupabaseSourceDefinitionGateway` and `SupabaseCinemaSourceAssignmentGateway` — SQL CRUD for `source_definition` and `cinema_source_assignment` tables
+- **Source Implementation**: `CinemacinemaSource` — asynchronous HTTP fetch + SvelteKit devalue parser for `cinemacinema.ca/en/schedule/__data.json`
+- **Source Registry**: `SourceRegistry` adapter (resolves `SourceName` → `ShowtimeSource` implementation) + `ListRegistrySourcesUseCase` to query available implementations
+- **Controller**: `SourceController` — wraps all source use cases with `validate_admin()` guard
+- **DI Container**: Full wiring for source services — gateways → repositories → use cases → controller
+- **Application Exceptions**: `SourceAlreadyExistsError`, `SourceNotFoundError`, `CinemaSourceAssignmentNotFoundError`, `CinemaSourceAssignmentAlreadyExistsError`
+
+### Documentation
+
+- `docs/sources.md` — comprehensive architecture guide covering source model, data flow diagrams, domain model table, CLI usage, and how to add new sources
+
+### Testing
+
+- **Domain**: Unit tests for `SourceDefinition`, `CinemaSourceAssignment` entities and `SourceName` value object
+- **Application**: Use case tests for all 7 source use cases with `create_autospec` mocks (create, delete, list, assign, unassign, get-cinema-source, list-registry)
+- **Interface Adapters**: Gateway protocol tests, Supabase repository implementation tests (success + error paths), controller unit tests
+- **Infrastructure**: Integration tests for Supabase source definition and assignment gateways against real tables
+- **CLI**: Full command tests for all `marquise source` subcommands
+- **Exceptions**: Unit tests for source-related domain and application exception hierarchies
+- All tests function-style, async with `pytest-asyncio`, per AGENTS.md conventions
+
 ## 0.3.0 (2026-06-06)
 
 ### Highlights

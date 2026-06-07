@@ -43,7 +43,7 @@ class SupabaseCinemaGateway:
         city: Optional[str],
         website: Optional[str] = None,
     ) -> dict:
-        """Insert a cinema row.
+        """Insert or update (upsert) a cinema row.
 
         Args:
             cinema_id: Unique identifier for the cinema.
@@ -53,29 +53,26 @@ class SupabaseCinemaGateway:
             website: Cinema website URL (optional).
 
         Returns:
-            The inserted row as a dict.
-
-        Raises:
-            GatewayError: If a row with the given ``cinema_id`` already exists.
+            The inserted or updated row as a dict.
         """
         async with self._pool.acquire() as conn:
-            try:
-                row = await conn.fetchrow(
-                    f"""
-                    INSERT INTO {self._table} (id, name, address, city, website)
-                    VALUES ($1, $2, $3, $4, $5)
-                    RETURNING {_COLUMNS}
-                    """,
-                    cinema_id,
-                    name,
-                    address,
-                    city,
-                    website,
-                )
-            except asyncpg.exceptions.UniqueViolationError:
-                raise GatewayError(
-                    f"A cinema with ID '{cinema_id}' already exists"
-                ) from None
+            row = await conn.fetchrow(
+                f"""
+                INSERT INTO {self._table} (id, name, address, city, website)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (id) DO UPDATE
+                    SET name = EXCLUDED.name,
+                        address = EXCLUDED.address,
+                        city = EXCLUDED.city,
+                        website = EXCLUDED.website
+                RETURNING {_COLUMNS}
+                """,
+                cinema_id,
+                name,
+                address,
+                city,
+                website,
+            )
         return dict(row)
 
     async def find_by_id(self, cinema_id: str) -> Optional[dict]:
