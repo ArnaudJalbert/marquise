@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import os
 from typing import Optional
 
 from marquise.interface_adapters.repositories.protocols.auth import (
     AuthService,
     AuthSession,
 )
+
+MARQUISE_EMAIL_ENV_VAR = "MARQUISE_EMAIL"
+MARQUISE_PASSWORD_ENV_VAR = "MARQUISE_PASSWORD"
 
 
 class AuthController:
@@ -30,4 +34,23 @@ class AuthController:
         return self._auth.get_session_status()
 
     def validate_admin(self) -> AuthSession:
-        return self._auth.get_validated_session()
+        """Validate admin session, falling back to env var auto-login.
+
+        Tries the cached session first.  If it doesn't exist or is expired,
+        attempts to login from ``MARQUISE_EMAIL`` / ``MARQUISE_PASSWORD``
+        environment variables.  Raises ``ValueError`` on failure.
+        """
+        try:
+            return self._auth.get_validated_session()
+        except ValueError:
+            email = os.environ.get(MARQUISE_EMAIL_ENV_VAR)
+            password = os.environ.get(MARQUISE_PASSWORD_ENV_VAR)
+            if email and password:
+                try:
+                    self._auth.login(email=email, password=password)
+                    # login already saves the session; validate again so
+                    # the admin check isn't skipped
+                    return self._auth.get_validated_session()
+                except ValueError:
+                    pass
+            raise

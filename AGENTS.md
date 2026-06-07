@@ -22,6 +22,8 @@ For AI agents: Use this document as your primary instruction set. Before making 
 - User-friendly API and evolving application interface
 - Clean, maintainable codebase with high test coverage
 
+The **known technical debt and TODO items** are tracked in [`docs/todo.md`](docs/todo.md). Check this file before starting new work to avoid duplicating effort and to prioritize fixes.
+
 ## 3. Technology Stack
 
 - **Language**: Python 3.13 (strict requirement)
@@ -831,7 +833,7 @@ from marquise.infrastructure.fastapi.app import create_app
 
 #### **Repository Implementation Tests** (integration tests)
 ```python
-# tests/integration/interface_adapters/repositories/test_mongo_screening_repository.py
+# tests/integration_tests/interface_adapters/repositories/test_mongo_screening_repository.py
 import pytest
 from marquise.interface_adapters.repositories.mongo_screening_repository import MongoScreeningRepository
 from marquise.infrastructure.database import get_mongo_client
@@ -1217,12 +1219,18 @@ Infrastructure may have lower coverage but still must pass linting and have some
 ### 11.6 No Module-Level Mutable State
 
 **Never** use module-level mutable state (global variables, module-level caches,
-singletons assigned to module names).
+singletons assigned to module names). Each CLI command runs in its own
+process — there is no benefit to caching across invocations.
+
+**Exception**: Rich's ``Console()`` is stateless (a display configuration object)
+and is idiomatic when assigned at module level.  All other mutable state
+must be scoped to the call.
 
 **Forbidden**:
 ```python
 # ❌ Forbidden — module-level mutable state
 _container: Container | None = None
+_cinema_repo: MongoCinemaRepository | None = None
 
 def get_container() -> Container:
     global _container
@@ -1231,9 +1239,20 @@ def get_container() -> Container:
     return _container
 ```
 
-Each CLI command runs in its own process — there is no benefit to caching
-across invocations.  Create your dependencies inline:
+**Correct — module-level Console is acceptable**:
+```python
+# ✅ Acceptable — Console is stateless
+from rich.console import Console
 
+_console = Console()
+
+@cinema_app.command()
+def list_cinemas(...) -> None:
+    _console.print("[bold]Listing cinemas...[/bold]")
+    ...
+```
+
+**Correct — fresh instance per call** (for everything else):
 ```python
 # ✅ Correct — fresh instance per call
 @auth_app.command()
@@ -1410,6 +1429,6 @@ If any instruction in this document is unclear or appears contradictory:
 
 ---
 
-**Last Updated**: 2026-04-07  
+**Last Updated**: 2026-06-07  
 **Maintained By**: Marquise Development Team  
 **Review Cycle**: Quarterly or with major architectural changes
