@@ -6,6 +6,11 @@ from marquise.application.exceptions.cinema import (
     CinemaIdAlreadyExistsError,
     CinemaNotFoundError,
 )
+from marquise.application.exceptions.movie import MovieNotFoundError
+from marquise.application.exceptions.screening import (
+    ScreeningAlreadyExistsError,
+    ScreeningNotFoundError,
+)
 from marquise.application.exceptions.source import (
     CinemaSourceAssignmentAlreadyExistsError,
     CinemaSourceAssignmentNotFoundError,
@@ -20,6 +25,9 @@ __all__ = [
     "CinemaNotFoundError",
     "CinemaSourceAssignmentAlreadyExistsError",
     "CinemaSourceAssignmentNotFoundError",
+    "MovieNotFoundError",
+    "ScreeningAlreadyExistsError",
+    "ScreeningNotFoundError",
     "SourceAlreadyExistsError",
     "SourceNotFoundError",
 ]

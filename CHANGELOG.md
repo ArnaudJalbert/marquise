@@ -1,5 +1,56 @@
 # Changelog
 
+## 0.5.0 (2026-06-07)
+
+### Highlights
+
+- **Screening Import Pipeline**: End-to-end `ImportScreeningsUseCase` — resolves a cinema's assigned source, fetches showtimes, auto-creates unknown movies, upserts screenings
+- **Movie & Screening Repositories**: Full repository/gateway stacks — `MovieRepository`, `ScreeningRepository` interfaces, `MovieGateway`/`ScreeningGateway` protocols, Supabase implementations with upsert-on-conflict logic
+- **Source Adapter Architecture**: `SourceAdapter` protocol bridges `Cinema` entities to source-specific parameters — adapters for Cinemacinema (Beaubien, du Parc, du Musée) and CinemaPublic (Casa d'Italia, Livart)
+- **CinemaPublic Source Rewrite**: Complete reimplementation — fetches JSON-LD structured data for initial weeks, parallel AJAX `load_more_weeks` for extended ranges, HTML fragment parsing for event details
+- **Interactive CLI**: `marquise source import` with cinema selector, date range picker, and Rich table summary; `marquise source list-available`; improved `register`/`unregister` with interactive prompts
+- **Richer Domain Model**: `Movie` now tracks `directors`, `cast`, `description`, `duration_minutes`; `Screening` decoupled from full `Movie`/`Cinema` to `MovieId`/`CinemaId` value objects, with `is_upcoming()`, `has_ended()`, and `update_availability()` methods
+
+### New Features
+
+- **Use Case**: `ImportScreeningsUseCase` — orchestrates cinema resolution → source discovery → showtime fetch → movie creation → screening upsert, returns detailed import summary
+- **CLI — Source**: `marquise source import` (interactive cinema + date range selection with Rich table output), `marquise source list-available` (shows code-registered sources), improved `register`/`unregister` with interactive pickers
+- **Repository Interfaces**: `MovieRepository` (`save`, `find_by_id`, `find_by_title`), `ScreeningRepository` (updated `save` returns `tuple[Screening, bool]` for insert/update detection)
+- **Gateway Protocols**: `MovieGateway` and `ScreeningGateway` — typed protocols in `interface_adapters/repositories/protocols/`
+- **Supabase Gateways**: `SupabaseMovieGateway` (upsert on `title` conflict with `COALESCE`), `SupabaseScreeningGateway` (upsert on `(cinema_id, movie_id, showtime)` conflict with CTE-based insert/update detection)
+- **Supabase Repositories**: `SupabaseMovieRepository`, `SupabaseScreeningRepository` — adapt gateway dicts ↔ domain entities, handle `__inserted` flag
+- **Source Adapters**: `SourceAdapter` protocol, `CinemaCinemaAdapter` (name → venue slug), `CinemaPublicAdapter` (name → venue slug)
+- **Source Registry**: `SourceRegistry` now implements `SourceRegistryQuery` — resolves source definitions to adapters, maps raw dicts to `ShowtimeRow` dataclasses with timezone-aware datetime parsing
+- **Source Registry Query**: New `RegistrySourceEntry` and `ShowtimeRow` dataclasses, `fetch_showtimes()` and `list_available()` abstract methods
+- **Controller**: `list_registry_sources()` (public) and `import_screenings(cinema_id, start_date, end_date)` (admin) on `SourceController`
+- **Application Exceptions**: `MovieNotFoundError`, `ScreeningAlreadyExistsError`, `ScreeningNotFoundError`
+- **Settings**: Added `schema: str = "marquise"` for configurable database schema
+- **Migration Script**: `scripts/migrate_001_drop_not_null_release_date.py` — drops NOT NULL on `movies.release_date`, `movies.directors`, `movies.cast_members`
+- **Scrape Script**: `bin/scrape_cinemapublic.py` — standalone CLI for debugging Cinema Public showtimes per venue
+
+### Domain Changes
+
+- **Movie**: New optional fields `directors`, `cast`, `duration_minutes`, `description`; `release_date` now optional; new `is_recent(years=1)` method; validation for non-empty director tuples and positive duration
+- **Screening**: `movie_id`/`cinema_id` types changed from full entities to `MovieId`/`CinemaId` value objects; `available_seats` and `is_sold_out` now `init=False`; new `is_upcoming()`, `has_ended()`, `update_availability(seats_sold)` methods
+
+### Architecture
+
+- **Full data flow**: CLI → `SourceController` → `ImportScreeningsUseCase` → `SourceRegistryQuery.fetch_showtimes()` → `SourceAdapter` → source scraper → `ShowtimeRow` → movie/screening upsert
+- **Source adapters decouple cinema identity** from scraper implementation — adding a new cinema to an existing source is just an adapter mapping entry
+
+### Documentation
+
+- `docs/todo.md` — updated with new technical debt items for the import pipeline
+
+### Testing
+
+- **Application**: Full `ImportScreeningsUseCase` test suite with mocked repositories (success, no-movies, no-source, various empty/edge cases)
+- **Domain**: Expanded `Movie` tests (director validation, optional fields, `is_recent` logic) and `Screening` tests (MovieId/CinemaId, availability, temporal methods)
+- **Interface Adapters**: Unit tests for `SupabaseMovieRepository`, `SupabaseScreeningRepository` (mapping, error paths), `SourceRegistry` adapter registration and `fetch_showtimes` orchestration
+- **Infrastructure**: Integration tests for `SupabaseMovieGateway` and `SupabaseScreeningGateway` (CRUD, upsert, date range filtering, conflict detection)
+- **Controller**: Tests for `list_registry_sources` and `import_screenings` delegation
+- All tests function-style, async with `pytest-asyncio`, per AGENTS.md conventions
+
 ## 0.4.0 (2026-06-07)
 
 ### Highlights

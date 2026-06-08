@@ -16,8 +16,6 @@ honest about this. The coupling remains.
 
 ### Desired fix
 
-1. Change `Screening.movie` from `Movie` to `MovieId` (value object).
-2. Change `Screening.cinema` from `Cinema` to `CinemaId` (value object).
 3. Move any cross-entity logic (e.g., "is this movie playing at this cinema")
    into the application layer (use cases).
 4. Update all tests accordingly.
@@ -81,3 +79,51 @@ Multiple stale `.pyc` files exist for deleted source files:
 - `tests/__pycache__/test_parameter_definition.cpython-313-pytest-9.0.3.pyc`
 
 Run `find . -name '*.pyc' -delete && find . -name '__pycache__' -type d -empty -delete`.
+
+---
+
+## Docstrings: NumPy Style in Gateways
+
+`SupabaseMovieGateway` and `SupabaseScreeningGateway` use NumPy-style
+docstrings (`Parameters` / `Returns` sections) while AGENTS.md mandates
+Google-style (`Args:` / `Returns:`).
+
+### Files to fix
+
+- `infrastructure/supabase/gateways/movie.py`
+- `infrastructure/supabase/gateways/screening.py`
+
+## Dead Code: `_parse_datetime` `str` Branch Unreachable
+
+`_parse_datetime` in `screening_repository.py:28-42` accepts `datetime | str`
+and has a `str` fallback, but asyncpg always returns `datetime` for TIMESTAMP
+columns. The `str` branch is dead code.
+
+### Desired fix
+
+1. Change the parameter type to `datetime` only.
+2. Remove the `fromisoformat` / `strptime` fallback logic.
+3. Remove the `MovieId` and `Showtime` import if all their callers were removed
+   (check after dead code removal).
+
+## Missing Validation: `ShowtimeRow` Has No `__post_init__`
+
+`ShowtimeRow` (in `source_registry_query.py`) has no `__post_init__` validation
+per AGENTS.md Section 4.2 ("Both InputData and OutputData MUST validate data in
+`__post_init__`"). Allows empty strings for `movie_title` and `showtime`.
+
+### Desired fix
+
+Add `__post_init__` that rejects empty `movie_title` and `showtime`.
+
+## Security: SSL Verification Disabled in Scrapers
+
+Both `cinemapublic/gateways/source.py` and `cinemacinema/gateways/source.py`
+use `ssl._create_unverified_context()` to fetch data. This disables certificate
+verification.
+
+### Desired fix
+
+- Add a config option to enable verification in production.
+- Document why it's disabled (likely self-signed or expired certs on the
+  scraped sites).

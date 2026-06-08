@@ -16,6 +16,10 @@ from marquise.interface_adapters.repositories.protocols.cinema import (
 from marquise.interface_adapters.repositories.protocols.cinema_source_assignment import (  # noqa: E501
     CinemaSourceAssignmentGateway as CinemaSourceAssignmentGateway,
 )
+from marquise.interface_adapters.repositories.protocols.movie import MovieGateway
+from marquise.interface_adapters.repositories.protocols.screening import (
+    ScreeningGateway,
+)
 from marquise.interface_adapters.repositories.protocols.showtime_source import (
     ShowtimeSource,
 )
@@ -29,6 +33,8 @@ __all__ = [
     "CinemaGateway",
     "CinemaSourceAssignmentGateway",
     "GatewayError",
+    "MovieGateway",
+    "ScreeningGateway",
     "ShowtimeSource",
     "SourceDefinitionGateway",
 ]

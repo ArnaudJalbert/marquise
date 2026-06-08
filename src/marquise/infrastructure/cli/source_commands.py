@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import date, timedelta
 from typing import Optional
 
 import questionary
 import typer
 from rich.console import Console
 from rich.table import Table
+from rich.text import Text
 
 from marquise.application.exceptions import CinemaSourceAssignmentNotFoundError
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
@@ -459,6 +461,139 @@ def unregister_sources() -> None:
     except Exception as e:
         typer.echo(f"Failed to unregister sources: {e}", err=True)
         raise typer.Exit(code=1) from e
+
+
+# ---------------------------------------------------------------------------
+# source import — fetch and save showtimes for a cinema
+# ---------------------------------------------------------------------------
+
+
+@source_app.command("import", rich_help_panel="Management")
+def import_screenings() -> None:
+    """Fetch showtimes from a cinema's source and save them to the database.
+
+    Selects a cinema interactively, prompts for a date range, then
+    displays a summary of imported or updated screenings.
+    """
+    container = Container()
+
+    async def _run() -> None:
+        await run_spinner(container.initialize(), description="Connecting...")
+        try:
+            selected = await _select_cinema_admin(
+                container, "Select a cinema to import showtimes for:"
+            )
+            if selected is None:
+                return
+
+            assignment = await container.source_controller.get_cinema_source(
+                cinema_id=selected.id,
+            )
+            typer.echo(f"  Cinema:        {selected.name}")
+            typer.echo(f"  Assigned source: {assignment.source_display_name}")
+
+            today = date.today()
+            frame_choice = await questionary.select(
+                "Date range (from today):",
+                choices=[
+                    questionary.Choice(
+                        title="1 day  (today–tomorrow)",
+                        value=timedelta(days=1),
+                    ),
+                    questionary.Choice(
+                        title="1 week  (7 days)",
+                        value=timedelta(weeks=1),
+                    ),
+                    questionary.Choice(
+                        title="2 weeks  (14 days)",
+                        value=timedelta(weeks=2),
+                    ),
+                    questionary.Choice(
+                        title="1 month  (30 days)",
+                        value=timedelta(days=30),
+                    ),
+                    questionary.Choice(title="Custom range…", value="__custom__"),
+                ],
+            ).ask_async()
+            if frame_choice is None:
+                typer.echo("Cancelled.")
+                return
+
+            if frame_choice == "__custom__":
+                start_str = await questionary.text(
+                    "Start date (YYYY-MM-DD):",
+                ).ask_async()
+                if start_str is None or not start_str.strip():
+                    typer.echo("Cancelled.")
+                    return
+
+                end_str = await questionary.text(
+                    "End date (YYYY-MM-DD):",
+                ).ask_async()
+                if end_str is None or not end_str.strip():
+                    typer.echo("Cancelled.")
+                    return
+
+                try:
+                    start_date = date.fromisoformat(start_str)
+                    end_date = date.fromisoformat(end_str)
+                except ValueError:
+                    typer.echo("Invalid date format. Use YYYY-MM-DD.", err=True)
+                    raise typer.Exit(code=1)
+            else:
+                start_date = today
+                end_date = today + frame_choice
+
+            result = await run_spinner(
+                container.source_controller.import_screenings(
+                    cinema_id=selected.id,
+                    start_date=start_date,
+                    end_date=end_date,
+                ),
+                description="Importing screenings...",
+            )
+
+            table = Table(
+                title=(
+                    f"Imported screenings for {result.cinema_name}"
+                    f" ({result.source_name})"
+                )
+            )
+            table.add_column("Movie", style="cyan")
+            table.add_column("Showtime")
+            table.add_column("Price")
+            table.add_column("Status")
+
+            for s in result.screenings:
+                price = f"${s.price:.2f}" if s.price is not None else "—"
+                status = (
+                    typer.style("imported", fg=typer.colors.GREEN)
+                    if s.imported
+                    else typer.style("updated", fg=typer.colors.YELLOW)
+                )
+                table.add_row(s.movie_title, s.showtime, price, status)
+
+            _console.print(table)
+            summary = Text(f"{result.total_count} total  |  ")
+            summary.append(f"{result.imported_count}", style="green")
+            summary.append(" new  |  ")
+            summary.append(f"{result.updated_count}", style="yellow")
+            summary.append(" updated")
+            _console.print(summary)
+        finally:
+            await container.shutdown()
+
+    try:
+        import asyncio
+
+        asyncio.run(_run())
+    except SystemExit:
+        raise
+    except Exception:
+        import traceback
+
+        traceback.print_exc()
+        raise typer.Exit(code=1)
 
 
 # ---------------------------------------------------------------------------

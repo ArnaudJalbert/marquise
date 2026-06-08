@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
 from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
+from marquise.application.use_cases.import_screenings import (
+    ImportScreeningsUseCase,
+)
 from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
@@ -31,6 +36,7 @@ class SourceController:
         unassign_source_use_case: UnassignSourceUseCase,
         get_cinema_source_use_case: GetCinemaSourceUseCase,
         list_registry_sources_use_case: ListRegistrySourcesUseCase,
+        import_screenings_use_case: ImportScreeningsUseCase,
     ) -> None:
         self._auth = auth_controller
         self._create_use_case = create_source_use_case
@@ -40,6 +46,7 @@ class SourceController:
         self._unassign_use_case = unassign_source_use_case
         self._get_source_use_case = get_cinema_source_use_case
         self._list_registry_use_case = list_registry_sources_use_case
+        self._import_use_case = import_screenings_use_case
 
     async def create_source(
         self,
@@ -171,6 +178,11 @@ class SourceController:
         request = GetCinemaSourceUseCase.InputData(cinema_id=cinema_id)
         return await self._get_source_use_case.execute(request)
 
+    @property
+    def auth_controller(self) -> AuthController:
+        """Expose the auth controller for use by callers (e.g. CLI)."""
+        return self._auth
+
     async def list_registry_sources(
         self,
     ) -> ListRegistrySourcesUseCase.OutputData:
@@ -184,3 +196,33 @@ class SourceController:
         """
         request = ListRegistrySourcesUseCase.InputData()
         return await self._list_registry_use_case.execute(request)
+
+    async def import_screenings(
+        self,
+        cinema_id: str,
+        start_date: date,
+        end_date: date,
+    ) -> ImportScreeningsUseCase.OutputData:
+        """Import screenings from a cinema's showtime source.
+
+        Args:
+            cinema_id: The ID of the cinema.
+            start_date: Start of date range (inclusive).
+            end_date: End of date range (inclusive).
+
+        Returns:
+            The output data with import summary.
+
+        Raises:
+            ValueError: If the caller is not authenticated as admin.
+            CinemaNotFoundError: If the cinema does not exist.
+            CinemaSourceAssignmentNotFoundError: If no source assigned.
+        """
+        self._auth.validate_admin()
+
+        request = ImportScreeningsUseCase.InputData(
+            cinema_id=cinema_id,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        return await self._import_use_case.execute(request)

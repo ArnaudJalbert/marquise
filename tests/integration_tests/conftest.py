@@ -16,6 +16,10 @@ from marquise.infrastructure.supabase.gateways.cinema import SupabaseCinemaGatew
 from marquise.infrastructure.supabase.gateways.cinema_source_assignment import (
     SupabaseCinemaSourceAssignmentGateway,
 )
+from marquise.infrastructure.supabase.gateways.movie import SupabaseMovieGateway
+from marquise.infrastructure.supabase.gateways.screening import (
+    SupabaseScreeningGateway,
+)
 from marquise.infrastructure.supabase.gateways.source_definition import (
     SupabaseSourceDefinitionGateway,
 )
@@ -72,6 +76,31 @@ async def db_pool(
             )
             """
         )
+        await conn.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS "{TEST_SCHEMA}".movies (
+                id               TEXT PRIMARY KEY,
+                title            TEXT NOT NULL UNIQUE,
+                release_date     DATE,
+                directors        TEXT,
+                cast_members     TEXT,
+                duration_minutes INTEGER,
+                description      TEXT
+            )
+            """
+        )
+        await conn.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS "{TEST_SCHEMA}".screenings (
+                id        TEXT PRIMARY KEY,
+                movie_id  TEXT NOT NULL,
+                cinema_id TEXT NOT NULL,
+                showtime  TIMESTAMP NOT NULL,
+                price     DOUBLE PRECISION,
+                UNIQUE (cinema_id, movie_id, showtime)
+            )
+            """
+        )
     yield pool
     await pool.close()
 
@@ -102,3 +131,23 @@ async def assignment_gateway(
     async with db_pool.acquire() as conn:
         await conn.execute(f'DELETE FROM "{TEST_SCHEMA}".cinema_source_assignments')
     yield SupabaseCinemaSourceAssignmentGateway(pool=db_pool, schema=TEST_SCHEMA)
+
+
+@pytest_asyncio.fixture
+async def movie_gateway(
+    db_pool: asyncpg.Pool,
+) -> AsyncIterator[SupabaseMovieGateway]:
+    """Provide a SupabaseMovieGateway with a clean test table."""
+    async with db_pool.acquire() as conn:
+        await conn.execute(f'DELETE FROM "{TEST_SCHEMA}".movies')
+    yield SupabaseMovieGateway(pool=db_pool, schema=TEST_SCHEMA)
+
+
+@pytest_asyncio.fixture
+async def screening_gateway(
+    db_pool: asyncpg.Pool,
+) -> AsyncIterator[SupabaseScreeningGateway]:
+    """Provide a SupabaseScreeningGateway with a clean test table."""
+    async with db_pool.acquire() as conn:
+        await conn.execute(f'DELETE FROM "{TEST_SCHEMA}".screenings')
+    yield SupabaseScreeningGateway(pool=db_pool, schema=TEST_SCHEMA)

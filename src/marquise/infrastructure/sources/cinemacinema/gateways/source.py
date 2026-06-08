@@ -11,7 +11,7 @@ import json
 import ssl
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 SCHEDULE_URL = "https://cinemacinema.ca/en/schedule/__data.json"
@@ -88,7 +88,22 @@ def _fetch_schedule(date_str: str | None = None) -> dict:
 
 
 def _parse_time(time_str: str) -> str:
-    return time_str.strip()
+    """Normalize a time string to ``HH:MM`` 24-hour format.
+
+    Accepts both 12-hour (``"2:00 PM"``) and 24-hour (``"14:00"``) formats.
+
+    Args:
+        time_str: The raw time string.
+
+    Returns:
+        A ``HH:MM`` formatted time string.
+    """
+    time_str = time_str.strip()
+    try:
+        return datetime.strptime(time_str, "%I:%M %p").strftime("%H:%M")
+    except ValueError:
+        pass
+    return time_str
 
 
 def _extract_date_from_iso(iso_str: str) -> str:
@@ -102,7 +117,7 @@ def _is_in_range(
     end_date: datetime | None,
 ) -> bool:
     """Check whether *date_str* (``YYYY-MM-DD``) falls in [start, end]."""
-    dt = datetime.strptime(date_str, _ISO_DATE_FORMAT)
+    dt = datetime.strptime(date_str, _ISO_DATE_FORMAT).replace(tzinfo=timezone.utc)
     if start_date and dt < start_date:
         return False
     if end_date and dt > end_date:

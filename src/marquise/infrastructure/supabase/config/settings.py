@@ -14,8 +14,10 @@ class Settings:
         supabase_url: Supabase project URL for the auth client.
         supabase_publishable_key: Supabase publishable API key for the auth
             client.
+        schema: Database schema for all tables (default ``"marquise"``).
     """
 
     database_url: str
     supabase_url: str
     supabase_publishable_key: str
+    schema: str = "marquise"
