@@ -122,3 +122,55 @@ def test_is_recent_with_custom_years() -> None:
         cast=("Actor",),
     )
     assert not movie.is_recent(years=2)
+
+
+def test_is_recent_returns_false_when_release_date_unknown() -> None:
+    """Verify is_recent returns False when release_date is None."""
+    movie = Movie(
+        id=MovieId(value="mov-123"),
+        title="Unknown Release",
+        release_date=None,
+        directors=("Director",),
+        cast=("Actor",),
+    )
+    assert not movie.is_recent()
+
+
+def test_movie_accepts_none_directors() -> None:
+    """Verify directors can be None when unknown."""
+    movie = Movie(
+        id=MovieId(value="mov-123"),
+        title="No Director Info",
+        release_date=date(2026, 1, 1),
+        directors=None,
+    )
+    assert movie.directors is None
+
+
+def test_movie_accepts_none_cast() -> None:
+    """Verify cast can be None when unknown."""
+    movie = Movie(
+        id=MovieId(value="mov-123"),
+        title="No Cast Info",
+        release_date=date(2026, 1, 1),
+        directors=("Director",),
+        cast=None,
+    )
+    assert movie.cast is None
+
+
+def test_movie_accepts_none_directors_and_cast() -> None:
+    """Verify a fully minimal movie with no optional info works."""
+    movie = Movie(
+        id=MovieId(value="mov-123"),
+        title="Minimal",
+        release_date=None,
+        directors=None,
+        cast=None,
+    )
+    assert movie.title == "Minimal"
+    assert movie.release_date is None
+    assert movie.directors is None
+    assert movie.cast is None
+    assert movie.duration_minutes is None
+    assert movie.description is None

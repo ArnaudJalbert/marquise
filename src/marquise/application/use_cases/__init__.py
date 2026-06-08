@@ -6,6 +6,9 @@ from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
 from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
+from marquise.application.use_cases.import_screenings import (
+    ImportScreeningsUseCase,
+)
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
@@ -21,6 +24,7 @@ __all__ = [
     "DeleteCinemaUseCase",
     "DeleteSourceUseCase",
     "GetCinemaSourceUseCase",
+    "ImportScreeningsUseCase",
     "ListCinemasUseCase",
     "ListRegistrySourcesUseCase",
     "ListSourcesUseCase",

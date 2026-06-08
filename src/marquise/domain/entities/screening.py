@@ -7,9 +7,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from ..exceptions import ScreeningError
-from ..value_objects import Price, ScreeningId, Showtime
-from .cinema import Cinema
-from .movie import Movie
+from ..value_objects import CinemaId, MovieId, Price, ScreeningId, Showtime
 
 
 @dataclass(kw_only=True, slots=True)
@@ -18,8 +16,8 @@ class Screening:
 
     Attributes:
         id: Unique identifier for the screening.
-        movie: The movie being screened.
-        cinema: The cinema hosting the screening.
+        movie_id: Identifier of the movie being screened.
+        cinema_id: Identifier of the cinema hosting the screening.
         showtime: Date and time of the screening.
         price: Ticket price.
         available_seats: Number of seats still available (set externally).
@@ -27,8 +25,8 @@ class Screening:
     """
 
     id: ScreeningId
-    movie: Movie
-    cinema: Cinema
+    movie_id: MovieId
+    cinema_id: CinemaId
     showtime: Showtime
     price: Price
     available_seats: Optional[int] = field(default=None, init=False)
@@ -80,4 +78,8 @@ class Screening:
         self.is_sold_out = self.available_seats == 0
 
     def __str__(self) -> str:
-        return f"{self.movie} at {self.cinema} on {self.showtime}"
+        return (
+            f"Screening(movie={self.movie_id},"
+            f" cinema={self.cinema_id},"
+            f" showtime={self.showtime})"
+        )

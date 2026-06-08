@@ -10,6 +10,9 @@ from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
 from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
+from marquise.application.use_cases.import_screenings import (
+    ImportScreeningsUseCase,
+)
 from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
@@ -69,6 +72,12 @@ def mock_list_registry_use_case() -> ListRegistrySourcesUseCase:
 
 
 @pytest.fixture
+def mock_import_use_case() -> ImportScreeningsUseCase:
+    """Provide a mocked ImportScreeningsUseCase."""
+    return create_autospec(ImportScreeningsUseCase, instance=True)
+
+
+@pytest.fixture
 def controller(
     mock_auth_controller: AuthController,
     mock_create_use_case: CreateSourceUseCase,
@@ -78,6 +87,7 @@ def controller(
     mock_unassign_use_case: UnassignSourceUseCase,
     mock_get_use_case: GetCinemaSourceUseCase,
     mock_list_registry_use_case: ListRegistrySourcesUseCase,
+    mock_import_use_case: ImportScreeningsUseCase,
 ) -> SourceController:
     """Provide a SourceController wired to mocks."""
     return SourceController(
@@ -89,6 +99,7 @@ def controller(
         unassign_source_use_case=mock_unassign_use_case,
         get_cinema_source_use_case=mock_get_use_case,
         list_registry_sources_use_case=mock_list_registry_use_case,
+        import_screenings_use_case=mock_import_use_case,
     )
 
 

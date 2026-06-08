@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any
 from unittest.mock import create_autospec
 
 import pytest
 
-from marquise.interface_adapters.repositories.protocols.showtime_source import (
-    ShowtimeSource,
+from marquise.interface_adapters.repositories.source_adapters.base import (
+    SourceAdapter,
 )
 from marquise.interface_adapters.repositories.source_registry import SourceRegistry
 
@@ -20,63 +19,50 @@ def registry() -> SourceRegistry:
 
 
 @pytest.fixture
-def mock_source() -> ShowtimeSource:
-    """Provide a mocked ShowtimeSource subclass."""
-    source = create_autospec(ShowtimeSource, instance=True)
-    source.fetch_showtimes = _fake_fetch
-    return source
+def mock_adapter() -> SourceAdapter:
+    """Provide a mocked SourceAdapter."""
+    return create_autospec(SourceAdapter, instance=True)
 
 
-async def _fake_fetch(self: ShowtimeSource, cinema_name: str) -> list[dict[str, Any]]:  # noqa: ANN401
-    """Fake fetch for testing."""
-    return []
-
-
-def test_register_adds_source(
-    registry: SourceRegistry, mock_source: ShowtimeSource
+def test_register_adds_adapter(
+    registry: SourceRegistry, mock_adapter: SourceAdapter
 ) -> None:
-    """Verify register adds a source that can be retrieved with get."""
-    registry.register("cinemacinema", mock_source)
-    assert registry.get("cinemacinema") is mock_source
-
-
-def test_get_raises_key_error_for_unregistered_name(
-    registry: SourceRegistry,
-) -> None:
-    """Verify get raises KeyError when name is not registered."""
-    with pytest.raises(KeyError, match="No source registered"):
-        registry.get("unknown")
+    """Verify register adds an adapter that appears in list_available."""
+    registry.register("cinemacinema", mock_adapter)
+    available = registry.list_available()
+    assert "cinemacinema" in available
 
 
 def test_register_raises_on_duplicate_name(
-    registry: SourceRegistry, mock_source: ShowtimeSource
+    registry: SourceRegistry, mock_adapter: SourceAdapter
 ) -> None:
     """Verify register raises ValueError when name is already registered."""
-    registry.register("cinemacinema", mock_source)
+    registry.register("cinemacinema", mock_adapter)
     with pytest.raises(ValueError, match="already registered"):
-        registry.register("cinemacinema", mock_source)
+        registry.register("cinemacinema", mock_adapter)
 
 
 def test_register_multiple_sources(
-    registry: SourceRegistry, mock_source: ShowtimeSource
+    registry: SourceRegistry, mock_adapter: SourceAdapter
 ) -> None:
-    """Verify multiple sources can be registered and retrieved independently."""
-    mock_source2 = create_autospec(ShowtimeSource, instance=True)
-    mock_source2.fetch_showtimes = _fake_fetch
-    registry.register("cinemacinema", mock_source)
-    registry.register("cinema_du_parc", mock_source2)
-    assert registry.get("cinemacinema") is mock_source
-    assert registry.get("cinema_du_parc") is mock_source2
+    """Verify multiple adapters can be registered independently."""
+    mock_adapter2 = create_autospec(SourceAdapter, instance=True)
+    registry.register("cinemacinema", mock_adapter)
+    registry.register("cinema_du_parc", mock_adapter2)
+
+    available = registry.list_available()
+    assert len(available) == 2
+    assert "cinemacinema" in available
+    assert "cinema_du_parc" in available
 
 
 def test_list_available_returns_all_registered(
-    registry: SourceRegistry, mock_source: ShowtimeSource
+    registry: SourceRegistry, mock_adapter: SourceAdapter
 ) -> None:
     """Verify list_available returns all registered sources with metadata."""
-    mock_source2 = create_autospec(ShowtimeSource, instance=True)
-    mock_source2.fetch_showtimes = _fake_fetch
-    registry.register("cinemacinema", mock_source)
-    registry.register("cinema_du_parc", mock_source2)
+    mock_adapter2 = create_autospec(SourceAdapter, instance=True)
+    registry.register("cinemacinema", mock_adapter)
+    registry.register("cinema_du_parc", mock_adapter2)
 
     available = registry.list_available()
 
