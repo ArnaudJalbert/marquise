@@ -32,11 +32,6 @@ _VENUE_FRAGMENTS: dict[str, str] = {
     "livart": "#livart-chaises-pliantes",
 }
 
-_VENUE_STANDARD_PRICE: dict[str, float | None] = {
-    "casa-d-italia": 12.0,
-    "livart": 16.0,
-}
-
 _WEEKS_PER_OFFSET = 2
 
 
@@ -81,7 +76,7 @@ def _parse_ajax_html(html: str, venue: str) -> list[dict[str, Any]]:
 
     Returns:
         A list of plain dicts with keys ``movie_title``, ``showtime``,
-        ``price`` (None), ``movie_url``, ``ticket_url``, ``is_sold_out``.
+        ``movie_url``, ``ticket_url``.
     """
     results: list[dict[str, Any]] = []
 
@@ -142,14 +137,9 @@ def _parse_ajax_html(html: str, venue: str) -> list[dict[str, Any]]:
             )
             ticket_url: str = ticket_match.group(1) if ticket_match else ""
 
-            # Sold out check
-            is_sold_out = bool(re.search(r"(?i)sold[\s-]?out|complete", ev_block))
-
             # With-mention
             with_match = re.search(r"With\s+([^<]+?)(?:\s*</|$)", ev_block)
             special_notes: list[str] = []
-            if is_sold_out:
-                special_notes.append("SOLD OUT")
             if with_match:
                 notes_text = html_mod.unescape(with_match.group(1).strip())
                 special_notes.append(f"With {notes_text}")
@@ -159,9 +149,6 @@ def _parse_ajax_html(html: str, venue: str) -> list[dict[str, Any]]:
                     "movie_title": movie_title,
                     "showtime": showtime,
                     "subtitle_language": subtitle_language,
-                    "price": None,
-                    "available_seats": None,
-                    "is_sold_out": is_sold_out,
                     "special_notes": special_notes or None,
                     "movie_url": movie_url,
                     "ticket_url": ticket_url,
@@ -202,8 +189,7 @@ def _parse_jsonld_showtimes(
         venue: Target venue slug.
 
     Returns:
-        A dict mapping ``YYYY-MM-DD`` to a list of showtime dicts (which
-        include price info from JSON-LD).
+        A dict mapping ``YYYY-MM-DD`` to a list of showtime dicts.
     """
     items = graph.get("itemListElement", [])
     by_date: dict[str, list[dict[str, Any]]] = {}
@@ -235,15 +221,7 @@ def _parse_jsonld_showtimes(
         )
         movie_url: str = work_presented.get("url", "")
 
-        offers = event.get("offers", {}) or {}
-        price_raw = offers.get("price")
-        price = float(price_raw) if price_raw is not None else None
-        availability = offers.get("availability")
-        is_sold_out = bool(
-            availability
-            and ("soldout" in availability.lower() or availability.endswith("/SoldOut"))
-        )
-        ticket_url: str = offers.get("url", "")
+        ticket_url: str = event.get("offers", {}).get("url", "")
         if ticket_url.startswith("https:///"):
             ticket_url = ticket_url.replace("https:///", "https://")
 
@@ -252,9 +230,6 @@ def _parse_jsonld_showtimes(
                 "movie_title": movie_title,
                 "showtime": showtime,
                 "subtitle_language": None,
-                "price": price,
-                "available_seats": None,
-                "is_sold_out": is_sold_out,
                 "special_notes": None,
                 "movie_url": movie_url,
                 "ticket_url": ticket_url,
@@ -336,8 +311,8 @@ def fetch_showtimes(
 
     Returns:
         A list of plain dicts with keys ``movie_title``, ``showtime``,
-        ``price``, ``available_seats``, ``is_sold_out``, ``movie_url``,
-        ``ticket_url``, ``special_notes``, ``subtitle_language``.
+        ``movie_url``, ``ticket_url``, ``special_notes``,
+        ``subtitle_language``.
 
     Raises:
         ValueError: If ``cinema_name`` is not a recognised venue.
@@ -369,8 +344,6 @@ def fetch_showtimes(
     ajax_results_by_date: dict[str, list[dict[str, Any]]] = {}
 
     if offsets:
-        std_price = _VENUE_STANDARD_PRICE.get(cinema_name)
-
         with ThreadPoolExecutor(max_workers=min(len(offsets), 10)) as executor:
 
             def _fetch_one(o: int) -> list[dict[str, Any]]:
@@ -384,7 +357,6 @@ def fetch_showtimes(
                 except urllib.error.HTTPError:
                     continue
                 for ev in events:
-                    ev["price"] = std_price
                     if ev["ticket_url"].startswith("https:///"):
                         ev["ticket_url"] = ev["ticket_url"].replace(
                             "https:///", "https://"
@@ -445,7 +417,7 @@ class CinemaPublicSource:
 
         Returns:
             A list of plain dicts with keys ``movie_title``, ``showtime``,
-            ``price``, ``available_seats``, ``movie_url``, ``ticket_url``.
+            ``movie_url``, ``ticket_url``.
 
         Raises:
             ValueError: If ``cinema_name`` is not a recognised venue.

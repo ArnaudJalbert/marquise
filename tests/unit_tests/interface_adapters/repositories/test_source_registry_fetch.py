@@ -47,14 +47,10 @@ async def test_fetch_showtimes_adapts_dicts_to_showtime_rows(
         {
             "movie_title": "Movie A",
             "showtime": "2026-06-07T19:30:00",
-            "price": 14.99,
-            "available_seats": 50,
         },
         {
             "movie_title": "Movie B",
             "showtime": "2026-06-07T21:00:00",
-            "price": None,
-            "available_seats": None,
         },
     ]
 
@@ -72,12 +68,8 @@ async def test_fetch_showtimes_adapts_dicts_to_showtime_rows(
     assert isinstance(results[0], ShowtimeRow)
     assert results[0].movie_title == "Movie A"
     assert results[0].showtime == datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc)
-    assert results[0].price == 14.99
-    assert results[0].available_seats == 50
 
     assert results[1].movie_title == "Movie B"
-    assert results[1].price is None
-    assert results[1].available_seats is None
 
     mock_adapter.fetch_showtimes.assert_awaited_once_with(
         cinema=sample_cinema,

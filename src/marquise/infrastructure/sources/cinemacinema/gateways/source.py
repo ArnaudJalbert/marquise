@@ -167,8 +167,7 @@ class CinemaCinemaSource:
             end_date: Latest date to include (inclusive).
 
         Returns:
-            A list of plain dicts with keys ``movie_title``, ``showtime``,
-            ``price``, ``available_seats``.
+            A list of plain dicts with keys ``movie_title``, ``showtime``.
 
         Raises:
             ValueError: If ``cinema_name`` is not a recognised slug.
@@ -257,8 +256,6 @@ class CinemaCinemaSource:
                     {
                         "movie_title": title,
                         "showtime": showtime,
-                        "price": None,
-                        "available_seats": None,
                     }
                 )
 

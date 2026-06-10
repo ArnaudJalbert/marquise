@@ -10,7 +10,6 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 from marquise.domain.entities import Cinema, SourceDefinition
 
@@ -33,14 +32,10 @@ class ShowtimeRow:
     Attributes:
         movie_title: The title of the movie.
         showtime: The showtime as a timezone-aware datetime.
-        price: The price as a float, or None if unavailable.
-        available_seats: Number of available seats, or None if unknown.
     """
 
     movie_title: str
     showtime: datetime
-    price: Optional[float]
-    available_seats: Optional[int]
 
 
 class SourceRegistryQuery(ABC):

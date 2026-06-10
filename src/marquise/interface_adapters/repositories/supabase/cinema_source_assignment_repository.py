@@ -13,12 +13,25 @@ from marquise.application.exceptions import (
     CinemaSourceAssignmentAlreadyExistsError,
 )
 from marquise.application.repositories import CinemaSourceAssignmentRepository
-from marquise.domain.entities import CinemaSourceAssignment
+from marquise.domain.entities import CinemaSourceAssignment, SourceDefinition
 from marquise.domain.value_objects import CinemaId, SourceName
 from marquise.interface_adapters.repositories.protocols.cinema import GatewayError
 from marquise.interface_adapters.repositories.protocols.cinema_source_assignment import (  # noqa: E501
     CinemaSourceAssignmentGateway,
 )
+from marquise.interface_adapters.repositories.supabase._utils import (
+    dict_to_cinema,
+    extract_prefixed,
+)
+
+
+def _dict_to_source_definition(data: dict) -> SourceDefinition:
+    """Convert a prefixed source definition dict into a SourceDefinition entity."""
+    return SourceDefinition(
+        name=SourceName(value=data["name"]),
+        display_name=data["display_name"],
+        description=data.get("description"),
+    )
 
 
 class SupabaseCinemaSourceAssignmentRepository(CinemaSourceAssignmentRepository):
@@ -54,13 +67,16 @@ class SupabaseCinemaSourceAssignmentRepository(CinemaSourceAssignmentRepository)
                 has a different source assigned (gateway-level conflict).
         """
         try:
-            data = await self._gateway.assign(
-                cinema_id=str(assignment.cinema_id),
-                source_name=str(assignment.source_name),
+            await self._gateway.assign(
+                cinema_id=str(assignment.cinema.id),
+                source_name=str(assignment.source.name),
             )
         except GatewayError as exc:
             raise CinemaSourceAssignmentAlreadyExistsError(str(exc)) from exc
-        return self._to_entity(data)
+        return CinemaSourceAssignment(
+            cinema=assignment.cinema,
+            source=assignment.source,
+        )
 
     async def unassign(self, cinema_id: CinemaId) -> bool:
         """Remove the source assignment for a cinema.
@@ -101,12 +117,16 @@ class SupabaseCinemaSourceAssignmentRepository(CinemaSourceAssignmentRepository)
         """Map a raw gateway dict to a CinemaSourceAssignment domain entity.
 
         Args:
-            data: The dict returned by the gateway.
+            data: The dict returned by the gateway (with joined cinema and
+                source definition data prefixed with ``cinema__`` and
+                ``source__``).
 
         Returns:
             A new CinemaSourceAssignment entity populated with the dict values.
         """
+        cinema = dict_to_cinema(extract_prefixed(data, "cinema__"))
+        source = _dict_to_source_definition(extract_prefixed(data, "source__"))
         return CinemaSourceAssignment(
-            cinema_id=CinemaId(value=data["cinema_id"]),
-            source_name=SourceName(value=data["source_name"]),
+            cinema=cinema,
+            source=source,
         )
