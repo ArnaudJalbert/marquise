@@ -24,25 +24,22 @@ from marquise.domain.value_objects import CinemaId, SourceName
 @pytest.mark.asyncio
 async def test_assign_source_saves_and_returns_response() -> None:
     """Verify the happy path: assignment is saved and response is correct."""
+    cinema = Cinema(id=CinemaId(value="cin-001"), name="Test Cinema")
+    source = SourceDefinition(
+        name=SourceName(value="cineplex"), display_name="Cineplex"
+    )
+    saved = CinemaSourceAssignment(cinema=cinema, source=source)
+
     mock_cinema_repo = create_autospec(CinemaRepository, instance=True)
     mock_source_repo = create_autospec(SourceDefinitionRepository, instance=True)
     mock_assignment_repo = create_autospec(
         CinemaSourceAssignmentRepository, instance=True
     )
 
-    mock_cinema_repo.find_by_id.return_value = Cinema(
-        id=CinemaId(value="cin-001"),
-        name="Test Cinema",
-    )
-    mock_source_repo.find_by_name.return_value = SourceDefinition(
-        name=SourceName(value="cineplex"),
-        display_name="Cineplex",
-    )
+    mock_cinema_repo.find_by_id.return_value = cinema
+    mock_source_repo.find_by_name.return_value = source
     mock_assignment_repo.find_by_cinema_id.return_value = None
-    mock_assignment_repo.assign.return_value = CinemaSourceAssignment(
-        cinema_id=CinemaId(value="cin-001"),
-        source_name=SourceName(value="cineplex"),
-    )
+    mock_assignment_repo.assign.return_value = saved
 
     use_case = AssignSourceUseCase(
         cinema_repository=mock_cinema_repo,
@@ -119,23 +116,22 @@ async def test_assign_source_raises_when_source_not_found() -> None:
 @pytest.mark.asyncio
 async def test_assign_source_raises_when_already_assigned() -> None:
     """Verify error when cinema already has a source assigned."""
+    cinema = Cinema(id=CinemaId(value="cin-001"), name="Test Cinema")
+    existing_source = SourceDefinition(
+        name=SourceName(value="cinema_du_parc"), display_name="Cinema du Parc"
+    )
+    existing = CinemaSourceAssignment(cinema=cinema, source=existing_source)
+
     mock_cinema_repo = create_autospec(CinemaRepository, instance=True)
     mock_source_repo = create_autospec(SourceDefinitionRepository, instance=True)
     mock_assignment_repo = create_autospec(
         CinemaSourceAssignmentRepository, instance=True
     )
 
-    mock_cinema_repo.find_by_id.return_value = Cinema(
-        id=CinemaId(value="cin-001"),
-        name="Test Cinema",
-    )
+    mock_cinema_repo.find_by_id.return_value = cinema
     mock_source_repo.find_by_name.return_value = SourceDefinition(
         name=SourceName(value="cineplex"),
         display_name="Cineplex",
-    )
-    existing = CinemaSourceAssignment(
-        cinema_id=CinemaId(value="cin-001"),
-        source_name=SourceName(value="cinema_du_parc"),
     )
     mock_assignment_repo.find_by_cinema_id.return_value = existing
 

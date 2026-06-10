@@ -18,7 +18,6 @@ class ScreeningGateway(Protocol):
         movie_id: str,
         cinema_id: str,
         showtime: datetime,
-        price: float,
     ) -> dict:
         """Insert or upsert a screening row.
 
@@ -29,7 +28,6 @@ class ScreeningGateway(Protocol):
             movie_id: The movie being screened.
             cinema_id: The cinema hosting the screening.
             showtime: The date and time of the screening.
-            price: Ticket price.
 
         Returns:
             The inserted/updated row as a dict.

@@ -25,7 +25,7 @@ class Movie:
 
     id: MovieId
     title: str
-    release_date: Optional[date]
+    release_date: Optional[date] = None
     directors: Optional[Tuple[str, ...]] = None
     cast: Optional[Tuple[str, ...]] = None
     duration_minutes: Optional[int] = None

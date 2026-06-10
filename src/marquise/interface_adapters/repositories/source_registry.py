@@ -121,12 +121,6 @@ class SourceRegistry(SourceRegistryQuery):
                 ShowtimeRow(
                     movie_title=row.get("movie_title", "Untitled"),
                     showtime=_parse_showtime(raw_showtime),
-                    price=row.get("price") if row.get("price") is not None else None,
-                    available_seats=(
-                        row.get("available_seats")
-                        if row.get("available_seats") is not None
-                        else None
-                    ),
                 )
             )
         return results

@@ -7,9 +7,8 @@ from dataclasses import dataclass
 from marquise.application.exceptions import CinemaSourceAssignmentNotFoundError
 from marquise.application.repositories import (
     CinemaSourceAssignmentRepository,
-    SourceDefinitionRepository,
 )
-from marquise.domain.value_objects import CinemaId, SourceName
+from marquise.domain.value_objects import CinemaId
 
 
 class GetCinemaSourceUseCase:
@@ -64,16 +63,13 @@ class GetCinemaSourceUseCase:
     def __init__(
         self,
         assignment_repository: CinemaSourceAssignmentRepository,
-        source_definition_repository: SourceDefinitionRepository,
     ) -> None:
         """Initialize the use case.
 
         Args:
             assignment_repository: Repository for assignment lookups.
-            source_definition_repository: Repository for source definition lookups.
         """
         self.assignment_repository = assignment_repository
-        self.source_definition_repository = source_definition_repository
 
     async def execute(self, request: InputData) -> OutputData:
         """Retrieve the source assigned to a cinema.
@@ -96,16 +92,8 @@ class GetCinemaSourceUseCase:
                 f"No source assignment found for cinema '{request.cinema_id}'"
             )
 
-        source = await self.source_definition_repository.find_by_name(
-            SourceName(value=str(assignment.source_name))
-        )
-
-        source_display_name = (
-            source.display_name if source is not None else str(assignment.source_name)
-        )
-
         return self.OutputData(
             cinema_id=request.cinema_id,
-            source_name=str(assignment.source_name),
-            source_display_name=source_display_name,
+            source_name=str(assignment.source.name),
+            source_display_name=assignment.source.display_name,
         )
