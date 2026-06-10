@@ -7,11 +7,10 @@ from unittest.mock import create_autospec
 
 import pytest
 
-from marquise.domain.entities import Screening
+from marquise.domain.entities import Cinema, Movie, Screening
 from marquise.domain.value_objects import (
     CinemaId,
     MovieId,
-    Price,
     ScreeningId,
     Showtime,
 )
@@ -24,39 +23,74 @@ from marquise.interface_adapters.repositories.supabase.screening_repository impo
 
 
 @pytest.fixture
-def sample_screening() -> Screening:
+def sample_cinema() -> Cinema:
+    """Provide a sample Cinema for tests."""
+    return Cinema(
+        id=CinemaId(value="cin-789"),
+        name="Test Cinema",
+    )
+
+
+@pytest.fixture
+def sample_movie() -> Movie:
+    """Provide a sample Movie for tests."""
+    return Movie(
+        id=MovieId(value="mov-456"),
+        title="Test Movie",
+    )
+
+
+@pytest.fixture
+def sample_screening(sample_cinema: Cinema, sample_movie: Movie) -> Screening:
     """Provide a sample Screening for tests."""
     return Screening(
         id=ScreeningId(value="scr-123"),
-        movie_id=MovieId(value="mov-456"),
-        cinema_id=CinemaId(value="cin-789"),
+        movie=sample_movie,
+        cinema=sample_cinema,
         showtime=Showtime(value=datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc)),
-        price=Price(value=14.99),
     )
 
 
 @pytest.fixture
 def gateway_dict() -> dict:
-    """Provide a sample gateway return dict."""
+    """Provide a sample gateway return dict with joined data.
+
+    The showtime value is a naive datetime to simulate asyncpg's return
+    from a ``TIMESTAMP`` column.
+    """
     return {
         "id": "scr-123",
         "movie_id": "mov-456",
         "cinema_id": "cin-789",
-        "showtime": "2026-06-07T19:30:00+00:00",
-        "price": 14.99,
+        "showtime": datetime(2026, 6, 7, 19, 30, 0),
+        "movie__id": "mov-456",
+        "movie__title": "Test Movie",
+        "movie__release_date": None,
+        "movie__directors": None,
+        "movie__cast_members": None,
+        "movie__duration_minutes": None,
+        "movie__description": None,
+        "cinema__id": "cin-789",
+        "cinema__name": "Test Cinema",
+        "cinema__address": None,
+        "cinema__city": None,
+        "cinema__website": None,
     }
 
 
 @pytest.mark.asyncio
-async def test_save(sample_screening: Screening) -> None:
+async def test_save(
+    sample_screening: Screening,
+    sample_cinema: Cinema,
+    sample_movie: Movie,
+) -> None:
     """Test save delegates to gateway and maps result."""
     mock_gateway = create_autospec(ScreeningGateway, instance=True)
     mock_gateway.save.return_value = {
         "id": "scr-123",
         "movie_id": "mov-456",
         "cinema_id": "cin-789",
-        "showtime": "2026-06-07T19:30:00+00:00",
-        "price": 14.99,
+        "showtime": datetime(2026, 6, 7, 19, 30, 0),
         "__inserted": True,
     }
 
@@ -64,15 +98,15 @@ async def test_save(sample_screening: Screening) -> None:
     result, was_inserted = await repo.save(sample_screening)
 
     assert result.id == ScreeningId(value="scr-123")
-    assert result.movie_id == MovieId(value="mov-456")
-    assert result.cinema_id == CinemaId(value="cin-789")
-    assert result.price == Price(value=14.99)
+    assert result.movie == sample_movie
+    assert result.cinema == sample_cinema
+    assert result.showtime.value.tzinfo == timezone.utc
+    assert result.showtime.value == datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc)
     mock_gateway.save.assert_awaited_once_with(
         screening_id="scr-123",
         movie_id="mov-456",
         cinema_id="cin-789",
         showtime=datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc),
-        price=14.99,
     )
 
 
@@ -87,8 +121,53 @@ async def test_find_by_id(gateway_dict: dict) -> None:
 
     assert result is not None
     assert result.id == ScreeningId(value="scr-123")
-    assert result.movie_id == MovieId(value="mov-456")
+    assert result.movie.id == MovieId(value="mov-456")
+    assert result.showtime.value.tzinfo == timezone.utc
+    assert result.showtime.value == datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc)
     mock_gateway.find_by_id.assert_awaited_once_with(screening_id="scr-123")
+
+
+@pytest.mark.asyncio
+async def test_save_with_timezone_aware_datetime(
+    sample_screening: Screening,
+) -> None:
+    """Test save handles gateway returning timezone-aware datetime."""
+    mock_gateway = create_autospec(ScreeningGateway, instance=True)
+    mock_gateway.save.return_value = {
+        "id": "scr-123",
+        "movie_id": "mov-456",
+        "cinema_id": "cin-789",
+        "showtime": datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc),
+        "__inserted": True,
+    }
+
+    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    result, was_inserted = await repo.save(sample_screening)
+
+    assert result.showtime.value.tzinfo == timezone.utc
+    assert was_inserted
+
+
+@pytest.mark.asyncio
+async def test_save_with_iso_string_showtime(
+    sample_screening: Screening,
+) -> None:
+    """Test save handles gateway returning an ISO string without tz info."""
+    mock_gateway = create_autospec(ScreeningGateway, instance=True)
+    mock_gateway.save.return_value = {
+        "id": "scr-123",
+        "movie_id": "mov-456",
+        "cinema_id": "cin-789",
+        "showtime": "2026-06-07T19:30:00",
+        "__inserted": True,
+    }
+
+    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    result, was_inserted = await repo.save(sample_screening)
+
+    assert result.showtime.value.tzinfo == timezone.utc
+    assert result.showtime.value == datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc)
+    assert was_inserted
 
 
 @pytest.mark.asyncio
@@ -120,11 +199,46 @@ async def test_find_by_cinema_and_date_range(gateway_dict: dict) -> None:
 
     assert len(results) == 1
     assert results[0].id == ScreeningId(value="scr-123")
+    assert results[0].showtime.value.tzinfo == timezone.utc
+    assert results[0].showtime.value == datetime(
+        2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc
+    )
     mock_gateway.find_by_cinema_and_date_range.assert_awaited_once_with(
         cinema_id="cin-789",
         start_date=start,
         end_date=end,
     )
+
+
+@pytest.mark.asyncio
+async def test_to_entity_parses_release_date_string() -> None:
+    """Test _to_entity handles a string release_date via date.fromisoformat."""
+    mock_gateway = create_autospec(ScreeningGateway, instance=True)
+    raw = {
+        "id": "scr-456",
+        "movie_id": "mov-456",
+        "cinema_id": "cin-789",
+        "showtime": datetime(2026, 7, 1, 14, 0, 0),
+        "movie__id": "mov-456",
+        "movie__title": "Test Movie",
+        "movie__release_date": "2026-01-15",
+        "movie__directors": None,
+        "movie__cast_members": None,
+        "movie__duration_minutes": None,
+        "movie__description": None,
+        "cinema__id": "cin-789",
+        "cinema__name": "Test Cinema",
+        "cinema__address": None,
+        "cinema__city": None,
+        "cinema__website": None,
+    }
+    mock_gateway.find_by_id.return_value = raw
+
+    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    result = await repo.find_by_id(ScreeningId(value="scr-456"))
+
+    assert result is not None
+    assert result.movie.release_date is not None
 
 
 @pytest.mark.asyncio

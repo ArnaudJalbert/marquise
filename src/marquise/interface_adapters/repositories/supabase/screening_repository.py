@@ -6,20 +6,23 @@ interface (application).  No SQL, no asyncpg — pure entity mapping.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime, timezone
 from typing import Optional
 
 from marquise.application.repositories import ScreeningRepository
-from marquise.domain.entities import Screening
+from marquise.domain.entities import Movie, Screening
 from marquise.domain.value_objects import (
     CinemaId,
     MovieId,
-    Price,
     ScreeningId,
     Showtime,
 )
 from marquise.interface_adapters.repositories.protocols.screening import (
     ScreeningGateway,
+)
+from marquise.interface_adapters.repositories.supabase._utils import (
+    dict_to_cinema,
+    extract_prefixed,
 )
 
 
@@ -27,17 +30,58 @@ def _parse_datetime(value: datetime | str) -> datetime:
     """Parse a datetime value, accepting both datetime objects and ISO strings.
 
     Args:
-        value: A datetime object or a datetime string (ISO or 12-hour AM/PM).
+        value: A datetime object or an ISO-format datetime string.
 
     Returns:
-        A parsed datetime object.
+        A timezone-aware datetime. Naive datetime values are assumed to be
+        in UTC and are made timezone-aware accordingly.
     """
     if isinstance(value, datetime):
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
         return value
-    try:
-        return datetime.fromisoformat(value)
-    except ValueError:
-        return datetime.strptime(value, "%Y-%m-%dT%I:%M %p")
+    result = datetime.fromisoformat(value)
+    if result.tzinfo is None:
+        result = result.replace(tzinfo=timezone.utc)
+    return result
+
+
+def _parse_date(value: date | str | None) -> date | None:
+    """Parse a date value.
+
+    Args:
+        value: A date object, ISO-format date string, or None.
+
+    Returns:
+        A parsed date or None.
+    """
+    if value is None or isinstance(value, date):
+        return value
+    return date.fromisoformat(value)
+
+
+def _dict_to_movie(data: dict) -> Movie:
+    """Convert a prefixed movie dict into a Movie entity.
+
+    Args:
+        data: A dict with movie keys (``id``, ``title``, etc.).
+
+    Returns:
+        A new Movie entity.
+    """
+    raw_directors = data.get("directors")
+    directors = tuple(raw_directors.split(",")) if raw_directors else None
+    raw_cast = data.get("cast_members")
+    cast = tuple(raw_cast.split(",")) if raw_cast else None
+    return Movie(
+        id=MovieId(value=data["id"]),
+        title=data["title"],
+        release_date=_parse_date(data.get("release_date")),
+        directors=directors,
+        cast=cast,
+        duration_minutes=data.get("duration_minutes"),
+        description=data.get("description"),
+    )
 
 
 class SupabaseScreeningRepository(ScreeningRepository):
@@ -63,13 +107,18 @@ class SupabaseScreeningRepository(ScreeningRepository):
         """
         data = await self._gateway.save(
             screening_id=str(screening.id),
-            movie_id=str(screening.movie_id),
-            cinema_id=str(screening.cinema_id),
+            movie_id=str(screening.movie.id),
+            cinema_id=str(screening.cinema.id),
             showtime=screening.showtime.value,
-            price=screening.price.value,
         )
         was_inserted = data.pop("__inserted", True)
-        return self._to_entity(data), was_inserted
+        saved = Screening(
+            id=ScreeningId(value=data["id"]),
+            movie=screening.movie,
+            cinema=screening.cinema,
+            showtime=Showtime(value=_parse_datetime(data["showtime"])),
+        )
+        return saved, was_inserted
 
     async def find_by_id(self, screening_id: ScreeningId) -> Optional[Screening]:
         """Retrieve a screening by ID.
@@ -111,17 +160,17 @@ class SupabaseScreeningRepository(ScreeningRepository):
         """Map a raw gateway dict to a Screening domain entity.
 
         Args:
-            data: The dict returned by the gateway.
+            data: The dict returned by the gateway (with joined movie and
+                cinema data prefixed with ``movie__`` and ``cinema__``).
 
         Returns:
             A new Screening entity populated with the dict values.
         """
+        movie = _dict_to_movie(extract_prefixed(data, "movie__"))
+        cinema = dict_to_cinema(extract_prefixed(data, "cinema__"))
         return Screening(
             id=ScreeningId(value=data["id"]),
-            movie_id=MovieId(value=data["movie_id"]),
-            cinema_id=CinemaId(value=data["cinema_id"]),
-            showtime=Showtime(
-                value=_parse_datetime(data["showtime"]),
-            ),
-            price=Price(value=float(data["price"])),
+            movie=movie,
+            cinema=cinema,
+            showtime=Showtime(value=_parse_datetime(data["showtime"])),
         )

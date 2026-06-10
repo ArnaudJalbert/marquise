@@ -71,8 +71,11 @@ async def db_pool(
         await conn.execute(
             f"""
             CREATE TABLE IF NOT EXISTS "{TEST_SCHEMA}".cinema_source_assignments (
-                cinema_id   TEXT PRIMARY KEY,
+                cinema_id   TEXT PRIMARY KEY
+                    REFERENCES "{TEST_SCHEMA}".cinemas(id) ON DELETE CASCADE,
                 source_name TEXT NOT NULL
+                    REFERENCES "{TEST_SCHEMA}".source_definitions(name)
+                    ON DELETE CASCADE
             )
             """
         )
@@ -93,10 +96,11 @@ async def db_pool(
             f"""
             CREATE TABLE IF NOT EXISTS "{TEST_SCHEMA}".screenings (
                 id        TEXT PRIMARY KEY,
-                movie_id  TEXT NOT NULL,
-                cinema_id TEXT NOT NULL,
+                movie_id  TEXT NOT NULL
+                    REFERENCES "{TEST_SCHEMA}".movies(id) ON DELETE CASCADE,
+                cinema_id TEXT NOT NULL
+                    REFERENCES "{TEST_SCHEMA}".cinemas(id) ON DELETE CASCADE,
                 showtime  TIMESTAMP NOT NULL,
-                price     DOUBLE PRECISION,
                 UNIQUE (cinema_id, movie_id, showtime)
             )
             """

@@ -6,33 +6,55 @@ from datetime import datetime, timezone
 
 import pytest
 
+from marquise.infrastructure.supabase.gateways.cinema import (
+    SupabaseCinemaGateway,
+)
+from marquise.infrastructure.supabase.gateways.movie import (
+    SupabaseMovieGateway,
+)
 from marquise.infrastructure.supabase.gateways.screening import (
     SupabaseScreeningGateway,
 )
 
 
+async def _seed_parents(
+    gateway: SupabaseCinemaGateway,
+    movie_gateway: SupabaseMovieGateway,
+) -> None:
+    """Create parent rows needed for FK constraints."""
+    await gateway.save(cinema_id="cin-001", name="Cinema One", address=None, city=None)
+    await gateway.save(
+        cinema_id="cin-003", name="Cinema Three", address=None, city=None
+    )
+    await gateway.save(cinema_id="cin-004", name="Cinema Four", address=None, city=None)
+    await movie_gateway.save(movie_id="mov-001", title="Movie A", release_date=None)
+    await movie_gateway.save(movie_id="mov-002", title="Movie B", release_date=None)
+    await movie_gateway.save(movie_id="mov-003", title="Movie C", release_date=None)
+
+
 @pytest.mark.asyncio
 async def test_save_and_find_by_id(
     screening_gateway: SupabaseScreeningGateway,
+    gateway: SupabaseCinemaGateway,
+    movie_gateway: SupabaseMovieGateway,
 ) -> None:
     """Verify a screening can be saved and then retrieved by ID."""
+    await _seed_parents(gateway, movie_gateway)
     showtime = datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc)
     result = await screening_gateway.save(
         screening_id="scr-001",
         movie_id="mov-001",
         cinema_id="cin-001",
         showtime=showtime,
-        price=14.99,
     )
     assert result["id"] == "scr-001"
     assert result["movie_id"] == "mov-001"
     assert result["cinema_id"] == "cin-001"
-    assert result["price"] == 14.99
 
     found = await screening_gateway.find_by_id("scr-001")
     assert found is not None
-    assert found["movie_id"] == "mov-001"
-    assert found["price"] == 14.99
+    assert found["movie__id"] == "mov-001"
+    assert found["cinema__id"] == "cin-001"
 
 
 @pytest.mark.asyncio
@@ -47,28 +69,28 @@ async def test_find_by_id_missing(
 @pytest.mark.asyncio
 async def test_find_by_cinema_and_date_range(
     screening_gateway: SupabaseScreeningGateway,
+    gateway: SupabaseCinemaGateway,
+    movie_gateway: SupabaseMovieGateway,
 ) -> None:
     """Verify screenings can be found within a date range for a cinema."""
+    await _seed_parents(gateway, movie_gateway)
     await screening_gateway.save(
         screening_id="scr-003",
         movie_id="mov-001",
         cinema_id="cin-003",
         showtime=datetime(2026, 6, 7, 19, 0, 0, tzinfo=timezone.utc),
-        price=10.0,
     )
     await screening_gateway.save(
         screening_id="scr-004",
         movie_id="mov-002",
         cinema_id="cin-003",
         showtime=datetime(2026, 6, 8, 20, 0, 0, tzinfo=timezone.utc),
-        price=12.0,
     )
     await screening_gateway.save(
         screening_id="scr-005",
         movie_id="mov-003",
         cinema_id="cin-003",
         showtime=datetime(2026, 6, 10, 21, 0, 0, tzinfo=timezone.utc),
-        price=15.0,
     )
 
     found = await screening_gateway.find_by_cinema_and_date_range(
@@ -97,15 +119,17 @@ async def test_find_by_cinema_and_date_range_empty(
 @pytest.mark.asyncio
 async def test_save_upserts_on_unique_key_conflict(
     screening_gateway: SupabaseScreeningGateway,
+    gateway: SupabaseCinemaGateway,
+    movie_gateway: SupabaseMovieGateway,
 ) -> None:
-    """Verify save updates price on conflict and preserves the existing ID."""
+    """Verify save returns the existing row on conflict."""
+    await _seed_parents(gateway, movie_gateway)
     showtime = datetime(2026, 6, 9, 19, 30, 0, tzinfo=timezone.utc)
     await screening_gateway.save(
         screening_id="scr-006",
         movie_id="mov-001",
         cinema_id="cin-004",
         showtime=showtime,
-        price=10.0,
     )
 
     saved = await screening_gateway.save(
@@ -113,15 +137,9 @@ async def test_save_upserts_on_unique_key_conflict(
         movie_id="mov-001",
         cinema_id="cin-004",
         showtime=showtime,
-        price=15.0,
     )
-    assert saved["price"] == 15.0
     assert saved["id"] == "scr-006"
     assert saved.get("__inserted") is False
-
-    found = await screening_gateway.find_by_id("scr-006")
-    assert found is not None
-    assert found["price"] == 15.0
 
     new_id = await screening_gateway.find_by_id("scr-007")
     assert new_id is None

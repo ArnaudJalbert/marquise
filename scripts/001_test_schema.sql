@@ -1,0 +1,49 @@
+-- Test schema for Marquise
+-- Run this in the Supabase SQL Editor to create the test schema.
+--
+-- Uses a separate "marquise-test" schema so it can coexist with the
+-- production "marquise" schema on the same database instance.
+
+CREATE SCHEMA IF NOT EXISTS "marquise-test";
+
+CREATE TABLE IF NOT EXISTS "marquise-test".cinemas (
+    id      TEXT PRIMARY KEY,
+    name    TEXT NOT NULL,
+    address TEXT,
+    city    TEXT,
+    website TEXT
+);
+
+CREATE TABLE IF NOT EXISTS "marquise-test".source_definitions (
+    name                TEXT PRIMARY KEY,
+    display_name        TEXT NOT NULL,
+    description         TEXT
+);
+
+CREATE TABLE IF NOT EXISTS "marquise-test".cinema_source_assignments (
+    cinema_id   TEXT PRIMARY KEY
+        REFERENCES "marquise-test".cinemas(id) ON DELETE CASCADE,
+    source_name TEXT NOT NULL
+        REFERENCES "marquise-test".source_definitions(name)
+        ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS "marquise-test".movies (
+    id               TEXT PRIMARY KEY,
+    title            TEXT NOT NULL UNIQUE,
+    release_date     DATE,
+    directors        TEXT,
+    cast_members     TEXT,
+    duration_minutes INTEGER,
+    description      TEXT
+);
+
+CREATE TABLE IF NOT EXISTS "marquise-test".screenings (
+    id        TEXT PRIMARY KEY,
+    movie_id  TEXT NOT NULL
+        REFERENCES "marquise-test".movies(id) ON DELETE CASCADE,
+    cinema_id TEXT NOT NULL
+        REFERENCES "marquise-test".cinemas(id) ON DELETE CASCADE,
+    showtime  TIMESTAMP NOT NULL,
+    UNIQUE (cinema_id, movie_id, showtime)
+);

@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, create_autospec
 import pytest
 
 from marquise.application.exceptions import CinemaSourceAssignmentAlreadyExistsError
-from marquise.domain.entities import CinemaSourceAssignment
+from marquise.domain.entities import Cinema, CinemaSourceAssignment, SourceDefinition
 from marquise.domain.value_objects import CinemaId, SourceName
 from marquise.interface_adapters.repositories.protocols.cinema import GatewayError
 from marquise.interface_adapters.repositories.protocols.cinema_source_assignment import (  # noqa: E501
@@ -32,25 +32,66 @@ def repo(
     return SupabaseCinemaSourceAssignmentRepository(gateway=mock_gateway)
 
 
-def _gateway_row(cinema_id: str = "cin-001", source_name: str = "cineplex") -> dict:
-    return {"cinema_id": cinema_id, "source_name": source_name}
+@pytest.fixture
+def sample_cinema() -> Cinema:
+    """Provide a sample Cinema for tests."""
+    return Cinema(id=CinemaId(value="cin-001"), name="Test Cinema")
+
+
+@pytest.fixture
+def sample_source() -> SourceDefinition:
+    """Provide a sample SourceDefinition for tests."""
+    return SourceDefinition(name=SourceName(value="cineplex"), display_name="Cineplex")
+
+
+def _gateway_row() -> dict:
+    return {
+        "cinema_id": "cin-001",
+        "source_name": "cineplex",
+        "cinema__id": "cin-001",
+        "cinema__name": "Test Cinema",
+        "cinema__address": None,
+        "cinema__city": None,
+        "cinema__website": None,
+        "source__name": "cineplex",
+        "source__display_name": "Cineplex",
+        "source__description": None,
+    }
+
+
+def _gateway_row_2() -> dict:
+    return {
+        "cinema_id": "cin-002",
+        "source_name": "cinema_du_parc",
+        "cinema__id": "cin-002",
+        "cinema__name": "Cinema Du Parc",
+        "cinema__address": None,
+        "cinema__city": None,
+        "cinema__website": None,
+        "source__name": "cinema_du_parc",
+        "source__display_name": "Cinema du Parc",
+        "source__description": None,
+    }
 
 
 @pytest.mark.asyncio
 async def test_assign(
-    repo: SupabaseCinemaSourceAssignmentRepository, mock_gateway: AsyncMock
+    repo: SupabaseCinemaSourceAssignmentRepository,
+    mock_gateway: AsyncMock,
+    sample_cinema: Cinema,
+    sample_source: SourceDefinition,
 ) -> None:
     """Verify assign delegates to the gateway and maps the result."""
-    mock_gateway.assign.return_value = _gateway_row()
+    mock_gateway.assign.return_value = {
+        "cinema_id": "cin-001",
+        "source_name": "cineplex",
+    }
 
-    assignment = CinemaSourceAssignment(
-        cinema_id=CinemaId(value="cin-001"),
-        source_name=SourceName(value="cineplex"),
-    )
+    assignment = CinemaSourceAssignment(cinema=sample_cinema, source=sample_source)
     result = await repo.assign(assignment)
 
-    assert result.cinema_id == CinemaId(value="cin-001")
-    assert result.source_name == SourceName(value="cineplex")
+    assert result.cinema == sample_cinema
+    assert result.source == sample_source
     mock_gateway.assign.assert_awaited_once_with(
         cinema_id="cin-001", source_name="cineplex"
     )
@@ -58,15 +99,15 @@ async def test_assign(
 
 @pytest.mark.asyncio
 async def test_assign_raises_on_gateway_error(
-    repo: SupabaseCinemaSourceAssignmentRepository, mock_gateway: AsyncMock
+    repo: SupabaseCinemaSourceAssignmentRepository,
+    mock_gateway: AsyncMock,
+    sample_cinema: Cinema,
+    sample_source: SourceDefinition,
 ) -> None:
     """Verify assign wraps GatewayError as CinemaSourceAssignmentAlreadyExistsError."""
     mock_gateway.assign.side_effect = GatewayError("already assigned")
 
-    assignment = CinemaSourceAssignment(
-        cinema_id=CinemaId(value="cin-001"),
-        source_name=SourceName(value="cineplex"),
-    )
+    assignment = CinemaSourceAssignment(cinema=sample_cinema, source=sample_source)
     with pytest.raises(
         CinemaSourceAssignmentAlreadyExistsError, match="already assigned"
     ):
@@ -105,8 +146,8 @@ async def test_find_by_cinema_id(
 
     result = await repo.find_by_cinema_id(CinemaId(value="cin-001"))
     assert result is not None
-    assert result.cinema_id == CinemaId(value="cin-001")
-    assert result.source_name == SourceName(value="cineplex")
+    assert result.cinema.id == CinemaId(value="cin-001")
+    assert result.source.name == SourceName(value="cineplex")
     mock_gateway.find_by_cinema_id.assert_awaited_once_with("cin-001")
 
 
@@ -127,14 +168,14 @@ async def test_find_all(
 ) -> None:
     """Verify find_all returns all mapped assignments."""
     mock_gateway.find_all.return_value = [
-        _gateway_row("cin-001", "cineplex"),
-        _gateway_row("cin-002", "cinema_du_parc"),
+        _gateway_row(),
+        _gateway_row_2(),
     ]
 
     result = await repo.find_all()
     assert len(result) == 2
-    assert result[0].cinema_id == CinemaId(value="cin-001")
-    assert result[1].source_name == SourceName(value="cinema_du_parc")
+    assert result[0].cinema.id == CinemaId(value="cin-001")
+    assert result[1].source.name == SourceName(value="cinema_du_parc")
     mock_gateway.find_all.assert_awaited_once()
 
 

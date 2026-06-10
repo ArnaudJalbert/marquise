@@ -313,7 +313,6 @@ class Container:
     def _get_cinema_source_use_case(self) -> GetCinemaSourceUseCase:
         return GetCinemaSourceUseCase(
             assignment_repository=self._cinema_source_assignment_repository,
-            source_definition_repository=self._source_definition_repository,
         )
 
     @property
@@ -321,7 +320,6 @@ class Container:
         return ImportScreeningsUseCase(
             cinema_repository=self._cinema_repository,
             assignment_repository=self._cinema_source_assignment_repository,
-            source_definition_repository=self._source_definition_repository,
             source_registry=self._source_registry,
             movie_repository=self._movie_repository,
             screening_repository=self._screening_repository,
