@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
-from typing import Optional
 from uuid import uuid4
 
 from marquise.application.exceptions import (
@@ -17,7 +16,6 @@ from marquise.application.repositories import (
     CinemaSourceAssignmentRepository,
     MovieRepository,
     ScreeningRepository,
-    SourceDefinitionRepository,
     SourceRegistryQuery,
 )
 from marquise.application.repositories.source_registry_query import ShowtimeRow
@@ -25,7 +23,6 @@ from marquise.domain.entities import Cinema, Movie, Screening, SourceDefinition
 from marquise.domain.value_objects import (
     CinemaId,
     MovieId,
-    Price,
     ScreeningId,
     Showtime,
 )
@@ -33,18 +30,16 @@ from marquise.domain.value_objects import (
 
 @dataclass(frozen=True, slots=True)
 class ImportedScreeningData:
-    """Summary of a single imported or updated screening.
+    """Summary of a single imported or already-existing screening.
 
     Attributes:
         movie_title: The title of the movie.
         showtime: The showtime in ISO format.
-        price: The ticket price, or None if unavailable.
-        imported: True if newly created, False if updated.
+        imported: True if newly created, False if already existed.
     """
 
     movie_title: str
     showtime: str
-    price: Optional[float]
     imported: bool
 
     def __post_init__(self) -> None:
@@ -90,10 +85,10 @@ class ImportScreeningsUseCase:
             cinema_id: The ID of the cinema.
             cinema_name: The display name of the cinema.
             source_name: The name of the source used.
-            screenings: List of imported/updated screening summaries.
+            screenings: List of imported/existing screening summaries.
             total_count: Total number of screenings processed.
             imported_count: Number of new screenings created.
-            updated_count: Number of existing screenings updated.
+            updated_count: Number of existing screenings skipped.
         """
 
         cinema_id: str
@@ -122,14 +117,12 @@ class ImportScreeningsUseCase:
         self,
         cinema_repository: CinemaRepository,
         assignment_repository: CinemaSourceAssignmentRepository,
-        source_definition_repository: SourceDefinitionRepository,
         source_registry: SourceRegistryQuery,
         movie_repository: MovieRepository,
         screening_repository: ScreeningRepository,
     ) -> None:
         self.cinema_repository = cinema_repository
         self.assignment_repository = assignment_repository
-        self.source_definition_repository = source_definition_repository
         self.source_registry = source_registry
         self.movie_repository = movie_repository
         self.screening_repository = screening_repository
@@ -165,7 +158,7 @@ class ImportScreeningsUseCase:
 
         movie_lookup = await self._resolve_or_create_movies(rows)
         results = await asyncio.gather(
-            *[self._upsert_screening(row, movie_lookup, cinema.id) for row in rows]
+            *[self._upsert_screening(row, movie_lookup, cinema) for row in rows]
         )
 
         return self.OutputData(
@@ -208,14 +201,6 @@ class ImportScreeningsUseCase:
                 f"No source assigned to cinema '{request.cinema_id}'"
             )
 
-        source_definition = await self.source_definition_repository.find_by_name(
-            assignment.source_name
-        )
-        if source_definition is None:
-            raise ValueError(
-                f"No source definition found for '{assignment.source_name}'"
-            )
-
         start_dt = datetime.combine(request.start_date, datetime.min.time()).replace(
             tzinfo=timezone.utc
         )
@@ -223,7 +208,7 @@ class ImportScreeningsUseCase:
             tzinfo=timezone.utc
         )
 
-        return cinema, source_definition, start_dt, end_dt
+        return cinema, assignment.source, start_dt, end_dt
 
     async def _resolve_or_create_movies(
         self,
@@ -273,31 +258,28 @@ class ImportScreeningsUseCase:
         self,
         row: ShowtimeRow,
         movie_lookup: dict[str, Movie],
-        cinema_id: CinemaId,
+        cinema: Cinema,
     ) -> ImportedScreeningData:
         """Create or upsert a single screening from a showtime row.
 
         Args:
             row: The showtime row to persist.
             movie_lookup: Mapping of movie title to Movie entity.
-            cinema_id: The cinema hosting the screening.
+            cinema: The cinema hosting the screening.
 
         Returns:
             A summary of the imported screening.
         """
         movie = movie_lookup[row.movie_title]
-        price = Price(value=row.price) if row.price is not None else Price(value=0.0)
         screening = Screening(
             id=ScreeningId(value=uuid4().hex),
-            movie_id=movie.id,
-            cinema_id=cinema_id,
+            movie=movie,
+            cinema=cinema,
             showtime=Showtime(value=row.showtime),
-            price=price,
         )
         screening, was_inserted = await self.screening_repository.save(screening)
         return ImportedScreeningData(
             movie_title=row.movie_title,
             showtime=row.showtime.strftime("%Y-%m-%d %H:%M"),
-            price=row.price,
             imported=was_inserted,
         )

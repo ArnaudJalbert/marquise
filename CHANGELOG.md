@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.6.0 (2026-06-10)
+
+### Breaking
+
+- **Screening entity refactor**: `movie_id`/`cinema_id` replaced with full `Movie`/`Cinema` object references; `price`, `available_seats`, `is_sold_out`, and `update_availability()` removed
+- **CinemaSourceAssignment entity refactor**: `cinema_id`/`source_name` replaced with full `Cinema`/`SourceDefinition` object references; `__post_init__` validation removed
+- **Price removal**: `Price` value object and `price` column stripped from all gateways, repositories, source scrapers, CLI output, and tests
+
+### Refactors
+
+- **Use cases simplified**: `GetCinemaSourceUseCase` and `ImportScreeningsUseCase` no longer depend on `SourceDefinitionRepository` — the assignment entity carries the full source definition
+- **Migration consolidation**: Old `migrate_001_drop_not_null_release_date.py` replaced by a single `migrate_001_initial_schema.py` creating the full schema with FK constraints
+- **Joined queries**: All gateway `find_by_*` methods now use SQL `JOIN`s with prefixed column aliases (`movie__id`, `cinema__name`, etc.), eliminating N+1 lookups
+- **Schema-aware gateways**: All Supabase gateways respect a configurable `schema` setting
+
+### Infrastructure
+
+- **FK constraints**: `cinema_source_assignments` and `screenings` tables now have `REFERENCES ... ON DELETE CASCADE` foreign keys
+- **Shared utilities**: New `_utils.py` with `extract_prefixed()` and `dict_to_cinema()` helpers for joined query result parsing
+
+### Testing
+
+- All tests updated to reflect entity refactors (full objects vs IDs, no price/availability)
+- New tests: timezone-aware datetime parsing, ISO string showtime parsing, joined data entity construction
+- Integration tests: proper FK parent seeding for gateway tests
+
 ## 0.5.0 (2026-06-07)
 
 ### Highlights

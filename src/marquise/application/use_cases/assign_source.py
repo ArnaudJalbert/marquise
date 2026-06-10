@@ -120,18 +120,18 @@ class AssignSourceUseCase:
         existing = await self.assignment_repository.find_by_cinema_id(cinema_id)
         if existing is not None:
             raise CinemaSourceAssignmentAlreadyExistsError(
-                f"Source '{existing.source_name}' is already assigned to"
+                f"Source '{existing.source.name}' is already assigned to"
                 f" cinema '{request.cinema_id}'"
             )
 
         assignment = CinemaSourceAssignment(
-            cinema_id=cinema_id,
-            source_name=source_name,
+            cinema=cinema,
+            source=source,
         )
 
         saved = await self.assignment_repository.assign(assignment)
 
         return self.OutputData(
-            cinema_id=str(saved.cinema_id),
-            source_name=str(saved.source_name),
+            cinema_id=str(saved.cinema.id),
+            source_name=str(saved.source.name),
         )

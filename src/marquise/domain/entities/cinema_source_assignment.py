@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..value_objects import CinemaId, SourceName
+from .cinema import Cinema
+from .source_definition import SourceDefinition
 
 
 @dataclass(kw_only=True, slots=True)
@@ -12,17 +13,9 @@ class CinemaSourceAssignment:
     """Links a cinema to its showtime source.
 
     Attributes:
-        cinema_id: The cinema this assignment applies to.
-        source_name: The source that provides showtimes for this cinema.
+        cinema: The cinema this assignment applies to.
+        source: The source that provides showtimes for this cinema.
     """
 
-    cinema_id: CinemaId
-    source_name: SourceName
-
-    def __post_init__(self) -> None:
-        """Validate assignment data.
-
-        Raises:
-            ValueError: If ``cinema_id`` or ``source_name`` is empty.
-        """
-        pass
+    cinema: Cinema
+    source: SourceDefinition

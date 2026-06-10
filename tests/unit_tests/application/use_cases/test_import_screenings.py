@@ -16,7 +16,6 @@ from marquise.application.repositories import (
     CinemaSourceAssignmentRepository,
     MovieRepository,
     ScreeningRepository,
-    SourceDefinitionRepository,
     SourceRegistryQuery,
 )
 from marquise.application.repositories.source_registry_query import ShowtimeRow
@@ -50,13 +49,10 @@ def sample_cinema() -> Cinema:
 def _make_showtime_row(
     movie_title: str = "Test Movie",
     showtime: datetime | None = None,
-    price: float | None = 14.99,
 ) -> ShowtimeRow:
     return ShowtimeRow(
         movie_title=movie_title,
         showtime=showtime or datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc),
-        price=price,
-        available_seats=None,
     )
 
 
@@ -70,7 +66,6 @@ async def test_import_screenings_creates_new_screenings() -> None:
     mock_registry = create_autospec(SourceRegistryQuery, instance=True)
     mock_movie_repo = create_autospec(MovieRepository, instance=True)
     mock_screening_repo = create_autospec(ScreeningRepository, instance=True)
-    mock_source_def_repo = create_autospec(SourceDefinitionRepository, instance=True)
 
     cinema = Cinema(
         id=CinemaId(value="cin-123"),
@@ -79,28 +74,19 @@ async def test_import_screenings_creates_new_screenings() -> None:
     )
     mock_cinema_repo.find_by_id.return_value = cinema
 
-    assignment = CinemaSourceAssignment(
-        cinema_id=CinemaId(value="cin-123"),
-        source_name=SourceName(value="cinemacinema"),
-    )
-    mock_assignment_repo.find_by_cinema_id.return_value = assignment
-
     source_definition = SourceDefinition(
         name=SourceName(value="cinemacinema"),
         display_name="Cinema Cinema",
     )
-    mock_source_def_repo.find_by_name.return_value = source_definition
+    assignment = CinemaSourceAssignment(cinema=cinema, source=source_definition)
+    mock_assignment_repo.find_by_cinema_id.return_value = assignment
 
     rows = [
         _make_showtime_row(
-            "Movie A",
-            datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc),
-            14.99,
+            "Movie A", datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc)
         ),
         _make_showtime_row(
-            "Movie B",
-            datetime(2026, 6, 7, 21, 0, 0, tzinfo=timezone.utc),
-            12.50,
+            "Movie B", datetime(2026, 6, 7, 21, 0, 0, tzinfo=timezone.utc)
         ),
     ]
     mock_registry.fetch_showtimes.return_value = rows
@@ -127,7 +113,6 @@ async def test_import_screenings_creates_new_screenings() -> None:
     use_case = ImportScreeningsUseCase(
         cinema_repository=mock_cinema_repo,
         assignment_repository=mock_assignment_repo,
-        source_definition_repository=mock_source_def_repo,
         source_registry=mock_registry,
         movie_repository=mock_movie_repo,
         screening_repository=mock_screening_repo,
@@ -153,9 +138,6 @@ async def test_import_screenings_creates_new_screenings() -> None:
     mock_assignment_repo.find_by_cinema_id.assert_awaited_once_with(
         CinemaId(value="cin-123")
     )
-    mock_source_def_repo.find_by_name.assert_awaited_once_with(
-        SourceName(value="cinemacinema")
-    )
     mock_registry.fetch_showtimes.assert_awaited_once_with(
         cinema=cinema,
         source_definition=source_definition,
@@ -176,7 +158,6 @@ async def test_import_screenings_reuses_existing_movie() -> None:
     mock_registry = create_autospec(SourceRegistryQuery, instance=True)
     mock_movie_repo = create_autospec(MovieRepository, instance=True)
     mock_screening_repo = create_autospec(ScreeningRepository, instance=True)
-    mock_source_def_repo = create_autospec(SourceDefinitionRepository, instance=True)
 
     cinema = Cinema(
         id=CinemaId(value="cin-123"),
@@ -185,23 +166,16 @@ async def test_import_screenings_reuses_existing_movie() -> None:
     )
     mock_cinema_repo.find_by_id.return_value = cinema
 
-    assignment = CinemaSourceAssignment(
-        cinema_id=CinemaId(value="cin-123"),
-        source_name=SourceName(value="cinemacinema"),
-    )
-    mock_assignment_repo.find_by_cinema_id.return_value = assignment
-
     source_definition = SourceDefinition(
         name=SourceName(value="cinemacinema"),
         display_name="Cinema Cinema",
     )
-    mock_source_def_repo.find_by_name.return_value = source_definition
+    assignment = CinemaSourceAssignment(cinema=cinema, source=source_definition)
+    mock_assignment_repo.find_by_cinema_id.return_value = assignment
 
     rows = [
         _make_showtime_row(
-            "Movie A",
-            datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc),
-            14.99,
+            "Movie A", datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc)
         )
     ]
     mock_registry.fetch_showtimes.return_value = rows
@@ -220,7 +194,6 @@ async def test_import_screenings_reuses_existing_movie() -> None:
     use_case = ImportScreeningsUseCase(
         cinema_repository=mock_cinema_repo,
         assignment_repository=mock_assignment_repo,
-        source_definition_repository=mock_source_def_repo,
         source_registry=mock_registry,
         movie_repository=mock_movie_repo,
         screening_repository=mock_screening_repo,
@@ -250,9 +223,6 @@ async def test_import_screenings_raises_when_cinema_not_found() -> None:
         cinema_repository=mock_cinema_repo,
         assignment_repository=create_autospec(
             CinemaSourceAssignmentRepository, instance=True
-        ),
-        source_definition_repository=create_autospec(
-            SourceDefinitionRepository, instance=True
         ),
         source_registry=create_autospec(SourceRegistryQuery, instance=True),
         movie_repository=create_autospec(MovieRepository, instance=True),
@@ -285,9 +255,6 @@ async def test_import_screenings_raises_when_no_assignment() -> None:
     use_case = ImportScreeningsUseCase(
         cinema_repository=mock_cinema_repo,
         assignment_repository=mock_assignment_repo,
-        source_definition_repository=create_autospec(
-            SourceDefinitionRepository, instance=True
-        ),
         source_registry=create_autospec(SourceRegistryQuery, instance=True),
         movie_repository=create_autospec(MovieRepository, instance=True),
         screening_repository=create_autospec(ScreeningRepository, instance=True),
@@ -405,7 +372,6 @@ def test_output_data_allows_valid() -> None:
     screening = ImportedScreeningData(
         movie_title="Movie A",
         showtime="2026-06-07T19:30:00+00:00",
-        price=14.99,
         imported=True,
     )
     result = ImportScreeningsUseCase.OutputData(
@@ -432,7 +398,6 @@ def test_imported_screening_data_rejects_empty_movie_title() -> None:
         ImportedScreeningData(
             movie_title="",
             showtime="2026-06-07T19:30:00+00:00",
-            price=14.99,
             imported=True,
         )
 
@@ -443,7 +408,6 @@ def test_imported_screening_data_rejects_empty_showtime() -> None:
         ImportedScreeningData(
             movie_title="Movie A",
             showtime="",
-            price=14.99,
             imported=True,
         )
 
@@ -454,23 +418,6 @@ def test_showtime_row_creation() -> None:
     row = ShowtimeRow(
         movie_title="Test Movie",
         showtime=showtime,
-        price=14.99,
-        available_seats=50,
     )
     assert row.movie_title == "Test Movie"
     assert row.showtime == showtime
-    assert row.price == 14.99
-    assert row.available_seats == 50
-
-
-def test_showtime_row_allows_none_values() -> None:
-    """Test ShowtimeRow allows None price and available_seats."""
-    showtime = datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc)
-    row = ShowtimeRow(
-        movie_title="Test Movie",
-        showtime=showtime,
-        price=None,
-        available_seats=None,
-    )
-    assert row.price is None
-    assert row.available_seats is None

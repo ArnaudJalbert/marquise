@@ -473,7 +473,7 @@ def import_screenings() -> None:
     """Fetch showtimes from a cinema's source and save them to the database.
 
     Selects a cinema interactively, prompts for a date range, then
-    displays a summary of imported or updated screenings.
+    displays a summary of imported or already-existing screenings.
     """
     container = Container()
 
@@ -561,24 +561,22 @@ def import_screenings() -> None:
             )
             table.add_column("Movie", style="cyan")
             table.add_column("Showtime")
-            table.add_column("Price")
             table.add_column("Status")
 
             for s in result.screenings:
-                price = f"${s.price:.2f}" if s.price is not None else "—"
                 status = (
                     typer.style("imported", fg=typer.colors.GREEN)
                     if s.imported
-                    else typer.style("updated", fg=typer.colors.YELLOW)
+                    else typer.style("already exists", fg=typer.colors.YELLOW)
                 )
-                table.add_row(s.movie_title, s.showtime, price, status)
+                table.add_row(s.movie_title, s.showtime, status)
 
             _console.print(table)
             summary = Text(f"{result.total_count} total  |  ")
             summary.append(f"{result.imported_count}", style="green")
             summary.append(" new  |  ")
             summary.append(f"{result.updated_count}", style="yellow")
-            summary.append(" updated")
+            summary.append(" already existed")
             _console.print(summary)
         finally:
             await container.shutdown()

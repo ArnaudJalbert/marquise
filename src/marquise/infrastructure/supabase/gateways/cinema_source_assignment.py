@@ -11,6 +11,16 @@ from marquise.interface_adapters.repositories.protocols.cinema import GatewayErr
 DEFAULT_SCHEMA = "marquise"
 
 _COLUMNS = "cinema_id, source_name"
+_CINEMA_COLUMNS = (
+    "c.id AS cinema__id, c.name AS cinema__name,"
+    " c.address AS cinema__address, c.city AS cinema__city,"
+    " c.website AS cinema__website"
+)
+_SOURCE_COLUMNS = (
+    "sd.name AS source__name, sd.display_name AS source__display_name,"
+    " sd.description AS source__description"
+)
+_JOINED_COLUMNS = f"{_COLUMNS}, {_CINEMA_COLUMNS}, {_SOURCE_COLUMNS}"
 
 
 class SupabaseCinemaSourceAssignmentGateway:
@@ -33,6 +43,7 @@ class SupabaseCinemaSourceAssignmentGateway:
             schema: The database schema name.
         """
         self._pool = pool
+        self._schema = schema
         self._table = f'"{schema}".cinema_source_assignments'
 
     async def assign(self, cinema_id: str, source_name: str) -> dict:
@@ -87,11 +98,19 @@ class SupabaseCinemaSourceAssignmentGateway:
             cinema_id: The cinema identifier.
 
         Returns:
-            A dict with keys ``cinema_id`` and ``source_name``, or None.
+            A dict with joined cinema and source definition data,
+            or None if not found.
         """
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
-                f"SELECT {_COLUMNS} FROM {self._table} WHERE cinema_id = $1",
+                f"""
+                SELECT {_JOINED_COLUMNS}
+                FROM "{self._schema}".cinema_source_assignments a
+                JOIN "{self._schema}".cinemas c ON a.cinema_id = c.id
+                JOIN "{self._schema}".source_definitions sd
+                    ON a.source_name = sd.name
+                WHERE a.cinema_id = $1
+                """,
                 cinema_id,
             )
         return dict(row) if row is not None else None
@@ -100,10 +119,17 @@ class SupabaseCinemaSourceAssignmentGateway:
         """Retrieve all cinema-source assignments.
 
         Returns:
-            A list of dicts with keys ``cinema_id`` and ``source_name``.
+            A list of dicts with joined cinema and source definition data.
         """
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(
-                f"SELECT {_COLUMNS} FROM {self._table} ORDER BY cinema_id"
+                f"""
+                SELECT {_JOINED_COLUMNS}
+                FROM "{self._schema}".cinema_source_assignments a
+                JOIN "{self._schema}".cinemas c ON a.cinema_id = c.id
+                JOIN "{self._schema}".source_definitions sd
+                    ON a.source_name = sd.name
+                ORDER BY a.cinema_id
+                """
             )
         return [dict(r) for r in rows]
