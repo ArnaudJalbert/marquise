@@ -23,7 +23,22 @@ class ScreeningRepository(ABC):
         Returns:
             A tuple of (saved_screening, was_inserted) where ``was_inserted``
             is True if a new row was created, False if an existing row was
-            updated.
+            found.
+        """
+        ...
+
+    @abstractmethod
+    async def update(self, screening: Screening) -> Optional[Screening]:
+        """Update optional fields on an existing screening.
+
+        Matches by (cinema_id, movie_id, showtime).  Fields set to None
+        are left unchanged.
+
+        Args:
+            screening: The screening with updated optional fields.
+
+        Returns:
+            The updated screening entity, or None if no matching row exists.
         """
         ...
 

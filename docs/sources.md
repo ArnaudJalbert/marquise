@@ -11,38 +11,57 @@ cinema chain or independent cinema." Sources are **not baked into the code**
 for each cinema. Instead, the mapping is dynamic:
 
 ```
-Cinema ──assigned to──> Source (e.g. "cineplex") ──fetches via──> CineplexSource
+Cinema ──assigned to──> Source (e.g. "cineplex") ──fetches via──> SourceAdapter ──delegates to──> Infrastructure gateway
                         ^ stored in DB:                        ^ registered in
-                          cinema_source_assignments               DI container
+                          cinema_source_assignments               SourceRegistry (DI container)
 ```
+
+Each source has two layers:
+
+1. **Infrastructure gateway** (`src/marquise/infrastructure/sources/<name>/gateways/source.py`):
+   Raw scraper/API client. Accepts flat params (no domain entities). Returns
+   plain dicts. Synchronous or async.
+
+2. **Interface adapter** (`src/marquise/interface_adapters/repositories/source_adapters/<name>.py`):
+   Wraps a gateway. Translates `Cinema` domain entities into the flat params
+   the gateway expects. Implements the `SourceAdapter` protocol.
 
 This means:
 - Adding a new cinema that already has a source is just assigning it in the DB
-- Adding a new source is a code change (new class + 1 line in the container)
+- Adding a new source is adding a gateway + adapter + 1 line in the container
 - The `Cinema` entity has zero knowledge of sources
 
 ## Architecture
 
-```
-┌───────────────────────────────────────────────────────────┐
-│  Scraping pipeline (CLI/Cron, one-time)                    │
-│                                                           │
-│  FetchShowtimesUseCase                                    │
-│    → GetCinemaSourceUseCase     (which source?)            │
-│    → SourceRegistry.get(name)   (resolve to implementation)│
-│    → Source.fetch_showtimes()         (returns raw dicts)        │
-│    → map dicts → Movie/Screening entities                  │
-│    → save via MovieRepository, ScreeningRepository         │
-│                                                           │
-│  Showtime results are stored in the DB permanently.        │
-└───────────────────────────────────────────────────────────┘
+### Scraping / Import Pipeline
 
-┌───────────────────────────────────────────────────────────┐
-│  API (FastAPI, always-on)                                  │
-│                                                           │
-│  Reads showtimes from DB via repository queries.           │
-│  Never calls external sources directly.                    │
-└───────────────────────────────────────────────────────────┘
+```
+┌────────────────────────────────────────────────────────────────────┐
+│  ImportScreeningsUseCase (application layer)                       │
+│                                                                    │
+│  1. Resolve cinema + source assignment from DB                     │
+│  2. SourceRegistry.fetch_showtimes()                               │
+│     → adapter.fetch_showtimes(cinema, start, end)                  │
+│       → gateway.fetch_showtimes(flat params)                       │
+│     → returns list[ShowtimeRow] (dataclass)                        │
+│  3. Look up or create Movie entities (by title)                    │
+│  4. Enrich movies in parallel via fetch_movie_detail               │
+│     → SourceRegistry.fetch_movie_detail(source_name, identifier)   │
+│       → adapter.fetch_movie_detail(identifier)                     │
+│         → gateway.fetch_movie_detail(slug/url)                     │
+│  5. Upsert Screening entities to DB                                │
+│                                                                    │
+│  Results are stored permanently in the DB.                         │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+### API (Future)
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│  FastAPI routes read showtimes from DB via repository queries.     │
+│  Never calls external sources directly.                            │
+└────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Domain Model
@@ -51,7 +70,12 @@ This means:
 |---|---|---|
 | `SourceDefinition` | Domain | A source's identity: name, display name, description |
 | `SourceName` | Domain | Value object wrapping a string (e.g. `"cineplex"`) |
-| `CinemaSourceAssignment` | Domain | Links `CinemaId` → `SourceName` |
+| `CinemaSourceAssignment` | Domain | Links `Cinema` → `SourceDefinition` |
+| `Movie` | Domain | Film with enriched metadata (poster, cast, genres, etc.) |
+| `Screening` | Domain | A specific movie showtime at a cinema |
+| `ShowtimeRow` | Application | Flat showtime row returned by sources (dataclass) |
+| `MovieEnrichmentData` | Application | Optional enrichment metadata fetched from source |
+| `RegistrySourceEntry` | Application | Source listing for the registry |
 
 ## Layer by layer
 
@@ -63,50 +87,166 @@ This means:
 ### Application (`src/marquise/application/`)
 - `repositories/source_definition_repository.py` — ABC for source CRUD
 - `repositories/cinema_source_assignment_repository.py` — ABC for assignments
+- `repositories/source_registry_query.py` — `SourceRegistryQuery` ABC, `ShowtimeRow`, `MovieEnrichmentData`
 - `use_cases/create_source.py` — register a new source
 - `use_cases/list_sources.py` — list all sources
 - `use_cases/delete_source.py` — remove a source
 - `use_cases/assign_source.py` — link a cinema to a source
 - `use_cases/unassign_source.py` — unlink a cinema
 - `use_cases/get_cinema_source.py` — query assignment + source display name
+- `use_cases/import_screenings.py` — fetch & persist showtimes + enrich movies
 
 ### Interface Adapters (`src/marquise/interface_adapters/`)
-- `repositories/protocols/showtime_source.py` — `ShowtimeSource(Protocol)` for gateways
+- `repositories/protocols/showtime_source.py` — `ShowtimeSource(Protocol)` for scrapers
 - `repositories/protocols/source_definition.py` — gateway protocol for source DB table
 - `repositories/protocols/cinema_source_assignment.py` — gateway protocol for assignment DB table
-- `repositories/source_registry.py` — maps source name → `ShowtimeSource` instance
+- `repositories/source_adapters/base.py` — `SourceAdapter(Protocol)` with `fetch_showtimes` + `fetch_movie_detail`
+- `repositories/source_adapters/cineplex.py` — maps cinema name → Cineplex location ID
+- `repositories/source_adapters/cinemacinema.py` — maps cinema name → venue slug
+- `repositories/source_adapters/cinemapublic.py` — maps cinema name → venue slug
+- `repositories/source_registry.py` — maps source name → `SourceAdapter` instance
 - `repositories/supabase/source_definition_repository.py` — adapts gateway → entities
 - `repositories/supabase/cinema_source_assignment_repository.py` — adapts gateway → entities
 
 ### Infrastructure (`src/marquise/infrastructure/`)
 - `supabase/gateways/source_definition.py` — SQL CRUD for `source_definitions`
 - `supabase/gateways/cinema_source_assignment.py` — SQL CRUD for `cinema_source_assignments`
+- `supabase/gateways/movie.py` — SQL CRUD for `movies` (upsert on title conflict)
+- `supabase/gateways/screening.py` — SQL CRUD for `screenings` (insert-or-noop)
+- `sources/cineplex/gateways/source.py` — Cineplex API + HTML scraper
+- `sources/cinemacinema/gateways/source.py` — CinemaCinema.ca SvelteKit scraper
+- `sources/cinemapublic/gateways/source.py` — Cinema Public HTML scraper
 - `controllers/source_controller.py` — validates admin, calls use cases
 - `cli/source_commands.py` — CLI commands for admin
-- `sources/cineplex/gateways/source.py` — example stub source
-- `sources/cinema_du_parc/gateways/source.py` — example stub source
+- `di/container.py` — wires all dependencies
 
-## Database Setup
+## Implemented Sources
 
-Run these SQL statements on your Supabase PostgreSQL instance:
+| Source | Gateway | Adapter | Enrichment |
+|---|---|---|---|
+| Cineplex | `sources/cineplex/` | `source_adapters/cineplex.py` | Yes |
+| CinemaCinema | `sources/cinemacinema/` | `source_adapters/cinemacinema.py` | Yes |
+| Cinema Public | `sources/cinemapublic/` | `source_adapters/cinemapublic.py` | Yes |
+
+All three support movie enrichment via `fetch_movie_detail`, fetching poster
+URLs, cast, directors, genres, description, and more from their detail pages.
+
+### Cineplex
+
+- **API**: `apis.cineplex.com/prod/cpx/theatrical/api/v1`
+- **Detail pages**: `www.cineplex.com/movie/<slug>` (Next.js `__NEXT_DATA__`)
+- **Auth**: API key via `Ocp-Apim-Subscription-Key` header (set `CINEPLEX_API_KEY` env var)
+- **Location mapping**: Cinema name → numeric theatre ID (e.g., `"Cinéma Banque Scotia Montréal"` → `9406`)
+
+### CinemaCinema
+
+- **API**: `cinemacinema.ca/en/schedule/__data.json` (SvelteKit devalue format)
+- **Detail pages**: `cinemacinema.ca/en/films/<slug>/__data.json`
+- **Venues**: Beaubien, du Parc, du Musée
+
+### Cinema Public
+
+- **API**: `cinemapublic.ca/en/films/` (HTML scraping)
+- **Detail pages**: Individual film pages (HTML + JSON-LD)
+- **Venues**: Casa d'Italia, Livart
+
+## Database Schema
+
+The database uses two migrations:
+
+### Migration 001 (`scripts/001_initial_schema.sql` / `migrate_001_initial_schema.py`)
+
+Creates the base schema with these tables:
 
 ```sql
--- Schema (if not already created)
-CREATE SCHEMA IF NOT EXISTS marquise;
+CREATE TABLE marquise.cinemas (
+    id      TEXT PRIMARY KEY,
+    name    TEXT NOT NULL,
+    address TEXT,
+    city    TEXT,
+    website TEXT
+);
 
--- Source definitions catalog
-CREATE TABLE IF NOT EXISTS marquise.source_definitions (
+CREATE TABLE marquise.source_definitions (
     name                TEXT PRIMARY KEY,
     display_name        TEXT NOT NULL,
     description         TEXT
 );
 
--- Cinema-to-source assignments
-CREATE TABLE IF NOT EXISTS marquise.cinema_source_assignments (
-    cinema_id   TEXT PRIMARY KEY,
+CREATE TABLE marquise.cinema_source_assignments (
+    cinema_id   TEXT PRIMARY KEY
+        REFERENCES marquise.cinemas(id) ON DELETE CASCADE,
     source_name TEXT NOT NULL
+        REFERENCES marquise.source_definitions(name) ON DELETE CASCADE
+);
+
+CREATE TABLE marquise.movies (
+    id               TEXT PRIMARY KEY,
+    title            TEXT NOT NULL UNIQUE,
+    release_year     INTEGER,
+    directors        TEXT,
+    cast_members     TEXT,
+    duration_minutes INTEGER,
+    description      TEXT
+);
+
+CREATE TABLE marquise.screenings (
+    id          TEXT PRIMARY KEY,
+    movie_id    TEXT NOT NULL
+        REFERENCES marquise.movies(id) ON DELETE CASCADE,
+    cinema_id   TEXT NOT NULL
+        REFERENCES marquise.cinemas(id) ON DELETE CASCADE,
+    showtime    TIMESTAMP NOT NULL,
+    UNIQUE (cinema_id, movie_id, showtime)
 );
 ```
+
+### Migration 002 (`scripts/002_add_movie_screening_fields.sql`)
+
+Adds enrichment and metadata columns:
+
+```sql
+ALTER TABLE marquise.movies
+    ADD COLUMN poster_url TEXT,
+    ADD COLUMN trailer_url TEXT,
+    ADD COLUMN genres TEXT,
+    ADD COLUMN original_title TEXT,
+    ADD COLUMN rating TEXT,
+    ADD COLUMN origin_countries TEXT;
+
+ALTER TABLE marquise.screenings
+    ADD COLUMN external_id TEXT UNIQUE,
+    ADD COLUMN ticket_url TEXT,
+    ADD COLUMN room TEXT,
+    ADD COLUMN language TEXT;
+```
+
+## Movie Enrichment
+
+When importing screenings, `ImportScreeningsUseCase` enriches movies with
+metadata from the source (if the source supports it). The flow:
+
+1. New movies (not found in DB) are created with just a title
+2. Existing movies with any `None` enrichment fields are also candidates
+3. The use case fetches metadata in parallel for all candidates via
+   `SourceRegistry.fetch_movie_detail()`
+4. Fields are populated selectively — only `None` fields get overwritten
+5. Updated movies are saved back to the DB
+
+The `MovieEnrichmentData` dataclass carries optional fields:
+`description`, `directors`, `cast`, `duration_minutes`, `release_year`,
+`poster_url`, `trailer_url`, `genres`, `original_title`, `rating`,
+`origin_countries`.
+
+## Configuration
+
+| Env var | Required | Default | Purpose |
+|---|---|---|---|
+| `DATABASE_URL` | Yes | — | PostgreSQL connection string |
+| `SUPABASE_URL` | Yes | — | Supabase project URL |
+| `SUPABASE_PUBLISHABLE_KEY` | Yes | — | Supabase auth key |
+| `CINEPLEX_API_KEY` | No | `""` | Cineplex API subscription key |
+| `DATABASE_SCHEMA` | No | `marquise` | Database schema name |
 
 ## CLI Usage
 
@@ -143,6 +283,16 @@ marquise source show \
   --cinema-id <cinema-uuid>
 ```
 
+### Importing screenings
+
+```bash
+# Import one day of screenings for a cinema
+marquise source import \
+  --cinema-id <cinema-uuid> \
+  --start-date 2026-06-22 \
+  --end-date 2026-06-22
+```
+
 ### Workflow example
 
 ```bash
@@ -150,7 +300,7 @@ marquise source show \
 marquise source create --name cineplex --display-name "Cineplex"
 
 # 2. Create a cinema
-marquise cinema create --name "Cineplex Ste-Foy" ...
+marquise cinema create --name "Cinéma Banque Scotia Montréal" ...
 # → outputs ID: 550e8400-e29b-41d4-a716-446655440000
 
 # 3. Assign the source to the cinema
@@ -158,23 +308,22 @@ marquise source assign \
   --cinema-id 550e8400-e29b-41d4-a716-446655440000 \
   --source-name cineplex
 
-# 4. Verify
+# 4. Import screenings
+marquise source import \
+  --cinema-id 550e8400-e29b-41d4-a716-446655440000 \
+  --start-date 2026-06-22 \
+  --end-date 2026-06-22
+
+# 5. Verify
 marquise source show \
   --cinema-id 550e8400-e29b-41d4-a716-446655440000
 ```
 
 ## Adding a New Source
 
-See the existing stubs for reference:
-
-| File | Source | Requirement |
-|---|---|---|---|
-| `infrastructure/sources/cineplex/gateways/source.py` | `CineplexSource` | Flat params (to be implemented) |
-| `infrastructure/sources/cinema_du_parc/gateways/source.py` | `CinemaDuParcSource` | Flat params (to be implemented) |
-
 ### Step-by-step
 
-1. **Create the implementation file**
+1. **Create the gateway implementation**
 
    ```
    src/marquise/infrastructure/sources/guzzo/gateways/source.py
@@ -189,37 +338,82 @@ See the existing stubs for reference:
    class GuzzoSource:  # structurally satisfies ShowtimeSource protocol
        """Showtime source for Guzzo Cinemas."""
 
-       async def fetch_showtimes(self, venue_id: str) -> list[dict]:
-           # Your scraping/API logic here
+       async def fetch_showtimes(
+           self, venue_id: str, start_date: datetime, end_date: datetime,
+       ) -> list[dict]:
            # Accepts flat parameters — no domain entities
            return [
                {
                    "movie_title": "Inception",
-                   "showtime": datetime(2026, 6, 7, 19, 30),
-                   "price": 14.99,
-                   "available_seats": 120,
+                   "showtime": "2026-06-22T19:30:00+00:00",
+                   "identifier": "inception-slug",
                },
            ]
+
+       async def fetch_movie_detail(self, slug: str) -> dict | None:
+           """Fetch enriched metadata. Return None if unsupported."""
+           return None
    ```
 
-3. **Register it in the DI container**
+2. **Create the adapter**
+
+   ```
+   src/marquise/interface_adapters/repositories/source_adapters/guzzo.py
+   ```
+
+   ```python
+   """Adapter for Guzzo source."""
+
+   from marquise.domain.entities import Cinema
+   from marquise.interface_adapters.repositories.protocols.showtime_source import (
+       ShowtimeSource,
+   )
+
+
+   class GuzzoAdapter:
+       """Maps Cinema domain entity to flat GuzzoSource params."""
+
+       def __init__(self, source: ShowtimeSource) -> None:
+           self._source = source
+
+       async def fetch_showtimes(
+           self, cinema: Cinema, start_date: datetime, end_date: datetime,
+       ) -> list[dict]:
+           venue_id = _VENUE_MAPPINGS.get(cinema.name)
+           return await self._source.fetch_showtimes(
+               venue_id=venue_id, start_date=start_date, end_date=end_date,
+           )
+
+       async def fetch_movie_detail(self, identifier: str) -> dict | None:
+           return await self._source.fetch_movie_detail(slug=identifier)
+
+
+   _VENUE_MAPPINGS: dict[str, str] = {
+       "Guzzo Complexe Desjardins": "desjardins",
+   }
+   ```
+
+3. **Register in the DI container**
 
    In `src/marquise/infrastructure/di/container.py`:
 
    ```python
    from marquise.infrastructure.sources.guzzo.gateways.source import GuzzoSource
+   from marquise.interface_adapters.repositories.source_adapters.guzzo import (
+       GuzzoAdapter,
+   )
 
    # Inside _source_registry property:
-   registry.register("guzzo", GuzzoSource())
+   registry.register("guzzo", GuzzoAdapter(GuzzoSource()))
    ```
 
-3. **Register it in the database**
+4. **Register in the database**
 
    ```bash
    marquise source create --name guzzo --display-name "Guzzo Cinemas"
    ```
 
-4. **Assign to a cinema**
+5. **Assign to a cinema**
 
    ```bash
    marquise source assign --cinema-id <cinema-uuid> --source-name guzzo
@@ -227,7 +421,10 @@ See the existing stubs for reference:
 
 ### Conventions
 
-- Use the same name string in the container `.register("xxx", ...)` as in `marquise source create --name xxx`
+- Use the same name string in the container `.register("xxx", ...)` as in
+  `marquise source create --name xxx`
 - Infrastructure gateways accept **flat parameters only** (no domain entities)
-- The gateway implementation is registered directly in ``SourceRegistry``
-- Return plain ``dict`` objects — never domain entities
+- Adapters translate `Cinema` domain entities → flat params
+- Gateways return plain ``dict`` objects — never domain entities
+- If enrichment is supported, implement `fetch_movie_detail` on the gateway
+  and proxy it through the adapter; otherwise have it return `None`

@@ -6,7 +6,6 @@ interface (application).  No SQL, no asyncpg — pure entity mapping.
 
 from __future__ import annotations
 
-from datetime import date
 from typing import Optional
 
 from marquise.application.repositories import MovieRepository
@@ -39,13 +38,21 @@ class SupabaseMovieRepository(MovieRepository):
         data = await self._gateway.save(
             movie_id=str(movie.id),
             title=movie.title,
-            release_date=movie.release_date,
+            release_year=movie.release_year,
             directors=",".join(movie.directors)
             if movie.directors is not None
             else None,
             cast=",".join(movie.cast) if movie.cast is not None else None,
             duration_minutes=movie.duration_minutes,
             description=movie.description,
+            poster_url=movie.poster_url,
+            trailer_url=movie.trailer_url,
+            genres=",".join(movie.genres) if movie.genres is not None else None,
+            original_title=movie.original_title,
+            rating=movie.rating,
+            origin_countries=",".join(movie.origin_countries)
+            if movie.origin_countries is not None
+            else None,
         )
         return self._to_entity(data)
 
@@ -90,15 +97,24 @@ class SupabaseMovieRepository(MovieRepository):
             directors = None
         raw_cast = data.get("cast_members")
         cast = tuple(raw_cast.split(",")) if raw_cast else None
-        release_date = data["release_date"]
-        if isinstance(release_date, str):
-            release_date = date.fromisoformat(release_date)
+        raw_genres = data.get("genres")
+        genres = tuple(raw_genres.split(",")) if raw_genres else None
+        raw_origin_countries = data.get("origin_countries")
+        origin_countries = (
+            tuple(raw_origin_countries.split(",")) if raw_origin_countries else None
+        )
         return Movie(
             id=MovieId(value=data["id"]),
             title=data["title"],
-            release_date=release_date,
+            release_year=data.get("release_year"),
             directors=directors,
             cast=cast,
             duration_minutes=data.get("duration_minutes"),
             description=data.get("description"),
+            poster_url=data.get("poster_url"),
+            trailer_url=data.get("trailer_url"),
+            genres=genres,
+            original_title=data.get("original_title"),
+            rating=data.get("rating"),
+            origin_countries=origin_countries,
         )

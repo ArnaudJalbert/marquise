@@ -63,13 +63,23 @@ def gateway_dict() -> dict:
         "movie_id": "mov-456",
         "cinema_id": "cin-789",
         "showtime": datetime(2026, 6, 7, 19, 30, 0),
+        "external_id": None,
+        "ticket_url": None,
+        "room": None,
+        "language": None,
         "movie__id": "mov-456",
         "movie__title": "Test Movie",
-        "movie__release_date": None,
+        "movie__release_year": None,
         "movie__directors": None,
         "movie__cast_members": None,
         "movie__duration_minutes": None,
         "movie__description": None,
+        "movie__poster_url": None,
+        "movie__trailer_url": None,
+        "movie__genres": None,
+        "movie__original_title": None,
+        "movie__rating": None,
+        "movie__origin_countries": None,
         "cinema__id": "cin-789",
         "cinema__name": "Test Cinema",
         "cinema__address": None,
@@ -91,6 +101,10 @@ async def test_save(
         "movie_id": "mov-456",
         "cinema_id": "cin-789",
         "showtime": datetime(2026, 6, 7, 19, 30, 0),
+        "external_id": None,
+        "ticket_url": None,
+        "room": None,
+        "language": None,
         "__inserted": True,
     }
 
@@ -102,11 +116,19 @@ async def test_save(
     assert result.cinema == sample_cinema
     assert result.showtime.value.tzinfo == timezone.utc
     assert result.showtime.value == datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc)
+    assert result.external_id is None
+    assert result.ticket_url is None
+    assert result.room is None
+    assert result.language is None
     mock_gateway.save.assert_awaited_once_with(
         screening_id="scr-123",
         movie_id="mov-456",
         cinema_id="cin-789",
         showtime=datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc),
+        external_id=None,
+        ticket_url=None,
+        room=None,
+        language=None,
     )
 
 
@@ -138,6 +160,10 @@ async def test_save_with_timezone_aware_datetime(
         "movie_id": "mov-456",
         "cinema_id": "cin-789",
         "showtime": datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc),
+        "external_id": None,
+        "ticket_url": None,
+        "room": None,
+        "language": None,
         "__inserted": True,
     }
 
@@ -159,6 +185,10 @@ async def test_save_with_iso_string_showtime(
         "movie_id": "mov-456",
         "cinema_id": "cin-789",
         "showtime": "2026-06-07T19:30:00",
+        "external_id": None,
+        "ticket_url": None,
+        "room": None,
+        "language": None,
         "__inserted": True,
     }
 
@@ -211,21 +241,31 @@ async def test_find_by_cinema_and_date_range(gateway_dict: dict) -> None:
 
 
 @pytest.mark.asyncio
-async def test_to_entity_parses_release_date_string() -> None:
-    """Test _to_entity handles a string release_date via date.fromisoformat."""
+async def test_to_entity_populates_release_year() -> None:
+    """Test _to_entity populates release_year from gateway data."""
     mock_gateway = create_autospec(ScreeningGateway, instance=True)
     raw = {
         "id": "scr-456",
         "movie_id": "mov-456",
         "cinema_id": "cin-789",
         "showtime": datetime(2026, 7, 1, 14, 0, 0),
+        "external_id": None,
+        "ticket_url": None,
+        "room": None,
+        "language": None,
         "movie__id": "mov-456",
         "movie__title": "Test Movie",
-        "movie__release_date": "2026-01-15",
+        "movie__release_year": 2026,
         "movie__directors": None,
         "movie__cast_members": None,
         "movie__duration_minutes": None,
         "movie__description": None,
+        "movie__poster_url": None,
+        "movie__trailer_url": None,
+        "movie__genres": None,
+        "movie__original_title": None,
+        "movie__rating": None,
+        "movie__origin_countries": None,
         "cinema__id": "cin-789",
         "cinema__name": "Test Cinema",
         "cinema__address": None,
@@ -238,7 +278,7 @@ async def test_to_entity_parses_release_date_string() -> None:
     result = await repo.find_by_id(ScreeningId(value="scr-456"))
 
     assert result is not None
-    assert result.movie.release_date is not None
+    assert result.movie.release_year == 2026
 
 
 @pytest.mark.asyncio

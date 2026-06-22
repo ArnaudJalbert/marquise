@@ -12,6 +12,7 @@ from marquise.application.repositories.source_definition_repository import (
     SourceDefinitionRepository,
 )
 from marquise.application.repositories.source_registry_query import (
+    MovieEnrichmentData,
     RegistrySourceEntry,
     ShowtimeRow,
     SourceRegistryQuery,
@@ -20,6 +21,7 @@ from marquise.application.repositories.source_registry_query import (
 __all__ = [
     "CinemaRepository",
     "CinemaSourceAssignmentRepository",
+    "MovieEnrichmentData",
     "MovieRepository",
     "RegistrySourceEntry",
     "ScreeningRepository",

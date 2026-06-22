@@ -7,7 +7,7 @@ the method, without dictating the parameters.
 
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import Any, Optional, Protocol
 
 
 class ShowtimeSource(Protocol):
@@ -32,5 +32,21 @@ class ShowtimeSource(Protocol):
 
         Returns:
             A list of plain dicts, each representing a screening row.
+        """
+        ...
+
+    async def fetch_movie_detail(
+        self,
+        *args: Any,  # noqa: ANN401
+        **kwargs: Any,  # noqa: ANN401
+    ) -> Optional[dict[str, Any]]:
+        """Fetch enriched movie metadata.
+
+        Args:
+            *args: Source-specific positional arguments.
+            **kwargs: Source-specific keyword arguments.
+
+        Returns:
+            A dict of movie metadata if found, or ``None``.
         """
         ...

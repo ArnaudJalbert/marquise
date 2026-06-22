@@ -69,7 +69,7 @@ async def run() -> None:
             CREATE TABLE IF NOT EXISTS "{SCHEMA}".movies (
                 id               TEXT PRIMARY KEY,
                 title            TEXT NOT NULL UNIQUE,
-                release_date     DATE,
+                release_year     INTEGER,
                 directors        TEXT,
                 cast_members     TEXT,
                 duration_minutes INTEGER,
@@ -80,12 +80,12 @@ async def run() -> None:
 
         await conn.execute(f"""
             CREATE TABLE IF NOT EXISTS "{SCHEMA}".screenings (
-                id        TEXT PRIMARY KEY,
-                movie_id  TEXT NOT NULL
+                id          TEXT PRIMARY KEY,
+                movie_id    TEXT NOT NULL
                     REFERENCES "{SCHEMA}".movies(id) ON DELETE CASCADE,
-                cinema_id TEXT NOT NULL
+                cinema_id   TEXT NOT NULL
                     REFERENCES "{SCHEMA}".cinemas(id) ON DELETE CASCADE,
-                showtime  TIMESTAMP NOT NULL,
+                showtime    TIMESTAMP NOT NULL,
                 UNIQUE (cinema_id, movie_id, showtime)
             )
         """)

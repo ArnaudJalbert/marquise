@@ -22,6 +22,8 @@ from typing import Any
 SCHEDULE_URL = "https://cinemapublic.ca/en/schedule/"
 AJAX_URL = "https://cinemapublic.ca/wp-admin/admin-ajax.php"
 
+_DURATION_RE = re.compile(r"PT(?:(\d+)H)?(?:(\d+)M)?")
+
 VENUE_MAP: dict[str, str] = {
     "casa-d-italia": "Cinema Public — Casa d'Italia",
     "livart": "Cinema Public — Livart",
@@ -152,6 +154,10 @@ def _parse_ajax_html(html: str, venue: str) -> list[dict[str, Any]]:
                     "special_notes": special_notes or None,
                     "movie_url": movie_url,
                     "ticket_url": ticket_url,
+                    "identifier": movie_url,
+                    "external_id": ticket_url,
+                    "room": None,
+                    "language": subtitle_language,
                 }
             )
 
@@ -233,6 +239,10 @@ def _parse_jsonld_showtimes(
                 "special_notes": None,
                 "movie_url": movie_url,
                 "ticket_url": ticket_url,
+                "identifier": movie_url,
+                "external_id": ticket_url,
+                "room": None,
+                "language": None,
             }
         )
 
@@ -399,6 +409,107 @@ def fetch_showtimes(
     return results
 
 
+def _parse_iso_duration(duration: str) -> int | None:
+    """Parse an ISO 8601 duration string into minutes.
+
+    Args:
+        duration: An ISO 8601 duration like ``"PT1H51M"``.
+
+    Returns:
+        Minutes as an integer, or ``None`` if parsing fails.
+    """
+    match = _DURATION_RE.match(duration)
+    if not match:
+        return None
+    hours = int(match.group(1)) if match.group(1) else 0
+    minutes = int(match.group(2)) if match.group(2) else 0
+    return hours * 60 + minutes
+
+
+def _extract_film_jsonld(html: str) -> dict[str, Any] | None:
+    """Extract a JSON-LD ``Movie`` block from a film page.
+
+    Args:
+        html: The HTML of a film detail page.
+
+    Returns:
+        The parsed ``Movie`` JSON-LD dict, or ``None``.
+    """
+    matches = re.findall(
+        r'<script type="application/ld\+json">(.*?)</script>', html, re.DOTALL
+    )
+    for match in matches:
+        data = json.loads(match)
+        if isinstance(data, dict):
+            graph = data.get("@graph", data)
+            if isinstance(graph, list):
+                for item in graph:
+                    if isinstance(item, dict) and item.get("@type") == "Movie":
+                        return item
+            elif isinstance(graph, dict) and graph.get("@type") == "Movie":
+                return graph
+    return None
+
+
+def _extract_cinemapublic_film_detail(html: str, movie_url: str) -> dict[str, Any]:
+    """Extract enriched movie metadata from a cinemapublic film page.
+
+    Args:
+        html: The HTML of the film detail page.
+        movie_url: The URL of the film page.
+
+    Returns:
+        A flat dict of movie metadata.
+    """
+    movie_ld = _extract_film_jsonld(html)
+    result: dict[str, Any] = {}
+
+    if movie_ld:
+        description = movie_ld.get("description")
+        # Strip HTML from description if present
+        if description:
+            description = re.sub(r"<[^>]+>", " ", description)
+            description = " ".join(description.split()).strip()
+        result["description"] = description or None
+
+        raw_director = movie_ld.get("director", {})
+        if isinstance(raw_director, dict):
+            director_name = raw_director.get("name")
+            if director_name:
+                result["directors"] = [
+                    d.strip() for d in str(director_name).split(",") if d.strip()
+                ]
+
+        duration_str = movie_ld.get("duration", "")
+        if duration_str:
+            result["duration_minutes"] = _parse_iso_duration(duration_str)
+
+        raw_genre = movie_ld.get("genre")
+        if raw_genre:
+            result["genres"] = [raw_genre] if isinstance(raw_genre, str) else raw_genre
+
+        trailer_node = movie_ld.get("trailer", {})
+        if isinstance(trailer_node, dict):
+            result["trailer_url"] = trailer_node.get("embedUrl")
+
+        date_created = movie_ld.get("dateCreated")
+        if date_created and isinstance(date_created, str):
+            try:
+                year = datetime.fromisoformat(date_created).year
+                result["release_year"] = year
+            except (ValueError, TypeError):
+                pass
+
+    # Extract poster image from page meta
+    img_match = re.search(
+        r'<meta\s+property="og:image"\s+content="([^"]+)"', html
+    ) or re.search(r'<img[^>]+class="[^"]*wp-post-image[^"]*"[^>]+src="([^"]+)"', html)
+    if img_match:
+        result["poster_url"] = img_match.group(1)
+
+    return result
+
+
 class CinemaPublicSource:
     """Showtime source for Cinema Public (Casa d'Italia and Livart venues)."""
 
@@ -417,7 +528,8 @@ class CinemaPublicSource:
 
         Returns:
             A list of plain dicts with keys ``movie_title``, ``showtime``,
-            ``movie_url``, ``ticket_url``.
+            ``movie_url``, ``ticket_url``, ``identifier``, ``external_id``,
+            ``room``, ``language``.
 
         Raises:
             ValueError: If ``cinema_name`` is not a recognised venue.
@@ -427,3 +539,24 @@ class CinemaPublicSource:
             start_date=start_date,
             end_date=end_date,
         )
+
+    async def fetch_movie_detail(
+        self,
+        movie_url: str,
+    ) -> dict[str, Any] | None:
+        """Fetch enriched movie metadata from a film detail page.
+
+        Args:
+            movie_url: The URL of the film detail page
+                (e.g. ``"https://cinemapublic.ca/en/films/kairos/"``).
+
+        Returns:
+            A dict of movie metadata, or ``None`` if the page cannot be
+            fetched.
+        """
+        try:
+            html = _fetch(movie_url)
+        except urllib.error.HTTPError:
+            return None
+        result = _extract_cinemapublic_film_detail(html, movie_url)
+        return result or None
