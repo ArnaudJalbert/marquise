@@ -7,7 +7,9 @@ and parses the SvelteKit devalue format.
 from __future__ import annotations
 
 import asyncio
+import html
 import json
+import re
 import ssl
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
@@ -15,11 +17,18 @@ from datetime import datetime, timezone
 from typing import Any
 
 SCHEDULE_URL = "https://cinemacinema.ca/en/schedule/__data.json"
+FILM_DETAIL_TPL = "https://cinemacinema.ca/en/films/{slug}/__data.json"
 
 CINEMA_MAP: dict[int, str] = {
     1: "beaubien",
     2: "du-parc",
     3: "du-musee",
+}
+
+_TICKET_URL_TEMPLATES: dict[str, str] = {
+    "beaubien": "https://billetterie.cinemabeaubien.com/FR/Film-achats.awp?P1={rep_id}&P2=",
+    "du-parc": "https://billetterie.cinemaduparc.com/FR/Film-achats.awp?P1={rep_id}&P2=",
+    "du-musee": "https://billetterie.cinemadumusee.com/FR/Film-achats.awp?P1={rep_id}&P2=",
 }
 
 _ISO_DATE_FORMAT = "%Y-%m-%d"
@@ -145,6 +154,90 @@ async def _fetch_schedules_for_dates(
         return await asyncio.gather(*tasks)
 
 
+def _ticket_slug(cinema_name: str) -> str:
+    """Convert a cinema slug to a billetterie subdomain piece.
+
+    Args:
+        cinema_name: One of ``"beaubien"``, ``"du-parc"``, ``"du-musee"``.
+
+    Returns:
+        The subdomain piece (e.g. ``"beaubien"``, ``"dupac"``).
+    """
+    return cinema_name.replace("-", "")
+
+
+def _ticket_url(cinema_name: str, rep_id: int) -> str | None:
+    """Build a ticket purchase URL for a representation.
+
+    Args:
+        cinema_name: The cinema slug.
+        rep_id: The representation ID.
+
+    Returns:
+        The constructed ticket URL, or ``None`` if no template is known.
+    """
+    tpl = _TICKET_URL_TEMPLATES.get(cinema_name)
+    if tpl is None:
+        return None
+    return tpl.format(rep_id=rep_id)
+
+
+def _strip_html(text: str) -> str:
+    """Remove HTML tags from a string."""
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = html.unescape(text)
+    return " ".join(text.split()).strip()
+
+
+def _extract_film_detail(film: dict) -> dict[str, Any]:
+    """Extract enriched movie metadata from a ``cmFilmCurrent`` dict.
+
+    Args:
+        film: The raw ``cmFilmCurrent`` dict from the SvelteKit response.
+
+    Returns:
+        A flat dict of metadata fields.
+    """
+    directors: list[str] = []
+    raw_directors = film.get("realisateur", "")
+    if raw_directors:
+        directors = [d.strip() for d in raw_directors.split(",") if d.strip()]
+
+    cast_list: list[str] = []
+    raw_cast = film.get("acteurs", "")
+    if raw_cast:
+        cast_list = [c.strip() for c in raw_cast.split(",") if c.strip()]
+
+    genres: list[str] = []
+    for key in ("genre1", "genre2", "genre3"):
+        g = film.get(key, "")
+        if g:
+            genres.append(g)
+
+    origin_countries: list[str] = []
+    for key in ("origine1", "origine2", "origine3"):
+        c = film.get(key, "")
+        if c:
+            origin_countries.append(c)
+
+    synopsis_raw = film.get("synopsis", "")
+    description = _strip_html(synopsis_raw) if synopsis_raw else None
+
+    return {
+        "description": description,
+        "directors": directors if directors else None,
+        "cast": cast_list if cast_list else None,
+        "duration_minutes": film.get("duree"),
+        "release_year": film.get("annee"),
+        "origin_countries": origin_countries if origin_countries else None,
+        "poster_url": film.get("poster_url"),
+        "trailer_url": film.get("bande_annonce_url"),
+        "genres": genres if genres else None,
+        "rating": film.get("classment"),
+        "original_title": film.get("original_title"),
+    }
+
+
 class CinemaCinemaSource:
     """Showtime source for Cinémas Beaubien, du Parc, and du Musée."""
 
@@ -167,7 +260,9 @@ class CinemaCinemaSource:
             end_date: Latest date to include (inclusive).
 
         Returns:
-            A list of plain dicts with keys ``movie_title``, ``showtime``.
+            A list of plain dicts with keys ``movie_title``, ``showtime``,
+            ``identifier``, ``external_id``, ``ticket_url``, ``room``,
+            ``language``.
 
         Raises:
             ValueError: If ``cinema_name`` is not a recognised slug.
@@ -239,6 +334,7 @@ class CinemaCinemaSource:
             cinema_id: int = film.get("cinema_id")
             if cinema_id != target_id:
                 continue
+            film_slug: str = film.get("slug", "")
             reps = film.get("representations", [])
             if not reps:
                 continue
@@ -250,13 +346,58 @@ class CinemaCinemaSource:
                 date_obj = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
                 showtime = date_obj.strftime(_ISO_DATE_FORMAT) + "T" + time_str
 
-                title = rep.get("titre") or film.get("titre", "Untitled")
+                title = film.get("titre", "Untitled")
+                representation_id: int = rep.get("representation_id", 0)
+                salle: int | None = rep.get("salle")
+                version: str | None = rep.get("version")
 
                 results.append(
                     {
                         "movie_title": title,
                         "showtime": showtime,
+                        "identifier": film_slug,
+                        "external_id": str(representation_id),
+                        "ticket_url": _ticket_url(cinema_name, representation_id),
+                        "room": str(salle) if salle is not None else None,
+                        "language": version,
                     }
                 )
 
         return results
+
+    async def fetch_movie_detail(
+        self,
+        slug: str,
+    ) -> dict[str, Any] | None:
+        """Fetch enriched movie metadata from the film detail page.
+
+        Args:
+            slug: The film slug (e.g. ``"salo-or-the-120-days-of-sodom-1958"``).
+
+        Returns:
+            A dict of movie metadata, or ``None`` if not found.
+        """
+        url = FILM_DETAIL_TPL.format(slug=slug)
+        ctx = ssl._create_unverified_context()
+        req = urllib.request.Request(url)
+        try:
+            with urllib.request.urlopen(req, context=ctx, timeout=15) as resp:
+                raw = resp.read().decode()
+        except urllib.error.HTTPError:
+            return None
+
+        parsed = json.loads(raw)
+        for node in parsed.get("nodes", []):
+            if node is None or not isinstance(node, dict):
+                continue
+            data = node.get("data", [])
+            if not data or not isinstance(data, list):
+                continue
+            root = _resolve(data[0], data)
+            if isinstance(root, dict) and "cmFilmCurrent" in root:
+                film = root["cmFilmCurrent"]
+                if not isinstance(film, dict):
+                    return None
+                return _extract_film_detail(film)
+
+        return None

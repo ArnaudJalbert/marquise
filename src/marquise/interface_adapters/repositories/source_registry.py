@@ -7,8 +7,10 @@ translates ``Cinema`` entities into source-specific parameters.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Optional
 
 from marquise.application.repositories import (
+    MovieEnrichmentData,
     RegistrySourceEntry,
     ShowtimeRow,
     SourceRegistryQuery,
@@ -121,6 +123,57 @@ class SourceRegistry(SourceRegistryQuery):
                 ShowtimeRow(
                     movie_title=row.get("movie_title", "Untitled"),
                     showtime=_parse_showtime(raw_showtime),
+                    identifier=row.get("identifier"),
+                    external_id=row.get("external_id"),
+                    ticket_url=row.get("ticket_url"),
+                    room=str(row["room"]) if row.get("room") is not None else None,
+                    language=row.get("language"),
                 )
             )
         return results
+
+    async def fetch_movie_detail(
+        self,
+        source_name: str,
+        identifier: str,
+    ) -> Optional[MovieEnrichmentData]:
+        """Fetch enriched movie metadata from a registered source.
+
+        Args:
+            source_name: The name of the registered source.
+            identifier: A source-specific identifier for the film.
+
+        Returns:
+            A ``MovieEnrichmentData`` if the source returns data, else
+            ``None``.
+
+        Raises:
+            KeyError: If no source is registered for ``source_name``.
+        """
+        adapter = self._adapters[source_name]
+        raw = await adapter.fetch_movie_detail(identifier=identifier)
+        if not raw:
+            return None
+        return MovieEnrichmentData(
+            description=raw.get("description"),
+            directors=_to_tuple(raw.get("directors")),
+            cast=_to_tuple(raw.get("cast")),
+            duration_minutes=raw.get("duration_minutes"),
+            release_year=raw.get("release_year"),
+            origin_countries=_to_tuple(raw.get("origin_countries")),
+            poster_url=raw.get("poster_url"),
+            trailer_url=raw.get("trailer_url"),
+            genres=_to_tuple(raw.get("genres")),
+            rating=raw.get("rating"),
+            original_title=raw.get("original_title"),
+        )
+
+
+def _to_tuple(value: object) -> tuple[str, ...] | None:
+    """Convert a list-or-None to a tuple, or return ``None``."""
+    if value is None:
+        return None
+    if isinstance(value, (list, tuple)):
+        result = tuple(str(v).strip() for v in value if v)
+        return result if result else None
+    return None

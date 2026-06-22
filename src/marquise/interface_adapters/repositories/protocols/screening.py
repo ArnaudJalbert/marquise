@@ -18,8 +18,12 @@ class ScreeningGateway(Protocol):
         movie_id: str,
         cinema_id: str,
         showtime: datetime,
+        external_id: Optional[str] = None,
+        ticket_url: Optional[str] = None,
+        room: Optional[str] = None,
+        language: Optional[str] = None,
     ) -> dict:
-        """Insert or upsert a screening row.
+        """Insert a screening row (no-op on conflict).
 
         Uses a unique constraint on (cinema_id, movie_id, showtime).
 
@@ -28,12 +32,46 @@ class ScreeningGateway(Protocol):
             movie_id: The movie being screened.
             cinema_id: The cinema hosting the screening.
             showtime: The date and time of the screening.
+            external_id: Source-native deduplication key (optional).
+            ticket_url: Link to purchase tickets (optional).
+            room: Room or auditorium name (optional).
+            language: Language or subtitle version (optional).
 
         Returns:
-            The inserted/updated row as a dict.
+            The inserted or existing row as a dict.  The dict includes an
+            ``__inserted`` key with a boolean value: ``True`` if a new row
+            was created, ``False`` if an existing row was matched.
 
         Raises:
             GatewayError: On data-layer failure.
+        """
+        ...
+
+    async def update(
+        self,
+        cinema_id: str,
+        movie_id: str,
+        showtime: datetime,
+        external_id: Optional[str] = None,
+        ticket_url: Optional[str] = None,
+        room: Optional[str] = None,
+        language: Optional[str] = None,
+    ) -> Optional[dict]:
+        """Update optional fields on an existing screening.
+
+        Matches by (cinema_id, movie_id, showtime).
+
+        Args:
+            cinema_id: The cinema hosting the screening.
+            movie_id: The movie being screened.
+            showtime: The date and time of the screening.
+            external_id: Source-native deduplication key (optional).
+            ticket_url: Link to purchase tickets (optional).
+            room: Room or auditorium name (optional).
+            language: Language or subtitle version (optional).
+
+        Returns:
+            The updated row as a dict, or None if no matching row exists.
         """
         ...
 

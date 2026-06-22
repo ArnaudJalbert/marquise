@@ -18,7 +18,10 @@ from marquise.application.repositories import (
     ScreeningRepository,
     SourceRegistryQuery,
 )
-from marquise.application.repositories.source_registry_query import ShowtimeRow
+from marquise.application.repositories.source_registry_query import (
+    MovieEnrichmentData,
+    ShowtimeRow,
+)
 from marquise.application.use_cases.import_screenings import (
     ImportedScreeningData,
     ImportScreeningsUseCase,
@@ -49,10 +52,20 @@ def sample_cinema() -> Cinema:
 def _make_showtime_row(
     movie_title: str = "Test Movie",
     showtime: datetime | None = None,
+    identifier: str | None = None,
+    external_id: str | None = None,
+    ticket_url: str | None = None,
+    room: str | None = None,
+    language: str | None = None,
 ) -> ShowtimeRow:
     return ShowtimeRow(
         movie_title=movie_title,
         showtime=showtime or datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc),
+        identifier=identifier,
+        external_id=external_id,
+        ticket_url=ticket_url,
+        room=room,
+        language=language,
     )
 
 
@@ -95,16 +108,10 @@ async def test_import_screenings_creates_new_screenings() -> None:
     movie_a = Movie(
         id=MovieId(value="mov-a"),
         title="Movie A",
-        release_date=date(2026, 6, 7),
-        directors=None,
-        cast=None,
     )
     movie_b = Movie(
         id=MovieId(value="mov-b"),
         title="Movie B",
-        release_date=date(2026, 6, 7),
-        directors=None,
-        cast=None,
     )
     mock_movie_repo.save.side_effect = [movie_a, movie_b]
 
@@ -183,9 +190,6 @@ async def test_import_screenings_reuses_existing_movie() -> None:
     movie_a = Movie(
         id=MovieId(value="mov-a"),
         title="Movie A",
-        release_date=date(2026, 6, 7),
-        directors=None,
-        cast=None,
     )
     mock_movie_repo.find_by_title.return_value = movie_a
 
@@ -367,6 +371,34 @@ def test_output_data_rejects_negative_total_count() -> None:
         )
 
 
+def test_output_data_rejects_negative_imported_count() -> None:
+    """Test OutputData rejects negative imported_count."""
+    with pytest.raises(ValueError, match="imported_count must not be negative"):
+        ImportScreeningsUseCase.OutputData(
+            cinema_id="cin-123",
+            cinema_name="Cinéma Beaubien",
+            source_name="cinemacinema",
+            screenings=(),
+            total_count=0,
+            imported_count=-1,
+            updated_count=0,
+        )
+
+
+def test_output_data_rejects_negative_updated_count() -> None:
+    """Test OutputData rejects negative updated_count."""
+    with pytest.raises(ValueError, match="updated_count must not be negative"):
+        ImportScreeningsUseCase.OutputData(
+            cinema_id="cin-123",
+            cinema_name="Cinéma Beaubien",
+            source_name="cinemacinema",
+            screenings=(),
+            total_count=0,
+            imported_count=0,
+            updated_count=-1,
+        )
+
+
 def test_output_data_allows_valid() -> None:
     """Test OutputData accepts valid data."""
     screening = ImportedScreeningData(
@@ -421,3 +453,485 @@ def test_showtime_row_creation() -> None:
     )
     assert row.movie_title == "Test Movie"
     assert row.showtime == showtime
+
+
+@pytest.mark.asyncio
+async def test_import_updates_existing_screening() -> None:
+    """Test that an existing screening triggers update on the repository."""
+    mock_cinema_repo = create_autospec(CinemaRepository, instance=True)
+    mock_assignment_repo = create_autospec(
+        CinemaSourceAssignmentRepository, instance=True
+    )
+    mock_registry = create_autospec(SourceRegistryQuery, instance=True)
+    mock_movie_repo = create_autospec(MovieRepository, instance=True)
+    mock_screening_repo = create_autospec(ScreeningRepository, instance=True)
+
+    cinema = Cinema(
+        id=CinemaId(value="cin-123"), name="Cinéma Beaubien", city="Montreal"
+    )
+    mock_cinema_repo.find_by_id.return_value = cinema
+
+    source_definition = SourceDefinition(
+        name=SourceName(value="cinemacinema"),
+        display_name="Cinema Cinema",
+    )
+    assignment = CinemaSourceAssignment(cinema=cinema, source=source_definition)
+    mock_assignment_repo.find_by_cinema_id.return_value = assignment
+
+    rows = [
+        _make_showtime_row(
+            "Existing Movie",
+            datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc),
+        ),
+    ]
+    mock_registry.fetch_showtimes.return_value = rows
+
+    movie = Movie(id=MovieId(value="mov-existing"), title="Existing Movie")
+    mock_movie_repo.find_by_title.return_value = movie
+    mock_movie_repo.save.return_value = movie
+
+    mock_screening_repo.save.return_value = (None, False)
+    mock_screening_repo.update.return_value = None
+
+    use_case = ImportScreeningsUseCase(
+        cinema_repository=mock_cinema_repo,
+        assignment_repository=mock_assignment_repo,
+        source_registry=mock_registry,
+        movie_repository=mock_movie_repo,
+        screening_repository=mock_screening_repo,
+    )
+
+    request = ImportScreeningsUseCase.InputData(
+        cinema_id="cin-123",
+        start_date=date(2026, 6, 7),
+        end_date=date(2026, 6, 7),
+    )
+    result = await use_case.execute(request)
+
+    assert result.total_count == 1
+    assert result.imported_count == 0
+    assert result.updated_count == 1
+    assert result.screenings[0].imported is False
+    mock_screening_repo.save.assert_awaited_once()
+    mock_screening_repo.update.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_import_enriches_movie_with_all_fields() -> None:
+    """Test that enrichment populates all optional fields."""
+    mock_cinema_repo = create_autospec(CinemaRepository, instance=True)
+    mock_assignment_repo = create_autospec(
+        CinemaSourceAssignmentRepository, instance=True
+    )
+    mock_registry = create_autospec(SourceRegistryQuery, instance=True)
+    mock_movie_repo = create_autospec(MovieRepository, instance=True)
+    mock_screening_repo = create_autospec(ScreeningRepository, instance=True)
+
+    cinema = Cinema(
+        id=CinemaId(value="cin-123"), name="Cinéma Beaubien", city="Montreal"
+    )
+    mock_cinema_repo.find_by_id.return_value = cinema
+
+    source_definition = SourceDefinition(
+        name=SourceName(value="cinemacinema"),
+        display_name="Cinema Cinema",
+    )
+    assignment = CinemaSourceAssignment(cinema=cinema, source=source_definition)
+    mock_assignment_repo.find_by_cinema_id.return_value = assignment
+
+    rows = [
+        _make_showtime_row(
+            "Rich Movie",
+            datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc),
+            identifier="rich-slug",
+        ),
+    ]
+    mock_registry.fetch_showtimes.return_value = rows
+    mock_movie_repo.find_by_title.return_value = None
+
+    enrichment = MovieEnrichmentData(
+        description="A rich movie",
+        directors=("Director",),
+        cast=("Actor A", "Actor B"),
+        duration_minutes=100,
+        release_year=2026,
+        poster_url="https://example.com/poster.jpg",
+        trailer_url="https://example.com/trailer",
+        genres=("Drama", "Thriller"),
+        original_title="Original Title",
+        rating="PG-13",
+        origin_countries=("US", "UK"),
+    )
+    mock_registry.fetch_movie_detail.return_value = enrichment
+
+    saved_movie = Movie(
+        id=MovieId(value="mov-rich"),
+        title="Rich Movie",
+        description="A rich movie",
+        directors=("Director",),
+        cast=("Actor A", "Actor B"),
+        duration_minutes=100,
+        release_year=2026,
+        poster_url="https://example.com/poster.jpg",
+        trailer_url="https://example.com/trailer",
+        genres=("Drama", "Thriller"),
+        original_title="Original Title",
+        rating="PG-13",
+        origin_countries=("US", "UK"),
+    )
+    mock_movie_repo.save.return_value = saved_movie
+    mock_screening_repo.save.return_value = (None, True)
+
+    use_case = ImportScreeningsUseCase(
+        cinema_repository=mock_cinema_repo,
+        assignment_repository=mock_assignment_repo,
+        source_registry=mock_registry,
+        movie_repository=mock_movie_repo,
+        screening_repository=mock_screening_repo,
+    )
+
+    request = ImportScreeningsUseCase.InputData(
+        cinema_id="cin-123",
+        start_date=date(2026, 6, 7),
+        end_date=date(2026, 6, 7),
+    )
+    result = await use_case.execute(request)
+
+    assert result.total_count == 1
+    saved = mock_movie_repo.save.call_args[0][0]
+    assert saved.description == "A rich movie"
+    assert saved.directors == ("Director",)
+    assert saved.cast == ("Actor A", "Actor B")
+    assert saved.duration_minutes == 100
+    assert saved.release_year == 2026
+    assert saved.poster_url == "https://example.com/poster.jpg"
+    assert saved.trailer_url == "https://example.com/trailer"
+    assert saved.genres == ("Drama", "Thriller")
+    assert saved.original_title == "Original Title"
+    assert saved.rating == "PG-13"
+    assert saved.origin_countries == ("US", "UK")
+    """Test ShowtimeRow dataclass creation."""
+    showtime = datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc)
+    row = ShowtimeRow(
+        movie_title="Test Movie",
+        showtime=showtime,
+    )
+    assert row.movie_title == "Test Movie"
+    assert row.showtime == showtime
+
+
+@pytest.mark.asyncio
+async def test_import_enriches_new_movies_with_identifier() -> None:
+    """Test that new movies with identifiers are enriched from the source."""
+    mock_cinema_repo = create_autospec(CinemaRepository, instance=True)
+    mock_assignment_repo = create_autospec(
+        CinemaSourceAssignmentRepository, instance=True
+    )
+    mock_registry = create_autospec(SourceRegistryQuery, instance=True)
+    mock_movie_repo = create_autospec(MovieRepository, instance=True)
+    mock_screening_repo = create_autospec(ScreeningRepository, instance=True)
+
+    cinema = Cinema(
+        id=CinemaId(value="cin-123"), name="Cinéma Beaubien", city="Montreal"
+    )
+    mock_cinema_repo.find_by_id.return_value = cinema
+
+    source_definition = SourceDefinition(
+        name=SourceName(value="cinemacinema"),
+        display_name="Cinema Cinema",
+    )
+    assignment = CinemaSourceAssignment(cinema=cinema, source=source_definition)
+    mock_assignment_repo.find_by_cinema_id.return_value = assignment
+
+    rows = [
+        _make_showtime_row(
+            "New Movie",
+            datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc),
+            identifier="new-movie-slug",
+        ),
+    ]
+    mock_registry.fetch_showtimes.return_value = rows
+
+    mock_movie_repo.find_by_title.return_value = None
+
+    enrichment = MovieEnrichmentData(
+        description="A great new movie",
+        duration_minutes=120,
+        directors=("Director A",),
+        release_year=2026,
+    )
+    mock_registry.fetch_movie_detail.return_value = enrichment
+
+    saved_movie = Movie(
+        id=MovieId(value="mov-new"),
+        title="New Movie",
+        description="A great new movie",
+        duration_minutes=120,
+        directors=("Director A",),
+        release_year=2026,
+    )
+    mock_movie_repo.save.return_value = saved_movie
+    mock_screening_repo.save.return_value = (None, True)
+
+    use_case = ImportScreeningsUseCase(
+        cinema_repository=mock_cinema_repo,
+        assignment_repository=mock_assignment_repo,
+        source_registry=mock_registry,
+        movie_repository=mock_movie_repo,
+        screening_repository=mock_screening_repo,
+    )
+
+    request = ImportScreeningsUseCase.InputData(
+        cinema_id="cin-123",
+        start_date=date(2026, 6, 7),
+        end_date=date(2026, 6, 7),
+    )
+    result = await use_case.execute(request)
+
+    assert result.total_count == 1
+    assert result.imported_count == 1
+    mock_registry.fetch_movie_detail.assert_awaited_once_with(
+        "cinemacinema", "new-movie-slug"
+    )
+    mock_movie_repo.save.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_import_enriches_existing_movie_with_null_fields() -> None:
+    """Test that an existing movie with null fields gets enriched."""
+    mock_cinema_repo = create_autospec(CinemaRepository, instance=True)
+    mock_assignment_repo = create_autospec(
+        CinemaSourceAssignmentRepository, instance=True
+    )
+    mock_registry = create_autospec(SourceRegistryQuery, instance=True)
+    mock_movie_repo = create_autospec(MovieRepository, instance=True)
+    mock_screening_repo = create_autospec(ScreeningRepository, instance=True)
+
+    cinema = Cinema(
+        id=CinemaId(value="cin-123"), name="Cinéma Beaubien", city="Montreal"
+    )
+    mock_cinema_repo.find_by_id.return_value = cinema
+
+    source_definition = SourceDefinition(
+        name=SourceName(value="cinemacinema"),
+        display_name="Cinema Cinema",
+    )
+    assignment = CinemaSourceAssignment(cinema=cinema, source=source_definition)
+    mock_assignment_repo.find_by_cinema_id.return_value = assignment
+
+    existing_movie = Movie(
+        id=MovieId(value="mov-existing"),
+        title="Existing Movie",
+        directors=("Old Director",),
+        description=None,
+        duration_minutes=None,
+    )
+
+    rows = [
+        _make_showtime_row(
+            "Existing Movie",
+            datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc),
+            identifier="existing-slug",
+        ),
+    ]
+    mock_registry.fetch_showtimes.return_value = rows
+    mock_movie_repo.find_by_title.return_value = existing_movie
+
+    enrichment = MovieEnrichmentData(
+        description="An existing movie with new details",
+        duration_minutes=130,
+    )
+    mock_registry.fetch_movie_detail.return_value = enrichment
+    mock_movie_repo.save.return_value = Movie(
+        id=MovieId(value="mov-existing"),
+        title="Existing Movie",
+        directors=("Old Director",),
+        description="An existing movie with new details",
+        duration_minutes=130,
+    )
+    mock_screening_repo.save.return_value = (None, True)
+
+    use_case = ImportScreeningsUseCase(
+        cinema_repository=mock_cinema_repo,
+        assignment_repository=mock_assignment_repo,
+        source_registry=mock_registry,
+        movie_repository=mock_movie_repo,
+        screening_repository=mock_screening_repo,
+    )
+
+    request = ImportScreeningsUseCase.InputData(
+        cinema_id="cin-123",
+        start_date=date(2026, 6, 7),
+        end_date=date(2026, 6, 7),
+    )
+    result = await use_case.execute(request)
+
+    assert result.total_count == 1
+    mock_registry.fetch_movie_detail.assert_awaited_once_with(
+        "cinemacinema", "existing-slug"
+    )
+    mock_movie_repo.save.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_import_does_not_refetch_already_enriched_movie() -> None:
+    """Test that an already-enriched movie is not fetched again."""
+    mock_cinema_repo = create_autospec(CinemaRepository, instance=True)
+    mock_assignment_repo = create_autospec(
+        CinemaSourceAssignmentRepository, instance=True
+    )
+    mock_registry = create_autospec(SourceRegistryQuery, instance=True)
+    mock_movie_repo = create_autospec(MovieRepository, instance=True)
+    mock_screening_repo = create_autospec(ScreeningRepository, instance=True)
+
+    cinema = Cinema(
+        id=CinemaId(value="cin-123"), name="Cinéma Beaubien", city="Montreal"
+    )
+    mock_cinema_repo.find_by_id.return_value = cinema
+
+    source_definition = SourceDefinition(
+        name=SourceName(value="cinemacinema"),
+        display_name="Cinema Cinema",
+    )
+    assignment = CinemaSourceAssignment(cinema=cinema, source=source_definition)
+    mock_assignment_repo.find_by_cinema_id.return_value = assignment
+
+    enriched_movie = Movie(
+        id=MovieId(value="mov-enriched"),
+        title="Full Movie",
+        directors=("Director",),
+        cast=("Actor",),
+        duration_minutes=120,
+        description="Already known",
+        release_year=2025,
+        poster_url="https://example.com/poster.jpg",
+        trailer_url="https://example.com/trailer",
+        genres=("Drama",),
+        original_title="Full Movie",
+        rating="PG",
+        origin_countries=("US",),
+    )
+
+    rows = [
+        _make_showtime_row(
+            "Full Movie",
+            datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc),
+            identifier="full-slug",
+        ),
+    ]
+    mock_registry.fetch_showtimes.return_value = rows
+    mock_movie_repo.find_by_title.return_value = enriched_movie
+    mock_screening_repo.save.return_value = (None, True)
+
+    use_case = ImportScreeningsUseCase(
+        cinema_repository=mock_cinema_repo,
+        assignment_repository=mock_assignment_repo,
+        source_registry=mock_registry,
+        movie_repository=mock_movie_repo,
+        screening_repository=mock_screening_repo,
+    )
+
+    request = ImportScreeningsUseCase.InputData(
+        cinema_id="cin-123",
+        start_date=date(2026, 6, 7),
+        end_date=date(2026, 6, 7),
+    )
+    result = await use_case.execute(request)
+
+    assert result.total_count == 1
+    mock_registry.fetch_movie_detail.assert_not_awaited()
+    mock_movie_repo.save.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_import_handles_mixed_identifiers_for_enrichment() -> None:
+    """Test enrichment alignment when some movies have identifiers and some don't.
+
+    This regression test validates the fix for the enrichment misalignment bug
+    where ``enrich_identifiers`` was shorter than ``enrich_titles``, causing
+    enrichment results to be applied to the wrong movie.
+    """
+    mock_cinema_repo = create_autospec(CinemaRepository, instance=True)
+    mock_assignment_repo = create_autospec(
+        CinemaSourceAssignmentRepository, instance=True
+    )
+    mock_registry = create_autospec(SourceRegistryQuery, instance=True)
+    mock_movie_repo = create_autospec(MovieRepository, instance=True)
+    mock_screening_repo = create_autospec(ScreeningRepository, instance=True)
+
+    cinema = Cinema(
+        id=CinemaId(value="cin-123"), name="Cinéma Beaubien", city="Montreal"
+    )
+    mock_cinema_repo.find_by_id.return_value = cinema
+
+    source_definition = SourceDefinition(
+        name=SourceName(value="cinemacinema"),
+        display_name="Cinema Cinema",
+    )
+    assignment = CinemaSourceAssignment(cinema=cinema, source=source_definition)
+    mock_assignment_repo.find_by_cinema_id.return_value = assignment
+
+    rows = [
+        _make_showtime_row(
+            "Movie With ID",
+            datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc),
+            identifier="has-id",
+        ),
+        _make_showtime_row(
+            "Movie Without ID",
+            datetime(2026, 6, 7, 21, 0, 0, tzinfo=timezone.utc),
+            identifier=None,
+        ),
+    ]
+    mock_registry.fetch_showtimes.return_value = rows
+    mock_movie_repo.find_by_title.side_effect = [None, None]
+
+    enrichment = MovieEnrichmentData(
+        description="Only movie with ID gets enriched",
+        duration_minutes=100,
+    )
+    mock_registry.fetch_movie_detail.return_value = enrichment
+
+    movie_with_id = Movie(
+        id=MovieId(value="mov-id"),
+        title="Movie With ID",
+        description="Only movie with ID gets enriched",
+        duration_minutes=100,
+    )
+    movie_without_id = Movie(
+        id=MovieId(value="mov-no-id"),
+        title="Movie Without ID",
+    )
+
+    def save_side_effect(movie: Movie) -> Movie:
+        if movie.title == "Movie With ID":
+            return movie_with_id
+        return movie_without_id
+
+    mock_movie_repo.save.side_effect = save_side_effect
+    mock_screening_repo.save.return_value = (None, True)
+
+    use_case = ImportScreeningsUseCase(
+        cinema_repository=mock_cinema_repo,
+        assignment_repository=mock_assignment_repo,
+        source_registry=mock_registry,
+        movie_repository=mock_movie_repo,
+        screening_repository=mock_screening_repo,
+    )
+
+    request = ImportScreeningsUseCase.InputData(
+        cinema_id="cin-123",
+        start_date=date(2026, 6, 7),
+        end_date=date(2026, 6, 7),
+    )
+    result = await use_case.execute(request)
+
+    assert result.total_count == 2
+    assert result.imported_count == 2
+    mock_registry.fetch_movie_detail.assert_awaited_once_with("cinemacinema", "has-id")
+    assert mock_movie_repo.save.await_count == 2
+
+    saved_movie_with_id = mock_movie_repo.save.call_args_list[0][0][0]
+    assert saved_movie_with_id.title == "Movie With ID"
+    assert saved_movie_with_id.description == "Only movie with ID gets enriched"
+    assert saved_movie_with_id.duration_minutes == 100

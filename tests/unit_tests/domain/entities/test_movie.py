@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import datetime
 
 import pytest
 
@@ -15,15 +15,23 @@ def test_movie_creation() -> None:
     movie = Movie(
         id=MovieId(value="mov-123"),
         title="Inception",
-        release_date=date(2010, 7, 16),
+        release_year=2010,
         directors=("Christopher Nolan",),
         cast=("Leonardo DiCaprio", "Joseph Gordon-Levitt"),
         duration_minutes=148,
         description="A thief who steals corporate secrets...",
+        poster_url="https://example.com/poster.jpg",
+        trailer_url="https://example.com/trailer",
+        genres=("Sci-Fi", "Action"),
+        original_title="Inception",
+        rating="PG-13",
+        origin_countries=("United States", "United Kingdom"),
     )
     assert movie.title == "Inception"
     assert movie.duration_minutes == 148
     assert movie.description == "A thief who steals corporate secrets..."
+    assert movie.poster_url == "https://example.com/poster.jpg"
+    assert movie.genres == ("Sci-Fi", "Action")
 
 
 def test_movie_rejects_empty_title() -> None:
@@ -32,9 +40,7 @@ def test_movie_rejects_empty_title() -> None:
         Movie(
             id=MovieId(value="mov-123"),
             title="  ",
-            release_date=date(2010, 7, 16),
             directors=("Christopher Nolan",),
-            cast=("Actor",),
         )
 
 
@@ -44,9 +50,7 @@ def test_movie_rejects_no_directors() -> None:
         Movie(
             id=MovieId(value="mov-123"),
             title="Inception",
-            release_date=date(2010, 7, 16),
             directors=(),
-            cast=("Actor",),
         )
 
 
@@ -56,9 +60,7 @@ def test_movie_rejects_empty_director_name() -> None:
         Movie(
             id=MovieId(value="mov-123"),
             title="Inception",
-            release_date=date(2010, 7, 16),
             directors=("  ",),
-            cast=("Actor",),
         )
 
 
@@ -68,9 +70,7 @@ def test_movie_rejects_non_positive_duration() -> None:
         Movie(
             id=MovieId(value="mov-123"),
             title="Inception",
-            release_date=date(2010, 7, 16),
             directors=("Christopher Nolan",),
-            cast=("Actor",),
             duration_minutes=0,
         )
 
@@ -80,9 +80,7 @@ def test_movie_allows_none_duration() -> None:
     movie = Movie(
         id=MovieId(value="mov-123"),
         title="Inception",
-        release_date=date(2010, 7, 16),
         directors=("Christopher Nolan",),
-        cast=("Actor",),
         duration_minutes=None,
     )
     assert movie.duration_minutes is None
@@ -93,9 +91,8 @@ def test_is_recent_returns_true_for_recent_movie() -> None:
     movie = Movie(
         id=MovieId(value="mov-123"),
         title="Recent Movie",
-        release_date=date.today() - timedelta(days=30),
+        release_year=datetime.now().year,
         directors=("Director",),
-        cast=("Actor",),
     )
     assert movie.is_recent()
 
@@ -105,9 +102,8 @@ def test_is_recent_returns_false_for_old_movie() -> None:
     movie = Movie(
         id=MovieId(value="mov-123"),
         title="Old Movie",
-        release_date=date.today() - timedelta(days=400),
+        release_year=datetime.now().year - 5,
         directors=("Director",),
-        cast=("Actor",),
     )
     assert not movie.is_recent()
 
@@ -117,21 +113,27 @@ def test_is_recent_with_custom_years() -> None:
     movie = Movie(
         id=MovieId(value="mov-123"),
         title="Barely Recent",
-        release_date=date.today() - timedelta(days=365 * 2 + 1),
+        release_year=datetime.now().year - 2,
         directors=("Director",),
-        cast=("Actor",),
     )
-    assert not movie.is_recent(years=2)
+    assert movie.is_recent(years=2)
+
+    old_movie = Movie(
+        id=MovieId(value="mov-456"),
+        title="Not Recent",
+        release_year=datetime.now().year - 3,
+        directors=("Director",),
+    )
+    assert not old_movie.is_recent(years=2)
 
 
-def test_is_recent_returns_false_when_release_date_unknown() -> None:
-    """Verify is_recent returns False when release_date is None."""
+def test_is_recent_returns_false_when_release_year_unknown() -> None:
+    """Verify is_recent returns False when release_year is None."""
     movie = Movie(
         id=MovieId(value="mov-123"),
         title="Unknown Release",
-        release_date=None,
+        release_year=None,
         directors=("Director",),
-        cast=("Actor",),
     )
     assert not movie.is_recent()
 
@@ -141,7 +143,7 @@ def test_movie_accepts_none_directors() -> None:
     movie = Movie(
         id=MovieId(value="mov-123"),
         title="No Director Info",
-        release_date=date(2026, 1, 1),
+        release_year=2026,
         directors=None,
     )
     assert movie.directors is None
@@ -152,25 +154,28 @@ def test_movie_accepts_none_cast() -> None:
     movie = Movie(
         id=MovieId(value="mov-123"),
         title="No Cast Info",
-        release_date=date(2026, 1, 1),
+        release_year=2026,
         directors=("Director",),
         cast=None,
     )
     assert movie.cast is None
 
 
-def test_movie_accepts_none_directors_and_cast() -> None:
+def test_movie_accepts_none_optional_fields() -> None:
     """Verify a fully minimal movie with no optional info works."""
     movie = Movie(
         id=MovieId(value="mov-123"),
         title="Minimal",
-        release_date=None,
-        directors=None,
-        cast=None,
     )
     assert movie.title == "Minimal"
-    assert movie.release_date is None
+    assert movie.release_year is None
     assert movie.directors is None
     assert movie.cast is None
     assert movie.duration_minutes is None
     assert movie.description is None
+    assert movie.poster_url is None
+    assert movie.trailer_url is None
+    assert movie.genres is None
+    assert movie.original_title is None
+    assert movie.rating is None
+    assert movie.origin_countries is None

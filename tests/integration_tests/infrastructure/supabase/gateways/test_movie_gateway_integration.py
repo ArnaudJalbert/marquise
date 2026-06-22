@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import date
-
 import pytest
 
 from marquise.infrastructure.supabase.gateways.movie import SupabaseMovieGateway
@@ -15,7 +13,7 @@ async def test_save_and_find_by_id(movie_gateway: SupabaseMovieGateway) -> None:
     result = await movie_gateway.save(
         movie_id="mov-001",
         title="Inception",
-        release_date=date(2010, 7, 16),
+        release_year=2010,
         directors="Christopher Nolan",
         cast="Leonardo DiCaprio,Joseph Gordon-Levitt",
         duration_minutes=148,
@@ -23,7 +21,7 @@ async def test_save_and_find_by_id(movie_gateway: SupabaseMovieGateway) -> None:
     )
     assert result["id"] == "mov-001"
     assert result["title"] == "Inception"
-    assert result["release_date"] == date(2010, 7, 16)
+    assert result["release_year"] == 2010
     assert result["directors"] == "Christopher Nolan"
     assert result["duration_minutes"] == 148
 
@@ -46,7 +44,7 @@ async def test_find_by_title(movie_gateway: SupabaseMovieGateway) -> None:
     await movie_gateway.save(
         movie_id="mov-002",
         title="The Matrix",
-        release_date=date(1999, 3, 31),
+        release_year=1999,
         directors="The Wachowskis",
         cast="Keanu Reeves,Laurence Fishburne",
     )
@@ -54,7 +52,7 @@ async def test_find_by_title(movie_gateway: SupabaseMovieGateway) -> None:
     found = await movie_gateway.find_by_title("The Matrix")
     assert found is not None
     assert found["id"] == "mov-002"
-    assert found["release_date"] == date(1999, 3, 31)
+    assert found["release_year"] == 1999
 
 
 @pytest.mark.asyncio
@@ -72,7 +70,7 @@ async def test_save_updates_existing_on_title_conflict(
     await movie_gateway.save(
         movie_id="mov-003",
         title="Duplicate Title",
-        release_date=date(2020, 1, 1),
+        release_year=2020,
         directors="Original Director",
         cast="Actor A",
     )
@@ -80,13 +78,13 @@ async def test_save_updates_existing_on_title_conflict(
     saved = await movie_gateway.save(
         movie_id="mov-004",
         title="Duplicate Title",
-        release_date=date(2021, 6, 15),
+        release_year=2021,
         directors="Updated Director",
         cast="Actor B",
     )
     assert saved["title"] == "Duplicate Title"
     assert saved["directors"] == "Updated Director"
-    assert saved["release_date"] == date(2021, 6, 15)
+    assert saved["release_year"] == 2021
 
 
 @pytest.mark.asyncio
@@ -97,7 +95,7 @@ async def test_save_handles_minimal_fields(
     result = await movie_gateway.save(
         movie_id="mov-005",
         title="Minimal Movie",
-        release_date=date(2026, 1, 1),
+        release_year=2026,
         directors="",
         cast="",
     )
@@ -116,13 +114,13 @@ async def test_save_handles_none_fields(
     result = await movie_gateway.save(
         movie_id="mov-006",
         title="None Fields Movie",
-        release_date=None,
+        release_year=None,
         directors=None,
         cast=None,
     )
     assert result["id"] == "mov-006"
     assert result["title"] == "None Fields Movie"
-    assert result["release_date"] is None
+    assert result["release_year"] is None
     assert result["directors"] is None
     assert result["cast_members"] is None
 
@@ -135,7 +133,7 @@ async def test_save_does_not_overwrite_with_none_on_conflict(
     await movie_gateway.save(
         movie_id="mov-007",
         title="Preserve Me",
-        release_date=date(2020, 6, 15),
+        release_year=2020,
         directors="Known Director",
         cast="Known Cast",
     )
@@ -143,11 +141,11 @@ async def test_save_does_not_overwrite_with_none_on_conflict(
     result = await movie_gateway.save(
         movie_id="mov-008",
         title="Preserve Me",
-        release_date=None,
+        release_year=None,
         directors=None,
         cast=None,
     )
     assert result["title"] == "Preserve Me"
-    assert result["release_date"] == date(2020, 6, 15)
+    assert result["release_year"] == 2020
     assert result["directors"] == "Known Director"
     assert result["cast_members"] == "Known Cast"

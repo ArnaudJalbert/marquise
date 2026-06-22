@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import date
 from typing import Optional, Protocol
 
 
@@ -16,11 +15,17 @@ class MovieGateway(Protocol):
         self,
         movie_id: str,
         title: str,
-        release_date: Optional[date],
+        release_year: Optional[int] = None,
         directors: Optional[str] = None,
         cast: Optional[str] = None,
         duration_minutes: Optional[int] = None,
         description: Optional[str] = None,
+        poster_url: Optional[str] = None,
+        trailer_url: Optional[str] = None,
+        genres: Optional[str] = None,
+        original_title: Optional[str] = None,
+        rating: Optional[str] = None,
+        origin_countries: Optional[str] = None,
     ) -> dict:
         """Insert or upsert a movie row.
 
@@ -29,11 +34,17 @@ class MovieGateway(Protocol):
         Args:
             movie_id: Unique identifier.
             title: Movie title.
-            release_date: Release date (optional when unknown).
+            release_year: Release year (optional when unknown).
             directors: Comma-separated directors (None if unknown).
             cast: Comma-separated cast (None if unknown).
             duration_minutes: Duration in minutes.
             description: Movie description.
+            poster_url: URL to movie poster image (optional).
+            trailer_url: URL to movie trailer (optional).
+            genres: Comma-separated genres (optional).
+            original_title: Original title in native language (optional).
+            rating: Content rating (optional).
+            origin_countries: Comma-separated origin countries (optional).
 
         Returns:
             The inserted/updated row as a dict.
