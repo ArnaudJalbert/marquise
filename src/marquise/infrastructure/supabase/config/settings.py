@@ -15,9 +15,11 @@ class Settings:
         supabase_publishable_key: Supabase publishable API key for the auth
             client.
         schema: Database schema for all tables (default ``"marquise"``).
+        cineplex_api_key: API key for the Cineplex theatrical API.
     """
 
     database_url: str
     supabase_url: str
     supabase_publishable_key: str
+    cineplex_api_key: str = ""
     schema: str = "marquise"

@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
+from typing import Optional
 from uuid import uuid4
 
 from marquise.application.exceptions import (
@@ -14,6 +15,7 @@ from marquise.application.exceptions import (
 from marquise.application.repositories import (
     CinemaRepository,
     CinemaSourceAssignmentRepository,
+    MovieEnrichmentData,
     MovieRepository,
     ScreeningRepository,
     SourceRegistryQuery,
@@ -156,7 +158,9 @@ class ImportScreeningsUseCase:
             end_date=end_dt,
         )
 
-        movie_lookup = await self._resolve_or_create_movies(rows)
+        movie_lookup = await self._resolve_or_create_movies(
+            rows, str(source_definition.name)
+        )
         results = await asyncio.gather(
             *[self._upsert_screening(row, movie_lookup, cinema) for row in rows]
         )
@@ -213,11 +217,15 @@ class ImportScreeningsUseCase:
     async def _resolve_or_create_movies(
         self,
         rows: list[ShowtimeRow],
+        source_name: str,
     ) -> dict[str, Movie]:
-        """Look up movies by title in parallel, creating missing ones.
+        """Look up movies by title in parallel, creating and enriching missing ones.
+
+        Enriches movies with metadata from the source when available.
 
         Args:
             rows: The showtime rows from the source.
+            source_name: The name of the source (used for enrichment queries).
 
         Returns:
             A mapping of movie title to Movie entity.
@@ -235,19 +243,64 @@ class ImportScreeningsUseCase:
             else:
                 missing_titles.append(title)
 
-        if missing_titles:
-            new_movies = [
-                Movie(
-                    id=MovieId(value=uuid4().hex),
-                    title=title,
-                    release_date=None,
-                    directors=None,
-                    cast=None,
-                )
-                for title in missing_titles
-            ]
+        # Map each unique title to its identifier for enrichment
+        title_to_identifier: dict[str, Optional[str]] = {}
+        for row in rows:
+            if row.movie_title not in title_to_identifier:
+                title_to_identifier[row.movie_title] = row.identifier
+
+        # -- New movies --
+        movies_to_save: list[Movie] = []
+        new_movies_by_title: dict[str, Movie] = {}
+        for title in missing_titles:
+            movie = Movie(
+                id=MovieId(value=uuid4().hex),
+                title=title,
+            )
+            new_movies_by_title[title] = movie
+            movies_to_save.append(movie)
+
+        # -- Build (title, identifier) pairs for movies that can be enriched --
+        enrich_pairs: list[tuple[str, str]] = []
+        for title in missing_titles:
+            identifier = title_to_identifier.get(title)
+            if identifier:
+                enrich_pairs.append((title, identifier))
+
+        existing_to_enrich_titles: list[str] = []
+        for title, movie in movie_lookup.items():
+            identifier = title_to_identifier.get(title)
+            if identifier is not None and _needs_enrichment(movie):
+                enrich_pairs.append((title, identifier))
+                existing_to_enrich_titles.append(title)
+
+        if enrich_pairs:
+            enrich_results = await asyncio.gather(
+                *[
+                    self.source_registry.fetch_movie_detail(source_name, ident)
+                    for _, ident in enrich_pairs
+                ],
+                return_exceptions=True,
+            )
+
+            enriched_existing: set[str] = set()
+            for (title, _), enrichment in zip(enrich_pairs, enrich_results):
+                if not isinstance(enrichment, MovieEnrichmentData):
+                    continue
+                if title in new_movies_by_title:
+                    _apply_enrichment(new_movies_by_title[title], enrichment)
+                else:
+                    existing_movie = movie_lookup[title]
+                    _apply_enrichment(existing_movie, enrichment)
+                    enriched_existing.add(title)
+
+            for title in enriched_existing:
+                movies_to_save.append(movie_lookup[title])
+
+        # -- Save all enriched movies in parallel --
+        if movies_to_save:
             saved_movies = await asyncio.gather(
-                *[self.movie_repository.save(m) for m in new_movies]
+                *[self.movie_repository.save(m) for m in movies_to_save]
             )
             for movie in saved_movies:
                 movie_lookup[movie.title] = movie
@@ -260,7 +313,7 @@ class ImportScreeningsUseCase:
         movie_lookup: dict[str, Movie],
         cinema: Cinema,
     ) -> ImportedScreeningData:
-        """Create or upsert a single screening from a showtime row.
+        """Create or update a single screening from a showtime row.
 
         Args:
             row: The showtime row to persist.
@@ -276,10 +329,65 @@ class ImportScreeningsUseCase:
             movie=movie,
             cinema=cinema,
             showtime=Showtime(value=row.showtime),
+            external_id=row.external_id,
+            ticket_url=row.ticket_url,
+            room=row.room,
+            language=row.language,
         )
         screening, was_inserted = await self.screening_repository.save(screening)
+        if not was_inserted:
+            await self.screening_repository.update(screening)
         return ImportedScreeningData(
             movie_title=row.movie_title,
             showtime=row.showtime.strftime("%Y-%m-%d %H:%M"),
             imported=was_inserted,
         )
+
+
+def _needs_enrichment(movie: Movie) -> bool:
+    """Check whether a movie has any null optional fields."""
+    return any(
+        getattr(movie, field) is None
+        for field in (
+            "description",
+            "directors",
+            "cast",
+            "duration_minutes",
+            "release_year",
+            "poster_url",
+            "trailer_url",
+            "genres",
+            "original_title",
+            "rating",
+            "origin_countries",
+        )
+    )
+
+
+def _apply_enrichment(
+    movie: Movie,
+    enrichment: MovieEnrichmentData,
+) -> None:
+    """Populate null fields on a Movie entity from enrichment data."""
+    if movie.description is None and enrichment.description is not None:
+        movie.description = enrichment.description
+    if movie.directors is None and enrichment.directors is not None:
+        movie.directors = enrichment.directors
+    if movie.cast is None and enrichment.cast is not None:
+        movie.cast = enrichment.cast
+    if movie.duration_minutes is None and enrichment.duration_minutes is not None:
+        movie.duration_minutes = enrichment.duration_minutes
+    if movie.release_year is None and enrichment.release_year is not None:
+        movie.release_year = enrichment.release_year
+    if movie.poster_url is None and enrichment.poster_url is not None:
+        movie.poster_url = enrichment.poster_url
+    if movie.trailer_url is None and enrichment.trailer_url is not None:
+        movie.trailer_url = enrichment.trailer_url
+    if movie.genres is None and enrichment.genres is not None:
+        movie.genres = enrichment.genres
+    if movie.original_title is None and enrichment.original_title is not None:
+        movie.original_title = enrichment.original_title
+    if movie.rating is None and enrichment.rating is not None:
+        movie.rating = enrichment.rating
+    if movie.origin_countries is None and enrichment.origin_countries is not None:
+        movie.origin_countries = enrichment.origin_countries

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import date
 from typing import Optional
 
 import asyncpg
@@ -10,7 +9,8 @@ import asyncpg
 DEFAULT_SCHEMA = "marquise"
 
 _COLUMNS = (
-    "id, title, release_date, directors, cast_members, duration_minutes, description"
+    "id, title, release_year, directors, cast_members, duration_minutes, description,"
+    " poster_url, trailer_url, genres, original_title, rating, origin_countries"
 )
 
 
@@ -31,11 +31,17 @@ class SupabaseMovieGateway:
         self,
         movie_id: str,
         title: str,
-        release_date: Optional[date],
+        release_year: Optional[int] = None,
         directors: Optional[str] = None,
         cast: Optional[str] = None,
         duration_minutes: Optional[int] = None,
         description: Optional[str] = None,
+        poster_url: Optional[str] = None,
+        trailer_url: Optional[str] = None,
+        genres: Optional[str] = None,
+        original_title: Optional[str] = None,
+        rating: Optional[str] = None,
+        origin_countries: Optional[str] = None,
     ) -> dict:
         """Insert or upsert a movie row.
 
@@ -44,11 +50,17 @@ class SupabaseMovieGateway:
         Args:
             movie_id: Unique identifier.
             title: Movie title.
-            release_date: Release date (optional when unknown).
+            release_year: Release year (optional when unknown).
             directors: Comma-separated directors (None if unknown).
             cast: Comma-separated cast (None if unknown).
             duration_minutes: Duration in minutes.
             description: Movie description.
+            poster_url: URL to movie poster image (optional).
+            trailer_url: URL to movie trailer (optional).
+            genres: Comma-separated genres (optional).
+            original_title: Original title in native language (optional).
+            rating: Content rating (optional).
+            origin_countries: Comma-separated origin countries (optional).
 
         Returns:
             The inserted/updated row as a dict.
@@ -60,27 +72,48 @@ class SupabaseMovieGateway:
             row = await conn.fetchrow(
                 f"""
                 INSERT INTO {self._table}
-                    (id, title, release_date, directors, cast_members,
-                     duration_minutes, description)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    (id, title, release_year, directors, cast_members,
+                     duration_minutes, description, poster_url, trailer_url,
+                     genres, original_title, rating, origin_countries)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                 ON CONFLICT (title) DO UPDATE
-                    SET release_date = COALESCE(EXCLUDED.release_date,
-                                                movies.release_date),
+                    SET release_year = COALESCE(EXCLUDED.release_year,
+                                                movies.release_year),
                         directors = COALESCE(EXCLUDED.directors,
                                              movies.directors),
                         cast_members = COALESCE(EXCLUDED.cast_members,
                                                 movies.cast_members),
-                        duration_minutes = EXCLUDED.duration_minutes,
-                        description = EXCLUDED.description
+                        duration_minutes = COALESCE(EXCLUDED.duration_minutes,
+                                                    movies.duration_minutes),
+                        description = COALESCE(EXCLUDED.description,
+                                               movies.description),
+                        poster_url = COALESCE(EXCLUDED.poster_url,
+                                              movies.poster_url),
+                        trailer_url = COALESCE(EXCLUDED.trailer_url,
+                                               movies.trailer_url),
+                        genres = COALESCE(EXCLUDED.genres,
+                                          movies.genres),
+                        original_title = COALESCE(EXCLUDED.original_title,
+                                                  movies.original_title),
+                        rating = COALESCE(EXCLUDED.rating,
+                                          movies.rating),
+                        origin_countries = COALESCE(EXCLUDED.origin_countries,
+                                                    movies.origin_countries)
                 RETURNING {_COLUMNS}
                 """,
                 movie_id,
                 title,
-                release_date,
+                release_year,
                 directors,
                 cast,
                 duration_minutes,
                 description,
+                poster_url,
+                trailer_url,
+                genres,
+                original_title,
+                rating,
+                origin_countries,
             )
         return dict(row)
 

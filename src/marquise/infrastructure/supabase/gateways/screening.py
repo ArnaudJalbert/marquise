@@ -9,14 +9,20 @@ import asyncpg
 
 DEFAULT_SCHEMA = "marquise"
 
-_COLUMNS = "id, movie_id, cinema_id, showtime"
+_COLUMNS = "id, movie_id, cinema_id, showtime, external_id, ticket_url, room, language"
 _MOVIE_COLUMNS = (
     "m.id AS movie__id, m.title AS movie__title,"
-    " m.release_date AS movie__release_date,"
+    " m.release_year AS movie__release_year,"
     " m.directors AS movie__directors,"
     " m.cast_members AS movie__cast_members,"
     " m.duration_minutes AS movie__duration_minutes,"
-    " m.description AS movie__description"
+    " m.description AS movie__description,"
+    " m.poster_url AS movie__poster_url,"
+    " m.trailer_url AS movie__trailer_url,"
+    " m.genres AS movie__genres,"
+    " m.original_title AS movie__original_title,"
+    " m.rating AS movie__rating,"
+    " m.origin_countries AS movie__origin_countries"
 )
 _CINEMA_COLUMNS = (
     "c.id AS cinema__id, c.name AS cinema__name,"
@@ -62,6 +68,10 @@ class SupabaseScreeningGateway:
         movie_id: str,
         cinema_id: str,
         showtime: datetime,
+        external_id: Optional[str] = None,
+        ticket_url: Optional[str] = None,
+        room: Optional[str] = None,
+        language: Optional[str] = None,
     ) -> dict:
         """Insert or upsert a screening row.
 
@@ -72,6 +82,10 @@ class SupabaseScreeningGateway:
             movie_id: The movie being screened.
             cinema_id: The cinema hosting the screening.
             showtime: The date and time of the screening.
+            external_id: Source-native deduplication key (optional).
+            ticket_url: Link to purchase tickets (optional).
+            room: Room or auditorium name (optional).
+            language: Language or subtitle version (optional).
 
         Returns:
             The inserted/updated row as a dict.
@@ -84,8 +98,9 @@ class SupabaseScreeningGateway:
                 f"""
                 WITH inserted AS (
                     INSERT INTO {self._table}
-                        (id, movie_id, cinema_id, showtime)
-                    VALUES ($1, $2, $3, $4)
+                        (id, movie_id, cinema_id, showtime,
+                         external_id, ticket_url, room, language)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                     ON CONFLICT (cinema_id, movie_id, showtime) DO NOTHING
                     RETURNING {_COLUMNS}, true AS __inserted
                 ),
@@ -104,8 +119,62 @@ class SupabaseScreeningGateway:
                 movie_id,
                 cinema_id,
                 _naive_utc(showtime),
+                external_id,
+                ticket_url,
+                room,
+                language,
             )
         return dict(row)
+
+    async def update(
+        self,
+        cinema_id: str,
+        movie_id: str,
+        showtime: datetime,
+        external_id: Optional[str] = None,
+        ticket_url: Optional[str] = None,
+        room: Optional[str] = None,
+        language: Optional[str] = None,
+    ) -> Optional[dict]:
+        """Update optional fields on an existing screening.
+
+        Matches by the unique constraint (cinema_id, movie_id, showtime).
+        Only non-None values are written; existing values are preserved
+        when the argument is None.
+
+        Args:
+            cinema_id: The cinema hosting the screening.
+            movie_id: The movie being screened.
+            showtime: The date and time of the screening.
+            external_id: Source-native deduplication key (optional).
+            ticket_url: Link to purchase tickets (optional).
+            room: Room or auditorium name (optional).
+            language: Language or subtitle version (optional).
+
+        Returns:
+            The updated row as a dict, or None if no matching row exists.
+        """
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                f"""
+                UPDATE {self._table}
+                SET
+                    external_id = COALESCE($4, external_id),
+                    ticket_url = COALESCE($5, ticket_url),
+                    room = COALESCE($6, room),
+                    language = COALESCE($7, language)
+                WHERE cinema_id = $1 AND movie_id = $2 AND showtime = $3
+                RETURNING {_COLUMNS}
+                """,
+                cinema_id,
+                movie_id,
+                _naive_utc(showtime),
+                external_id,
+                ticket_url,
+                room,
+                language,
+            )
+        return dict(row) if row is not None else None
 
     async def find_by_id(self, screening_id: str) -> Optional[dict]:
         """Find a screening by its ID.

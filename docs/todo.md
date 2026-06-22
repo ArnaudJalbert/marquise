@@ -56,6 +56,13 @@ call site.
 protocols (source_definition, cinema_source_assignment). Should be in
 `protocols/base.py`.
 
+## Infrastructure: `__inserted` Flag is a Leaky Abstraction
+
+`ScreeningGateway.save()` returns a plain `dict` but includes an undocumented
+`__inserted` boolean key. The protocol's docstring now documents this, but a
+cleaner fix would make it part of the type signature (e.g., returning a
+`NamedTuple`).
+
 ## Domain: `Movie.is_recent` Uses Naive `datetime.now()`
 
 `Movie.is_recent` (movie.py:59-61) uses naive `datetime.now()` while

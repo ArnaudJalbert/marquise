@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from typing import Optional
 
 from ..value_objects import ScreeningId, Showtime
 from .cinema import Cinema
@@ -19,12 +20,20 @@ class Screening:
         movie: The movie being screened.
         cinema: The cinema hosting the screening.
         showtime: Date and time of the screening.
+        external_id: Source-native identifier for deduplication (optional).
+        ticket_url: Link to purchase tickets (optional).
+        room: Room or auditorium name (optional).
+        language: Language or subtitle version (optional).
     """
 
     id: ScreeningId
     movie: Movie
     cinema: Cinema
     showtime: Showtime
+    external_id: Optional[str] = None
+    ticket_url: Optional[str] = None
+    room: Optional[str] = None
+    language: Optional[str] = None
 
     def is_upcoming(self, now: datetime | None = None) -> bool:
         """Check if this screening is still in the future.

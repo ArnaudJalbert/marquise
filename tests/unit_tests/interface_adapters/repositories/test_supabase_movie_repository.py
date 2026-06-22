@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import date
 from unittest.mock import create_autospec
 
 import pytest
@@ -21,11 +20,17 @@ def sample_movie() -> Movie:
     return Movie(
         id=MovieId(value="mov-123"),
         title="Inception",
-        release_date=date(2010, 7, 16),
+        release_year=2010,
         directors=("Christopher Nolan",),
         cast=("Leonardo DiCaprio", "Joseph Gordon-Levitt"),
         duration_minutes=148,
         description="A thief who steals corporate secrets...",
+        poster_url="https://example.com/poster.jpg",
+        trailer_url="https://example.com/trailer",
+        genres=("Sci-Fi", "Action"),
+        original_title="Inception",
+        rating="PG-13",
+        origin_countries=("United States", "United Kingdom"),
     )
 
 
@@ -35,11 +40,17 @@ def gateway_dict() -> dict:
     return {
         "id": "mov-123",
         "title": "Inception",
-        "release_date": date(2010, 7, 16),
+        "release_year": 2010,
         "directors": "Christopher Nolan",
         "cast_members": "Leonardo DiCaprio,Joseph Gordon-Levitt",
         "duration_minutes": 148,
         "description": "A thief who steals corporate secrets...",
+        "poster_url": "https://example.com/poster.jpg",
+        "trailer_url": "https://example.com/trailer",
+        "genres": "Sci-Fi,Action",
+        "original_title": "Inception",
+        "rating": "PG-13",
+        "origin_countries": "United States,United Kingdom",
     }
 
 
@@ -50,11 +61,17 @@ async def test_save(sample_movie: Movie) -> None:
     mock_gateway.save.return_value = {
         "id": "mov-123",
         "title": "Inception",
-        "release_date": date(2010, 7, 16),
+        "release_year": 2010,
         "directors": "Christopher Nolan",
         "cast_members": "Leonardo DiCaprio,Joseph Gordon-Levitt",
         "duration_minutes": 148,
         "description": "A thief who steals corporate secrets...",
+        "poster_url": "https://example.com/poster.jpg",
+        "trailer_url": "https://example.com/trailer",
+        "genres": "Sci-Fi,Action",
+        "original_title": "Inception",
+        "rating": "PG-13",
+        "origin_countries": "United States,United Kingdom",
     }
 
     repo = SupabaseMovieRepository(gateway=mock_gateway)
@@ -65,14 +82,22 @@ async def test_save(sample_movie: Movie) -> None:
     assert result.directors == ("Christopher Nolan",)
     assert result.cast == ("Leonardo DiCaprio", "Joseph Gordon-Levitt")
     assert result.duration_minutes == 148
+    assert result.poster_url == "https://example.com/poster.jpg"
+    assert result.genres == ("Sci-Fi", "Action")
     mock_gateway.save.assert_awaited_once_with(
         movie_id="mov-123",
         title="Inception",
-        release_date=date(2010, 7, 16),
+        release_year=2010,
         directors="Christopher Nolan",
         cast="Leonardo DiCaprio,Joseph Gordon-Levitt",
         duration_minutes=148,
         description="A thief who steals corporate secrets...",
+        poster_url="https://example.com/poster.jpg",
+        trailer_url="https://example.com/trailer",
+        genres="Sci-Fi,Action",
+        original_title="Inception",
+        rating="PG-13",
+        origin_countries="United States,United Kingdom",
     )
 
 
@@ -136,19 +161,24 @@ async def test_save_handles_minimal_movie() -> None:
     movie = Movie(
         id=MovieId(value="mov-min"),
         title="Minimal",
-        release_date=date(2026, 1, 1),
         directors=("Unknown",),
-        cast=(),
+        cast=None,
     )
     mock_gateway = create_autospec(MovieGateway, instance=True)
     mock_gateway.save.return_value = {
         "id": "mov-min",
         "title": "Minimal",
-        "release_date": date(2026, 1, 1),
+        "release_year": None,
         "directors": "",
-        "cast_members": "",
+        "cast_members": None,
         "duration_minutes": None,
         "description": None,
+        "poster_url": None,
+        "trailer_url": None,
+        "genres": None,
+        "original_title": None,
+        "rating": None,
+        "origin_countries": None,
     }
 
     repo = SupabaseMovieRepository(gateway=mock_gateway)
@@ -163,11 +193,17 @@ async def test_save_handles_minimal_movie() -> None:
     mock_gateway.save.assert_awaited_once_with(
         movie_id="mov-min",
         title="Minimal",
-        release_date=date(2026, 1, 1),
+        release_year=None,
         directors="Unknown",
-        cast="",
+        cast=None,
         duration_minutes=None,
         description=None,
+        poster_url=None,
+        trailer_url=None,
+        genres=None,
+        original_title=None,
+        rating=None,
+        origin_countries=None,
     )
 
 
@@ -177,7 +213,6 @@ async def test_save_handles_none_fields() -> None:
     movie = Movie(
         id=MovieId(value="mov-none"),
         title="No Info",
-        release_date=None,
         directors=None,
         cast=None,
     )
@@ -185,18 +220,24 @@ async def test_save_handles_none_fields() -> None:
     mock_gateway.save.return_value = {
         "id": "mov-none",
         "title": "No Info",
-        "release_date": None,
+        "release_year": None,
         "directors": None,
         "cast_members": None,
         "duration_minutes": None,
         "description": None,
+        "poster_url": None,
+        "trailer_url": None,
+        "genres": None,
+        "original_title": None,
+        "rating": None,
+        "origin_countries": None,
     }
 
     repo = SupabaseMovieRepository(gateway=mock_gateway)
     result = await repo.save(movie)
 
     assert result.title == "No Info"
-    assert result.release_date is None
+    assert result.release_year is None
     assert result.directors is None
     assert result.cast is None
     assert result.duration_minutes is None
@@ -204,9 +245,15 @@ async def test_save_handles_none_fields() -> None:
     mock_gateway.save.assert_awaited_once_with(
         movie_id="mov-none",
         title="No Info",
-        release_date=None,
+        release_year=None,
         directors=None,
         cast=None,
         duration_minutes=None,
         description=None,
+        poster_url=None,
+        trailer_url=None,
+        genres=None,
+        original_title=None,
+        rating=None,
+        origin_countries=None,
     )

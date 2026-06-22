@@ -7,7 +7,7 @@ by ``CinemaPublicSource``, then delegates scraping.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 from marquise.domain.entities import Cinema
 from marquise.interface_adapters.repositories.protocols.showtime_source import (
@@ -58,3 +58,18 @@ class CinemaPublicAdapter:
             start_date=start_date,
             end_date=end_date,
         )
+
+    async def fetch_movie_detail(
+        self,
+        identifier: str,
+    ) -> Optional[dict[str, Any]]:
+        """Fetch enriched movie metadata from Cinema Public.
+
+        Args:
+            identifier: The film detail page URL
+                (e.g. ``"https://cinemapublic.ca/en/films/kairos/"``).
+
+        Returns:
+            A raw dict of movie metadata, or ``None``.
+        """
+        return await self._source.fetch_movie_detail(movie_url=identifier)

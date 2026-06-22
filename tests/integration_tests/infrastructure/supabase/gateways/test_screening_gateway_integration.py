@@ -27,9 +27,9 @@ async def _seed_parents(
         cinema_id="cin-003", name="Cinema Three", address=None, city=None
     )
     await gateway.save(cinema_id="cin-004", name="Cinema Four", address=None, city=None)
-    await movie_gateway.save(movie_id="mov-001", title="Movie A", release_date=None)
-    await movie_gateway.save(movie_id="mov-002", title="Movie B", release_date=None)
-    await movie_gateway.save(movie_id="mov-003", title="Movie C", release_date=None)
+    await movie_gateway.save(movie_id="mov-001", title="Movie A", release_year=None)
+    await movie_gateway.save(movie_id="mov-002", title="Movie B", release_year=None)
+    await movie_gateway.save(movie_id="mov-003", title="Movie C", release_year=None)
 
 
 @pytest.mark.asyncio

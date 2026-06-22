@@ -1,5 +1,52 @@
 # Changelog
 
+## 0.7.0 (2026-06-22)
+
+### Highlights
+
+- **Cineplex Source**: New scraper fetches showtimes from `apis.cineplex.com` and movie detail from `www.cineplex.com` (8 Montreal-area theatres: Banque Scotia, Quartier Latin, Forum, Carrefour Angrignon, Laval, Saint-Bruno, Brossard, Kirkland)
+- **Movie Enrichment Pipeline**: `ImportScreeningsUseCase` now enriches new & partially-populated movies in parallel — fetches description, directors, cast, duration, genres, poster, trailer, rating, original title from Cineplex, Cinemacinema, and Cinema Public
+- **Screening Metadata**: `Screening` gains `external_id`, `ticket_url`, `room`, `language` fields — gateways support backfilling via new `update()` method
+- **Movie Schema Revamp**: `release_date` → `release_year`; 6 new enrichment columns on `movies` table
+
+### New Features
+
+- **Source — Cineplex**: Full scraper at `infrastructure/sources/cineplex/` — authenticated API client for showtimes, Next.js page scraping for movie detail, mapping for 8 Montreal venues
+- **Source Adapter — Cineplex**: `CineplexAdapter` in `interface_adapters/repositories/source_adapters/cineplex.py` — maps cinema names to Cineplex location IDs
+- **Movie Enrichment**: `MovieEnrichmentData` dataclass, `fetch_movie_detail()` on `SourceRegistryQuery` / `ShowtimeSource` / `SourceAdapter` protocols; all three sources implement enrichment
+- **Screening Metadata**: `ScreeningGateway.update()` protocol method + Supabase implementation — backfills optional fields on existing rows preserving current values via `COALESCE`
+- **Import Pipeline**: `ImportScreeningsUseCase` collects source identifiers, fetches enrichment in parallel, skips already-enriched movies via `_needs_enrichment()` check
+- **Configuration**: `CINEPLEX_API_KEY` env var added to settings
+
+### Domain Changes
+
+- **Movie**: `release_date: Optional[date]` replaced by `release_year: Optional[int]` (validates positive); 6 new optional enrichment fields (`poster_url`, `trailer_url`, `genres`, `original_title`, `rating`, `origin_countries`); `is_recent()` uses year arithmetic
+- **Screening**: 4 new optional fields (`external_id`, `ticket_url`, `room`, `language`)
+
+### Infrastructure
+
+- **Migration 002**: `scripts/002_add_movie_screening_fields.sql` — adds enrichment columns to `movies` and metadata columns to `screenings`
+- **Migration 001 updated**: `release_date` → `release_year` in SQL and Python migrator
+- **Supabase Gateways**: `MovieGateway.save()` and `ScreeningGateway.save()` accept all new fields; `ScreeningGateway` gains `update()` with `COALESCE`-based merge
+- **Repository Implementations**: Map all new fields; `_parse_date()` removed from `SupabaseScreeningRepository`
+- **DI Container**: Registers Cineplex source + adapter; reads `CINEPLEX_API_KEY`
+
+### Bug Fixes
+
+- **Enrichment alignment**: `_resolve_or_create_movies` rewritten to use parallel `(title, identifier)` tuples, fixing a bug where enrichment data could be applied to the wrong movie
+
+### Documentation
+
+- `docs/sources.md` — rewritten with improved pipeline diagram, source comparison table (enrichment support), database schema docs, Cineplex section, configuration env vars table, updated "Adding a New Source" guide
+- `docs/todo.md` — notes `__inserted` flag as leaky abstraction in `ScreeningGateway`
+
+### Testing
+
+- **Application**: 7 new `ImportScreeningsUseCase` tests — enrichment flows (new, existing, skip, mixed identifiers), screening update backfill, negative count validation
+- **Domain**: Updated `Movie` tests for `release_year`, all enrichment fields, `is_recent` boundary cases
+- **Interface Adapters**: New `test_cineplex_adapter.py` (4 tests); updated movie/screening repository tests for new fields
+- **Integration**: All gateway tests updated for `release_year` schema change
+
 ## 0.6.0 (2026-06-10)
 
 ### Breaking
