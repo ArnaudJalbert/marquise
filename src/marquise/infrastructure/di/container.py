@@ -37,6 +37,9 @@ from marquise.infrastructure.sources.cinemacinema.gateways.source import (
 from marquise.infrastructure.sources.cinemapublic.gateways.source import (
     CinemaPublicSource,
 )
+from marquise.infrastructure.sources.cineplex.gateways.source import (
+    CineplexSource,
+)
 from marquise.infrastructure.supabase.config.settings import Settings
 from marquise.infrastructure.supabase.database import Database
 from marquise.infrastructure.supabase.gateways.cinema import SupabaseCinemaGateway
@@ -55,6 +58,9 @@ from marquise.interface_adapters.repositories.source_adapters.cinemacinema impor
 )
 from marquise.interface_adapters.repositories.source_adapters.cinemapublic import (
     CinemaPublicAdapter,
+)
+from marquise.interface_adapters.repositories.source_adapters.cineplex import (
+    CineplexAdapter,
 )
 from marquise.interface_adapters.repositories.source_registry import SourceRegistry
 from marquise.interface_adapters.repositories.supabase.cinema_repository import (
@@ -86,6 +92,7 @@ class SettingsProvider:
             database_url=os.environ["DATABASE_URL"],
             supabase_url=os.environ["SUPABASE_URL"],
             supabase_publishable_key=os.environ["SUPABASE_PUBLISHABLE_KEY"],
+            cineplex_api_key=os.environ.get("CINEPLEX_API_KEY", ""),
             schema=os.environ.get("DATABASE_SCHEMA", "marquise"),
         )
 
@@ -221,6 +228,12 @@ class Container:
             registry.register(
                 "cinemapublic",
                 CinemaPublicAdapter(CinemaPublicSource()),
+            )
+            registry.register(
+                "cineplex",
+                CineplexAdapter(
+                    CineplexSource(api_key=self._settings.cineplex_api_key)
+                ),
             )
             self._registry = registry
         return self._registry

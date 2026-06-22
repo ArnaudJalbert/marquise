@@ -31,19 +31,29 @@ CREATE TABLE IF NOT EXISTS "marquise-test".cinema_source_assignments (
 CREATE TABLE IF NOT EXISTS "marquise-test".movies (
     id               TEXT PRIMARY KEY,
     title            TEXT NOT NULL UNIQUE,
-    release_date     DATE,
+    release_year     INTEGER,
     directors        TEXT,
     cast_members     TEXT,
     duration_minutes INTEGER,
-    description      TEXT
+    description      TEXT,
+    poster_url       TEXT,
+    trailer_url      TEXT,
+    genres           TEXT,
+    original_title   TEXT,
+    rating           TEXT,
+    origin_countries TEXT
 );
 
 CREATE TABLE IF NOT EXISTS "marquise-test".screenings (
-    id        TEXT PRIMARY KEY,
-    movie_id  TEXT NOT NULL
+    id          TEXT PRIMARY KEY,
+    movie_id    TEXT NOT NULL
         REFERENCES "marquise-test".movies(id) ON DELETE CASCADE,
-    cinema_id TEXT NOT NULL
+    cinema_id   TEXT NOT NULL
         REFERENCES "marquise-test".cinemas(id) ON DELETE CASCADE,
-    showtime  TIMESTAMP NOT NULL,
+    showtime    TIMESTAMP NOT NULL,
+    external_id TEXT UNIQUE,
+    ticket_url  TEXT,
+    room        TEXT,
+    language    TEXT,
     UNIQUE (cinema_id, movie_id, showtime)
 );

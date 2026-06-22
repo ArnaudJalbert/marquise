@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS marquise.cinema_source_assignments (
 CREATE TABLE IF NOT EXISTS marquise.movies (
     id               TEXT PRIMARY KEY,
     title            TEXT NOT NULL UNIQUE,
-    release_date     DATE,
+    release_year     INTEGER,
     directors        TEXT,
     cast_members     TEXT,
     duration_minutes INTEGER,
@@ -37,11 +37,11 @@ CREATE TABLE IF NOT EXISTS marquise.movies (
 );
 
 CREATE TABLE IF NOT EXISTS marquise.screenings (
-    id        TEXT PRIMARY KEY,
-    movie_id  TEXT NOT NULL
+    id          TEXT PRIMARY KEY,
+    movie_id    TEXT NOT NULL
         REFERENCES marquise.movies(id) ON DELETE CASCADE,
-    cinema_id TEXT NOT NULL
+    cinema_id   TEXT NOT NULL
         REFERENCES marquise.cinemas(id) ON DELETE CASCADE,
-    showtime  TIMESTAMP NOT NULL,
+    showtime    TIMESTAMP NOT NULL,
     UNIQUE (cinema_id, movie_id, showtime)
 );

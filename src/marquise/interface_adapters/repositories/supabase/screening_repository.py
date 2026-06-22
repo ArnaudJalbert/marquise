@@ -6,7 +6,7 @@ interface (application).  No SQL, no asyncpg — pure entity mapping.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from typing import Optional
 
 from marquise.application.repositories import ScreeningRepository
@@ -46,20 +46,6 @@ def _parse_datetime(value: datetime | str) -> datetime:
     return result
 
 
-def _parse_date(value: date | str | None) -> date | None:
-    """Parse a date value.
-
-    Args:
-        value: A date object, ISO-format date string, or None.
-
-    Returns:
-        A parsed date or None.
-    """
-    if value is None or isinstance(value, date):
-        return value
-    return date.fromisoformat(value)
-
-
 def _dict_to_movie(data: dict) -> Movie:
     """Convert a prefixed movie dict into a Movie entity.
 
@@ -73,14 +59,26 @@ def _dict_to_movie(data: dict) -> Movie:
     directors = tuple(raw_directors.split(",")) if raw_directors else None
     raw_cast = data.get("cast_members")
     cast = tuple(raw_cast.split(",")) if raw_cast else None
+    raw_genres = data.get("genres")
+    genres = tuple(raw_genres.split(",")) if raw_genres else None
+    raw_origin_countries = data.get("origin_countries")
+    origin_countries = (
+        tuple(raw_origin_countries.split(",")) if raw_origin_countries else None
+    )
     return Movie(
         id=MovieId(value=data["id"]),
         title=data["title"],
-        release_date=_parse_date(data.get("release_date")),
+        release_year=data.get("release_year"),
         directors=directors,
         cast=cast,
         duration_minutes=data.get("duration_minutes"),
         description=data.get("description"),
+        poster_url=data.get("poster_url"),
+        trailer_url=data.get("trailer_url"),
+        genres=genres,
+        original_title=data.get("original_title"),
+        rating=data.get("rating"),
+        origin_countries=origin_countries,
     )
 
 
@@ -110,6 +108,10 @@ class SupabaseScreeningRepository(ScreeningRepository):
             movie_id=str(screening.movie.id),
             cinema_id=str(screening.cinema.id),
             showtime=screening.showtime.value,
+            external_id=screening.external_id,
+            ticket_url=screening.ticket_url,
+            room=screening.room,
+            language=screening.language,
         )
         was_inserted = data.pop("__inserted", True)
         saved = Screening(
@@ -117,8 +119,43 @@ class SupabaseScreeningRepository(ScreeningRepository):
             movie=screening.movie,
             cinema=screening.cinema,
             showtime=Showtime(value=_parse_datetime(data["showtime"])),
+            external_id=data.get("external_id"),
+            ticket_url=data.get("ticket_url"),
+            room=data.get("room"),
+            language=data.get("language"),
         )
         return saved, was_inserted
+
+    async def update(self, screening: Screening) -> Optional[Screening]:
+        """Update optional fields on an existing screening.
+
+        Args:
+            screening: The screening with updated optional fields.
+
+        Returns:
+            The updated screening entity, or None if no match exists.
+        """
+        data = await self._gateway.update(
+            cinema_id=str(screening.cinema.id),
+            movie_id=str(screening.movie.id),
+            showtime=screening.showtime.value,
+            external_id=screening.external_id,
+            ticket_url=screening.ticket_url,
+            room=screening.room,
+            language=screening.language,
+        )
+        if data is None:
+            return None
+        return Screening(
+            id=ScreeningId(value=data["id"]),
+            movie=screening.movie,
+            cinema=screening.cinema,
+            showtime=Showtime(value=_parse_datetime(data["showtime"])),
+            external_id=data.get("external_id"),
+            ticket_url=data.get("ticket_url"),
+            room=data.get("room"),
+            language=data.get("language"),
+        )
 
     async def find_by_id(self, screening_id: ScreeningId) -> Optional[Screening]:
         """Retrieve a screening by ID.
@@ -173,4 +210,8 @@ class SupabaseScreeningRepository(ScreeningRepository):
             movie=movie,
             cinema=cinema,
             showtime=Showtime(value=_parse_datetime(data["showtime"])),
+            external_id=data.get("external_id"),
+            ticket_url=data.get("ticket_url"),
+            room=data.get("room"),
+            language=data.get("language"),
         )

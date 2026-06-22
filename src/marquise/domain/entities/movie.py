@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import datetime
 from typing import Optional, Tuple
 
 from ..value_objects import MovieId
@@ -16,20 +16,32 @@ class Movie:
     Attributes:
         id: Unique identifier for the movie.
         title: Official title of the movie.
-        release_date: Theatrical release date (None if unknown).
+        release_year: Theatrical release year (None if unknown).
         directors: Tuple of director names (None if unknown).
         cast: Tuple of cast member names (None if unknown).
         duration_minutes: Runtime in minutes (optional).
         description: Plot synopsis (optional).
+        poster_url: URL to the movie poster image (optional).
+        trailer_url: URL to the movie trailer (optional).
+        genres: Tuple of genre names (optional).
+        original_title: Original title in native language (optional).
+        rating: Content rating (e.g. ``"18+"``) (optional).
+        origin_countries: Tuple of production country names (optional).
     """
 
     id: MovieId
     title: str
-    release_date: Optional[date] = None
+    release_year: Optional[int] = None
     directors: Optional[Tuple[str, ...]] = None
     cast: Optional[Tuple[str, ...]] = None
     duration_minutes: Optional[int] = None
     description: Optional[str] = None
+    poster_url: Optional[str] = None
+    trailer_url: Optional[str] = None
+    genres: Optional[Tuple[str, ...]] = None
+    original_title: Optional[str] = None
+    rating: Optional[str] = None
+    origin_countries: Optional[Tuple[str, ...]] = None
 
     def __post_init__(self) -> None:
         """Validate movie data after initialization.
@@ -47,6 +59,8 @@ class Movie:
                 raise ValueError("Director name cannot be empty")
         if self.duration_minutes is not None and self.duration_minutes <= 0:
             raise ValueError("Movie duration must be positive")
+        if self.release_year is not None and self.release_year <= 0:
+            raise ValueError("Movie release year must be positive")
 
     def is_recent(self, years: int = 1) -> bool:
         """Check if the movie was released within the last specified years.
@@ -55,12 +69,9 @@ class Movie:
             years: Number of years to consider as "recent" (default 1).
 
         Returns:
-            True if the movie's release date is within the given window,
-            False if the release date is unknown.
+            True if the movie's release year is within the given window,
+            False if the release year is unknown.
         """
-        if self.release_date is None:
+        if self.release_year is None:
             return False
-        from datetime import datetime, timedelta
-
-        cutoff_date = datetime.now().date() - timedelta(days=years * 365)
-        return self.release_date > cutoff_date
+        return datetime.now().year - self.release_year <= years
