@@ -12,11 +12,16 @@ from __future__ import annotations
 import html as html_mod
 import json
 import re
+import ssl
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from typing import Any
+
+import certifi
+
+_SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 
 SCHEDULE_URL = "https://cinemapublic.ca/en/schedule/"
 AJAX_URL = "https://cinemapublic.ca/wp-admin/admin-ajax.php"
@@ -50,7 +55,7 @@ def _fetch(url: str, data: bytes | None = None) -> str:
     if data is not None:
         headers["Referer"] = SCHEDULE_URL
     req = urllib.request.Request(url, data=data, headers=headers)
-    with urllib.request.urlopen(req) as resp:
+    with urllib.request.urlopen(req, context=_SSL_CONTEXT) as resp:
         return resp.read().decode()
 
 
