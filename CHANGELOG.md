@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.4 (2026-06-26)
+
+### Documentation
+
+- **Rewrote `AGENTS.md`**: Trimmed from 1,434 lines to ~390 lines. Removed outdated sections referencing MongoDB and FastAPI (neither is in the current codebase). Updated tech stack (Supabase/asyncpg, Typer CLI), coverage gate (70% CI minimum, 80%+ target, 100% aspirational for core layers), and commands to match actual `marquise` CLI. Kept all enforced rules: type hints, Ruff, docstrings, layer boundaries, testing conventions, process guidelines. Closes #6.
+- **Created `ARCHITECTURE.md`**: New ~120-line document describing the actual system — tech stack table, four-layer diagram with real directory paths, repository/gateway/source-adapter patterns, data flow, and planned FastAPI endpoints.
+- **Updated `CONTRIBUTING.md`**: Replaced placeholder redirect to AGENTS.md with self-contained setup, day-to-day commands, CI pipeline description, branch naming, commit format, and PR checklist. Points to ARCHITECTURE.md and AGENTS.md for deeper context.
+
 ## 0.7.3 (2026-06-26)
 
 ### Technical Debt

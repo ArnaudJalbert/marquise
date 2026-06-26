@@ -1,90 +1,96 @@
 # Contributing to Marquise
 
-Thank you for your interest in contributing to Marquise! This document provides a quick overview of how to get started. For detailed, authoritative development guidelines, **please read [AGENTS.md](AGENTS.md)** first - it contains everything you need to know about architecture, standards, and workflows.
+## Prerequisites
 
-## Quick Start
+- Python 3.13
+- [uv](https://docs.astral.sh/uv/) (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
 
-### Prerequisites
-
-- Python 3.13+
-- [uv](https://docs.astral.sh/uv/) package manager
-
-### Setup
+## Setup
 
 ```bash
-# Clone the repository
-git clone https://github.com/anomalyco/marquise.git
+git clone https://github.com/arnaudjalbert/marquise.git
 cd marquise
-
-# Install dependencies and create virtual environment
 uv sync
-
-# Verify setup
-uv run python --version  # Should show Python 3.13.x
+cp .env.example .env   # fill in SUPABASE_URL, SUPABASE_KEY, DATABASE_URL
 ```
 
-### Development Workflow
+## Day-to-day commands
 
-1. **Pull latest changes** before starting work
-2. **Make focused, small changes** - one feature/fix at a time
-3. **Format and lint** after each change:
-   ```bash
-   uv run ruff format .
-   uv run ruff check --fix
-   ```
-4. **Run tests with coverage**:
-   ```bash
-   uv run pytest tests/ --cov=domain --cov=application --cov=interface_adapters --cov-report=term-missing
-   ```
-5. **Ensure 100% coverage** on domain, application, and interface_adapters layers
-6. **Commit with a clear message** following conventional commits format
+```bash
+# Run unit tests (no DB required)
+uv run pytest tests/unit_tests/ -q
 
-## Project Architecture
+# Run all tests including integration (requires Supabase credentials)
+uv run pytest tests/ -q
 
-Marquise uses **Clean Architecture** with four layers:
+# Run unit tests with coverage
+uv run pytest tests/unit_tests/ --cov=marquise --cov-report=term-missing -q
 
+# Lint
+uv run ruff check src/ tests/
+
+# Auto-fix lint
+uv run ruff check --fix src/ tests/
+
+# Format
+uv run ruff format src/ tests/
+
+# Check formatting without modifying (what CI runs)
+uv run ruff format --check src/ tests/
+
+# Explore the CLI
+uv run marquise --help
 ```
-domain/          - Business logic, entities, value objects, repository interfaces
-application/     - Use cases that orchestrate domain objects
-interface_adapters/ - FastAPI routes, DTOs, controllers
-infrastructure/  - MongoDB implementations, external integrations
+
+## CI pipeline
+
+Every push and PR to `main` runs the `quality` job:
+
+1. `ruff format --check` — fails on unformatted code
+2. `ruff check` — fails on lint errors
+3. `pytest tests/unit_tests/ --cov=marquise --cov-fail-under=70` — fails below 70% coverage
+
+The `integration` job (manual trigger only) runs `tests/integration/` using secrets `SUPABASE_URL`, `SUPABASE_KEY`, `DATABASE_URL`.
+
+**Current coverage**: ~72% overall; 100% on domain and most of application.  
+**CI gate**: 70% minimum. **Target**: 80%+ overall, 100% for `domain/` and `application/`.
+
+## Branch naming
+
+- `feature/short-description`
+- `fix/issue-description`
+- `refactor/scope-description`
+- `docs/scope-description`
+
+## Commit messages
+
+Format: `type(scope): concise description`  
+Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
+
+Examples:
+```
+feat(domain): add Movie.enrich() returning new instance
+fix(use-case): rename updated_count docstring to say 'updated' not 'skipped'
+docs(arch): add ARCHITECTURE.md
 ```
 
-**Key rule**: Dependencies point inward only. Domain knows nothing about databases or HTTP. See [AGENTS.md](AGENTS.md#4-clean-architecture-the-foundation) for complete details.
+## PR checklist
 
-## Code Standards
+- [ ] `ruff format --check` passes
+- [ ] `ruff check` passes
+- [ ] Unit tests pass (`pytest tests/unit_tests/`)
+- [ ] Coverage did not drop below 70%
+- [ ] `CHANGELOG.md` entry added
+- [ ] Version bumped in `pyproject.toml` (semver: major/minor/patch)
+- [ ] Issue linked in PR body (`Closes #N`)
 
-- **Type hints**: Required on all functions, arguments, and return types
-- **Async-first**: All I/O operations should be async
-- **Testing**: 100% coverage required for core layers (domain, application, interface_adapters)
-- **Style**: Automated with ruff (formatting + linting)
+## Reporting issues
 
-See [AGENTS.md](AGENTS.md#6-code-quality-standards) for full standards.
+- **Bugs**: include steps to reproduce, expected vs actual behaviour, Python version
+- **Feature requests**: describe the problem and proposed solution
+- **Security issues**: open a private vulnerability report on GitHub (do not open public issues)
 
-## Reporting Issues
+## Architecture overview
 
-- **Bug reports**: Please include steps to reproduce, expected vs actual behavior, environment details
-- **Feature requests**: Describe the problem you're solving and proposed solution
-- **Security issues**: Email security@anomaly.co (do not open public issues)
-
-## Code Review Process
-
-1. All changes require code review
-2. Reviewers will check: architecture compliance, test coverage, code quality, documentation
-3. Address all review comments before merge
-4. Squash commits for clean history (follow-up: amend is okay for small fixes)
-
-## Questions?
-
-- **Detailed guidelines**: Read [AGENTS.md](AGENTS.md) - it's comprehensive and prescriptive
-- **Architecture questions**: See Clean Architecture section in AGENTS.md
-- **Testing questions**: See Testing Strategy in AGENTS.md
-- **API questions**: See REST API Development in AGENTS.md
-
-## License
-
-[Insert license information here]
-
----
-
-**Note**: This CONTRIBUTING.md is a brief overview. [AGENTS.md](AGENTS.md) is the authoritative, detailed guide that all developers **must** follow. Always consult AGENTS.md before making code changes.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the full layer diagram and key patterns.  
+See [AGENTS.md](AGENTS.md) for development rules and coding standards.
