@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.5 (2026-06-26)
+
+### Bug Fix
+
+- **Fix misleading `updated_count` label in `ImportScreenings`**: The `OutputData` docstring described `updated_count` as "existing screenings skipped", but existing screenings are always updated in place via `screening_repository.update()` — nothing is ever skipped. Fixed the docstring to say "found and updated in place". Also fixed two matching CLI display strings in `source_commands.py`: per-row status changed from "already exists" → "updated"; summary line changed from "already existed" → "updated". Closes #15.
+
 ## 0.7.4 (2026-06-26)
 
 ### Documentation
