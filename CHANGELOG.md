@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.2 (2026-06-26)
+
+### Security
+
+- **Fix SSL verification in scrapers**: Removed `ssl._create_unverified_context()` from all three scraper sources (`cinemacinema`, `cinemapublic`, `cineplex`). All outbound HTTP requests now use Python's default verified SSL context, which validates the certificate chain and hostname against the system CA bundle. Previously, scrapers silently accepted any certificate, making them vulnerable to MITM attacks that could corrupt the showtimes database.
+
+Closes #8.
+
 ## 0.7.1 (2026-06-26)
 
 ### Infrastructure
