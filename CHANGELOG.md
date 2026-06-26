@@ -1,10 +1,18 @@
 # Changelog
 
-## 0.7.2 (2026-06-26)
+## 0.7.3 (2026-06-26)
 
 ### Technical Debt
 
 - **Removed vestigial domain code**: Deleted `domain/exceptions/` package (6 files — `base`, `cinema`, `movie`, `screening`, `source`) and the unused `Price` and `ReleaseDate` value objects from `domain/value_objects/`. These artifacts were never imported in production code and accumulated from early development iterations. Their corresponding unit-test files (7 files) were also deleted. Closes #9.
+
+## 0.7.2 (2026-06-26)
+
+### Security
+
+- **Fix SSL verification in scrapers**: Removed `ssl._create_unverified_context()` from all three scraper sources (`cinemacinema`, `cinemapublic`, `cineplex`). All outbound HTTP requests now use Python's default verified SSL context, which validates the certificate chain and hostname against the system CA bundle. Previously, scrapers silently accepted any certificate, making them vulnerable to MITM attacks that could corrupt the showtimes database.
+
+Closes #8.
 
 ## 0.7.1 (2026-06-26)
 
