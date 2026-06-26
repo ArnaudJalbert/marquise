@@ -12,7 +12,6 @@ from __future__ import annotations
 import html as html_mod
 import json
 import re
-import ssl
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
@@ -47,12 +46,11 @@ def _fetch(url: str, data: bytes | None = None) -> str:
     Returns:
         The response body as a string.
     """
-    ctx = ssl._create_unverified_context()
     headers = {"User-Agent": "Mozilla/5.0 (compatible; Marquise/1.0)"}
     if data is not None:
         headers["Referer"] = SCHEDULE_URL
     req = urllib.request.Request(url, data=data, headers=headers)
-    with urllib.request.urlopen(req, context=ctx) as resp:
+    with urllib.request.urlopen(req) as resp:
         return resp.read().decode()
 
 
