@@ -4,9 +4,11 @@
 
 ### Documentation
 
-- **Rewrote `AGENTS.md`**: Trimmed from 1,434 lines to ~390 lines. Removed outdated sections referencing MongoDB and FastAPI (neither is in the current codebase). Updated tech stack (Supabase/asyncpg, Typer CLI), coverage gate (70% CI minimum, 80%+ target, 100% aspirational for core layers), and commands to match actual `marquise` CLI. Kept all enforced rules: type hints, Ruff, docstrings, layer boundaries, testing conventions, process guidelines. Closes #6.
-- **Created `ARCHITECTURE.md`**: New ~120-line document describing the actual system — tech stack table, four-layer diagram with real directory paths, repository/gateway/source-adapter patterns, data flow, and planned FastAPI endpoints.
-- **Updated `CONTRIBUTING.md`**: Replaced placeholder redirect to AGENTS.md with self-contained setup, day-to-day commands, CI pipeline description, branch naming, commit format, and PR checklist. Points to ARCHITECTURE.md and AGENTS.md for deeper context.
+- **Rewrite AGENTS.md**: Trimmed from ~1 435 lines to ~350 lines. Removed obsolete Sections 7 (FastAPI REST API tutorial) and 8 (MongoDB/data layer tutorial) — neither reflects the current codebase. Updated tech stack from MongoDB → Supabase/PostgreSQL and FastAPI (not yet implemented) → Typer CLI. Fixed coverage gate documentation: CI enforces 80% minimum (`fail_under = 80`); 100% is the target for `domain/` and `application/` layers, not the CI gate. Added a 3-line quick index at the top pointing to the new companion documents. Retained all rules still enforced by tooling or code review.
+- **New ARCHITECTURE.md**: ~160-line document describing what the system is today — tech stack table, 4-layer diagram with actual directory paths, gateway/repository/source-adapter pattern explanations, CLI and import-pipeline data-flow diagrams, and planned FastAPI additions.
+- **Update CONTRIBUTING.md**: Replaced the "read AGENTS.md for everything" redirect with a self-contained guide — prerequisites, setup, day-to-day commands, CI pipeline description (80% coverage gate explicitly called out), branch naming, commit format, and PR checklist.
+
+Closes #6.
 
 ## 0.7.3 (2026-06-26)
 

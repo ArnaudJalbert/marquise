@@ -1,115 +1,103 @@
 # Marquise Development Guide
 
 **Version**: 2.0  
-**Audience**: All developers and AI coding assistants  
-**Purpose**: Rules and standards that are actually enforced on this codebase
-
-**Quick index**:
-- What the system is → [ARCHITECTURE.md](ARCHITECTURE.md)
-- Setup and commands → [CONTRIBUTING.md](CONTRIBUTING.md)
-- Enforced rules → this document
-
----
+**Audience**: All developers, with emphasis on AI coding assistants  
+**Quick index**: Architecture → [ARCHITECTURE.md](ARCHITECTURE.md) · Setup & commands → [CONTRIBUTING.md](CONTRIBUTING.md) · Rules → here
 
 ## 1. Project Overview
 
-**Marquise** is a Montreal cinema showtimes aggregator. It fetches screening data from Cineplex, CinemaCinema, and Cinema Public; normalises it; and stores it in a Supabase (PostgreSQL) database. The current interface is a Typer CLI. A FastAPI REST API is planned but not yet implemented.
+**Marquise** is an open-source platform for aggregating and exploring movie showtimes in Montreal. It gathers screening data from three sources (Cineplex, CinemaCinema, CinemaPublic), normalizes it, and exposes it through a Typer CLI. A read-only FastAPI REST API is planned but **not yet implemented**.
 
-Known technical debt and TODO items: [`docs/todo.md`](docs/todo.md).
-
----
+Known technical debt is tracked in [`docs/todo.md`](docs/todo.md). Check this file before starting new work to avoid duplicating effort.
 
 ## 2. Technology Stack
 
 - **Language**: Python 3.13 (strict requirement)
-- **Package manager**: `uv` — all commands use `uv run`, all deps via `uv add`
+- **Package Manager**: `uv` — all dependency management and command execution. Never use `pip` directly.
 - **Database**: Supabase (PostgreSQL via `asyncpg`) — abstracted behind repository interfaces
 - **CLI**: Typer + Rich
+- **API**: FastAPI — planned, not yet implemented
 - **Testing**: pytest + pytest-asyncio
-- **Code quality**: Ruff (formatting + linting) — mandatory before every commit
-- **Coverage gate**: 70% CI minimum; target 80%+ overall, 100% for `domain/` and `application/`
-
-**No exceptions**: Never use `pip` directly. All dependencies go through `uv`.
-
----
+- **Code Quality**: Ruff (formatting + linting); type hints mandatory everywhere
 
 ## 3. Clean Architecture — The Foundation
 
-Marquise uses **Clean Architecture**. **Dependencies point inward only.** Outer layers depend on inner layers; inner layers never depend on outer layers.
+Marquise strictly follows Clean Architecture. **Dependencies point inward only** — outer layers can depend on inner layers, but inner layers never depend on outer layers.
 
 ```
-┌──────────────────────────────────────┐
-│  infrastructure/  (CLI, DB, sources) │
-├──────────────────────────────────────┤
-│  interface_adapters/  (repos, adapters) │
-├──────────────────────────────────────┤
-│  application/  (use cases, repo ABCs)│
-├──────────────────────────────────────┤
-│  domain/  (entities, value objects)  │
-└──────────────────────────────────────┘
+┌────────────────────────────────────────────────────────┐
+│  src/marquise/infrastructure/                          │
+├────────────────────────────────────────────────────────┤
+│  src/marquise/interface_adapters/                      │
+├────────────────────────────────────────────────────────┤
+│  src/marquise/application/                             │
+├────────────────────────────────────────────────────────┤
+│  src/marquise/domain/                                  │
+└────────────────────────────────────────────────────────┘
 ```
 
-### 3.1 Layer Rules
+### 3.1 Layer responsibilities
 
 **Domain** (innermost):
-- Zero dependencies — standard library only
-- Entities: `@dataclass(kw_only=True, slots=True)`, validate in `__post_init__`
-- Value objects: `@dataclass(frozen=True, slots=True)`
+- Entities (`Cinema`, `Movie`, `Screening`, …) — `@dataclass(kw_only=True, slots=True)`
+- Value objects — immutable, defined by their attributes
+- Zero external dependencies — stdlib only
+- Validate data in `__post_init__`
 
 **Application**:
-- Imports from `domain` only — never from `interface_adapters` or `infrastructure`
-- Each use case has inner `InputData` and `OutputData` as `@dataclass(frozen=True, slots=True)`
-- Both `InputData` and `OutputData` **must** validate in `__post_init__`
-- `execute(input: InputData) -> OutputData` is the only public method
-- Repository interfaces are ABCs defined here — no concrete implementations
+- Use cases — each defines `InputData` and `OutputData` as inner frozen dataclasses with `__post_init__` validation
+- Repository interfaces — ABCs in `application/repositories/`
+- Application exceptions — `ApplicationError` subclasses; domain exceptions must not leak past this boundary
+- No database or HTTP knowledge allowed
 
 **Interface adapters**:
-- Imports from `application` and `domain` — never from `infrastructure`
-- Repository implementations: entity mapping only — no SQL here
-- Gateway protocols: `typing.Protocol` types, stdlib + domain/application imports only
+- Repository implementations in `repositories/supabase/` — map gateway dicts ↔ domain entities
+- Gateway protocols in `repositories/protocols/` — `typing.Protocol` definitions; no SQL or infrastructure imports
+- Source adapters in `repositories/source_adapters/` — bridge `Cinema` entities to source-specific fetch parameters
 
 **Infrastructure**:
-- The only layer allowed to import `asyncpg`, Supabase SDK, Typer, or external libraries
-- Gateways execute SQL and return plain dicts — they never import domain entities
-- CLI commands wire use cases to the terminal — business logic belongs in use cases
+- CLI (Typer), DI container (`di/container.py`), Supabase gateways (SQL), config, external scraper sources
+- The only layer with direct database or external API dependencies
+- Wires everything together; imports from all inner layers
 
-### 3.2 Boundary Rules
+### 3.2 Boundary rules
 
-1. No circular imports
-2. Domain never knows about databases, HTTP, or external systems
-3. Application never knows about databases or HTTP
-4. Interface adapters and infrastructure implement interfaces defined in application
-5. Use cases catch domain exceptions and re-raise them as `ApplicationError` subclasses — domain exceptions must not escape the application layer
+1. **No circular imports** — if you see them, the architecture is broken
+2. **Domain never imports** from application, interface_adapters, or infrastructure
+3. **Application never imports** database clients, HTTP libraries, or infrastructure classes
+4. **`interface_adapters/repositories/protocols/`** uses only stdlib and domain/application types — never `asyncpg` or SQL strings
+5. **`infrastructure/supabase/gateways/`** owns all SQL and never imports from `domain/entities/` — returns plain dicts only
 
----
+## 4. Development Environment
 
-## 4. Code Quality Standards
+See [CONTRIBUTING.md](CONTRIBUTING.md) for full setup instructions and day-to-day commands.
 
-### 4.1 Type Hints — Mandatory Everywhere
-
-Every function, method, and class attribute must have complete type hints. Use `str | None` (Python 3.10+ union syntax) — not `Optional[str]`.
-
-```python
-# Correct
-async def find_by_name(self, name: str) -> Cinema | None: ...
-
-# Forbidden — missing hints, old Optional syntax
-def find(self, name):
-    ...
+Quick reference:
+```bash
+uv sync
+uv run pytest tests/unit_tests/ -q
+uv run ruff check src/ tests/
+uv run ruff format src/ tests/
 ```
 
-### 4.2 Ruff — Run Before Every Commit
+## 5. Code Quality Standards
+
+### 5.1 Type Hints — 100% Mandatory
+
+Every function, method, and class must have complete type hints. Use `X | None` (not `Optional[X]`) on Python 3.13. Prefer specific types over `Any`; if `Any` is necessary, add a comment explaining why.
+
+### 5.2 Ruff Formatting and Linting
 
 ```bash
-uv run ruff format src/ tests/
-uv run ruff check --fix src/ tests/
+uv run ruff format .
+uv run ruff check --fix
 ```
 
-Never manually style code — let Ruff handle it. Never commit code that fails either command.
+Never manually style code — let ruff handle it. Never commit code that fails either command.
 
-### 4.3 Docstrings — Google Style
+### 5.3 Docstrings (Google Style)
 
-Every public module, class, method, and function must have a Google-style docstring.
+Every public module, class, method, and function must have a Google-style docstring. Test functions must describe the scenario they test.
 
 ```python
 def fetch_cinemas(city: str, limit: int = 10) -> list[Cinema]:
@@ -123,162 +111,184 @@ def fetch_cinemas(city: str, limit: int = 10) -> list[Cinema]:
         A list of Cinema entities matching the filter.
 
     Raises:
-        ValueError: If city is empty.
+        ValueError: If city is empty or whitespace-only.
     """
 ```
 
-Test functions must have docstrings describing the scenario under test.
+### 5.4 Package Conventions — `__init__.py` for Re-exports Only
 
-### 4.4 Package Conventions
-
-`__init__.py` files re-export symbols from submodules — they must not define classes or functions directly. Each logical group lives in its own file (`cinema.py`, `movie.py`, etc.).
-
-### 4.5 Infrastructure Technology Isolation
-
-Each external technology lives in its own subdirectory under `infrastructure/` and communicates with `interface_adapters/` through a `typing.Protocol` defined in `interface_adapters/repositories/protocols/`.
-
-Rules:
-- `interface_adapters/` never imports `asyncpg`, SQL strings, or any infrastructure module
-- `infrastructure/<tech>/gateways/` fully owns SQL/API logic and returns plain dicts — no domain entity imports
-- Protocol definitions use only stdlib and domain/application types
-
-### 4.6 No Module-Level Mutable State
-
-Never assign mutable objects at module level (global caches, lazy singletons). Each CLI invocation runs in its own process — there is no cross-call sharing.
-
-Exception: `rich.Console()` is a stateless display-config object and is idiomatic at module level.
+`__init__.py` files must only re-export symbols from dedicated submodules. Never define classes or functions in them.
 
 ```python
-# Forbidden
-_container: Container | None = None
+# ✅ correct
+from marquise.domain.exceptions.cinema import CinemaError
+__all__ = ["CinemaError"]
 
-# Correct — fresh instance per command
+# ❌ forbidden
+class CinemaError(Exception): ...
+```
+
+### 5.5 Infrastructure Technology Isolation (Gateway Pattern)
+
+Each external technology lives in its own subdirectory under `infrastructure/` and communicates with `interface_adapters` through a `typing.Protocol`.
+
+Pattern:
+1. **Define a Protocol** in `interface_adapters/repositories/protocols/` — no SQL, no infrastructure imports
+2. **Implement the Protocol** in `infrastructure/<tech>/gateways/` — SQL and external API calls live here
+3. **Adapt in interface_adapters** — the repository implementation takes the protocol as a dependency and handles entity mapping only
+
+### 5.6 Testing by Layer
+
+| Layer | Test type | Mocking |
+|---|---|---|
+| `domain/` | Unit | None needed |
+| `application/` | Unit | Repos mocked via `create_autospec` |
+| `interface_adapters/` | Unit only | Gateway mocked — no real DB |
+| `infrastructure/<tech>/gateways/` | Integration | Real database |
+
+Key rules:
+- `interface_adapters/` tests must not require a database connection — mock the gateway protocol
+- `tests/integration/` mirrors `src/marquise/infrastructure/` — only infrastructure classes get integration tests
+- `tests/integration/interface_adapters/` must not exist
+
+### 5.7 Test Coverage
+
+**CI gate**: 80% minimum (`fail_under = 80` in `pyproject.toml`).  
+**Target**: 100% for `domain/` and `application/` layers — do not add uncovered lines in these layers without a strong reason.  
+**Infrastructure**: "good" coverage; 100% not strictly required, but critical paths must be covered by integration tests.
+
+```bash
+# Check coverage
+uv run pytest tests/unit_tests/ --cov=marquise --cov-report=term-missing
+```
+
+## 6. Use Case Conventions
+
+Every use case **must**:
+- Define `InputData` and `OutputData` as inner `@dataclass(frozen=True, slots=True)` classes
+- Validate both in `__post_init__` — `InputData` guards external boundaries; `OutputData` catches programming errors in output construction
+- Accept `InputData` and return `OutputData` from `execute()`
+- Raise `ApplicationError` subclasses only — never let domain exceptions escape past the use case
+
+```python
+class CreateCinemaUseCase:
+    @dataclass(frozen=True, slots=True)
+    class InputData:
+        name: str
+        address: str
+
+        def __post_init__(self) -> None:
+            if not self.name.strip():
+                raise ValueError("name must not be empty")
+
+    @dataclass(frozen=True, slots=True)
+    class OutputData:
+        cinema_id: str
+        name: str
+
+        def __post_init__(self) -> None:
+            if not self.cinema_id.strip():
+                raise ValueError("cinema_id must not be empty")
+
+    async def execute(self, request: InputData) -> OutputData:
+        ...
+```
+
+## 7. Testing Conventions
+
+### Function-style tests — no classes
+
+```python
+# ✅ correct
+async def test_cinema_creation() -> None: ...
+
+# ❌ forbidden
+class TestCinema:
+    def test_creation(self) -> None: ...
+```
+
+### Mock repositories with `create_autospec`
+
+```python
+mock_repo = create_autospec(CinemaRepository, instance=True)
+mock_repo.find_by_name_and_address.return_value = None
+mock_repo.save.return_value = Cinema(...)
+```
+
+Use `assert_awaited_once()` / `assert_awaited_once_with()` for async methods, `assert_not_awaited()` to verify a method was never called.
+
+## 8. Pitfalls to Avoid
+
+### 8.1 Architecture violations
+
+**Never**:
+- Import infrastructure classes in domain or application
+- Put business logic in CLI commands, routes, or repository implementations
+- Create circular imports between layers
+- Use `Any` type without a comment explaining why
+
+If you catch yourself doing any of these, stop and refactor.
+
+### 8.2 Mutable module-level state
+
+Never use module-level mutable singletons (global caches, lazily-initialized globals). Each CLI command runs in its own process — module-level singletons offer no benefit and break testability. Use the `Container` DI class instead.
+
+```python
+# ❌ forbidden
+_cinema_repo: CinemaRepository | None = None
+
+# ✅ correct — fresh instance per call
 @cinema_app.command()
-def list_cinemas(...) -> None:
+def list_cinemas() -> None:
     controller = Container().cinema_controller
     ...
 ```
 
----
+Exception: `Console()` from Rich is stateless and acceptable at module level.
 
-## 5. Testing
+### 8.3 Domain exceptions leaking past use cases
 
-### 5.1 Organisation
-
-```
-tests/
-├── conftest.py          # shared fixtures
-├── unit_tests/
-│   ├── domain/          # entities, value objects
-│   ├── application/     # use cases (repos mocked)
-│   └── interface_adapters/  # adapter mapping (gateway mocked)
-└── integration/
-    └── infrastructure/  # gateways with real DB
-```
-
-No `tests/integration/interface_adapters/` — that directory must not exist. Interface adapter tests are unit tests that mock the gateway protocol.
-
-### 5.2 Test-by-Layer Rules
-
-| Layer | Test type | What to mock |
-|---|---|---|
-| `domain/` | Unit | Nothing — pure Python |
-| `application/` | Unit | Repository interfaces via `create_autospec` |
-| `interface_adapters/` | Unit | Gateway protocols via `create_autospec` |
-| `infrastructure/<tech>/gateways/` | Integration | Real database only |
-
-### 5.3 Mocking
-
-Use `unittest.mock.create_autospec` with the ABC or Protocol to enforce correct signatures:
+Use cases must catch domain exceptions and re-raise as `ApplicationError` subclasses. CLI commands and (when added) API routes must never import from `marquise.domain.exceptions`.
 
 ```python
-from unittest.mock import create_autospec
+# ❌ forbidden — domain exception escapes the use case
+from marquise.domain.exceptions import CinemaNotFoundError
+raise CinemaNotFoundError(...)
 
-mock_repo = create_autospec(CinemaRepository, instance=True)
-mock_repo.save.return_value = Cinema(...)
-
-use_case = CreateCinemaUseCase(cinema_repository=mock_repo)
-await use_case.execute(request)
-
-mock_repo.save.assert_awaited_once()
+# ✅ correct
+from marquise.application.exceptions import CinemaNotFoundError
+raise CinemaNotFoundError(...)
 ```
 
-Use `assert_awaited_once()` / `assert_awaited_once_with()` for async methods, `assert_not_awaited()` for verifying no call.
+### 8.4 Overly large changes
 
-### 5.4 Async Tests
+If a change touches >5 files or >2 layers, split it into smaller PRs. One commit = one focused change.
 
-All async tests use `@pytest.mark.asyncio`. Tests are function-style — never class-style.
+### 8.5 Skipping quality gates
 
-```python
-@pytest.mark.asyncio
-async def test_use_case_returns_cinema() -> None:
-    """Use case returns a Cinema entity when the repo save succeeds."""
-    ...
-```
+Never commit code that:
+- Fails `uv run ruff format --check .`
+- Fails `uv run ruff check`
+- Has failing tests
+- Drops overall coverage below 80%
 
-### 5.5 Coverage
+## 9. Commands Reference
 
 ```bash
-# Check coverage
-uv run pytest tests/unit_tests/ --cov=marquise --cov-report=term-missing -q
+# Format code
+uv run ruff format .
 
-# CI gate
-uv run pytest tests/unit_tests/ --cov=marquise --cov-fail-under=70
-```
+# Lint (and auto-fix)
+uv run ruff check --fix
 
-Target: 100% for `domain/` and `application/`. CI fails below 70%. Do not open a PR that drops coverage.
-
----
-
-## 6. Pitfalls to Avoid
-
-### Architecture violations
-
-- Importing infrastructure classes in domain or application
-- Using `asyncpg` or Supabase SDK outside `infrastructure/`
-- Putting business logic in CLI commands, controllers, or repository implementations
-- Creating circular dependencies between layers
-- Using `Any` without a comment explaining why
-
-### Quality gate violations
-
-- Committing unformatted code (`ruff format --check` must pass)
-- Committing lint errors (`ruff check` must pass)
-- Committing failing tests
-- Committing code that drops coverage below 70%
-
-### Design violations
-
-- Module-level mutable state (see §4.6)
-- Domain exceptions escaping the application layer (see §3.1)
-- Returning `dict` from repositories — return domain entities or value objects
-- Putting query logic in use cases — keep it in repository implementations
-- Mixing ORM/driver-specific types in domain — convert immediately in the gateway
-
----
-
-## 7. Commands Reference
-
-```bash
-# Unit tests (no DB required)
+# Unit tests
 uv run pytest tests/unit_tests/ -q
 
-# Unit tests with coverage
-uv run pytest tests/unit_tests/ --cov=marquise --cov-report=term-missing -q
+# All tests (requires Supabase credentials)
+uv run pytest tests/ -q
 
-# Lint
-uv run ruff check src/ tests/
-
-# Format
-uv run ruff format src/ tests/
-
-# Check formatting (CI mode)
-uv run ruff format --check src/ tests/
-
-# CLI
-uv run marquise --help
-uv run marquise cinema --help
-uv run marquise source --help
+# Tests with coverage report
+uv run pytest tests/unit_tests/ --cov=marquise --cov-report=term-missing
 
 # Add a runtime dependency
 uv add <package>
@@ -288,47 +298,44 @@ uv add --dev <package>
 
 # Sync after pyproject.toml changes
 uv sync
+
+# Run CLI
+uv run marquise --help
 ```
 
----
-
-## 8. Process Guidelines
+## 10. Process Guidelines
 
 ### Branch naming
-
 - `feature/short-description`
-- `fix/issue-description`
-- `refactor/scope-description`
-- `docs/scope-description`
+- `fix/short-description`
+- `docs/short-description`
+- `refactor/short-description`
 
 ### Commit messages
 
-Format: `type(scope): concise description`  
+Format: `type(scope): concise description`
+
 Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
+
+Examples:
+- `feat(domain): add Promotion entity with validation logic`
+- `fix(import): correct updated_count docstring`
+- `docs: rewrite AGENTS.md to match current architecture`
+- `refactor(repo): remove __inserted dict key, introduce SaveResult`
 
 ### Pull request process
 
-1. Rebase on main: `git pull origin main --rebase`
-2. Run quality gates: `ruff format --check`, `ruff check`, `pytest tests/unit_tests/`
-3. Ensure coverage did not drop below 70%
-4. Add `CHANGELOG.md` entry and bump version in `pyproject.toml`
-5. Reference the issue: `Closes #N`
-6. Self-review the diff before requesting review
+1. Rebase on main before opening: `git pull origin main --rebase`
+2. Run all quality gates: ruff format, ruff check, pytest with coverage
+3. Add a `CHANGELOG.md` entry and bump the version in `pyproject.toml`
+4. Reference the relevant issue in the PR description
+5. Self-review before requesting review
 
 ### Work incrementally
 
-One focused task per commit. If a change touches >5 files or >2 layers, split it.
+One focused task per commit. If your change spans more than two layers, split it into separate commits or PRs.
 
 ---
 
-## 9. Frequently Confused Points
-
-**InputData vs OutputData validation**: `InputData` validates because it represents external input. `OutputData` validates fields that are computed or transformed — skip re-validating values copied directly from already-validated entities.
-
-**Controller vs use case**: Controllers (in `infrastructure/controllers/`) are thin wiring — `InputData` construction and delegation only. Business decisions go in use cases.
-
-**Gateway vs repository**: Gateways (`infrastructure/<tech>/gateways/`) execute SQL and return plain dicts. Repositories (`interface_adapters/repositories/supabase/`) convert those dicts to domain entities.
-
----
-
-*Last updated: 2026-06-26 — reflects Python 3.13, Supabase/asyncpg, Typer CLI. FastAPI REST API not yet implemented.*
+**Last Updated**: 2026-06-26  
+**See also**: [ARCHITECTURE.md](ARCHITECTURE.md) — what the system is · [CONTRIBUTING.md](CONTRIBUTING.md) — how to work on it

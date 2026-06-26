@@ -1,6 +1,6 @@
 # Marquise Architecture
 
-**Marquise** is an open-source Montreal cinema showtimes aggregator. It fetches showtime data from multiple cinema sources (Cineplex, CinemaCinema, Cinema Public), normalises it, and stores it in a PostgreSQL database via Supabase.
+Marquise is an open-source **Montreal cinema showtimes aggregator**. It collects showtime data from three sources (Cineplex, CinemaCinema, CinemaPublic), normalizes it, stores it in Supabase (PostgreSQL), and exposes it through a Typer CLI today — with a read-only FastAPI REST API planned.
 
 ## Tech Stack
 
@@ -10,101 +10,118 @@
 | Package manager | uv |
 | Database | Supabase (PostgreSQL via asyncpg) |
 | CLI | Typer + Rich |
-| Testing | pytest + pytest-asyncio |
-| Linting / formatting | Ruff |
-| Coverage gate | 70% CI minimum (target: 80%+; 100% for domain/application) |
+| Test runner | pytest + pytest-asyncio |
+| Linter / formatter | Ruff |
 
-## Four-Layer Structure
+## Layers
 
-Marquise follows **Clean Architecture**. Dependencies point **inward only** — outer layers depend on inner layers, never the reverse.
-
-```
-┌─────────────────────────────────────────────────────────┐
-│  src/marquise/infrastructure/                           │
-│  CLI (Typer), DI container, auth, source scrapers,     │
-│  Supabase gateways                                      │
-├─────────────────────────────────────────────────────────┤
-│  src/marquise/interface_adapters/                       │
-│  Repository implementations (Supabase),                │
-│  source adapters, gateway protocols                     │
-├─────────────────────────────────────────────────────────┤
-│  src/marquise/application/                              │
-│  Use cases, repository interfaces, exceptions           │
-├─────────────────────────────────────────────────────────┤
-│  src/marquise/domain/                                   │
-│  Entities (Cinema, Movie, Screening),                   │
-│  value objects (CinemaId, MovieId, Showtime, …)         │
-└─────────────────────────────────────────────────────────┘
-```
-
-### Key directories
+Marquise follows Clean Architecture. Dependencies point inward only — outer layers know about inner layers, never the reverse.
 
 ```
-src/marquise/
-├── domain/
-│   ├── entities/          # Cinema, Movie, Screening
-│   └── value_objects/     # CinemaId, MovieId, ScreeningId, Showtime, SourceName
-├── application/
-│   ├── exceptions/        # ApplicationError hierarchy
-│   ├── repositories/      # Abstract repository interfaces (ABCs)
-│   └── use_cases/         # ImportScreeningsUseCase, CRUD use cases
-├── interface_adapters/
-│   └── repositories/
-│       ├── protocols/     # Gateway protocols (typing.Protocol)
-│       ├── supabase/      # Repository implementations (entity mapping)
-│       └── source_adapters/  # Cineplex, CinemaCinema, CinemaPublic adapters
-└── infrastructure/
-    ├── cli/               # Typer app and command modules
-    ├── controllers/       # CinemaController (thin CLI wiring layer)
-    ├── di/                # Dependency injection container
-    ├── auth/              # Admin authentication
-    ├── supabase/
-    │   ├── config/        # Connection configuration
-    │   └── gateways/      # Raw SQL operations (cinema, movie, screening, …)
-    └── sources/
-        ├── cineplex/      # Cineplex scraper (API + web)
-        ├── cinemacinema/  # CinemaCinema scraper
-        └── cinemapublic/  # Cinema Public scraper
+┌────────────────────────────────────────────────────────┐
+│  src/marquise/infrastructure/                          │
+│  CLI (Typer), DI container, Supabase gateways, config │
+├────────────────────────────────────────────────────────┤
+│  src/marquise/interface_adapters/                      │
+│  Repository implementations, source adapters           │
+├────────────────────────────────────────────────────────┤
+│  src/marquise/application/                             │
+│  Use cases, repository interfaces, application errors  │
+├────────────────────────────────────────────────────────┤
+│  src/marquise/domain/                                  │
+│  Entities, value objects (no external dependencies)    │
+└────────────────────────────────────────────────────────┘
 ```
+
+### Domain layer (`src/marquise/domain/`)
+
+Entities and value objects with no external dependencies. Key entities: `Cinema`, `Movie`, `Screening`, `SourceDefinition`, `CinemaSourceAssignment`.
+
+### Application layer (`src/marquise/application/`)
+
+- **Use cases**: `CreateCinemaUseCase`, `ImportScreeningsUseCase`, and ~10 others — each exposes `InputData` / `OutputData` inner dataclasses.
+- **Repository interfaces**: ABCs in `application/repositories/` — `CinemaRepository`, `MovieRepository`, `ScreeningRepository`, etc.
+- **Application exceptions**: `ApplicationError` subclasses raised at use-case boundaries.
+
+### Interface adapters layer (`src/marquise/interface_adapters/`)
+
+- **Repository implementations**: Supabase implementations in `repositories/supabase/` — adapt gateway dicts ↔ domain entities.
+- **Gateway protocols**: `typing.Protocol` definitions in `repositories/protocols/` — describe what each gateway must provide; no SQL or infrastructure imports.
+- **Source adapters**: `repositories/source_adapters/` — bridge `Cinema` entities to source-specific fetch parameters.
+
+### Infrastructure layer (`src/marquise/infrastructure/`)
+
+- **CLI**: Typer app in `cli/` — `marquise auth`, `marquise cinema`, `marquise source`.
+- **Supabase gateways**: SQL in `supabase/gateways/` — implement gateway protocols, return plain dicts.
+- **DI container**: `di/container.py` — wires settings → gateways → repositories → use cases → controllers.
+- **Config**: `settings.py` reads env vars (`DATABASE_URL`, `SUPABASE_URL`, `CINEPLEX_API_KEY`, etc.).
 
 ## Key Patterns
 
 ### Repository pattern
 
-Abstract interfaces live in `application/repositories/` as ABCs. Concrete Supabase implementations live in `interface_adapters/repositories/supabase/` and translate between gateway dicts and domain entities.
+ABCs in `application/repositories/` define the contract. Supabase implementations in `interface_adapters/repositories/supabase/` implement them. Use cases only depend on the ABC — swapping the database requires no domain or application changes.
 
 ### Gateway pattern
 
-Raw SQL (asyncpg) is isolated in `infrastructure/supabase/gateways/`. Gateways implement the `typing.Protocol` types defined in `interface_adapters/repositories/protocols/`. Repositories in `interface_adapters/repositories/supabase/` call the gateway and convert the results to domain entities — no SQL leaks above this layer.
+SQL and external HTTP live in `infrastructure/supabase/gateways/` and return plain dicts. `interface_adapters/repositories/protocols/` holds a `typing.Protocol` that describes each gateway's interface. The `interface_adapters` repository implementations take the protocol as a constructor argument and handle entity mapping only.
+
+```
+interface_adapters/repositories/protocols/cinema.py        ← CinemaGateway Protocol
+interface_adapters/repositories/supabase/cinema_repository.py  ← maps dicts ↔ Cinema
+infrastructure/supabase/gateways/cinema.py                  ← SQL lives here
+```
 
 ### Source adapter pattern
 
-Each cinema source has a scraper under `infrastructure/sources/<source>/` and an adapter under `interface_adapters/repositories/source_adapters/`. Adapters translate raw `ShowtimeRow` dicts from scrapers into the format expected by use cases. The `source_registry.py` maps source names to adapter classes at runtime.
+Each showtime source (Cineplex, CinemaCinema, CinemaPublic) has:
+- A scraper in `infrastructure/sources/<name>/`
+- A `SourceAdapter` in `interface_adapters/repositories/source_adapters/` that maps cinema names to source-specific IDs
+- Registration in `SourceRegistry`
+
+Adding a new cinema to an existing source is just an adapter mapping entry — no scraper changes needed.
 
 ## Data Flow
 
+### CLI command
+
+```
+marquise cinema list
+  → CinemaController.list()
+    → ListCinemasUseCase.execute(InputData)
+      → CinemaRepository.find_all()        ← interface (application layer)
+        → SupabaseCinemaRepository          ← implementation (interface_adapters)
+          → SupabaseCinemaGateway           ← SQL (infrastructure)
+            → Supabase / PostgreSQL
+```
+
+### Import pipeline
+
 ```
 marquise source import
-  → CLI command (infrastructure/cli/source_commands.py)
-  → CinemaController (infrastructure/controllers/)
-  → ImportScreeningsUseCase (application/use_cases/)
-    → SourceAdapter.fetch_showtimes()      # external HTTP
-    → MovieRepository.find_by_title()      # Supabase
-    → MovieRepository.save()
-    → ScreeningRepository.save()           # upsert
-  → OutputData displayed via Rich
+  → SourceController.import_screenings(cinema_id, start, end)
+    → ImportScreeningsUseCase.execute(...)
+      ├─ SourceRegistryQuery.fetch_showtimes()   → ShowtimeRow[]
+      ├─ MovieRepository.find_by_title / save    → Movie entities
+      ├─ parallel movie enrichment (description, cast, poster, …)
+      └─ ScreeningRepository.save / update       → Screening entities
 ```
 
 ## Planned Additions
 
-- **FastAPI REST API** — read-only public endpoints planned:
-  - `GET /cinemas`
-  - `GET /cinemas/{id}/showtimes?from=&to=`
-  - `GET /movies/{id}`
+A read-only **FastAPI REST API** is the next major infrastructure addition:
+
+```
+GET /cinemas
+GET /cinemas/{id}/showtimes?from=&to=
+GET /movies/{id}
+```
+
+The use cases that power these endpoints already exist. Adding FastAPI is purely an infrastructure concern — no domain or application layer changes needed.
 
 ## Further Reading
 
-- Source architecture: [`docs/sources.md`](docs/sources.md)
-- Known technical debt: [`docs/todo.md`](docs/todo.md)
-- Development rules: [`AGENTS.md`](AGENTS.md)
-- Setup and commands: [`CONTRIBUTING.md`](CONTRIBUTING.md)
+- `docs/sources.md` — source architecture, scraper details, how to add a new source
+- `docs/todo.md` — tracked technical debt
+- `CONTRIBUTING.md` — setup, commands, CI, PR checklist
+- `AGENTS.md` — coding rules and standards enforced in code review
