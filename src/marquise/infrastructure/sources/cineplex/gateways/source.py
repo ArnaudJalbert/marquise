@@ -10,7 +10,6 @@ from __future__ import annotations
 import html as html_mod
 import json
 import re
-import ssl
 import urllib.error
 import urllib.request
 from datetime import datetime
@@ -33,12 +32,11 @@ def _fetch_json(url: str, api_key: str = "") -> dict[str, Any] | list[Any]:
     Raises:
         urllib.error.HTTPError: On HTTP errors.
     """
-    ctx = ssl._create_unverified_context()
     req = urllib.request.Request(url)
     req.add_header("User-Agent", "Mozilla/5.0 (compatible; Marquise/1.0)")
     if api_key:
         req.add_header("Ocp-Apim-Subscription-Key", api_key)
-    with urllib.request.urlopen(req, context=ctx, timeout=30) as resp:
+    with urllib.request.urlopen(req, timeout=30) as resp:
         raw = resp.read().decode()
     return json.loads(raw)
 
@@ -55,10 +53,9 @@ def _fetch_html(url: str) -> str:
     Raises:
         urllib.error.HTTPError: On HTTP errors.
     """
-    ctx = ssl._create_unverified_context()
     req = urllib.request.Request(url)
     req.add_header("User-Agent", "Mozilla/5.0 (compatible; Marquise/1.0)")
-    with urllib.request.urlopen(req, context=ctx, timeout=15) as resp:
+    with urllib.request.urlopen(req, timeout=15) as resp:
         return resp.read().decode()
 
 
