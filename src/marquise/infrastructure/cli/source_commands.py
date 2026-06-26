@@ -567,7 +567,7 @@ def import_screenings() -> None:
                 status = (
                     typer.style("imported", fg=typer.colors.GREEN)
                     if s.imported
-                    else typer.style("already exists", fg=typer.colors.YELLOW)
+                    else typer.style("updated", fg=typer.colors.YELLOW)
                 )
                 table.add_row(s.movie_title, s.showtime, status)
 
@@ -576,7 +576,7 @@ def import_screenings() -> None:
             summary.append(f"{result.imported_count}", style="green")
             summary.append(" new  |  ")
             summary.append(f"{result.updated_count}", style="yellow")
-            summary.append(" already existed")
+            summary.append(" updated")
             _console.print(summary)
         finally:
             await container.shutdown()
