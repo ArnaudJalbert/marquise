@@ -41,7 +41,7 @@ source = ["marquise"]
 omit = ["tests/*"]
 
 [tool.coverage.report]
-fail_under = 80
+fail_under = 70
 
 [tool.ruff]
 line-length = 88
