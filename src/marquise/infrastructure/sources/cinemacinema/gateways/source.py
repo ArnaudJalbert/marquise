@@ -16,6 +16,10 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import Any
 
+import certifi
+
+_SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
+
 SCHEDULE_URL = "https://cinemacinema.ca/en/schedule/__data.json"
 FILM_DETAIL_TPL = "https://cinemacinema.ca/en/films/{slug}/__data.json"
 
@@ -86,12 +90,11 @@ def _fetch_schedule(date_str: str | None = None) -> dict:
     Returns:
         A dict with ``filmsRepresentations`` and/or ``cmDates`` keys.
     """
-    ctx = ssl._create_unverified_context()
     url = SCHEDULE_URL
     if date_str:
         url = f"{SCHEDULE_URL}?date={date_str}"
     req = urllib.request.Request(url)
-    with urllib.request.urlopen(req, context=ctx) as resp:
+    with urllib.request.urlopen(req, context=_SSL_CONTEXT) as resp:
         raw = resp.read().decode()
     return _parse_sveltekit_data(raw)
 
@@ -378,10 +381,9 @@ class CinemaCinemaSource:
             A dict of movie metadata, or ``None`` if not found.
         """
         url = FILM_DETAIL_TPL.format(slug=slug)
-        ctx = ssl._create_unverified_context()
         req = urllib.request.Request(url)
         try:
-            with urllib.request.urlopen(req, context=ctx, timeout=15) as resp:
+            with urllib.request.urlopen(req, context=_SSL_CONTEXT, timeout=15) as resp:
                 raw = resp.read().decode()
         except urllib.error.HTTPError:
             return None
