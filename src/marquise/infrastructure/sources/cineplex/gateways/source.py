@@ -10,10 +10,15 @@ from __future__ import annotations
 import html as html_mod
 import json
 import re
+import ssl
 import urllib.error
 import urllib.request
 from datetime import datetime
 from typing import Any
+
+import certifi
+
+_SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 
 SHOWTIMES_URL = "https://apis.cineplex.com/prod/cpx/theatrical/api/v1/showtimes"
 MOVIE_DETAIL_TPL = "https://www.cineplex.com/movie/{slug}"
@@ -36,7 +41,7 @@ def _fetch_json(url: str, api_key: str = "") -> dict[str, Any] | list[Any]:
     req.add_header("User-Agent", "Mozilla/5.0 (compatible; Marquise/1.0)")
     if api_key:
         req.add_header("Ocp-Apim-Subscription-Key", api_key)
-    with urllib.request.urlopen(req, timeout=30) as resp:
+    with urllib.request.urlopen(req, context=_SSL_CONTEXT, timeout=30) as resp:
         raw = resp.read().decode()
     return json.loads(raw)
 
@@ -55,7 +60,7 @@ def _fetch_html(url: str) -> str:
     """
     req = urllib.request.Request(url)
     req.add_header("User-Agent", "Mozilla/5.0 (compatible; Marquise/1.0)")
-    with urllib.request.urlopen(req, timeout=15) as resp:
+    with urllib.request.urlopen(req, context=_SSL_CONTEXT, timeout=15) as resp:
         return resp.read().decode()
 
 
