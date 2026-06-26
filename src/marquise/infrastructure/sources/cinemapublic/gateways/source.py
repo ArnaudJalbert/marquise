@@ -19,6 +19,10 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from typing import Any
 
+import certifi
+
+_SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
+
 SCHEDULE_URL = "https://cinemapublic.ca/en/schedule/"
 AJAX_URL = "https://cinemapublic.ca/wp-admin/admin-ajax.php"
 
@@ -47,12 +51,11 @@ def _fetch(url: str, data: bytes | None = None) -> str:
     Returns:
         The response body as a string.
     """
-    ctx = ssl._create_unverified_context()
     headers = {"User-Agent": "Mozilla/5.0 (compatible; Marquise/1.0)"}
     if data is not None:
         headers["Referer"] = SCHEDULE_URL
     req = urllib.request.Request(url, data=data, headers=headers)
-    with urllib.request.urlopen(req, context=ctx) as resp:
+    with urllib.request.urlopen(req, context=_SSL_CONTEXT) as resp:
         return resp.read().decode()
 
 
