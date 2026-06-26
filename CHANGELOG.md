@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.3 (2026-06-26)
+
+### Infrastructure
+
+- **Mandatory integration tests**: Removed the `workflow_dispatch`-only guard from the `integration` CI job. Supabase integration tests now run on every push and pull request to `main`, alongside unit tests.
+
 ## 0.7.2 (2026-06-26)
 
 ### Security
