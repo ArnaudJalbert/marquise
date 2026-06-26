@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.1 (2026-06-26)
+
+### Infrastructure
+
+- **CI Pipeline**: Added `.github/workflows/ci.yml` — runs on every push and pull request to `main`. The `quality` job installs dependencies via `uv`, checks formatting (`ruff format --check`), lints (`ruff check`), and runs the unit test suite with 80% coverage enforcement (`pytest --cov --cov-fail-under=80`). A separate `integration` job (manual trigger only) runs integration tests using `SUPABASE_URL`/`SUPABASE_KEY`/`DATABASE_URL` secrets.
+- **Coverage gate**: Added `[tool.coverage.report]` with `fail_under = 80` to `pyproject.toml` — the quality gate is now enforced in CI, not just on paper.
+
+Closes #7.
+
 ## 0.7.0 (2026-06-22)
 
 ### Highlights
