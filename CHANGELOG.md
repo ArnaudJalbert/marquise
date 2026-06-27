@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0 (2026-06-27)
+
+### New Features
+
+- **Read-only public REST API (FastAPI)**: Added a thin FastAPI layer (`infrastructure/api/`) exposing read access ahead of admin CRUD (#20): `GET /cinemas` (optional `name` filter), `GET /cinemas/{id}/showtimes?from=&to=`, `GET /movies/{id}`, plus a `GET /health` probe. Handlers do no data access themselves — they delegate to application use cases resolved from the DI container. Two new read-only use cases back the new endpoints: `GetMovieUseCase` and `GetCinemaShowtimesUseCase` (both additive; `ListCinemasUseCase` is reused via its public, no-auth path). The app is built by a `create_app()` factory whose lifespan opens/closes the database pool; tests inject a mocked container so they touch no database. All endpoints are public; admin mutations remain CLI-only. Added `fastapi` as a runtime dependency and `httpx` as a dev dependency (TestClient). Closes #20.
+
 ## 0.7.8 (2026-06-27)
 
 ### Chore
