@@ -6,6 +6,10 @@
 
 - **Stop mutating `Movie` in place during enrichment**: `_apply_enrichment` in `import_screenings.py` previously mutated a `Movie` entity in place, contradicting the project's value-object intent and making concurrent imports and future event sourcing fragile. It is now a pure function that returns a new `Movie` via `dataclasses.replace()`, populating only the fields that are currently null. Both call sites capture the returned instance, and `movies_to_save` is rebuilt after enrichment so the enriched (not the pre-enrichment) instances are persisted. As part of the change, the 11-field enrichment list — which was duplicated between `_apply_enrichment` and `_needs_enrichment` — was extracted into a shared `_ENRICHABLE_FIELDS` constant to prevent drift. No observable behaviour change; all existing tests pass. Closes #14.
 
+### Technical Debt
+
+- **Standardize on `str | None` over `Optional[str]`**: All `Optional[X]` type annotations across `src/`, `bin/`, and `tests/` were rewritten to the idiomatic `X | None` form, and the now-unused `from typing import Optional` imports were dropped. The Ruff `UP` (pyupgrade) rule set was added to `[tool.ruff.lint]` to enforce this going forward. Incidental modernizations surfaced by the rule were also applied: deprecated `typing.Tuple` imports removed and `run_spinner` converted to PEP 695 type parameters. Annotation-only change with no runtime behaviour difference; all 402 unit tests pass. Closes #16.
+
 ## 0.7.5 (2026-06-26)
 
 ### Bug Fixes

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 import asyncpg
 
 DEFAULT_SCHEMA = "marquise"
@@ -31,17 +29,17 @@ class SupabaseMovieGateway:
         self,
         movie_id: str,
         title: str,
-        release_year: Optional[int] = None,
-        directors: Optional[str] = None,
-        cast: Optional[str] = None,
-        duration_minutes: Optional[int] = None,
-        description: Optional[str] = None,
-        poster_url: Optional[str] = None,
-        trailer_url: Optional[str] = None,
-        genres: Optional[str] = None,
-        original_title: Optional[str] = None,
-        rating: Optional[str] = None,
-        origin_countries: Optional[str] = None,
+        release_year: int | None = None,
+        directors: str | None = None,
+        cast: str | None = None,
+        duration_minutes: int | None = None,
+        description: str | None = None,
+        poster_url: str | None = None,
+        trailer_url: str | None = None,
+        genres: str | None = None,
+        original_title: str | None = None,
+        rating: str | None = None,
+        origin_countries: str | None = None,
     ) -> dict:
         """Insert or upsert a movie row.
 
@@ -117,7 +115,7 @@ class SupabaseMovieGateway:
             )
         return dict(row)
 
-    async def find_by_id(self, movie_id: str) -> Optional[dict]:
+    async def find_by_id(self, movie_id: str) -> dict | None:
         """Find a movie by its ID.
 
         Args:
@@ -133,7 +131,7 @@ class SupabaseMovieGateway:
             )
         return dict(row) if row is not None else None
 
-    async def find_by_title(self, title: str) -> Optional[dict]:
+    async def find_by_title(self, title: str) -> dict | None:
         """Find a movie by its exact title.
 
         Args:

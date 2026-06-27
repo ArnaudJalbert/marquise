@@ -6,8 +6,7 @@ interface (application).  No SQL, no asyncpg — pure entity mapping.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from marquise.application.repositories import ScreeningRepository
 from marquise.domain.entities import Movie, Screening
@@ -38,11 +37,11 @@ def _parse_datetime(value: datetime | str) -> datetime:
     """
     if isinstance(value, datetime):
         if value.tzinfo is None:
-            return value.replace(tzinfo=timezone.utc)
+            return value.replace(tzinfo=UTC)
         return value
     result = datetime.fromisoformat(value)
     if result.tzinfo is None:
-        result = result.replace(tzinfo=timezone.utc)
+        result = result.replace(tzinfo=UTC)
     return result
 
 
@@ -126,7 +125,7 @@ class SupabaseScreeningRepository(ScreeningRepository):
         )
         return saved, was_inserted
 
-    async def update(self, screening: Screening) -> Optional[Screening]:
+    async def update(self, screening: Screening) -> Screening | None:
         """Update optional fields on an existing screening.
 
         Args:
@@ -157,7 +156,7 @@ class SupabaseScreeningRepository(ScreeningRepository):
             language=data.get("language"),
         )
 
-    async def find_by_id(self, screening_id: ScreeningId) -> Optional[Screening]:
+    async def find_by_id(self, screening_id: ScreeningId) -> Screening | None:
         """Retrieve a screening by ID.
 
         Args:

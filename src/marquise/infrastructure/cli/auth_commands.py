@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-from typing import Optional
 
 import typer
 
@@ -18,8 +17,8 @@ auth_app = typer.Typer(no_args_is_help=True)
 
 @auth_app.command()
 def login(
-    email: Optional[str] = typer.Option(None, help="Supabase user email"),
-    password: Optional[str] = typer.Option(
+    email: str | None = typer.Option(None, help="Supabase user email"),
+    password: str | None = typer.Option(
         None, hide_input=True, help="Supabase user password"
     ),
 ) -> None:

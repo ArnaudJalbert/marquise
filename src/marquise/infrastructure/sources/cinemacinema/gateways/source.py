@@ -13,7 +13,7 @@ import re
 import ssl
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import certifi
@@ -129,7 +129,7 @@ def _is_in_range(
     end_date: datetime | None,
 ) -> bool:
     """Check whether *date_str* (``YYYY-MM-DD``) falls in [start, end]."""
-    dt = datetime.strptime(date_str, _ISO_DATE_FORMAT).replace(tzinfo=timezone.utc)
+    dt = datetime.strptime(date_str, _ISO_DATE_FORMAT).replace(tzinfo=UTC)
     if start_date and dt < start_date:
         return False
     if end_date and dt > end_date:

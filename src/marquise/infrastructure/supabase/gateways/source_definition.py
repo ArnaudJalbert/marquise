@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 import asyncpg
 
 from marquise.interface_adapters.repositories.protocols.cinema import GatewayError
@@ -39,7 +37,7 @@ class SupabaseSourceDefinitionGateway:
         self,
         name: str,
         display_name: str,
-        description: Optional[str] = None,
+        description: str | None = None,
     ) -> dict:
         """Insert a source definition row.
 
@@ -73,7 +71,7 @@ class SupabaseSourceDefinitionGateway:
                 ) from None
         return dict(row)
 
-    async def find_by_name(self, name: str) -> Optional[dict]:
+    async def find_by_name(self, name: str) -> dict | None:
         """Find a source definition by its name.
 
         Args:

@@ -3,16 +3,13 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable
-from typing import TypeVar
 
 from rich.console import Console
-
-T = TypeVar("T")
 
 _console = Console()
 
 
-async def run_spinner(coro: Awaitable[T], description: str = "Working") -> T:
+async def run_spinner[T](coro: Awaitable[T], description: str = "Working") -> T:
     """Execute an awaitable while displaying a spinner animation.
 
     Args:

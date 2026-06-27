@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -40,7 +40,7 @@ async def test_save_and_find_by_id(
 ) -> None:
     """Verify a screening can be saved and then retrieved by ID."""
     await _seed_parents(gateway, movie_gateway)
-    showtime = datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc)
+    showtime = datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC)
     result = await screening_gateway.save(
         screening_id="scr-001",
         movie_id="mov-001",
@@ -78,25 +78,25 @@ async def test_find_by_cinema_and_date_range(
         screening_id="scr-003",
         movie_id="mov-001",
         cinema_id="cin-003",
-        showtime=datetime(2026, 6, 7, 19, 0, 0, tzinfo=timezone.utc),
+        showtime=datetime(2026, 6, 7, 19, 0, 0, tzinfo=UTC),
     )
     await screening_gateway.save(
         screening_id="scr-004",
         movie_id="mov-002",
         cinema_id="cin-003",
-        showtime=datetime(2026, 6, 8, 20, 0, 0, tzinfo=timezone.utc),
+        showtime=datetime(2026, 6, 8, 20, 0, 0, tzinfo=UTC),
     )
     await screening_gateway.save(
         screening_id="scr-005",
         movie_id="mov-003",
         cinema_id="cin-003",
-        showtime=datetime(2026, 6, 10, 21, 0, 0, tzinfo=timezone.utc),
+        showtime=datetime(2026, 6, 10, 21, 0, 0, tzinfo=UTC),
     )
 
     found = await screening_gateway.find_by_cinema_and_date_range(
         cinema_id="cin-003",
-        start_date=datetime(2026, 6, 7, 0, 0, 0, tzinfo=timezone.utc),
-        end_date=datetime(2026, 6, 8, 23, 59, 59, tzinfo=timezone.utc),
+        start_date=datetime(2026, 6, 7, 0, 0, 0, tzinfo=UTC),
+        end_date=datetime(2026, 6, 8, 23, 59, 59, tzinfo=UTC),
     )
     assert len(found) == 2
     assert found[0]["id"] == "scr-003"
@@ -110,8 +110,8 @@ async def test_find_by_cinema_and_date_range_empty(
     """Verify find_by_cinema_and_date_range returns empty list when no match."""
     found = await screening_gateway.find_by_cinema_and_date_range(
         cinema_id="cin-empty",
-        start_date=datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
-        end_date=datetime(2026, 1, 31, 23, 59, 59, tzinfo=timezone.utc),
+        start_date=datetime(2026, 1, 1, 0, 0, 0, tzinfo=UTC),
+        end_date=datetime(2026, 1, 31, 23, 59, 59, tzinfo=UTC),
     )
     assert found == []
 
@@ -124,7 +124,7 @@ async def test_save_upserts_on_unique_key_conflict(
 ) -> None:
     """Verify save returns the existing row on conflict."""
     await _seed_parents(gateway, movie_gateway)
-    showtime = datetime(2026, 6, 9, 19, 30, 0, tzinfo=timezone.utc)
+    showtime = datetime(2026, 6, 9, 19, 30, 0, tzinfo=UTC)
     await screening_gateway.save(
         screening_id="scr-006",
         movie_id="mov-001",

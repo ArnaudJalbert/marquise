@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 import asyncpg
 
 from marquise.interface_adapters.repositories.protocols.cinema import GatewayError
@@ -39,9 +37,9 @@ class SupabaseCinemaGateway:
         self,
         cinema_id: str,
         name: str,
-        address: Optional[str],
-        city: Optional[str],
-        website: Optional[str] = None,
+        address: str | None,
+        city: str | None,
+        website: str | None = None,
     ) -> dict:
         """Insert or update (upsert) a cinema row.
 
@@ -75,7 +73,7 @@ class SupabaseCinemaGateway:
             )
         return dict(row)
 
-    async def find_by_id(self, cinema_id: str) -> Optional[dict]:
+    async def find_by_id(self, cinema_id: str) -> dict | None:
         """Find a cinema by its ID.
 
         Args:
@@ -92,8 +90,8 @@ class SupabaseCinemaGateway:
         return dict(row) if row is not None else None
 
     async def find_by_name_and_address(
-        self, name: str, address: Optional[str]
-    ) -> Optional[dict]:
+        self, name: str, address: str | None
+    ) -> dict | None:
         """Find a cinema by its exact name and address.
 
         Args:
@@ -150,9 +148,9 @@ class SupabaseCinemaGateway:
         self,
         cinema_id: str,
         name: str,
-        address: Optional[str],
-        city: Optional[str],
-        website: Optional[str] = None,
+        address: str | None,
+        city: str | None,
+        website: str | None = None,
     ) -> dict:
         """Update an existing cinema row.
 

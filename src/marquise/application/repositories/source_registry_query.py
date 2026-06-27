@@ -10,7 +10,6 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional, Tuple
 
 from marquise.domain.entities import Cinema, SourceDefinition
 
@@ -44,11 +43,11 @@ class ShowtimeRow:
 
     movie_title: str
     showtime: datetime
-    identifier: Optional[str] = None
-    external_id: Optional[str] = None
-    ticket_url: Optional[str] = None
-    room: Optional[str] = None
-    language: Optional[str] = None
+    identifier: str | None = None
+    external_id: str | None = None
+    ticket_url: str | None = None
+    room: str | None = None
+    language: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,17 +70,17 @@ class MovieEnrichmentData:
             ``None`` if unavailable.
     """
 
-    description: Optional[str] = None
-    directors: Optional[Tuple[str, ...]] = None
-    cast: Optional[Tuple[str, ...]] = None
-    duration_minutes: Optional[int] = None
-    release_year: Optional[int] = None
-    origin_countries: Optional[Tuple[str, ...]] = None
-    poster_url: Optional[str] = None
-    trailer_url: Optional[str] = None
-    genres: Optional[Tuple[str, ...]] = None
-    rating: Optional[str] = None
-    original_title: Optional[str] = None
+    description: str | None = None
+    directors: tuple[str, ...] | None = None
+    cast: tuple[str, ...] | None = None
+    duration_minutes: int | None = None
+    release_year: int | None = None
+    origin_countries: tuple[str, ...] | None = None
+    poster_url: str | None = None
+    trailer_url: str | None = None
+    genres: tuple[str, ...] | None = None
+    rating: str | None = None
+    original_title: str | None = None
 
 
 class SourceRegistryQuery(ABC):
@@ -127,7 +126,7 @@ class SourceRegistryQuery(ABC):
         self,
         source_name: str,
         identifier: str,
-    ) -> Optional[MovieEnrichmentData]:
+    ) -> MovieEnrichmentData | None:
         """Fetch enriched movie metadata from a registered source.
 
         Args:

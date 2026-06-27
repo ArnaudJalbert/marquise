@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Optional
 
 from supabase import create_client
 
@@ -101,7 +100,7 @@ class SupabaseAuthService:
         self._client.auth.sign_out()
         self._clear_session()
 
-    def get_session_status(self) -> Optional[AuthSession]:
+    def get_session_status(self) -> AuthSession | None:
         """Return the current cached session without validation.
 
         Returns:
@@ -121,7 +120,7 @@ class SupabaseAuthService:
         }
         SESSION_FILE.write_text(json.dumps(data, indent=2))
 
-    def _load_session(self) -> Optional[AuthSession]:
+    def _load_session(self) -> AuthSession | None:
         if not SESSION_FILE.exists():
             return None
         try:

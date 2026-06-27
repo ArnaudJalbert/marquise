@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from ..value_objects import ScreeningId, Showtime
 from .cinema import Cinema
@@ -30,10 +29,10 @@ class Screening:
     movie: Movie
     cinema: Cinema
     showtime: Showtime
-    external_id: Optional[str] = None
-    ticket_url: Optional[str] = None
-    room: Optional[str] = None
-    language: Optional[str] = None
+    external_id: str | None = None
+    ticket_url: str | None = None
+    room: str | None = None
+    language: str | None = None
 
     def is_upcoming(self, now: datetime | None = None) -> bool:
         """Check if this screening is still in the future.
@@ -45,7 +44,7 @@ class Screening:
             True if the showtime is after the reference time.
         """
         if now is None:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
         return self.showtime.value > now
 
     def has_ended(self, now: datetime | None = None) -> bool:
@@ -58,7 +57,7 @@ class Screening:
             True if the showtime is before the reference time.
         """
         if now is None:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
         return self.showtime.value < now
 
     def __str__(self) -> str:

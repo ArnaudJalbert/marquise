@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from marquise.application.repositories import CinemaRepository
 
@@ -19,7 +18,7 @@ class ListCinemasUseCase:
             name: Optional name filter (substring, case-insensitive).
         """
 
-        name: Optional[str] = None
+        name: str | None = None
 
         def __post_init__(self) -> None:
             """Validate input data.
@@ -44,9 +43,9 @@ class ListCinemasUseCase:
 
         id: str
         name: str
-        address: Optional[str] = None
-        city: Optional[str] = None
-        website: Optional[str] = None
+        address: str | None = None
+        city: str | None = None
+        website: str | None = None
 
         def __post_init__(self) -> None:
             """Validate cinema data.
