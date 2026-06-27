@@ -1,6 +1,6 @@
 # Marquise Architecture
 
-**Marquise** is an open-source Montreal cinema showtimes aggregator. It fetches showtime data from multiple cinema sources (Cineplex, CinemaCinema, Cinema Public), normalises it, and stores it in a PostgreSQL database via Supabase.
+**Marquise** is a Montreal cinema showtimes aggregator. It fetches showtime data from multiple cinema sources (Cineplex, CinemaCinema, Cinema Public), normalises it, and stores it in a PostgreSQL database via Supabase.
 
 ## Tech Stack
 
