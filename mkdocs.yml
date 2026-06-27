@@ -1,6 +1,6 @@
 site_name: Marquise
-site_description: Open-source platform for aggregating and exploring movie showtimes
-repo_url: https://github.com/anomalyco/marquise
+site_description: Montreal cinema showtimes — aggregated, normalized, and queryable
+repo_url: https://github.com/ArnaudJalbert/marquise
 edit_uri: blob/main/docs/
 
 theme:
@@ -16,9 +16,11 @@ theme:
 
 nav:
   - Home: index.md
-  - Technical Debt: todo.md
+  - Architecture: architecture.md
+  - Sources: sources.md
   - Setup:
     - Supabase Database: setup/supabase-cinema-table.md
+  - Technical Debt: todo.md
 
 plugins:
   - search
