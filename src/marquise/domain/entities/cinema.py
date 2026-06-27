@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from ..value_objects import CinemaId
 
@@ -22,9 +21,9 @@ class Cinema:
 
     id: CinemaId
     name: str
-    address: Optional[str] = None
-    city: Optional[str] = None
-    website: Optional[str] = None
+    address: str | None = None
+    city: str | None = None
+    website: str | None = None
 
     def __post_init__(self) -> None:
         """Validate cinema data after initialization.

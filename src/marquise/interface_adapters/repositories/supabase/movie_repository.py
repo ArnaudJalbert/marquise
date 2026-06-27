@@ -6,8 +6,6 @@ interface (application).  No SQL, no asyncpg — pure entity mapping.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from marquise.application.repositories import MovieRepository
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
@@ -56,7 +54,7 @@ class SupabaseMovieRepository(MovieRepository):
         )
         return self._to_entity(data)
 
-    async def find_by_id(self, movie_id: MovieId) -> Optional[Movie]:
+    async def find_by_id(self, movie_id: MovieId) -> Movie | None:
         """Retrieve a movie by ID.
 
         Args:
@@ -68,7 +66,7 @@ class SupabaseMovieRepository(MovieRepository):
         data = await self._gateway.find_by_id(movie_id=str(movie_id))
         return self._to_entity(data) if data is not None else None
 
-    async def find_by_title(self, title: str) -> Optional[Movie]:
+    async def find_by_title(self, title: str) -> Movie | None:
         """Find a movie by its exact title.
 
         Args:

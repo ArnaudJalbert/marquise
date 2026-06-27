@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from marquise.application.exceptions import SourceAlreadyExistsError
 from marquise.application.repositories import SourceDefinitionRepository
@@ -26,7 +25,7 @@ class CreateSourceUseCase:
 
         name: str
         display_name: str
-        description: Optional[str] = None
+        description: str | None = None
 
         def __post_init__(self) -> None:
             """Validate input data.
@@ -51,7 +50,7 @@ class CreateSourceUseCase:
 
         name: str
         display_name: str
-        description: Optional[str] = None
+        description: str | None = None
 
         def __post_init__(self) -> None:
             """Validate output data.

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -36,7 +36,7 @@ def sample_movie() -> Movie:
 @pytest.fixture
 def sample_showtime() -> Showtime:
     """Provide a future Showtime for tests."""
-    return Showtime(value=datetime.now(timezone.utc) + timedelta(days=1))
+    return Showtime(value=datetime.now(UTC) + timedelta(days=1))
 
 
 def create_screening(
@@ -71,7 +71,7 @@ def test_is_upcoming_returns_true_when_showtime_is_future(
     sample_movie: Movie,
 ) -> None:
     """Verify is_upcoming returns True for a future showtime."""
-    future = Showtime(value=datetime.now(timezone.utc) + timedelta(hours=1))
+    future = Showtime(value=datetime.now(UTC) + timedelta(hours=1))
     screening = create_screening(future, sample_cinema, sample_movie)
     assert screening.is_upcoming()
 
@@ -81,7 +81,7 @@ def test_is_upcoming_returns_false_when_showtime_is_past(
     sample_movie: Movie,
 ) -> None:
     """Verify is_upcoming returns False for a past showtime."""
-    past = Showtime(value=datetime.now(timezone.utc) - timedelta(hours=1))
+    past = Showtime(value=datetime.now(UTC) - timedelta(hours=1))
     screening = create_screening(past, sample_cinema, sample_movie)
     assert not screening.is_upcoming()
 
@@ -91,14 +91,10 @@ def test_is_upcoming_with_explicit_now(
     sample_movie: Movie,
 ) -> None:
     """Verify is_upcoming respects an explicit ``now`` parameter."""
-    showtime = Showtime(value=datetime(2026, 6, 6, 12, 0, 0, tzinfo=timezone.utc))
+    showtime = Showtime(value=datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC))
     screening = create_screening(showtime, sample_cinema, sample_movie)
-    assert screening.is_upcoming(
-        now=datetime(2026, 6, 6, 11, 0, 0, tzinfo=timezone.utc)
-    )
-    assert not screening.is_upcoming(
-        now=datetime(2026, 6, 6, 13, 0, 0, tzinfo=timezone.utc)
-    )
+    assert screening.is_upcoming(now=datetime(2026, 6, 6, 11, 0, 0, tzinfo=UTC))
+    assert not screening.is_upcoming(now=datetime(2026, 6, 6, 13, 0, 0, tzinfo=UTC))
 
 
 def test_has_ended_returns_true_when_showtime_is_past(
@@ -106,7 +102,7 @@ def test_has_ended_returns_true_when_showtime_is_past(
     sample_movie: Movie,
 ) -> None:
     """Verify has_ended returns True for a past showtime."""
-    past = Showtime(value=datetime.now(timezone.utc) - timedelta(hours=1))
+    past = Showtime(value=datetime.now(UTC) - timedelta(hours=1))
     screening = create_screening(past, sample_cinema, sample_movie)
     assert screening.has_ended()
 
@@ -116,7 +112,7 @@ def test_has_ended_returns_false_when_showtime_is_future(
     sample_movie: Movie,
 ) -> None:
     """Verify has_ended returns False for a future showtime."""
-    future = Showtime(value=datetime.now(timezone.utc) + timedelta(hours=1))
+    future = Showtime(value=datetime.now(UTC) + timedelta(hours=1))
     screening = create_screening(future, sample_cinema, sample_movie)
     assert not screening.has_ended()
 
@@ -126,12 +122,10 @@ def test_has_ended_with_explicit_now(
     sample_movie: Movie,
 ) -> None:
     """Verify has_ended respects an explicit ``now`` parameter."""
-    showtime = Showtime(value=datetime(2026, 6, 6, 12, 0, 0, tzinfo=timezone.utc))
+    showtime = Showtime(value=datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC))
     screening = create_screening(showtime, sample_cinema, sample_movie)
-    assert screening.has_ended(now=datetime(2026, 6, 6, 13, 0, 0, tzinfo=timezone.utc))
-    assert not screening.has_ended(
-        now=datetime(2026, 6, 6, 11, 0, 0, tzinfo=timezone.utc)
-    )
+    assert screening.has_ended(now=datetime(2026, 6, 6, 13, 0, 0, tzinfo=UTC))
+    assert not screening.has_ended(now=datetime(2026, 6, 6, 11, 0, 0, tzinfo=UTC))
 
 
 def test_screening_str_representation(

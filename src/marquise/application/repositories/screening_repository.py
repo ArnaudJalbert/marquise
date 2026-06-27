@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Optional
 
 from marquise.domain.entities import Screening
 from marquise.domain.value_objects import CinemaId, ScreeningId
@@ -28,7 +27,7 @@ class ScreeningRepository(ABC):
         ...
 
     @abstractmethod
-    async def update(self, screening: Screening) -> Optional[Screening]:
+    async def update(self, screening: Screening) -> Screening | None:
         """Update optional fields on an existing screening.
 
         Matches by (cinema_id, movie_id, showtime).  Fields set to None
@@ -43,7 +42,7 @@ class ScreeningRepository(ABC):
         ...
 
     @abstractmethod
-    async def find_by_id(self, screening_id: ScreeningId) -> Optional[Screening]:
+    async def find_by_id(self, screening_id: ScreeningId) -> Screening | None:
         """Retrieve a screening by its unique identifier.
 
         Args:

@@ -7,7 +7,7 @@ the method, without dictating the parameters.
 
 from __future__ import annotations
 
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
 
 
 class ShowtimeSource(Protocol):
@@ -39,7 +39,7 @@ class ShowtimeSource(Protocol):
         self,
         *args: Any,  # noqa: ANN401
         **kwargs: Any,  # noqa: ANN401
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Fetch enriched movie metadata.
 
         Args:

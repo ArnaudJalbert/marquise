@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
-from typing import Optional
 
 import questionary
 import typer
@@ -602,7 +601,7 @@ def import_screenings() -> None:
 async def _select_cinema_admin(
     container: Container,
     prompt: str,
-) -> Optional[ListCinemasUseCase.CinemaData]:
+) -> ListCinemasUseCase.CinemaData | None:
     """Let the admin pick a cinema interactively from a list.
 
     Args:
@@ -642,7 +641,7 @@ async def _select_cinema_admin(
 async def _select_cinema_public(
     container: Container,
     prompt: str,
-) -> Optional[ListCinemasUseCase.CinemaData]:
+) -> ListCinemasUseCase.CinemaData | None:
     """Let a user pick a cinema interactively (no auth required).
 
     Args:
@@ -682,7 +681,7 @@ async def _select_cinema_public(
 async def _select_source(
     container: Container,
     prompt: str,
-) -> Optional[str]:
+) -> str | None:
     """Let the admin pick a source interactively from a list.
 
     Args:

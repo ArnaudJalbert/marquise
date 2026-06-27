@@ -6,8 +6,6 @@ exposed as public properties — everything else is private to the container.
 
 from __future__ import annotations
 
-from typing import Optional
-
 import asyncpg
 from dotenv import load_dotenv
 
@@ -119,9 +117,9 @@ class Container:
 
     def __init__(self) -> None:
         self._settings_provider = SettingsProvider()
-        self._database: Optional[Database] = None
-        self._pool: Optional[asyncpg.Pool] = None
-        self._registry: Optional[SourceRegistry] = None
+        self._database: Database | None = None
+        self._pool: asyncpg.Pool | None = None
+        self._registry: SourceRegistry | None = None
 
     # ------------------------------------------------------------------
     # Lifecycle

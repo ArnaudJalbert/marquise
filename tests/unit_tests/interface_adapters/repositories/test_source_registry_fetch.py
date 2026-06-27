@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import create_autospec
 
 import pytest
@@ -59,22 +59,22 @@ async def test_fetch_showtimes_adapts_dicts_to_showtime_rows(
     results = await registry.fetch_showtimes(
         cinema=sample_cinema,
         source_definition=sample_source_definition,
-        start_date=datetime(2026, 6, 7, tzinfo=timezone.utc),
-        end_date=datetime(2026, 6, 7, 23, 59, 59, tzinfo=timezone.utc),
+        start_date=datetime(2026, 6, 7, tzinfo=UTC),
+        end_date=datetime(2026, 6, 7, 23, 59, 59, tzinfo=UTC),
     )
 
     assert len(results) == 2
 
     assert isinstance(results[0], ShowtimeRow)
     assert results[0].movie_title == "Movie A"
-    assert results[0].showtime == datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc)
+    assert results[0].showtime == datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC)
 
     assert results[1].movie_title == "Movie B"
 
     mock_adapter.fetch_showtimes.assert_awaited_once_with(
         cinema=sample_cinema,
-        start_date=datetime(2026, 6, 7, tzinfo=timezone.utc),
-        end_date=datetime(2026, 6, 7, 23, 59, 59, tzinfo=timezone.utc),
+        start_date=datetime(2026, 6, 7, tzinfo=UTC),
+        end_date=datetime(2026, 6, 7, 23, 59, 59, tzinfo=UTC),
     )
 
 
@@ -92,8 +92,8 @@ async def test_fetch_showtimes_handles_empty_result(
     results = await registry.fetch_showtimes(
         cinema=sample_cinema,
         source_definition=sample_source_definition,
-        start_date=datetime(2026, 6, 7, tzinfo=timezone.utc),
-        end_date=datetime(2026, 6, 7, 23, 59, 59, tzinfo=timezone.utc),
+        start_date=datetime(2026, 6, 7, tzinfo=UTC),
+        end_date=datetime(2026, 6, 7, 23, 59, 59, tzinfo=UTC),
     )
 
     assert results == []
@@ -114,8 +114,8 @@ async def test_fetch_showtimes_raises_key_error_for_unknown_source(
         await registry.fetch_showtimes(
             cinema=sample_cinema,
             source_definition=unknown,
-            start_date=datetime(2026, 6, 7, tzinfo=timezone.utc),
-            end_date=datetime(2026, 6, 7, 23, 59, 59, tzinfo=timezone.utc),
+            start_date=datetime(2026, 6, 7, tzinfo=UTC),
+            end_date=datetime(2026, 6, 7, 23, 59, 59, tzinfo=UTC),
         )
 
 
@@ -136,8 +136,8 @@ async def test_fetch_showtimes_skips_rows_without_showtime(
     results = await registry.fetch_showtimes(
         cinema=sample_cinema,
         source_definition=sample_source_definition,
-        start_date=datetime(2026, 6, 7, tzinfo=timezone.utc),
-        end_date=datetime(2026, 6, 7, 23, 59, 59, tzinfo=timezone.utc),
+        start_date=datetime(2026, 6, 7, tzinfo=UTC),
+        end_date=datetime(2026, 6, 7, 23, 59, 59, tzinfo=UTC),
     )
 
     assert results == []

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import create_autospec
 
 import pytest
@@ -47,7 +47,7 @@ def sample_screening(sample_cinema: Cinema, sample_movie: Movie) -> Screening:
         id=ScreeningId(value="scr-123"),
         movie=sample_movie,
         cinema=sample_cinema,
-        showtime=Showtime(value=datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc)),
+        showtime=Showtime(value=datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC)),
     )
 
 
@@ -114,8 +114,8 @@ async def test_save(
     assert result.id == ScreeningId(value="scr-123")
     assert result.movie == sample_movie
     assert result.cinema == sample_cinema
-    assert result.showtime.value.tzinfo == timezone.utc
-    assert result.showtime.value == datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc)
+    assert result.showtime.value.tzinfo == UTC
+    assert result.showtime.value == datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC)
     assert result.external_id is None
     assert result.ticket_url is None
     assert result.room is None
@@ -124,7 +124,7 @@ async def test_save(
         screening_id="scr-123",
         movie_id="mov-456",
         cinema_id="cin-789",
-        showtime=datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc),
+        showtime=datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC),
         external_id=None,
         ticket_url=None,
         room=None,
@@ -144,8 +144,8 @@ async def test_find_by_id(gateway_dict: dict) -> None:
     assert result is not None
     assert result.id == ScreeningId(value="scr-123")
     assert result.movie.id == MovieId(value="mov-456")
-    assert result.showtime.value.tzinfo == timezone.utc
-    assert result.showtime.value == datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc)
+    assert result.showtime.value.tzinfo == UTC
+    assert result.showtime.value == datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC)
     mock_gateway.find_by_id.assert_awaited_once_with(screening_id="scr-123")
 
 
@@ -159,7 +159,7 @@ async def test_save_with_timezone_aware_datetime(
         "id": "scr-123",
         "movie_id": "mov-456",
         "cinema_id": "cin-789",
-        "showtime": datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc),
+        "showtime": datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC),
         "external_id": None,
         "ticket_url": None,
         "room": None,
@@ -170,7 +170,7 @@ async def test_save_with_timezone_aware_datetime(
     repo = SupabaseScreeningRepository(gateway=mock_gateway)
     result, was_inserted = await repo.save(sample_screening)
 
-    assert result.showtime.value.tzinfo == timezone.utc
+    assert result.showtime.value.tzinfo == UTC
     assert was_inserted
 
 
@@ -195,8 +195,8 @@ async def test_save_with_iso_string_showtime(
     repo = SupabaseScreeningRepository(gateway=mock_gateway)
     result, was_inserted = await repo.save(sample_screening)
 
-    assert result.showtime.value.tzinfo == timezone.utc
-    assert result.showtime.value == datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc)
+    assert result.showtime.value.tzinfo == UTC
+    assert result.showtime.value == datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC)
     assert was_inserted
 
 
@@ -219,8 +219,8 @@ async def test_find_by_cinema_and_date_range(gateway_dict: dict) -> None:
     mock_gateway.find_by_cinema_and_date_range.return_value = [gateway_dict]
 
     repo = SupabaseScreeningRepository(gateway=mock_gateway)
-    start = datetime(2026, 6, 7, tzinfo=timezone.utc)
-    end = datetime(2026, 6, 7, 23, 59, 59, tzinfo=timezone.utc)
+    start = datetime(2026, 6, 7, tzinfo=UTC)
+    end = datetime(2026, 6, 7, 23, 59, 59, tzinfo=UTC)
     results = await repo.find_by_cinema_and_date_range(
         cinema_id=CinemaId(value="cin-789"),
         start_date=start,
@@ -229,10 +229,8 @@ async def test_find_by_cinema_and_date_range(gateway_dict: dict) -> None:
 
     assert len(results) == 1
     assert results[0].id == ScreeningId(value="scr-123")
-    assert results[0].showtime.value.tzinfo == timezone.utc
-    assert results[0].showtime.value == datetime(
-        2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc
-    )
+    assert results[0].showtime.value.tzinfo == UTC
+    assert results[0].showtime.value == datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC)
     mock_gateway.find_by_cinema_and_date_range.assert_awaited_once_with(
         cinema_id="cin-789",
         start_date=start,
@@ -290,8 +288,8 @@ async def test_find_by_cinema_and_date_range_empty() -> None:
     repo = SupabaseScreeningRepository(gateway=mock_gateway)
     results = await repo.find_by_cinema_and_date_range(
         cinema_id=CinemaId(value="cin-789"),
-        start_date=datetime(2026, 6, 7, tzinfo=timezone.utc),
-        end_date=datetime(2026, 6, 7, 23, 59, 59, tzinfo=timezone.utc),
+        start_date=datetime(2026, 6, 7, tzinfo=UTC),
+        end_date=datetime(2026, 6, 7, 23, 59, 59, tzinfo=UTC),
     )
 
     assert results == []

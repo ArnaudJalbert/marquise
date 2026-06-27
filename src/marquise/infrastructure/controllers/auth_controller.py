@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-from typing import Optional
 
 from marquise.interface_adapters.repositories.protocols.auth import (
     AuthService,
@@ -30,7 +29,7 @@ class AuthController:
     def logout(self) -> None:
         self._auth.logout()
 
-    def status(self) -> Optional[AuthSession]:
+    def status(self) -> AuthSession | None:
         return self._auth.get_session_status()
 
     def validate_admin(self) -> AuthSession:

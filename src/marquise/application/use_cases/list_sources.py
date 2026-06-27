@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from marquise.application.repositories import SourceDefinitionRepository
 
@@ -30,7 +29,7 @@ class ListSourcesUseCase:
 
         name: str
         display_name: str
-        description: Optional[str] = None
+        description: str | None = None
 
         def __post_init__(self) -> None:
             """Validate source data.

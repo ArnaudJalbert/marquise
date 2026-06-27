@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
 
 from marquise.domain.entities import Cinema
 
@@ -37,7 +37,7 @@ class SourceAdapter(Protocol):
     async def fetch_movie_detail(
         self,
         identifier: str,
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Fetch enriched movie metadata from the underlying source.
 
         Args:
