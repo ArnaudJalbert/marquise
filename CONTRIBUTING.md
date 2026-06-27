@@ -32,6 +32,9 @@ uv run ruff check src/ tests/
 # Auto-fix lint
 uv run ruff check --fix src/ tests/
 
+# Type check (non-blocking in CI for now)
+uv run ty check src
+
 # Format
 uv run ruff format src/ tests/
 
@@ -48,7 +51,8 @@ Every push and PR to `main` runs the `quality` job:
 
 1. `ruff format --check` — fails on unformatted code
 2. `ruff check` — fails on lint errors
-3. `pytest tests/unit_tests/ --cov=marquise --cov-fail-under=70` — fails below 70% coverage
+3. `ty check src` — type check; **non-blocking** for now (reports diagnostics without failing the build while the backlog is triaged, see #34)
+4. `pytest tests/unit_tests/ --cov=marquise --cov-fail-under=70` — fails below 70% coverage
 
 The `integration` job (manual trigger only) runs `tests/integration/` using secrets `SUPABASE_URL`, `SUPABASE_KEY`, `DATABASE_URL`.
 
