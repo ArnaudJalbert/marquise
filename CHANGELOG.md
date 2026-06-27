@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.9 (2026-06-27)
+
+### Bug Fixes
+
+- **Validate `ShowtimeRow` at the scraper boundary**: `ShowtimeRow` gained a `__post_init__` that rejects empty/whitespace movie titles and naive (timezone-unaware) showtimes, so malformed scraped rows can no longer propagate toward the database. The source registry now also skips rows with blank titles defensively. Closes #19.
+
 ## 0.7.8 (2026-06-27)
 
 ### Chore
