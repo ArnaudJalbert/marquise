@@ -37,7 +37,7 @@ class ImportedScreeningData:
     Attributes:
         movie_title: The title of the movie.
         showtime: The showtime in ISO format.
-        imported: True if newly created, False if already existed.
+        imported: True if newly created, False if already existed (updated in place).
     """
 
     movie_title: str
@@ -90,7 +90,7 @@ class ImportScreeningsUseCase:
             screenings: List of imported/existing screening summaries.
             total_count: Total number of screenings processed.
             imported_count: Number of new screenings created.
-            updated_count: Number of existing screenings skipped.
+            updated_count: Number of existing screenings found and updated in place.
         """
 
         cinema_id: str
