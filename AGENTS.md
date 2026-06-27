@@ -269,6 +269,9 @@ uv run pytest tests/unit_tests/ --cov=marquise --cov-report=term-missing -q
 # Lint
 uv run ruff check src/ tests/
 
+# Type check (non-blocking in CI for now — see #34)
+uv run ty check src
+
 # Format
 uv run ruff format src/ tests/
 
