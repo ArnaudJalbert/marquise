@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 import urllib.parse
-from typing import Optional
 
 import asyncpg
 
@@ -57,7 +56,7 @@ class Database:
             settings: Application settings containing the DSN.
         """
         self._dsn: str = sanitize_dsn(settings.database_url)
-        self._pool: Optional[asyncpg.Pool] = None
+        self._pool: asyncpg.Pool | None = None
 
     async def connect(self) -> None:
         """Open the connection pool."""

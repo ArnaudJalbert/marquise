@@ -6,8 +6,6 @@ interface (application).  No SQL, no asyncpg — pure entity mapping.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from marquise.application.exceptions import (
     CinemaIdAlreadyExistsError,
     CinemaNotFoundError,
@@ -63,7 +61,7 @@ class SupabaseCinemaRepository(CinemaRepository):
             raise CinemaIdAlreadyExistsError(str(exc)) from exc
         return self._to_entity(data)
 
-    async def find_by_id(self, cinema_id: CinemaId) -> Optional[Cinema]:
+    async def find_by_id(self, cinema_id: CinemaId) -> Cinema | None:
         """Retrieve a cinema by ID.
 
         Args:
@@ -76,8 +74,8 @@ class SupabaseCinemaRepository(CinemaRepository):
         return self._to_entity(data) if data is not None else None
 
     async def find_by_name_and_address(
-        self, name: str, address: Optional[str]
-    ) -> Optional[Cinema]:
+        self, name: str, address: str | None
+    ) -> Cinema | None:
         """Find a cinema by its exact name and address.
 
         Args:

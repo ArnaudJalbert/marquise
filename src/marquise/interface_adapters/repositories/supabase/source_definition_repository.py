@@ -7,8 +7,6 @@ asyncpg — pure entity mapping.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from marquise.application.exceptions import (
     SourceAlreadyExistsError,
 )
@@ -61,7 +59,7 @@ class SupabaseSourceDefinitionRepository(SourceDefinitionRepository):
             raise SourceAlreadyExistsError(str(exc)) from exc
         return self._to_entity(data)
 
-    async def find_by_name(self, name: SourceName) -> Optional[SourceDefinition]:
+    async def find_by_name(self, name: SourceName) -> SourceDefinition | None:
         """Retrieve a source definition by name.
 
         Args:

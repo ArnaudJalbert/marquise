@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional
 
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
@@ -25,7 +24,7 @@ class MovieRepository(ABC):
         ...
 
     @abstractmethod
-    async def find_by_id(self, movie_id: MovieId) -> Optional[Movie]:
+    async def find_by_id(self, movie_id: MovieId) -> Movie | None:
         """Retrieve a movie by its unique identifier.
 
         Args:
@@ -37,7 +36,7 @@ class MovieRepository(ABC):
         ...
 
     @abstractmethod
-    async def find_by_title(self, title: str) -> Optional[Movie]:
+    async def find_by_title(self, title: str) -> Movie | None:
         """Find a movie by its exact title.
 
         Args:

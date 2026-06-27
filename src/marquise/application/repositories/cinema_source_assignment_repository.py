@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional
 
 from marquise.domain.entities import CinemaSourceAssignment
 from marquise.domain.value_objects import CinemaId
@@ -41,7 +40,7 @@ class CinemaSourceAssignmentRepository(ABC):
     @abstractmethod
     async def find_by_cinema_id(
         self, cinema_id: CinemaId
-    ) -> Optional[CinemaSourceAssignment]:
+    ) -> CinemaSourceAssignment | None:
         """Find the source assignment for a given cinema.
 
         Args:

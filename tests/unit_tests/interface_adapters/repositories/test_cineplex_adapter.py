@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
 import pytest
@@ -44,8 +44,8 @@ async def test_fetch_showtimes_maps_cinema_to_location_id(
     mock_source: AsyncMock,
 ) -> None:
     """Verify correct location_id is passed to the source."""
-    start = datetime(2026, 6, 7, tzinfo=timezone.utc)
-    end = datetime(2026, 6, 7, 23, 59, 59, tzinfo=timezone.utc)
+    start = datetime(2026, 6, 7, tzinfo=UTC)
+    end = datetime(2026, 6, 7, 23, 59, 59, tzinfo=UTC)
     mock_source.fetch_showtimes.return_value = []
 
     adapter = CineplexAdapter(mock_source)
@@ -65,8 +65,8 @@ async def test_fetch_showtimes_raises_for_unknown_cinema(
     mock_source: AsyncMock,
 ) -> None:
     """Verify ValueError for unmapped cinema."""
-    start = datetime(2026, 6, 7, tzinfo=timezone.utc)
-    end = datetime(2026, 6, 7, 23, 59, 59, tzinfo=timezone.utc)
+    start = datetime(2026, 6, 7, tzinfo=UTC)
+    end = datetime(2026, 6, 7, 23, 59, 59, tzinfo=UTC)
 
     adapter = CineplexAdapter(mock_source)
     with pytest.raises(ValueError, match="No Cineplex location ID mapping"):

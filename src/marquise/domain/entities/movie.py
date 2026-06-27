@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional, Tuple
 
 from ..value_objects import MovieId
 
@@ -31,17 +30,17 @@ class Movie:
 
     id: MovieId
     title: str
-    release_year: Optional[int] = None
-    directors: Optional[Tuple[str, ...]] = None
-    cast: Optional[Tuple[str, ...]] = None
-    duration_minutes: Optional[int] = None
-    description: Optional[str] = None
-    poster_url: Optional[str] = None
-    trailer_url: Optional[str] = None
-    genres: Optional[Tuple[str, ...]] = None
-    original_title: Optional[str] = None
-    rating: Optional[str] = None
-    origin_countries: Optional[Tuple[str, ...]] = None
+    release_year: int | None = None
+    directors: tuple[str, ...] | None = None
+    cast: tuple[str, ...] | None = None
+    duration_minutes: int | None = None
+    description: str | None = None
+    poster_url: str | None = None
+    trailer_url: str | None = None
+    genres: tuple[str, ...] | None = None
+    original_title: str | None = None
+    rating: str | None = None
+    origin_countries: tuple[str, ...] | None = None
 
     def __post_init__(self) -> None:
         """Validate movie data after initialization.

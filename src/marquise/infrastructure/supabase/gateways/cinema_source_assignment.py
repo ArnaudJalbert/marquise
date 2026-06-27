@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 import asyncpg
 
 from marquise.interface_adapters.repositories.protocols.cinema import GatewayError
@@ -91,7 +89,7 @@ class SupabaseCinemaSourceAssignmentGateway:
             )
         return result != "DELETE 0"
 
-    async def find_by_cinema_id(self, cinema_id: str) -> Optional[dict]:
+    async def find_by_cinema_id(self, cinema_id: str) -> dict | None:
         """Find the source name assigned to a cinema.
 
         Args:

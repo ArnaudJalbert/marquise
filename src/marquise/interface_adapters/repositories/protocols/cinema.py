@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional, Protocol
+from typing import Protocol
 
 
 class GatewayError(Exception):
@@ -20,9 +20,9 @@ class CinemaGateway(Protocol):
         self,
         cinema_id: str,
         name: str,
-        address: Optional[str],
-        city: Optional[str],
-        website: Optional[str] = None,
+        address: str | None,
+        city: str | None,
+        website: str | None = None,
     ) -> dict:
         """Insert a cinema row.
 
@@ -41,7 +41,7 @@ class CinemaGateway(Protocol):
         """
         ...
 
-    async def find_by_id(self, cinema_id: str) -> Optional[dict]:
+    async def find_by_id(self, cinema_id: str) -> dict | None:
         """Find a cinema by its ID.
 
         Args:
@@ -53,8 +53,8 @@ class CinemaGateway(Protocol):
         ...
 
     async def find_by_name_and_address(
-        self, name: str, address: Optional[str]
-    ) -> Optional[dict]:
+        self, name: str, address: str | None
+    ) -> dict | None:
         """Find a cinema by its exact name and address.
 
         Args:
@@ -81,9 +81,9 @@ class CinemaGateway(Protocol):
         self,
         cinema_id: str,
         name: str,
-        address: Optional[str],
-        city: Optional[str],
-        website: Optional[str] = None,
+        address: str | None,
+        city: str | None,
+        website: str | None = None,
     ) -> dict:
         """Update an existing cinema row.
 

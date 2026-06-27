@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional, Protocol
+from typing import Protocol
 
 
 class SourceDefinitionGateway(Protocol):
@@ -16,7 +16,7 @@ class SourceDefinitionGateway(Protocol):
         self,
         name: str,
         display_name: str,
-        description: Optional[str] = None,
+        description: str | None = None,
     ) -> dict:
         """Insert a source definition row.
 
@@ -33,7 +33,7 @@ class SourceDefinitionGateway(Protocol):
         """
         ...
 
-    async def find_by_name(self, name: str) -> Optional[dict]:
+    async def find_by_name(self, name: str) -> dict | None:
         """Find a source definition by its name.
 
         Args:
