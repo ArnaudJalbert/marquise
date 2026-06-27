@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from marquise.interface_adapters.repositories.protocols.base import GatewayError
 
-class GatewayError(Exception):
-    """Raised when a gateway operation fails at the data layer."""
+__all__ = ["CinemaGateway", "GatewayError"]
 
 
 class CinemaGateway(Protocol):

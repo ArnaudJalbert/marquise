@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 
 from ..value_objects import MovieId
 
@@ -73,4 +73,4 @@ class Movie:
         """
         if self.release_year is None:
             return False
-        return datetime.now().year - self.release_year <= years
+        return datetime.now(UTC).year - self.release_year <= years
