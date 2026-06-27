@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.6 (2026-06-27)
+
+### Architecture
+
+- **Stop mutating `Movie` in place during enrichment**: `_apply_enrichment` in `import_screenings.py` previously mutated a `Movie` entity in place, contradicting the project's value-object intent and making concurrent imports and future event sourcing fragile. It is now a pure function that returns a new `Movie` via `dataclasses.replace()`, populating only the fields that are currently null. Both call sites capture the returned instance, and `movies_to_save` is rebuilt after enrichment so the enriched (not the pre-enrichment) instances are persisted. As part of the change, the 11-field enrichment list — which was duplicated between `_apply_enrichment` and `_needs_enrichment` — was extracted into a shared `_ENRICHABLE_FIELDS` constant to prevent drift. No observable behaviour change; all existing tests pass. Closes #14.
+
 ## 0.7.5 (2026-06-26)
 
 ### Bug Fixes
