@@ -265,12 +265,10 @@ class ImportScreeningsUseCase:
             if identifier:
                 enrich_pairs.append((title, identifier))
 
-        existing_to_enrich_titles: list[str] = []
         for title, movie in movie_lookup.items():
             identifier = title_to_identifier.get(title)
             if identifier is not None and _needs_enrichment(movie):
                 enrich_pairs.append((title, identifier))
-                existing_to_enrich_titles.append(title)
 
         enriched_existing: set[str] = set()
         if enrich_pairs:
