@@ -2,9 +2,9 @@
 
 ## 0.7.5 (2026-06-26)
 
-### Bug Fix
+### Bug Fixes
 
-- **Fix misleading `updated_count` label in `ImportScreenings`**: The `OutputData` docstring described `updated_count` as "existing screenings skipped", but existing screenings are always updated in place via `screening_repository.update()` — nothing is ever skipped. Fixed the docstring to say "found and updated in place". Also fixed two matching CLI display strings in `source_commands.py`: per-row status changed from "already exists" → "updated"; summary line changed from "already existed" → "updated". Closes #15.
+- **Fix misleading `updated_count` documentation and CLI labels**: The `OutputData` docstring described `updated_count` as "existing screenings skipped", but every non-inserted screening has `update()` called on it — nothing is ever skipped. Corrected the `OutputData.updated_count` docstring to "existing screenings found and updated in place" and the `ImportedScreeningData.imported` docstring to clarify the `False` case. Also fixed two CLI display strings in `source import`: per-row status `"already exists"` → `"updated"` and summary label `"already existed"` → `"updated"`. No logic changes; all existing test assertions remain valid. Closes #15.
 
 ## 0.7.4 (2026-06-26)
 

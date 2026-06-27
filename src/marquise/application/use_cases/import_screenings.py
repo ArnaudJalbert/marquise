@@ -37,7 +37,7 @@ class ImportedScreeningData:
     Attributes:
         movie_title: The title of the movie.
         showtime: The showtime in ISO format.
-        imported: True if newly created, False if already existed (updated in place).
+        imported: True if newly created, False if already existed and updated in place.
     """
 
     movie_title: str
