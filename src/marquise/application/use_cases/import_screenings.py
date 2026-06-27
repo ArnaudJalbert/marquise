@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from typing import Optional
@@ -250,15 +251,12 @@ class ImportScreeningsUseCase:
                 title_to_identifier[row.movie_title] = row.identifier
 
         # -- New movies --
-        movies_to_save: list[Movie] = []
         new_movies_by_title: dict[str, Movie] = {}
         for title in missing_titles:
-            movie = Movie(
+            new_movies_by_title[title] = Movie(
                 id=MovieId(value=uuid4().hex),
                 title=title,
             )
-            new_movies_by_title[title] = movie
-            movies_to_save.append(movie)
 
         # -- Build (title, identifier) pairs for movies that can be enriched --
         enrich_pairs: list[tuple[str, str]] = []
@@ -274,6 +272,7 @@ class ImportScreeningsUseCase:
                 enrich_pairs.append((title, identifier))
                 existing_to_enrich_titles.append(title)
 
+        enriched_existing: set[str] = set()
         if enrich_pairs:
             enrich_results = await asyncio.gather(
                 *[
@@ -283,19 +282,23 @@ class ImportScreeningsUseCase:
                 return_exceptions=True,
             )
 
-            enriched_existing: set[str] = set()
             for (title, _), enrichment in zip(enrich_pairs, enrich_results):
                 if not isinstance(enrichment, MovieEnrichmentData):
                     continue
                 if title in new_movies_by_title:
-                    _apply_enrichment(new_movies_by_title[title], enrichment)
+                    new_movies_by_title[title] = _apply_enrichment(
+                        new_movies_by_title[title], enrichment
+                    )
                 else:
-                    existing_movie = movie_lookup[title]
-                    _apply_enrichment(existing_movie, enrichment)
+                    movie_lookup[title] = _apply_enrichment(
+                        movie_lookup[title], enrichment
+                    )
                     enriched_existing.add(title)
 
-            for title in enriched_existing:
-                movies_to_save.append(movie_lookup[title])
+        movies_to_save: list[Movie] = [
+            *new_movies_by_title.values(),
+            *[movie_lookup[t] for t in enriched_existing],
+        ]
 
         # -- Save all enriched movies in parallel --
         if movies_to_save:
@@ -344,50 +347,35 @@ class ImportScreeningsUseCase:
         )
 
 
+# Optional Movie fields that can be populated from enrichment data.
+_ENRICHABLE_FIELDS = (
+    "description",
+    "directors",
+    "cast",
+    "duration_minutes",
+    "release_year",
+    "poster_url",
+    "trailer_url",
+    "genres",
+    "original_title",
+    "rating",
+    "origin_countries",
+)
+
+
 def _needs_enrichment(movie: Movie) -> bool:
     """Check whether a movie has any null optional fields."""
-    return any(
-        getattr(movie, field) is None
-        for field in (
-            "description",
-            "directors",
-            "cast",
-            "duration_minutes",
-            "release_year",
-            "poster_url",
-            "trailer_url",
-            "genres",
-            "original_title",
-            "rating",
-            "origin_countries",
-        )
-    )
+    return any(getattr(movie, field) is None for field in _ENRICHABLE_FIELDS)
 
 
 def _apply_enrichment(
     movie: Movie,
     enrichment: MovieEnrichmentData,
-) -> None:
-    """Populate null fields on a Movie entity from enrichment data."""
-    if movie.description is None and enrichment.description is not None:
-        movie.description = enrichment.description
-    if movie.directors is None and enrichment.directors is not None:
-        movie.directors = enrichment.directors
-    if movie.cast is None and enrichment.cast is not None:
-        movie.cast = enrichment.cast
-    if movie.duration_minutes is None and enrichment.duration_minutes is not None:
-        movie.duration_minutes = enrichment.duration_minutes
-    if movie.release_year is None and enrichment.release_year is not None:
-        movie.release_year = enrichment.release_year
-    if movie.poster_url is None and enrichment.poster_url is not None:
-        movie.poster_url = enrichment.poster_url
-    if movie.trailer_url is None and enrichment.trailer_url is not None:
-        movie.trailer_url = enrichment.trailer_url
-    if movie.genres is None and enrichment.genres is not None:
-        movie.genres = enrichment.genres
-    if movie.original_title is None and enrichment.original_title is not None:
-        movie.original_title = enrichment.original_title
-    if movie.rating is None and enrichment.rating is not None:
-        movie.rating = enrichment.rating
-    if movie.origin_countries is None and enrichment.origin_countries is not None:
-        movie.origin_countries = enrichment.origin_countries
+) -> Movie:
+    """Return a new Movie with null fields populated from enrichment data."""
+    updates = {
+        field: getattr(enrichment, field)
+        for field in _ENRICHABLE_FIELDS
+        if getattr(movie, field) is None and getattr(enrichment, field) is not None
+    }
+    return dataclasses.replace(movie, **updates)
