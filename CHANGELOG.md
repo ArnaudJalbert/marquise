@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.8 (2026-06-27)
+
+### Chore
+
+- Remove the old OpenCode plan that was accidentally published.
+
 ## 0.7.7 (2026-06-27)
 
 ### Infrastructure
