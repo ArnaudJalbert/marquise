@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.10 (2026-06-27)
+
+### Technical Debt
+
+- **Replace gateway `dict` + `__inserted` with a typed `SaveOutcome`**: `ScreeningGateway.save` now returns a frozen `SaveOutcome(row, inserted)` dataclass instead of a plain `dict` carrying a magic `__inserted` key that callers had to `.pop()`. The Supabase gateway strips the internal SQL column and wraps the result; `SupabaseScreeningRepository.save` consumes `outcome.row`/`outcome.inserted`. No behaviour change — the repository still returns `(Screening, bool)`. Closes #18.
+
 ## 0.7.8 (2026-06-27)
 
 ### Chore
