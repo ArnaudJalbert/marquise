@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.7 (2026-06-27)
+
+### Infrastructure
+
+- **Add `ty` type checker (non-blocking CI rollout)**: Introduced [`ty`](https://github.com/astral-sh/ty) (Astral's type checker) as a dev dependency alongside the existing uv + Ruff toolchain. Added a `[tool.ty.environment]` config (Python 3.13, `src` root) and a `Type check (ty)` step to the CI `quality` job marked `continue-on-error: true`, so it reports diagnostics without failing the build while the initial backlog (5 diagnostics at time of writing) is triaged. Documented `uv run ty check src` in `CONTRIBUTING.md` and `AGENTS.md`. Fixing the surfaced diagnostics and flipping CI to blocking are tracked as follow-ups. Closes #34.
+
 ## 0.7.6 (2026-06-27)
 
 ### Architecture

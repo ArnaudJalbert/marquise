@@ -31,6 +31,12 @@ jobs:
       - name: Lint
         run: uv run ruff check .
 
+      - name: Type check (ty)
+        # Non-blocking during initial rollout — reports diagnostics without
+        # failing the build while the existing backlog is triaged (see #34).
+        continue-on-error: true
+        run: uv run ty check src
+
       - name: Run unit tests with coverage
         run: |
           uv run pytest tests/unit_tests/ \
