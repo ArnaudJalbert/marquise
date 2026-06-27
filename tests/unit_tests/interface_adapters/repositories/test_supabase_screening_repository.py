@@ -15,6 +15,7 @@ from marquise.domain.value_objects import (
     Showtime,
 )
 from marquise.interface_adapters.repositories.protocols.screening import (
+    SaveOutcome,
     ScreeningGateway,
 )
 from marquise.interface_adapters.repositories.supabase.screening_repository import (
@@ -96,17 +97,19 @@ async def test_save(
 ) -> None:
     """Test save delegates to gateway and maps result."""
     mock_gateway = create_autospec(ScreeningGateway, instance=True)
-    mock_gateway.save.return_value = {
-        "id": "scr-123",
-        "movie_id": "mov-456",
-        "cinema_id": "cin-789",
-        "showtime": datetime(2026, 6, 7, 19, 30, 0),
-        "external_id": None,
-        "ticket_url": None,
-        "room": None,
-        "language": None,
-        "__inserted": True,
-    }
+    mock_gateway.save.return_value = SaveOutcome(
+        row={
+            "id": "scr-123",
+            "movie_id": "mov-456",
+            "cinema_id": "cin-789",
+            "showtime": datetime(2026, 6, 7, 19, 30, 0),
+            "external_id": None,
+            "ticket_url": None,
+            "room": None,
+            "language": None,
+        },
+        inserted=True,
+    )
 
     repo = SupabaseScreeningRepository(gateway=mock_gateway)
     result, was_inserted = await repo.save(sample_screening)
@@ -155,17 +158,19 @@ async def test_save_with_timezone_aware_datetime(
 ) -> None:
     """Test save handles gateway returning timezone-aware datetime."""
     mock_gateway = create_autospec(ScreeningGateway, instance=True)
-    mock_gateway.save.return_value = {
-        "id": "scr-123",
-        "movie_id": "mov-456",
-        "cinema_id": "cin-789",
-        "showtime": datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC),
-        "external_id": None,
-        "ticket_url": None,
-        "room": None,
-        "language": None,
-        "__inserted": True,
-    }
+    mock_gateway.save.return_value = SaveOutcome(
+        row={
+            "id": "scr-123",
+            "movie_id": "mov-456",
+            "cinema_id": "cin-789",
+            "showtime": datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC),
+            "external_id": None,
+            "ticket_url": None,
+            "room": None,
+            "language": None,
+        },
+        inserted=True,
+    )
 
     repo = SupabaseScreeningRepository(gateway=mock_gateway)
     result, was_inserted = await repo.save(sample_screening)
@@ -180,17 +185,19 @@ async def test_save_with_iso_string_showtime(
 ) -> None:
     """Test save handles gateway returning an ISO string without tz info."""
     mock_gateway = create_autospec(ScreeningGateway, instance=True)
-    mock_gateway.save.return_value = {
-        "id": "scr-123",
-        "movie_id": "mov-456",
-        "cinema_id": "cin-789",
-        "showtime": "2026-06-07T19:30:00",
-        "external_id": None,
-        "ticket_url": None,
-        "room": None,
-        "language": None,
-        "__inserted": True,
-    }
+    mock_gateway.save.return_value = SaveOutcome(
+        row={
+            "id": "scr-123",
+            "movie_id": "mov-456",
+            "cinema_id": "cin-789",
+            "showtime": "2026-06-07T19:30:00",
+            "external_id": None,
+            "ticket_url": None,
+            "room": None,
+            "language": None,
+        },
+        inserted=True,
+    )
 
     repo = SupabaseScreeningRepository(gateway=mock_gateway)
     result, was_inserted = await repo.save(sample_screening)
