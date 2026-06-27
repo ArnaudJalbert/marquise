@@ -21,23 +21,6 @@ honest about this. The coupling remains.
 4. Update all tests accordingly.
 5. Update `Screening.__str__()` to not rely on full entity reference.
 
-## Type Hint Inconsistency: `str | None` vs `Optional[str]`
-
-9 occurrences of `str | None` across the codebase while the convention uses
-`Optional[str]` from `typing`.
-
-### Files to fix
-
-- `domain/entities/source_definition.py:22`
-- `application/repositories/cinema_repository.py:70`
-- `interface_adapters/repositories/protocols/cinema.py:116`
-- `interface_adapters/repositories/supabase/cinema_repository.py:104`
-- `infrastructure/controllers/cinema_controller.py:75`
-- `infrastructure/controllers/source_controller.py:48`
-- `infrastructure/cli/cinema_commands.py:201`
-- `infrastructure/supabase/gateways/cinema.py:192`
-- `infrastructure/sources/cinemacinema/gateways/source.py:70`
-
 ## Infrastructure: Repeated `import asyncio` Inside CLI Closures
 
 11 occurrences across `cinema_commands.py` and `source_commands.py` where

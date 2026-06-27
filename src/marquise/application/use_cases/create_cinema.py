@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 from uuid import uuid4
 
 from marquise.application.exceptions import CinemaAlreadyExistsError
@@ -31,9 +30,9 @@ class CreateCinemaUseCase:
         """
 
         name: str
-        address: Optional[str] = None
-        city: Optional[str] = None
-        website: Optional[str] = None
+        address: str | None = None
+        city: str | None = None
+        website: str | None = None
 
         def __post_init__(self) -> None:
             """Validate input data.
@@ -65,9 +64,9 @@ class CreateCinemaUseCase:
 
         id: str
         name: str
-        address: Optional[str] = None
-        city: Optional[str] = None
-        website: Optional[str] = None
+        address: str | None = None
+        city: str | None = None
+        website: str | None = None
 
         def __post_init__(self) -> None:
             """Validate output data.

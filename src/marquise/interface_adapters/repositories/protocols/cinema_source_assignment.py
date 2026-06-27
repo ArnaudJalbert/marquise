@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional, Protocol
+from typing import Protocol
 
 
 class CinemaSourceAssignmentGateway(Protocol):
@@ -38,7 +38,7 @@ class CinemaSourceAssignmentGateway(Protocol):
         """
         ...
 
-    async def find_by_cinema_id(self, cinema_id: str) -> Optional[dict]:
+    async def find_by_cinema_id(self, cinema_id: str) -> dict | None:
         """Find the source name assigned to a cinema.
 
         Args:

@@ -6,8 +6,7 @@ translates ``Cinema`` entities into source-specific parameters.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from marquise.application.repositories import (
     MovieEnrichmentData,
@@ -40,7 +39,7 @@ def _parse_showtime(raw: str) -> datetime:
     except ValueError:
         dt = datetime.strptime(raw, "%Y-%m-%dT%I:%M %p")
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt
 
 
@@ -136,7 +135,7 @@ class SourceRegistry(SourceRegistryQuery):
         self,
         source_name: str,
         identifier: str,
-    ) -> Optional[MovieEnrichmentData]:
+    ) -> MovieEnrichmentData | None:
         """Fetch enriched movie metadata from a registered source.
 
         Args:

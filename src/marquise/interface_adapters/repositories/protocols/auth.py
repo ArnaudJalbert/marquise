@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import Optional, Protocol
+from typing import Protocol
 
 
 @dataclass
@@ -63,7 +63,7 @@ class AuthService(Protocol):
         """Clear the cached session."""
         ...
 
-    def get_session_status(self) -> Optional[AuthSession]:
+    def get_session_status(self) -> AuthSession | None:
         """Return the current cached session without validation.
 
         Returns:

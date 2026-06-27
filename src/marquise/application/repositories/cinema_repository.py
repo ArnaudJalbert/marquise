@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional
 
 from marquise.domain.entities import Cinema
 from marquise.domain.value_objects import CinemaId
@@ -28,7 +27,7 @@ class CinemaRepository(ABC):
         ...
 
     @abstractmethod
-    async def find_by_id(self, cinema_id: CinemaId) -> Optional[Cinema]:
+    async def find_by_id(self, cinema_id: CinemaId) -> Cinema | None:
         """Retrieve a cinema by its unique identifier.
 
         Args:
@@ -41,8 +40,8 @@ class CinemaRepository(ABC):
 
     @abstractmethod
     async def find_by_name_and_address(
-        self, name: str, address: Optional[str]
-    ) -> Optional[Cinema]:
+        self, name: str, address: str | None
+    ) -> Cinema | None:
         """Find a cinema by its exact name and address.
 
         Args:

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 import questionary
 import typer
 
@@ -18,13 +16,11 @@ cinema_app = typer.Typer(no_args_is_help=True)
 @cinema_app.command()
 def create(
     name: str = typer.Option(..., prompt=True, help="Cinema name"),
-    address: Optional[str] = typer.Option(
-        None, prompt=True, help="Cinema street address"
-    ),
-    city: Optional[str] = typer.Option(
+    address: str | None = typer.Option(None, prompt=True, help="Cinema street address"),
+    city: str | None = typer.Option(
         None, prompt=True, help="City where the cinema is located"
     ),
-    website: Optional[str] = typer.Option(None, prompt=True, help="Cinema website URL"),
+    website: str | None = typer.Option(None, prompt=True, help="Cinema website URL"),
 ) -> None:
     """Create a new cinema (admin only)."""
     address_val = address if address and address.strip() else None
@@ -256,7 +252,7 @@ def update() -> None:
 
 @cinema_app.command(name="list")
 def list_cinemas(
-    name: Optional[str] = typer.Option(
+    name: str | None = typer.Option(
         None, "--name", "-n", help="Filter cinemas by name (case-insensitive)"
     ),
     verbose: bool = typer.Option(

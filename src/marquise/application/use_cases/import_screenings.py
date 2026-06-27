@@ -5,8 +5,7 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
-from typing import Optional
+from datetime import UTC, date, datetime
 from uuid import uuid4
 
 from marquise.application.exceptions import (
@@ -207,10 +206,10 @@ class ImportScreeningsUseCase:
             )
 
         start_dt = datetime.combine(request.start_date, datetime.min.time()).replace(
-            tzinfo=timezone.utc
+            tzinfo=UTC
         )
         end_dt = datetime.combine(request.end_date, datetime.max.time()).replace(
-            tzinfo=timezone.utc
+            tzinfo=UTC
         )
 
         return cinema, assignment.source, start_dt, end_dt
@@ -245,7 +244,7 @@ class ImportScreeningsUseCase:
                 missing_titles.append(title)
 
         # Map each unique title to its identifier for enrichment
-        title_to_identifier: dict[str, Optional[str]] = {}
+        title_to_identifier: dict[str, str | None] = {}
         for row in rows:
             if row.movie_title not in title_to_identifier:
                 title_to_identifier[row.movie_title] = row.identifier

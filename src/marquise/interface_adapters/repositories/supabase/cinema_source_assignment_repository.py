@@ -7,8 +7,6 @@ asyncpg — pure entity mapping.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from marquise.application.exceptions import (
     CinemaSourceAssignmentAlreadyExistsError,
 )
@@ -91,7 +89,7 @@ class SupabaseCinemaSourceAssignmentRepository(CinemaSourceAssignmentRepository)
 
     async def find_by_cinema_id(
         self, cinema_id: CinemaId
-    ) -> Optional[CinemaSourceAssignment]:
+    ) -> CinemaSourceAssignment | None:
         """Find the source assignment for a given cinema.
 
         Args:

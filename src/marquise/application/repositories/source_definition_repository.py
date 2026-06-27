@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional
 
 from marquise.domain.entities import SourceDefinition
 from marquise.domain.value_objects import SourceName
@@ -25,7 +24,7 @@ class SourceDefinitionRepository(ABC):
         ...
 
     @abstractmethod
-    async def find_by_name(self, name: SourceName) -> Optional[SourceDefinition]:
+    async def find_by_name(self, name: SourceName) -> SourceDefinition | None:
         """Retrieve a source definition by its unique name.
 
         Args:

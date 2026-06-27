@@ -54,4 +54,5 @@ extend-select = [
     "N", # pep8 naming convention
     "R", # pylint refactor rules
     "I", # isort
+    "UP", # pyupgrade (enforces str | None over Optional[str])
 ]

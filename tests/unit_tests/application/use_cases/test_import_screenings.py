@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from unittest.mock import create_autospec
 
 import pytest
@@ -60,7 +60,7 @@ def _make_showtime_row(
 ) -> ShowtimeRow:
     return ShowtimeRow(
         movie_title=movie_title,
-        showtime=showtime or datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc),
+        showtime=showtime or datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC),
         identifier=identifier,
         external_id=external_id,
         ticket_url=ticket_url,
@@ -95,12 +95,8 @@ async def test_import_screenings_creates_new_screenings() -> None:
     mock_assignment_repo.find_by_cinema_id.return_value = assignment
 
     rows = [
-        _make_showtime_row(
-            "Movie A", datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc)
-        ),
-        _make_showtime_row(
-            "Movie B", datetime(2026, 6, 7, 21, 0, 0, tzinfo=timezone.utc)
-        ),
+        _make_showtime_row("Movie A", datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC)),
+        _make_showtime_row("Movie B", datetime(2026, 6, 7, 21, 0, 0, tzinfo=UTC)),
     ]
     mock_registry.fetch_showtimes.return_value = rows
 
@@ -148,8 +144,8 @@ async def test_import_screenings_creates_new_screenings() -> None:
     mock_registry.fetch_showtimes.assert_awaited_once_with(
         cinema=cinema,
         source_definition=source_definition,
-        start_date=datetime(2026, 6, 7, 0, 0, 0, tzinfo=timezone.utc),
-        end_date=datetime(2026, 6, 7, 23, 59, 59, 999999, tzinfo=timezone.utc),
+        start_date=datetime(2026, 6, 7, 0, 0, 0, tzinfo=UTC),
+        end_date=datetime(2026, 6, 7, 23, 59, 59, 999999, tzinfo=UTC),
     )
     assert mock_movie_repo.save.await_count == 2
     assert mock_screening_repo.save.await_count == 2
@@ -180,11 +176,7 @@ async def test_import_screenings_reuses_existing_movie() -> None:
     assignment = CinemaSourceAssignment(cinema=cinema, source=source_definition)
     mock_assignment_repo.find_by_cinema_id.return_value = assignment
 
-    rows = [
-        _make_showtime_row(
-            "Movie A", datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc)
-        )
-    ]
+    rows = [_make_showtime_row("Movie A", datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC))]
     mock_registry.fetch_showtimes.return_value = rows
 
     movie_a = Movie(
@@ -446,7 +438,7 @@ def test_imported_screening_data_rejects_empty_showtime() -> None:
 
 def test_showtime_row_creation() -> None:
     """Test ShowtimeRow dataclass creation."""
-    showtime = datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc)
+    showtime = datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC)
     row = ShowtimeRow(
         movie_title="Test Movie",
         showtime=showtime,
@@ -481,7 +473,7 @@ async def test_import_updates_existing_screening() -> None:
     rows = [
         _make_showtime_row(
             "Existing Movie",
-            datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc),
+            datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC),
         ),
     ]
     mock_registry.fetch_showtimes.return_value = rows
@@ -542,7 +534,7 @@ async def test_import_enriches_movie_with_all_fields() -> None:
     rows = [
         _make_showtime_row(
             "Rich Movie",
-            datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc),
+            datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC),
             identifier="rich-slug",
         ),
     ]
@@ -611,7 +603,7 @@ async def test_import_enriches_movie_with_all_fields() -> None:
     assert saved.rating == "PG-13"
     assert saved.origin_countries == ("US", "UK")
     """Test ShowtimeRow dataclass creation."""
-    showtime = datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc)
+    showtime = datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC)
     row = ShowtimeRow(
         movie_title="Test Movie",
         showtime=showtime,
@@ -646,7 +638,7 @@ async def test_import_enriches_new_movies_with_identifier() -> None:
     rows = [
         _make_showtime_row(
             "New Movie",
-            datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc),
+            datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC),
             identifier="new-movie-slug",
         ),
     ]
@@ -730,7 +722,7 @@ async def test_import_enriches_existing_movie_with_null_fields() -> None:
     rows = [
         _make_showtime_row(
             "Existing Movie",
-            datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc),
+            datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC),
             identifier="existing-slug",
         ),
     ]
@@ -815,7 +807,7 @@ async def test_import_does_not_refetch_already_enriched_movie() -> None:
     rows = [
         _make_showtime_row(
             "Full Movie",
-            datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc),
+            datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC),
             identifier="full-slug",
         ),
     ]
@@ -874,12 +866,12 @@ async def test_import_handles_mixed_identifiers_for_enrichment() -> None:
     rows = [
         _make_showtime_row(
             "Movie With ID",
-            datetime(2026, 6, 7, 19, 30, 0, tzinfo=timezone.utc),
+            datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC),
             identifier="has-id",
         ),
         _make_showtime_row(
             "Movie Without ID",
-            datetime(2026, 6, 7, 21, 0, 0, tzinfo=timezone.utc),
+            datetime(2026, 6, 7, 21, 0, 0, tzinfo=UTC),
             identifier=None,
         ),
     ]

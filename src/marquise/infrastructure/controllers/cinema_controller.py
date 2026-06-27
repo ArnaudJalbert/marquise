@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
@@ -36,9 +34,9 @@ class CinemaController:
     async def create(
         self,
         name: str,
-        address: Optional[str] = None,
-        city: Optional[str] = None,
-        website: Optional[str] = None,
+        address: str | None = None,
+        city: str | None = None,
+        website: str | None = None,
     ) -> CreateCinemaUseCase.OutputData:
         """Create a new cinema.
 
@@ -118,9 +116,9 @@ class CinemaController:
         self,
         cinema_id: str,
         name: str,
-        address: Optional[str] = None,
-        city: Optional[str] = None,
-        website: Optional[str] = None,
+        address: str | None = None,
+        city: str | None = None,
+        website: str | None = None,
     ) -> UpdateCinemaUseCase.OutputData:
         """Update an existing cinema.
 
@@ -154,7 +152,7 @@ class CinemaController:
 
     async def list(
         self,
-        name: Optional[str] = None,
+        name: str | None = None,
     ) -> ListCinemasUseCase.OutputData:
         """List cinemas, optionally filtered by name.
 

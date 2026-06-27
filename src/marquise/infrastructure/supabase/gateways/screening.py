@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 import asyncpg
 
@@ -44,7 +43,7 @@ def _naive_utc(dt: datetime) -> datetime:
         A naive datetime in UTC.
     """
     if dt.tzinfo is not None:
-        return dt.astimezone(timezone.utc).replace(tzinfo=None)
+        return dt.astimezone(UTC).replace(tzinfo=None)
     return dt
 
 
@@ -68,10 +67,10 @@ class SupabaseScreeningGateway:
         movie_id: str,
         cinema_id: str,
         showtime: datetime,
-        external_id: Optional[str] = None,
-        ticket_url: Optional[str] = None,
-        room: Optional[str] = None,
-        language: Optional[str] = None,
+        external_id: str | None = None,
+        ticket_url: str | None = None,
+        room: str | None = None,
+        language: str | None = None,
     ) -> dict:
         """Insert or upsert a screening row.
 
@@ -131,11 +130,11 @@ class SupabaseScreeningGateway:
         cinema_id: str,
         movie_id: str,
         showtime: datetime,
-        external_id: Optional[str] = None,
-        ticket_url: Optional[str] = None,
-        room: Optional[str] = None,
-        language: Optional[str] = None,
-    ) -> Optional[dict]:
+        external_id: str | None = None,
+        ticket_url: str | None = None,
+        room: str | None = None,
+        language: str | None = None,
+    ) -> dict | None:
         """Update optional fields on an existing screening.
 
         Matches by the unique constraint (cinema_id, movie_id, showtime).
@@ -176,7 +175,7 @@ class SupabaseScreeningGateway:
             )
         return dict(row) if row is not None else None
 
-    async def find_by_id(self, screening_id: str) -> Optional[dict]:
+    async def find_by_id(self, screening_id: str) -> dict | None:
         """Find a screening by its ID.
 
         Args:
