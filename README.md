@@ -52,7 +52,7 @@ cp .env.example .env
 | `CINEPLEX_API_KEY` | No | Cineplex API subscription key (`Ocp-Apim-Subscription-Key`) |
 | `DATABASE_SCHEMA` | No | Schema name (default: `marquise`) |
 
-See the [Supabase setup guide](https://arnaudjalbert.github.io/marquise/setup/supabase-cinema-table/) to initialize the database schema.
+See the [Supabase setup guide](docs/setup/supabase-cinema-table.md) to initialize the database schema.
 
 ## CLI Usage
 
@@ -89,11 +89,9 @@ uv run marquise cinema list
 
 ## Documentation
 
-Full docs at [arnaudjalbert.github.io/marquise](https://arnaudjalbert.github.io/marquise/).
-
 | | |
 |---|---|
-| [Architecture](https://arnaudjalbert.github.io/marquise/architecture/) | Layer diagram, key patterns, data flow |
-| [Sources](https://arnaudjalbert.github.io/marquise/sources/) | Scraper internals, adding a new source |
-| [Setup](https://arnaudjalbert.github.io/marquise/setup/supabase-cinema-table/) | Database initialization |
+| [Architecture](docs/architecture.md) | Layer diagram, key patterns, data flow |
+| [Sources](docs/sources.md) | Scraper internals, adding a new source |
+| [Setup](docs/setup/supabase-cinema-table.md) | Database initialization |
 | [Contributing](CONTRIBUTING.md) | Dev setup, commands, CI, conventions |

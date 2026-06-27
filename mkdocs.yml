@@ -1,6 +1,5 @@
 site_name: Marquise
 site_description: Montreal cinema showtimes — aggregated, normalized, and queryable
-site_url: https://arnaudjalbert.github.io/marquise/
 repo_url: https://github.com/ArnaudJalbert/marquise
 edit_uri: blob/main/docs/
 
