@@ -5,6 +5,23 @@
 ### New Features
 
 - **Scheduled / bulk import path**: Added `marquise import all --days N` (default 7), which imports showtimes for every cinema that has a source assignment over a rolling window starting today. Cinemas without an assigned source are skipped (not errors) and per-cinema failures are collected without aborting the run, so unattended execution is resilient. The orchestration lives in a new `infrastructure/cli/import_commands.py` and reuses the existing `ImportScreeningsUseCase` via the controllers — no business logic in the CLI. A new `.github/workflows/scheduled-import.yml` runs it nightly (07:00 UTC) and on manual dispatch, authenticating via `MARQUISE_EMAIL`/`MARQUISE_PASSWORD` secrets alongside the existing `DATABASE_URL`/`SUPABASE_*` secrets. Closes #22.
+## 0.7.11 (2026-06-27)
+
+### Technical Debt
+
+- **Smaller cleanups batch**: A set of isolated, low-risk cleanups (#24): added shared `sample_cinema`/`sample_movie`/`sample_screening` fixtures to `tests/conftest.py`; hoisted the repeated per-command `import asyncio` to a single top-level import in the CLI command modules; deleted the dead `_select_cinema_public` helper; moved `GatewayError` to a new `protocols/base.py` (re-exported from `protocols.cinema` for back-compat); made `Movie.is_recent` use `datetime.now(UTC)`; converted the remaining NumPy-style gateway class docstrings to Google style; and dropped the dead ISO-string branch from the screening repository's `_parse_datetime` (the gateway always returns `datetime`). The `CinemaController.list`/`list_cinemas` naming consolidation was deferred as it is entangled with the auth-layer refactors (#11/#12). Closes #24.
+
+## 0.7.10 (2026-06-27)
+
+### Technical Debt
+
+- **Replace gateway `dict` + `__inserted` with a typed `SaveOutcome`**: `ScreeningGateway.save` now returns a frozen `SaveOutcome(row, inserted)` dataclass instead of a plain `dict` carrying a magic `__inserted` key that callers had to `.pop()`. The Supabase gateway strips the internal SQL column and wraps the result; `SupabaseScreeningRepository.save` consumes `outcome.row`/`outcome.inserted`. No behaviour change — the repository still returns `(Screening, bool)`. Closes #18.
+
+## 0.7.9 (2026-06-27)
+
+### Bug Fixes
+
+- **Validate `ShowtimeRow` at the scraper boundary**: `ShowtimeRow` gained a `__post_init__` that rejects empty/whitespace movie titles and naive (timezone-unaware) showtimes, so malformed scraped rows can no longer propagate toward the database. The source registry now also skips rows with blank titles defensively. Closes #19.
 
 ## 0.7.8 (2026-06-27)
 

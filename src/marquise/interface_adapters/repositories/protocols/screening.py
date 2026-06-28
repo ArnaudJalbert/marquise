@@ -2,8 +2,23 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
+
+
+@dataclass(frozen=True, slots=True)
+class SaveOutcome:
+    """Result of a screening save, distinguishing insert from match.
+
+    Attributes:
+        row: The inserted or existing screening row as a plain dict.
+        inserted: ``True`` if a new row was created, ``False`` if an existing
+            row was matched on the unique constraint.
+    """
+
+    row: dict
+    inserted: bool
 
 
 class ScreeningGateway(Protocol):
@@ -22,7 +37,7 @@ class ScreeningGateway(Protocol):
         ticket_url: str | None = None,
         room: str | None = None,
         language: str | None = None,
-    ) -> dict:
+    ) -> SaveOutcome:
         """Insert a screening row (no-op on conflict).
 
         Uses a unique constraint on (cinema_id, movie_id, showtime).
@@ -38,9 +53,8 @@ class ScreeningGateway(Protocol):
             language: Language or subtitle version (optional).
 
         Returns:
-            The inserted or existing row as a dict.  The dict includes an
-            ``__inserted`` key with a boolean value: ``True`` if a new row
-            was created, ``False`` if an existing row was matched.
+            A ``SaveOutcome`` carrying the inserted or existing row and whether
+            a new row was created.
 
         Raises:
             GatewayError: On data-layer failure.

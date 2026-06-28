@@ -9,9 +9,9 @@ from marquise.interface_adapters.repositories.protocols.auth import (
     AuthService,
     AuthSession,
 )
+from marquise.interface_adapters.repositories.protocols.base import GatewayError
 from marquise.interface_adapters.repositories.protocols.cinema import (
     CinemaGateway,
-    GatewayError,
 )
 from marquise.interface_adapters.repositories.protocols.cinema_source_assignment import (  # noqa: E501
     CinemaSourceAssignmentGateway as CinemaSourceAssignmentGateway,
