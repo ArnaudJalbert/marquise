@@ -102,7 +102,7 @@ class SupabaseScreeningRepository(ScreeningRepository):
         Returns:
             A tuple of (saved_screening, was_inserted).
         """
-        data = await self._gateway.save(
+        outcome = await self._gateway.save(
             screening_id=str(screening.id),
             movie_id=str(screening.movie.id),
             cinema_id=str(screening.cinema.id),
@@ -112,7 +112,8 @@ class SupabaseScreeningRepository(ScreeningRepository):
             room=screening.room,
             language=screening.language,
         )
-        was_inserted = data.pop("__inserted", True)
+        data = outcome.row
+        was_inserted = outcome.inserted
         saved = Screening(
             id=ScreeningId(value=data["id"]),
             movie=screening.movie,
