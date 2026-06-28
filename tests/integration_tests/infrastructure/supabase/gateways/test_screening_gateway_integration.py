@@ -47,9 +47,10 @@ async def test_save_and_find_by_id(
         cinema_id="cin-001",
         showtime=showtime,
     )
-    assert result["id"] == "scr-001"
-    assert result["movie_id"] == "mov-001"
-    assert result["cinema_id"] == "cin-001"
+    assert result.inserted is True
+    assert result.row["id"] == "scr-001"
+    assert result.row["movie_id"] == "mov-001"
+    assert result.row["cinema_id"] == "cin-001"
 
     found = await screening_gateway.find_by_id("scr-001")
     assert found is not None
@@ -138,8 +139,8 @@ async def test_save_upserts_on_unique_key_conflict(
         cinema_id="cin-004",
         showtime=showtime,
     )
-    assert saved["id"] == "scr-006"
-    assert saved.get("__inserted") is False
+    assert saved.row["id"] == "scr-006"
+    assert saved.inserted is False
 
     new_id = await screening_gateway.find_by_id("scr-007")
     assert new_id is None
