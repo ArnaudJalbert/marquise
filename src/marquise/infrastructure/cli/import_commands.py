@@ -18,6 +18,7 @@ from marquise.application.exceptions import (
     CinemaNotFoundError,
     CinemaSourceAssignmentNotFoundError,
 )
+from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.infrastructure.di.container import Container
 
 import_app = typer.Typer(no_args_is_help=True)
@@ -60,9 +61,10 @@ async def run_import_all(container: Container, days: int) -> list[CinemaImportRe
     end_date = today + timedelta(days=days - 1)
 
     cinemas_response = await container.cinema_controller.list()
-    results: list[CinemaImportResult] = []
 
-    for cinema in cinemas_response.cinemas:
+    async def _import_cinema(
+        cinema: ListCinemasUseCase.CinemaData,
+    ) -> CinemaImportResult:
         typer.echo(f"  Importing {cinema.name}...")
         try:
             output = await container.source_controller.import_screenings(
@@ -71,40 +73,34 @@ async def run_import_all(container: Container, days: int) -> list[CinemaImportRe
                 end_date=end_date,
             )
         except CinemaSourceAssignmentNotFoundError:
-            results.append(
-                CinemaImportResult(
-                    cinema_name=cinema.name,
-                    status="skipped",
-                    detail="no source assigned",
-                )
+            return CinemaImportResult(
+                cinema_name=cinema.name,
+                status="skipped",
+                detail="no source assigned",
             )
         except CinemaNotFoundError as exc:
-            results.append(
-                CinemaImportResult(
-                    cinema_name=cinema.name,
-                    status="failed",
-                    detail=str(exc),
-                )
+            return CinemaImportResult(
+                cinema_name=cinema.name,
+                status="failed",
+                detail=str(exc),
             )
         except Exception as exc:
-            results.append(
-                CinemaImportResult(
-                    cinema_name=cinema.name,
-                    status="failed",
-                    detail=f"{type(exc).__name__}: {exc}",
-                )
+            return CinemaImportResult(
+                cinema_name=cinema.name,
+                status="failed",
+                detail=f"{type(exc).__name__}: {exc}",
             )
         else:
-            results.append(
-                CinemaImportResult(
-                    cinema_name=cinema.name,
-                    status="imported",
-                    imported_count=output.imported_count,
-                    updated_count=output.updated_count,
-                )
+            return CinemaImportResult(
+                cinema_name=cinema.name,
+                status="imported",
+                imported_count=output.imported_count,
+                updated_count=output.updated_count,
             )
 
-    return results
+    return list(
+        await asyncio.gather(*[_import_cinema(c) for c in cinemas_response.cinemas])
+    )
 
 
 @import_app.command(name="all")
