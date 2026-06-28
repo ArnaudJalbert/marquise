@@ -34,7 +34,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
           MARQUISE_EMAIL: ${{ secrets.MARQUISE_EMAIL }}
           MARQUISE_PASSWORD: ${{ secrets.MARQUISE_PASSWORD }}
         run: uv run marquise import all --days "${{ github.event.inputs.days || '7' }}"
