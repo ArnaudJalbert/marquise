@@ -63,6 +63,7 @@ async def run_import_all(container: Container, days: int) -> list[CinemaImportRe
     results: list[CinemaImportResult] = []
 
     for cinema in cinemas_response.cinemas:
+        typer.echo(f"  Importing {cinema.name}...")
         try:
             output = await container.source_controller.import_screenings(
                 cinema_id=cinema.id,
@@ -83,6 +84,14 @@ async def run_import_all(container: Container, days: int) -> list[CinemaImportRe
                     cinema_name=cinema.name,
                     status="failed",
                     detail=str(exc),
+                )
+            )
+        except Exception as exc:
+            results.append(
+                CinemaImportResult(
+                    cinema_name=cinema.name,
+                    status="failed",
+                    detail=f"{type(exc).__name__}: {exc}",
                 )
             )
         else:
@@ -110,6 +119,9 @@ def import_all(
 ) -> None:
     """Import showtimes for every cinema that has a source assignment."""
     container = Container()
+    today = date.today()
+    end_date = today + timedelta(days=days - 1)
+    typer.echo(f"Starting bulk import: {today} → {end_date} ({days} days)")
 
     async def _run() -> list[CinemaImportResult]:
         await container.initialize()
@@ -121,21 +133,26 @@ def import_all(
     try:
         results = asyncio.run(_run())
     except Exception as e:
-        typer.echo(f"Bulk import failed: {e}", err=True)
+        typer.echo(
+            f"Bulk import failed during initialization: {type(e).__name__}: {e}",
+            err=True,
+        )
         raise typer.Exit(code=1) from e
 
     imported = [r for r in results if r.status == "imported"]
     skipped = [r for r in results if r.status == "skipped"]
     failed = [r for r in results if r.status == "failed"]
 
+    typer.echo("\nResults:")
     for r in imported:
         typer.echo(
-            f"  {r.cinema_name}: {r.imported_count} new, {r.updated_count} updated"
+            f"  [ok]      {r.cinema_name}: "
+            f"{r.imported_count} new, {r.updated_count} updated"
         )
     for r in skipped:
-        typer.echo(f"  {r.cinema_name}: skipped ({r.detail})")
+        typer.echo(f"  [skipped] {r.cinema_name}: {r.detail}")
     for r in failed:
-        typer.echo(f"  {r.cinema_name}: FAILED ({r.detail})", err=True)
+        typer.echo(f"  [failed]  {r.cinema_name}: {r.detail}", err=True)
 
     total_new = sum(r.imported_count for r in imported)
     total_updated = sum(r.updated_count for r in imported)
