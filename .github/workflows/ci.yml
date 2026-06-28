@@ -74,12 +74,12 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
         run: |
           missing=()
           [[ -z "$DATABASE_URL" ]] && missing+=("DATABASE_URL")
           [[ -z "$SUPABASE_URL" ]] && missing+=("SUPABASE_URL")
-          [[ -z "$SUPABASE_KEY" ]] && missing+=("SUPABASE_KEY")
+          [[ -z "$SUPABASE_PUBLISHABLE_KEY" ]] && missing+=("SUPABASE_PUBLISHABLE_KEY")
           if [[ ${#missing[@]} -gt 0 ]]; then
             echo "Missing required secrets: ${missing[*]}"
             exit 1
@@ -89,5 +89,5 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
         run: uv run pytest tests/integration_tests/ -v
