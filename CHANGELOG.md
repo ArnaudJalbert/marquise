@@ -6,6 +6,12 @@
 
 - **Replace gateway `dict` + `__inserted` with a typed `SaveOutcome`**: `ScreeningGateway.save` now returns a frozen `SaveOutcome(row, inserted)` dataclass instead of a plain `dict` carrying a magic `__inserted` key that callers had to `.pop()`. The Supabase gateway strips the internal SQL column and wraps the result; `SupabaseScreeningRepository.save` consumes `outcome.row`/`outcome.inserted`. No behaviour change — the repository still returns `(Screening, bool)`. Closes #18.
 
+## 0.7.9 (2026-06-27)
+
+### Bug Fixes
+
+- **Validate `ShowtimeRow` at the scraper boundary**: `ShowtimeRow` gained a `__post_init__` that rejects empty/whitespace movie titles and naive (timezone-unaware) showtimes, so malformed scraped rows can no longer propagate toward the database. The source registry now also skips rows with blank titles defensively. Closes #19.
+
 ## 0.7.8 (2026-06-27)
 
 ### Chore
