@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import questionary
 import typer
 
@@ -51,8 +53,6 @@ def create(
             await container.shutdown()
 
     try:
-        import asyncio
-
         asyncio.run(_run())
     except Exception as e:
         typer.echo(f"Failed to create cinema: {e}", err=True)
@@ -124,8 +124,6 @@ def delete() -> None:
             await container.shutdown()
 
     try:
-        import asyncio
-
         asyncio.run(_run())
     except SystemExit:
         raise
@@ -240,8 +238,6 @@ def update() -> None:
             await container.shutdown()
 
     try:
-        import asyncio
-
         asyncio.run(_run())
     except SystemExit:
         raise
@@ -293,8 +289,6 @@ def list_cinemas(
                 typer.echo(f"  {c.name}")
 
     try:
-        import asyncio
-
         asyncio.run(_run())
     except Exception as e:
         typer.echo(f"Failed to list cinemas: {e}", err=True)

@@ -25,24 +25,21 @@ from marquise.interface_adapters.repositories.supabase._utils import (
 )
 
 
-def _parse_datetime(value: datetime | str) -> datetime:
-    """Parse a datetime value, accepting both datetime objects and ISO strings.
+def _parse_datetime(value: datetime) -> datetime:
+    """Normalize a gateway datetime to a timezone-aware UTC datetime.
+
+    The screening gateway always returns ``datetime`` objects from asyncpg.
+    Naive values are assumed to be in UTC and made timezone-aware.
 
     Args:
-        value: A datetime object or an ISO-format datetime string.
+        value: A datetime object returned by the gateway.
 
     Returns:
-        A timezone-aware datetime. Naive datetime values are assumed to be
-        in UTC and are made timezone-aware accordingly.
+        A timezone-aware datetime.
     """
-    if isinstance(value, datetime):
-        if value.tzinfo is None:
-            return value.replace(tzinfo=UTC)
-        return value
-    result = datetime.fromisoformat(value)
-    if result.tzinfo is None:
-        result = result.replace(tzinfo=UTC)
-    return result
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value
 
 
 def _dict_to_movie(data: dict) -> Movie:
