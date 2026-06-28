@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncpg
 
-from marquise.interface_adapters.repositories.protocols.cinema import GatewayError
+from marquise.interface_adapters.repositories.protocols.base import GatewayError
 
 DEFAULT_SCHEMA = "marquise"
 
@@ -15,12 +15,10 @@ _COLUMNS = "id, name, address, city, website"
 class SupabaseCinemaGateway:
     """Concrete cinema gateway that executes SQL against Supabase PostgreSQL.
 
-    Parameters
-    ----------
-    pool:
-        An open asyncpg connection pool.
-    schema:
-        The database schema where the cinemas table lives (default ``marquise``).
+    Args:
+        pool: An open asyncpg connection pool.
+        schema: The database schema where the cinemas table lives
+            (default ``marquise``).
     """
 
     def __init__(self, pool: asyncpg.Pool, schema: str = DEFAULT_SCHEMA) -> None:

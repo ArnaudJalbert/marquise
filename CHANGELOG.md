@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.11 (2026-06-27)
+
+### Technical Debt
+
+- **Smaller cleanups batch**: A set of isolated, low-risk cleanups (#24): added shared `sample_cinema`/`sample_movie`/`sample_screening` fixtures to `tests/conftest.py`; hoisted the repeated per-command `import asyncio` to a single top-level import in the CLI command modules; deleted the dead `_select_cinema_public` helper; moved `GatewayError` to a new `protocols/base.py` (re-exported from `protocols.cinema` for back-compat); made `Movie.is_recent` use `datetime.now(UTC)`; converted the remaining NumPy-style gateway class docstrings to Google style; and dropped the dead ISO-string branch from the screening repository's `_parse_datetime` (the gateway always returns `datetime`). The `CinemaController.list`/`list_cinemas` naming consolidation was deferred as it is entangled with the auth-layer refactors (#11/#12). Closes #24.
+
 ## 0.7.10 (2026-06-27)
 
 ### Technical Debt
