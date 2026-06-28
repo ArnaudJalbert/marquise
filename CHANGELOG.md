@@ -8,6 +8,8 @@
 
 ### Bug Fixes
 
+- **Deduplicate Cineplex showtimes before upsert**: Cineplex lists the same showtime under multiple experiences (e.g. standard + IMAX), producing duplicate `(movie_title, showtime)` pairs. When these were upserted concurrently they raced on the DB unique constraint, causing `TypeError: 'NoneType' object is not iterable`. `CineplexAdapter.fetch_showtimes` now keeps the first occurrence of each `(movie_title, showtime)` pair before returning rows to the use case.
+
 - **Restore Cineplex imports after the API began requiring a subscription key**: The Cineplex theatrical API now rejects keyless requests with `HTTP 401: Access denied due to missing subscription key`, which broke `marquise import all` for every Cineplex theatre. `CineplexSource` now sends the same anonymous `Ocp-Apim-Subscription-Key` that cineplex.com ships in its own frontend. Because Cineplex rotates that key, it is discovered at request time via the new `_discover_subscription_key` helper — it downloads the homepage, walks the referenced Next.js JS chunks, and extracts the key sent alongside the theatrical API — so imports keep working across rotations. An explicitly configured `CINEPLEX_API_KEY` still takes precedence; a baked-in key and the last successfully discovered key serve as fallbacks if discovery fails.
 ## 0.7.11 (2026-06-27)
 
