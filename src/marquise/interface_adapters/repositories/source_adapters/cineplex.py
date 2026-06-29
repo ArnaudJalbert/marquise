@@ -68,11 +68,23 @@ class CineplexAdapter:
             raise ValueError(
                 f"No Cineplex location ID mapping for cinema '{cinema.name}'"
             )
-        return await self._source.fetch_showtimes(
+        rows = await self._source.fetch_showtimes(
             location_id=location_id,
             start_date=start_date,
             end_date=end_date,
         )
+        # Cineplex lists the same showtime under multiple experiences
+        # (e.g. standard + IMAX), producing duplicate (movie_title, showtime)
+        # pairs that would race on the DB unique constraint when upserted
+        # concurrently. Keep the first occurrence of each pair.
+        seen: set[tuple[str, str]] = set()
+        deduped: list[dict[str, Any]] = []
+        for row in rows:
+            key = (row["movie_title"], row["showtime"])
+            if key not in seen:
+                seen.add(key)
+                deduped.append(row)
+        return deduped
 
     async def fetch_movie_detail(
         self,
