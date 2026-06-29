@@ -25,24 +25,21 @@ from marquise.interface_adapters.repositories.supabase._utils import (
 )
 
 
-def _parse_datetime(value: datetime | str) -> datetime:
-    """Parse a datetime value, accepting both datetime objects and ISO strings.
+def _parse_datetime(value: datetime) -> datetime:
+    """Normalize a gateway datetime to a timezone-aware UTC datetime.
+
+    The screening gateway always returns ``datetime`` objects from asyncpg.
+    Naive values are assumed to be in UTC and made timezone-aware.
 
     Args:
-        value: A datetime object or an ISO-format datetime string.
+        value: A datetime object returned by the gateway.
 
     Returns:
-        A timezone-aware datetime. Naive datetime values are assumed to be
-        in UTC and are made timezone-aware accordingly.
+        A timezone-aware datetime.
     """
-    if isinstance(value, datetime):
-        if value.tzinfo is None:
-            return value.replace(tzinfo=UTC)
-        return value
-    result = datetime.fromisoformat(value)
-    if result.tzinfo is None:
-        result = result.replace(tzinfo=UTC)
-    return result
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value
 
 
 def _dict_to_movie(data: dict) -> Movie:
@@ -102,7 +99,7 @@ class SupabaseScreeningRepository(ScreeningRepository):
         Returns:
             A tuple of (saved_screening, was_inserted).
         """
-        data = await self._gateway.save(
+        outcome = await self._gateway.save(
             screening_id=str(screening.id),
             movie_id=str(screening.movie.id),
             cinema_id=str(screening.cinema.id),
@@ -112,7 +109,8 @@ class SupabaseScreeningRepository(ScreeningRepository):
             room=screening.room,
             language=screening.language,
         )
-        was_inserted = data.pop("__inserted", True)
+        data = outcome.row
+        was_inserted = outcome.inserted
         saved = Screening(
             id=ScreeningId(value=data["id"]),
             movie=screening.movie,

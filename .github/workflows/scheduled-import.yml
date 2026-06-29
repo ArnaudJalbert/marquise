@@ -1,0 +1,40 @@
+name: Scheduled import
+
+on:
+  schedule:
+    # Nightly at 07:00 UTC (≈ 02:00–03:00 America/Montreal)
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Number of days to import (today inclusive)"
+        required: false
+        default: "7"
+
+jobs:
+  import:
+    name: Import showtimes for all cinemas
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Run bulk import
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          MARQUISE_EMAIL: ${{ secrets.MARQUISE_EMAIL }}
+          MARQUISE_PASSWORD: ${{ secrets.MARQUISE_PASSWORD }}
+        run: uv run marquise import all --days "${{ github.event.inputs.days || '7' }}"

@@ -118,9 +118,12 @@ class SourceRegistry(SourceRegistryQuery):
             raw_showtime = row.get("showtime")
             if not raw_showtime:
                 continue
+            movie_title = row.get("movie_title") or ""
+            if not movie_title.strip():
+                continue
             results.append(
                 ShowtimeRow(
-                    movie_title=row.get("movie_title", "Untitled"),
+                    movie_title=movie_title,
                     showtime=_parse_showtime(raw_showtime),
                     identifier=row.get("identifier"),
                     external_id=row.get("external_id"),

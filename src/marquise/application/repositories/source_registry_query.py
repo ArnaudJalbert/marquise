@@ -49,6 +49,18 @@ class ShowtimeRow:
     room: str | None = None
     language: str | None = None
 
+    def __post_init__(self) -> None:
+        """Validate the row at the scraper boundary.
+
+        Raises:
+            ValueError: If ``movie_title`` is empty or whitespace-only, or if
+                ``showtime`` is a naive (timezone-unaware) datetime.
+        """
+        if not self.movie_title.strip():
+            raise ValueError("movie_title must not be empty")
+        if self.showtime.tzinfo is None:
+            raise ValueError("showtime must be timezone-aware")
+
 
 @dataclass(frozen=True, slots=True)
 class MovieEnrichmentData:
