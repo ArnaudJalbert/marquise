@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 
 import asyncpg
 
+from marquise.interface_adapters.repositories.protocols.base import GatewayError
 from marquise.interface_adapters.repositories.protocols.screening import SaveOutcome
 
 DEFAULT_SCHEMA = "marquise"
@@ -124,6 +125,14 @@ class SupabaseScreeningGateway:
                 ticket_url,
                 room,
                 language,
+            )
+        if row is None:
+            raise GatewayError(
+                f"Screening upsert returned no row for "
+                f"(cinema_id={cinema_id!r}, movie_id={movie_id!r}, "
+                f"showtime={showtime}). This usually means a duplicate "
+                f"(cinema_id, movie_id, showtime) was upserted concurrently — "
+                f"deduplicate rows before calling save()."
             )
         data = dict(row)
         inserted = bool(data.pop("__inserted"))
