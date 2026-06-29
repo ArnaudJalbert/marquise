@@ -22,6 +22,54 @@ _SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 
 SHOWTIMES_URL = "https://apis.cineplex.com/prod/cpx/theatrical/api/v1/showtimes"
 MOVIE_DETAIL_TPL = "https://www.cineplex.com/movie/{slug}"
+HOMEPAGE_URL = "https://www.cineplex.com/"
+
+# Public Azure API Management subscription key embedded in Cineplex's own
+# web frontend (cineplex.com ships it in plain JS and sends it on every
+# anonymous request). The theatrical API began returning HTTP 401 for
+# keyless requests, so we send the same anonymous key the website uses.
+# Cineplex rotates this key periodically, so it is discovered at runtime
+# from the live frontend (see ``_discover_subscription_key``); this baked-in
+# value is only a last-resort fallback if discovery fails.
+_PUBLIC_SUBSCRIPTION_KEY = "dcdac5601d864addbc2675a2e96cb1f8"
+
+# Locates JS bundle chunks referenced by a Next.js page.
+_CHUNK_URL_RE = re.compile(r"/_next/static/chunks/[^\"']+\.js")
+# Captures the subscription key sent alongside the theatrical API in the
+# minified frontend bundle, e.g.:
+#   theatrical/api",c={...headers:{"Ocp-Apim-Subscription-Key":"<32 hex>"
+_THEATRICAL_KEY_RE = re.compile(
+    r'theatrical[\s\S]{0,400}?Ocp-Apim-Subscription-Key"\s*:\s*"([0-9a-f]{32})"'
+)
+
+
+def _discover_subscription_key() -> str | None:
+    """Scrape the current anonymous subscription key from Cineplex's frontend.
+
+    Cineplex ships a public ``Ocp-Apim-Subscription-Key`` in its web bundle and
+    rotates it periodically. This downloads the homepage, walks the JS chunks it
+    references, and extracts the key sent alongside the theatrical API so we keep
+    working across key rotations without any hardcoded value.
+
+    Returns:
+        The 32-character subscription key, or ``None`` if it cannot be found
+        (e.g. the site is unreachable or its bundle layout changed).
+    """
+    try:
+        html = _fetch_html(HOMEPAGE_URL)
+    except urllib.error.URLError:
+        return None
+    base = HOMEPAGE_URL.rstrip("/")
+    # dict.fromkeys preserves order while de-duplicating chunk paths.
+    for path in dict.fromkeys(_CHUNK_URL_RE.findall(html)):
+        try:
+            js = _fetch_html(base + path)
+        except urllib.error.URLError:
+            continue
+        match = _THEATRICAL_KEY_RE.search(js)
+        if match:
+            return match.group(1)
+    return None
 
 
 def _fetch_json(url: str, api_key: str = "") -> dict[str, Any] | list[Any]:
@@ -284,7 +332,29 @@ class CineplexSource:
     """Showtime source for Cineplex theatres."""
 
     def __init__(self, api_key: str = "") -> None:
-        self._api_key = api_key
+        # An explicitly configured key (CINEPLEX_API_KEY) always wins. When it
+        # is empty we discover Cineplex's rotating anonymous key at request
+        # time; ``_last_known_key`` retains the most recent value (seeded with
+        # the baked-in fallback) for when a discovery attempt fails.
+        self._configured_api_key = api_key
+        self._last_known_key = _PUBLIC_SUBSCRIPTION_KEY
+
+    def _resolve_api_key(self) -> str:
+        """Return the subscription key to use for the next API request.
+
+        A configured key is returned as-is. Otherwise the current anonymous key
+        is scraped fresh from the Cineplex frontend so we follow key rotations;
+        if that fails we reuse the last key that worked.
+
+        Returns:
+            The subscription key to send with the request.
+        """
+        if self._configured_api_key:
+            return self._configured_api_key
+        discovered = _discover_subscription_key()
+        if discovered:
+            self._last_known_key = discovered
+        return self._last_known_key
 
     async def fetch_showtimes(
         self,
@@ -309,7 +379,7 @@ class CineplexSource:
             urllib.error.HTTPError: On API errors.
         """
         url = f"{SHOWTIMES_URL}?LocationId={location_id}"
-        data = _fetch_json(url, api_key=self._api_key)
+        data = _fetch_json(url, api_key=self._resolve_api_key())
         if not isinstance(data, list):
             return []
         return _flatten_showtimes(data, start_date, end_date)

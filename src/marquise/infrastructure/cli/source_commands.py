@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import date, timedelta
 
 import questionary
@@ -54,8 +55,6 @@ def list_registered_sources() -> None:
         _console.print(table)
 
     try:
-        import asyncio
-
         asyncio.run(_run())
     except Exception as e:
         typer.echo(f"Failed to list sources: {e}", err=True)
@@ -94,8 +93,6 @@ def assign() -> None:
             await container.shutdown()
 
     try:
-        import asyncio
-
         asyncio.run(_run())
     except SystemExit:
         raise
@@ -129,8 +126,6 @@ def unassign() -> None:
             await container.shutdown()
 
     try:
-        import asyncio
-
         asyncio.run(_run())
     except SystemExit:
         raise
@@ -182,8 +177,6 @@ def list_assignments() -> None:
             await container.shutdown()
 
     try:
-        import asyncio
-
         asyncio.run(_run())
     except SystemExit:
         raise
@@ -243,8 +236,6 @@ def list_available_sources() -> None:
             await container.shutdown()
 
     try:
-        import asyncio
-
         asyncio.run(_run())
     except Exception as e:
         typer.echo(f"Failed to list registry sources: {e}", err=True)
@@ -349,8 +340,6 @@ def register_sources() -> None:
             await container.shutdown()
 
     try:
-        import asyncio
-
         asyncio.run(_run())
     except SystemExit:
         raise
@@ -452,8 +441,6 @@ def unregister_sources() -> None:
             await container.shutdown()
 
     try:
-        import asyncio
-
         asyncio.run(_run())
     except SystemExit:
         raise
@@ -581,8 +568,6 @@ def import_screenings() -> None:
             await container.shutdown()
 
     try:
-        import asyncio
-
         asyncio.run(_run())
     except SystemExit:
         raise
@@ -613,46 +598,6 @@ async def _select_cinema_admin(
     """
     try:
         response = await container.cinema_controller.list_cinemas()
-    except Exception:
-        raise
-
-    if not response.cinemas:
-        typer.echo("No cinemas available.")
-        return None
-
-    choices = [
-        questionary.Choice(
-            title=f"{c.name} — {c.address or 'No address'}, {c.city or 'No city'}",
-            value=c,
-        )
-        for c in response.cinemas
-    ]
-    choices.append(questionary.Choice(title="← exit", value="__exit__"))
-
-    selected = await questionary.select(prompt, choices=choices).ask_async()
-
-    if selected is None or selected == "__exit__":
-        typer.echo("Cancelled.")
-        return None
-
-    return selected
-
-
-async def _select_cinema_public(
-    container: Container,
-    prompt: str,
-) -> ListCinemasUseCase.CinemaData | None:
-    """Let a user pick a cinema interactively (no auth required).
-
-    Args:
-        container: The DI container.
-        prompt: The question to display in the selector.
-
-    Returns:
-        The selected cinema data, or ``None`` if the user cancelled.
-    """
-    try:
-        response = await container.cinema_controller.list()
     except Exception:
         raise
 
