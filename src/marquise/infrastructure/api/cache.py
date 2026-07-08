@@ -7,8 +7,10 @@ without risking noticeably stale responses.
 
 from __future__ import annotations
 
+import functools
 import time
-from collections.abc import Hashable
+from collections.abc import Awaitable, Callable, Hashable
+from typing import cast
 
 #: Default time-to-live for cached responses, in seconds. The database is
 #: only refreshed once a day, so an hour keeps responses fresh while still
@@ -59,3 +61,47 @@ class TTLCache:
             value: The value to cache.
         """
         self._store[key] = (time.monotonic() + self._ttl_seconds, value)
+
+
+def cached(
+    key_prefix: str, key_params: tuple[str, ...] = ()
+) -> Callable[[Callable[..., Awaitable[object]]], Callable[..., Awaitable[object]]]:
+    """Cache an async FastAPI endpoint's return value in its request's TTLCache.
+
+    FastAPI always invokes endpoint functions with keyword arguments, so the
+    wrapper reads ``cache`` (the endpoint's ``TTLCache = Depends(get_cache)``
+    parameter) and the parameters named in ``key_params`` straight out of
+    those keyword arguments — the endpoint body itself never touches the
+    cache. Errors raised by the endpoint propagate normally and are never
+    cached, so only successful responses are stored. Uses
+    ``functools.wraps`` so FastAPI's signature inspection (path/query params,
+    ``Depends``, response type) still sees the original function.
+
+    Args:
+        key_prefix: A prefix identifying the endpoint, unique per route.
+        key_params: Names of the endpoint's keyword arguments that vary the
+            result and should therefore be part of the cache key.
+
+    Returns:
+        A decorator that adds TTL caching to an async endpoint function.
+    """
+
+    def decorator(
+        func: Callable[..., Awaitable[object]],
+    ) -> Callable[..., Awaitable[object]]:
+        @functools.wraps(func)
+        async def wrapper(*args: object, **kwargs: object) -> object:
+            cache = cast(TTLCache, kwargs["cache"])
+            cache_key: Hashable = (key_prefix, *(kwargs[name] for name in key_params))
+
+            cached_value = cache.get(cache_key)
+            if cached_value is not None:
+                return cached_value
+
+            result = await func(*args, **kwargs)
+            cache.set(cache_key, result)
+            return result
+
+        return wrapper
+
+    return decorator
