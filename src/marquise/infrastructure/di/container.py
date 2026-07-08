@@ -14,7 +14,11 @@ from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
+from marquise.application.use_cases.get_cinema_showtimes import (
+    GetCinemaShowtimesUseCase,
+)
 from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
+from marquise.application.use_cases.get_movie import GetMovieUseCase
 from marquise.application.use_cases.import_screenings import (
     ImportScreeningsUseCase,
 )
@@ -333,6 +337,28 @@ class Container:
             assignment_repository=self._cinema_source_assignment_repository,
             source_registry=self._source_registry,
             movie_repository=self._movie_repository,
+            screening_repository=self._screening_repository,
+        )
+
+    # ------------------------------------------------------------------
+    # Read-only use cases (public — used by the REST API)
+    # ------------------------------------------------------------------
+
+    @property
+    def list_cinemas_use_case(self) -> ListCinemasUseCase:
+        """Public list-cinemas use case (no authentication required)."""
+        return self._list_cinemas_use_case
+
+    @property
+    def get_movie_use_case(self) -> GetMovieUseCase:
+        """Public get-movie use case (no authentication required)."""
+        return GetMovieUseCase(movie_repository=self._movie_repository)
+
+    @property
+    def get_cinema_showtimes_use_case(self) -> GetCinemaShowtimesUseCase:
+        """Public get-cinema-showtimes use case (no authentication required)."""
+        return GetCinemaShowtimesUseCase(
+            cinema_repository=self._cinema_repository,
             screening_repository=self._screening_repository,
         )
 
