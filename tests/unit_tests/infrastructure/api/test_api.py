@@ -146,3 +146,71 @@ def test_get_movie_not_found(client: TestClient, container: MagicMock) -> None:
     response = client.get("/movies/missing")
 
     assert response.status_code == 404
+
+
+def test_list_cinemas_is_cached(client: TestClient, container: MagicMock) -> None:
+    """A second identical request reuses the cached result instead of re-executing."""
+    container.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+        cinemas=[
+            SimpleNamespace(
+                id="cin-1",
+                name="Cinema One",
+                address=None,
+                city=None,
+                website=None,
+            )
+        ]
+    )
+
+    first = client.get("/cinemas")
+    second = client.get("/cinemas")
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json() == second.json()
+    container.list_cinemas_use_case.execute.assert_awaited_once()
+
+
+def test_get_movie_is_cached(client: TestClient, container: MagicMock) -> None:
+    """A second request for the same movie reuses the cached response."""
+    container.get_movie_use_case.execute.return_value = SimpleNamespace(
+        id="mov-1",
+        title="The Odyssey",
+        release_year=2026,
+        directors=None,
+        cast=None,
+        duration_minutes=None,
+        description=None,
+        poster_url=None,
+        trailer_url=None,
+        genres=None,
+        original_title=None,
+        rating=None,
+        origin_countries=None,
+    )
+
+    first = client.get("/movies/mov-1")
+    second = client.get("/movies/mov-1")
+
+    assert first.status_code == 200
+    assert second.json() == first.json()
+    container.get_movie_use_case.execute.assert_awaited_once()
+
+
+def test_get_cinema_showtimes_is_cached(
+    client: TestClient, container: MagicMock
+) -> None:
+    """A second request with the same range reuses the cached response."""
+    container.get_cinema_showtimes_use_case.execute.return_value = SimpleNamespace(
+        cinema_id="cin-1",
+        cinema_name="Cinema One",
+        screenings=[],
+    )
+    params = {"from": "2026-06-27", "to": "2026-06-28"}
+
+    first = client.get("/cinemas/cin-1/showtimes", params=params)
+    second = client.get("/cinemas/cin-1/showtimes", params=params)
+
+    assert first.status_code == 200
+    assert second.json() == first.json()
+    container.get_cinema_showtimes_use_case.execute.assert_awaited_once()
