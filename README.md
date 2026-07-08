@@ -51,6 +51,7 @@ cp .env.example .env
 | `SUPABASE_PUBLISHABLE_KEY` | Yes | Supabase anon/publishable key |
 | `CINEPLEX_API_KEY` | No | Cineplex API subscription key (`Ocp-Apim-Subscription-Key`) |
 | `DATABASE_SCHEMA` | No | Schema name (default: `marquise`) |
+| `MARQUISE_API_CACHE_TTL_SECONDS` | No | Read-only API in-memory response cache TTL, in seconds (default: `3600`) |
 
 See the [Supabase setup guide](docs/setup/supabase-cinema-table.md) to initialize the database schema.
 

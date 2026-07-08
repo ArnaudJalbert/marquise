@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.1 (2026-07-08)
+
+### New Features
+
+- **In-memory response caching for the read-only API**: `GET /cinemas`, `GET /cinemas/{id}/showtimes`, and `GET /movies/{id}` now serve repeat requests from a per-process `TTLCache` (`infrastructure/api/cache.py`) instead of re-invoking their use case and hitting the database every time. The cache lives on `app.state` (one instance per running API process, injected via a `get_cache` dependency alongside `get_container`) and defaults to a 1-hour TTL — long enough to absorb the bulk of traffic between requests, short enough that responses are never more than an hour behind the nightly `marquise import all` refresh. The TTL is configurable via the optional `MARQUISE_API_CACHE_TTL_SECONDS` env var. `GET /health` is intentionally left uncached since it's a liveness probe.
+
 ## 0.9.0 (2026-06-27)
 
 ### New Features
