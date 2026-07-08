@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.2 (2026-07-08)
+
+### Bug Fixes
+
+- **Deduplicate movies by normalized title, not exact string match**: `MovieRepository.find_by_title` previously matched titles exactly, so the same film scraped with a different case (`"The Batman"` vs `"the batman"`) or stray whitespace (`"Beau Is Afraid "`) created a duplicate `Movie` row and eventually violated the `movies.title` unique constraint. `SupabaseMovieGateway.find_by_title` now matches case-insensitively (`WHERE LOWER(title) = LOWER($1)`), and `ImportScreeningsUseCase._resolve_or_create_movies` normalizes whitespace on scraped titles before using them as lookup/dict keys. Movies already saved keep their original title for display — no data migration needed. Closes #23.
+
 ## 0.8.1 (2026-07-08)
 
 ### Bug Fixes
