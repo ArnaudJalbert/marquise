@@ -66,7 +66,7 @@ class MovieGateway(Protocol):
         ...
 
     async def find_by_title(self, title: str) -> dict | None:
-        """Find a movie by its exact title.
+        """Find a movie by title, case-insensitively.
 
         Args:
             title: The movie title.

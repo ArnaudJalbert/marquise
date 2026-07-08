@@ -210,6 +210,145 @@ async def test_import_screenings_reuses_existing_movie() -> None:
 
 
 @pytest.mark.asyncio
+async def test_import_screenings_dedupes_titles_differing_by_whitespace() -> None:
+    """Test that titles differing only by whitespace share a single movie."""
+    mock_cinema_repo = create_autospec(CinemaRepository, instance=True)
+    mock_assignment_repo = create_autospec(
+        CinemaSourceAssignmentRepository, instance=True
+    )
+    mock_registry = create_autospec(SourceRegistryQuery, instance=True)
+    mock_movie_repo = create_autospec(MovieRepository, instance=True)
+    mock_screening_repo = create_autospec(ScreeningRepository, instance=True)
+
+    cinema = Cinema(
+        id=CinemaId(value="cin-123"), name="Cinéma Beaubien", city="Montreal"
+    )
+    mock_cinema_repo.find_by_id.return_value = cinema
+
+    source_definition = SourceDefinition(
+        name=SourceName(value="cinemacinema"),
+        display_name="Cinema Cinema",
+    )
+    assignment = CinemaSourceAssignment(cinema=cinema, source=source_definition)
+    mock_assignment_repo.find_by_cinema_id.return_value = assignment
+
+    rows = [
+        _make_showtime_row(
+            "Beau Is Afraid",
+            datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC),
+        ),
+        _make_showtime_row(
+            "  Beau  Is  Afraid ",
+            datetime(2026, 6, 7, 21, 0, 0, tzinfo=UTC),
+        ),
+    ]
+    mock_registry.fetch_showtimes.return_value = rows
+    mock_movie_repo.find_by_title.side_effect = [None, None]
+
+    saved_movie = Movie(id=MovieId(value="mov-a"), title="Beau Is Afraid")
+    mock_movie_repo.save.return_value = saved_movie
+    mock_screening_repo.save.return_value = (None, True)
+
+    use_case = ImportScreeningsUseCase(
+        cinema_repository=mock_cinema_repo,
+        assignment_repository=mock_assignment_repo,
+        source_registry=mock_registry,
+        movie_repository=mock_movie_repo,
+        screening_repository=mock_screening_repo,
+    )
+
+    request = ImportScreeningsUseCase.InputData(
+        cinema_id="cin-123",
+        start_date=date(2026, 6, 7),
+        end_date=date(2026, 6, 7),
+    )
+    result = await use_case.execute(request)
+
+    assert result.total_count == 2
+    # Both rows normalize to the same title, so only one movie gets created
+    # even though find_by_title is still queried once per row.
+    mock_movie_repo.find_by_title.assert_any_await("Beau Is Afraid")
+    mock_movie_repo.save.assert_awaited_once()
+    created_movie = mock_movie_repo.save.call_args[0][0]
+    assert created_movie.title == "Beau Is Afraid"
+
+
+@pytest.mark.asyncio
+async def test_import_screenings_reuses_movie_found_with_different_case() -> None:
+    """Test that a case-insensitive match still enriches and re-links correctly.
+
+    Regression test: re-keying the movie lookup by the *saved entity's* title
+    (rather than the query title) after a case-insensitive find_by_title match
+    would silently orphan the row's own lookup key, losing the enrichment.
+    """
+    mock_cinema_repo = create_autospec(CinemaRepository, instance=True)
+    mock_assignment_repo = create_autospec(
+        CinemaSourceAssignmentRepository, instance=True
+    )
+    mock_registry = create_autospec(SourceRegistryQuery, instance=True)
+    mock_movie_repo = create_autospec(MovieRepository, instance=True)
+    mock_screening_repo = create_autospec(ScreeningRepository, instance=True)
+
+    cinema = Cinema(
+        id=CinemaId(value="cin-123"), name="Cinéma Beaubien", city="Montreal"
+    )
+    mock_cinema_repo.find_by_id.return_value = cinema
+
+    source_definition = SourceDefinition(
+        name=SourceName(value="cinemacinema"),
+        display_name="Cinema Cinema",
+    )
+    assignment = CinemaSourceAssignment(cinema=cinema, source=source_definition)
+    mock_assignment_repo.find_by_cinema_id.return_value = assignment
+
+    rows = [
+        _make_showtime_row(
+            "The Batman",
+            datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC),
+            identifier="the-batman-slug",
+        ),
+    ]
+    mock_registry.fetch_showtimes.return_value = rows
+
+    # Stored under a different case than today's scrape, and missing
+    # optional fields so it qualifies for enrichment.
+    existing_movie = Movie(id=MovieId(value="mov-batman"), title="the batman")
+    mock_movie_repo.find_by_title.return_value = existing_movie
+
+    enrichment = MovieEnrichmentData(description="The Dark Knight returns")
+    mock_registry.fetch_movie_detail.return_value = enrichment
+
+    enriched_movie = Movie(
+        id=MovieId(value="mov-batman"),
+        title="the batman",
+        description="The Dark Knight returns",
+    )
+    mock_movie_repo.save.return_value = enriched_movie
+    mock_screening_repo.save.return_value = (None, True)
+
+    use_case = ImportScreeningsUseCase(
+        cinema_repository=mock_cinema_repo,
+        assignment_repository=mock_assignment_repo,
+        source_registry=mock_registry,
+        movie_repository=mock_movie_repo,
+        screening_repository=mock_screening_repo,
+    )
+
+    request = ImportScreeningsUseCase.InputData(
+        cinema_id="cin-123",
+        start_date=date(2026, 6, 7),
+        end_date=date(2026, 6, 7),
+    )
+    result = await use_case.execute(request)
+
+    assert result.total_count == 1
+    # The screening must be linked to the enriched movie, not lost because
+    # the lookup key and the saved entity's title differ in case.
+    saved_screening = mock_screening_repo.save.call_args[0][0]
+    assert saved_screening.movie.description == "The Dark Knight returns"
+
+
+@pytest.mark.asyncio
 async def test_import_screenings_raises_when_cinema_not_found() -> None:
     """Test that CinemaNotFoundError is raised when cinema doesn't exist."""
     mock_cinema_repo = create_autospec(CinemaRepository, instance=True)
