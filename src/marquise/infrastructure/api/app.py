@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from marquise.infrastructure.api.cache import DEFAULT_TTL_SECONDS, TTLCache
 from marquise.infrastructure.api.routers import cinemas_router, movies_router
 from marquise.infrastructure.di.container import Container
 
@@ -23,6 +25,9 @@ def create_app(container: Container | None = None) -> FastAPI:
     Returns:
         A configured ``FastAPI`` instance.
     """
+    cache_ttl_seconds = float(
+        os.environ.get("MARQUISE_API_CACHE_TTL_SECONDS", DEFAULT_TTL_SECONDS)
+    )
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -44,6 +49,8 @@ def create_app(container: Container | None = None) -> FastAPI:
         version="1.0.0",
         lifespan=lifespan,
     )
+
+    app.state.cache = TTLCache(ttl_seconds=cache_ttl_seconds)
 
     # When a container is injected (e.g. in tests), make it available even if
     # the lifespan startup is not run by the test client.
