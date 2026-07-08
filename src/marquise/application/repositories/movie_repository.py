@@ -37,7 +37,7 @@ class MovieRepository(ABC):
 
     @abstractmethod
     async def find_by_title(self, title: str) -> Movie | None:
-        """Find a movie by its exact title.
+        """Find a movie by title, case-insensitively.
 
         Args:
             title: The movie title to search for.
