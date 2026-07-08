@@ -60,6 +60,87 @@ async def test_fetch_showtimes_maps_cinema_to_location_id(
 
 
 @pytest.mark.asyncio
+async def test_fetch_showtimes_maps_scotiabank_alias_to_same_location_id(
+    mock_source: AsyncMock,
+) -> None:
+    """Verify the English 'Scotiabank Cinema Montreal' name resolves too."""
+    start = datetime(2026, 6, 7, tzinfo=UTC)
+    end = datetime(2026, 6, 7, 23, 59, 59, tzinfo=UTC)
+    mock_source.fetch_showtimes.return_value = []
+    cinema = Cinema(id=CinemaId(value="cin-9406"), name="Scotiabank Cinema Montreal")
+
+    adapter = CineplexAdapter(mock_source)
+    result = await adapter.fetch_showtimes(cinema, start, end)
+
+    assert result == []
+    mock_source.fetch_showtimes.assert_awaited_once_with(
+        location_id=9406,
+        start_date=start,
+        end_date=end,
+    )
+
+
+@pytest.mark.asyncio
+async def test_fetch_showtimes_dedupes_same_movie_and_showtime(
+    sample_cinema: Cinema,
+    mock_source: AsyncMock,
+) -> None:
+    """Verify rows sharing (movie_title, showtime) collapse to one."""
+    start = datetime(2026, 6, 7, tzinfo=UTC)
+    end = datetime(2026, 6, 7, 23, 59, 59, tzinfo=UTC)
+    mock_source.fetch_showtimes.return_value = [
+        {
+            "movie_title": "A Movie",
+            "showtime": "2026-06-07T19:00:00+00:00",
+            "external_id": "0",
+        },
+        {
+            "movie_title": "A Movie",
+            "showtime": "2026-06-07T19:00:00+00:00",
+            "external_id": "0",
+        },
+    ]
+
+    adapter = CineplexAdapter(mock_source)
+    result = await adapter.fetch_showtimes(sample_cinema, start, end)
+
+    assert len(result) == 1
+
+
+@pytest.mark.asyncio
+async def test_fetch_showtimes_dedupes_same_external_id_different_titles(
+    sample_cinema: Cinema,
+    mock_source: AsyncMock,
+) -> None:
+    """Verify rows sharing an external_id collapse even with different titles.
+
+    Cineplex occasionally lists the same underlying session under two
+    slightly different movie titles; without this the second row would
+    violate the DB's unique constraint on external_id.
+    """
+    start = datetime(2026, 6, 7, tzinfo=UTC)
+    end = datetime(2026, 6, 7, 23, 59, 59, tzinfo=UTC)
+    mock_source.fetch_showtimes.return_value = [
+        {
+            "movie_title": "A Movie",
+            "showtime": "2026-06-07T19:00:00+00:00",
+            "external_id": "486867",
+        },
+        {
+            "movie_title": "A Movie (VOA)",
+            "showtime": "2026-06-07T19:00:00+00:00",
+            "external_id": "486867",
+        },
+    ]
+
+    adapter = CineplexAdapter(mock_source)
+    result = await adapter.fetch_showtimes(sample_cinema, start, end)
+
+    assert len(result) == 1
+    assert result[0]["movie_title"] == "A Movie"
+
+
+@pytest.mark.asyncio
 async def test_fetch_showtimes_raises_for_unknown_cinema(
     unknown_cinema: Cinema,
     mock_source: AsyncMock,

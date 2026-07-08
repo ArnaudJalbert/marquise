@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.1 (2026-07-08)
+
+### Bug Fixes
+
+- **Fix daily `Scheduled import` workflow failures**: the nightly `marquise import all` run had been failing every day since June 30 for two reasons. First, `CineplexAdapter` mapped cinema display names to Cineplex theatre IDs by exact string match, and the DB's cinema row was named `"Scotiabank Cinema Montreal"` while the mapping only had the French `"Cinéma Banque Scotia Montréal"`, so every run raised `ValueError: No Cineplex location ID mapping for cinema 'Scotiabank Cinema Montreal'`. Added the English name as an alias for the same theatre ID (`9406`). Second, Cineplex occasionally lists the same underlying session (identical `external_id`/Vista session ID) under two different movie titles; the existing `(movie_title, showtime)` dedup key didn't catch this, so the second row hit the DB's unique constraint on `external_id` with `UniqueViolationError: duplicate key value violates unique constraint "screenings_external_id_key"`. `CineplexAdapter.fetch_showtimes` now dedupes on `external_id` first whenever it looks like a real session ID, falling back to the `(movie_title, showtime)` key otherwise.
+
 ## 0.8.0 (2026-06-27)
 
 ### New Features
