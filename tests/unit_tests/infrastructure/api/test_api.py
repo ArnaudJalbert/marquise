@@ -68,7 +68,8 @@ def test_list_cinemas(client: TestClient, container: MagicMock) -> None:
                 city="Montréal",
                 website=None,
             )
-        ]
+        ],
+        total=1,
     )
 
     response = client.get("/cinemas")
@@ -85,12 +86,14 @@ def test_list_cinemas_delegates_to_cinema_controller(
     client: TestClient, container: MagicMock
 ) -> None:
     """GET /cinemas calls cinema_controller.list(), not the use case directly."""
-    container.cinema_controller.list.return_value = SimpleNamespace(cinemas=[])
+    container.cinema_controller.list.return_value = SimpleNamespace(cinemas=[], total=0)
 
     response = client.get("/cinemas", params={"name": "Cineplex"})
 
     assert response.status_code == 200
-    container.cinema_controller.list.assert_awaited_once_with(name="Cineplex")
+    container.cinema_controller.list.assert_awaited_once_with(
+        name="Cineplex", limit=20, offset=0
+    )
 
 
 def test_get_cinema_showtimes(client: TestClient, container: MagicMock) -> None:
@@ -109,6 +112,7 @@ def test_get_cinema_showtimes(client: TestClient, container: MagicMock) -> None:
                 language=None,
             )
         ],
+        total=1,
     )
 
     response = client.get(
@@ -124,18 +128,23 @@ def test_get_cinema_showtimes(client: TestClient, container: MagicMock) -> None:
 
 
 def test_list_cinemas_pagination(client: TestClient, container: MagicMock) -> None:
-    """limit/offset slice the cinema list and report accurate pagination metadata."""
+    """The router forwards limit/offset and reports the controller's total.
+
+    The controller is mocked as already having applied pagination (as it
+    does once limit/offset are pushed down to SQL), so this test verifies
+    the router passes params through and reports ``total`` from the
+    response rather than computing it from the page length.
+    """
     container.cinema_controller.list.return_value = SimpleNamespace(
         cinemas=[
             SimpleNamespace(
-                id=f"cin-{i}",
-                name=f"Cinema {i}",
-                address=None,
-                city=None,
-                website=None,
-            )
-            for i in range(5)
-        ]
+                id="cin-1", name="Cinema 1", address=None, city=None, website=None
+            ),
+            SimpleNamespace(
+                id="cin-2", name="Cinema 2", address=None, city=None, website=None
+            ),
+        ],
+        total=5,
     )
 
     response = client.get("/cinemas", params={"limit": 2, "offset": 1})
@@ -144,6 +153,9 @@ def test_list_cinemas_pagination(client: TestClient, container: MagicMock) -> No
     body = response.json()
     assert [c["id"] for c in body["items"]] == ["cin-1", "cin-2"]
     assert body["pagination"] == {"limit": 2, "offset": 1, "total": 5}
+    container.cinema_controller.list.assert_awaited_once_with(
+        name=None, limit=2, offset=1
+    )
 
 
 def test_list_cinemas_limit_out_of_range_is_rejected(
@@ -158,22 +170,37 @@ def test_list_cinemas_limit_out_of_range_is_rejected(
 def test_get_cinema_showtimes_pagination(
     client: TestClient, container: MagicMock
 ) -> None:
-    """limit/offset slice the screenings and report accurate pagination metadata."""
+    """The router forwards limit/offset and reports the use case's total.
+
+    The use case is mocked as already having applied pagination (as it does
+    once limit/offset are pushed down to SQL), so this test verifies the
+    router passes params through and reports ``total`` from the response
+    rather than computing it from the page length.
+    """
     container.get_cinema_showtimes_use_case.execute.return_value = SimpleNamespace(
         cinema_id="cin-1",
         cinema_name="Cinema One",
         screenings=[
             SimpleNamespace(
-                id=f"scr-{i}",
+                id="scr-3",
                 movie_id="mov-1",
                 movie_title="The Odyssey",
                 showtime="2026-06-27T19:30:00+00:00",
                 ticket_url=None,
                 room=None,
                 language=None,
-            )
-            for i in range(5)
+            ),
+            SimpleNamespace(
+                id="scr-4",
+                movie_id="mov-1",
+                movie_title="The Odyssey",
+                showtime="2026-06-27T21:30:00+00:00",
+                ticket_url=None,
+                room=None,
+                language=None,
+            ),
         ],
+        total=5,
     )
 
     response = client.get(
@@ -185,6 +212,9 @@ def test_get_cinema_showtimes_pagination(
     body = response.json()
     assert [s["id"] for s in body["screenings"]] == ["scr-3", "scr-4"]
     assert body["pagination"] == {"limit": 2, "offset": 3, "total": 5}
+    input_data = container.get_cinema_showtimes_use_case.execute.call_args[0][0]
+    assert input_data.limit == 2
+    assert input_data.offset == 3
 
 
 def test_get_cinema_showtimes_not_found(
@@ -211,6 +241,7 @@ def test_get_cinema_showtimes_with_default_dates(
         cinema_id="cin-1",
         cinema_name="Cinema One",
         screenings=[],
+        total=0,
     )
 
     response = client.get("/cinemas/cin-1/showtimes")
@@ -233,7 +264,7 @@ def test_get_cinema_showtimes_default_dates_are_utc_aware(
     ) -> SimpleNamespace:
         captured.append(input_data)
         return SimpleNamespace(
-            cinema_id="cin-1", cinema_name="Cinema One", screenings=[]
+            cinema_id="cin-1", cinema_name="Cinema One", screenings=[], total=0
         )
 
     container.get_cinema_showtimes_use_case.execute.side_effect = fake_execute
@@ -259,6 +290,7 @@ def test_get_cinema_showtimes_default_dates_are_cached_within_the_same_day(
         cinema_id="cin-1",
         cinema_name="Cinema One",
         screenings=[],
+        total=0,
     )
 
     first = client.get("/cinemas/cin-1/showtimes")
@@ -315,7 +347,8 @@ def test_list_cinemas_is_cached(client: TestClient, container: MagicMock) -> Non
                 city=None,
                 website=None,
             )
-        ]
+        ],
+        total=1,
     )
 
     first = client.get("/cinemas")
@@ -361,6 +394,7 @@ def test_get_cinema_showtimes_is_cached(
         cinema_id="cin-1",
         cinema_name="Cinema One",
         screenings=[],
+        total=0,
     )
     params = {"from": "2026-06-27", "to": "2026-06-28"}
 
@@ -376,7 +410,7 @@ def test_list_cinemas_cache_has_miss_header_on_first_request(
     client: TestClient, container: MagicMock
 ) -> None:
     """The first request for /cinemas has X-FastAPI-Cache: MISS header."""
-    container.cinema_controller.list.return_value = SimpleNamespace(cinemas=[])
+    container.cinema_controller.list.return_value = SimpleNamespace(cinemas=[], total=0)
 
     response = client.get("/cinemas")
 
@@ -388,7 +422,7 @@ def test_list_cinemas_cache_has_hit_header_on_repeat_request(
     client: TestClient, container: MagicMock
 ) -> None:
     """Repeat requests for /cinemas have X-FastAPI-Cache: HIT header."""
-    container.cinema_controller.list.return_value = SimpleNamespace(cinemas=[])
+    container.cinema_controller.list.return_value = SimpleNamespace(cinemas=[], total=0)
 
     client.get("/cinemas")
     response = client.get("/cinemas")
@@ -458,6 +492,7 @@ def test_get_cinema_showtimes_cache_has_miss_header_on_first_request(
         cinema_id="cin-1",
         cinema_name="Cinema One",
         screenings=[],
+        total=0,
     )
     params = {"from": "2026-06-27", "to": "2026-06-28"}
 
@@ -475,6 +510,7 @@ def test_get_cinema_showtimes_cache_has_hit_header_on_repeat_request(
         cinema_id="cin-1",
         cinema_name="Cinema One",
         screenings=[],
+        total=0,
     )
     params = {"from": "2026-06-27", "to": "2026-06-28"}
 
@@ -527,6 +563,7 @@ def test_different_date_ranges_have_separate_cache_entries(
         cinema_id="cin-1",
         cinema_name="Cinema One",
         screenings=[],
+        total=0,
     )
 
     params1 = {"from": "2026-06-27", "to": "2026-06-28"}
@@ -562,7 +599,7 @@ def test_list_cinemas_with_name_filter_creates_separate_cache_entry(
 ) -> None:
     """Query parameter differences create separate cache entries."""
 
-    def mock_list(name: str | None) -> SimpleNamespace:
+    def mock_list(name: str | None, limit: int, offset: int) -> SimpleNamespace:
         if name == "Cineplex":
             cinemas = [
                 SimpleNamespace(
@@ -583,7 +620,7 @@ def test_list_cinemas_with_name_filter_creates_separate_cache_entry(
                     website=None,
                 )
             ]
-        return SimpleNamespace(cinemas=cinemas)
+        return SimpleNamespace(cinemas=cinemas, total=len(cinemas))
 
     container.cinema_controller.list.side_effect = mock_list
 

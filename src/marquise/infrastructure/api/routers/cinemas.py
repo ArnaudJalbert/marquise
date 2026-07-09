@@ -85,12 +85,12 @@ async def list_cinemas(
     container: Container = Depends(get_container),
 ) -> CinemaListResponse:
     """List cinemas, optionally filtered by name."""
-    output = await container.cinema_controller.list(name=name)
-    total = len(output.cinemas)
-    page = output.cinemas[offset : offset + limit]
+    output = await container.cinema_controller.list(
+        name=name, limit=limit, offset=offset
+    )
     return CinemaListResponse(
-        items=[CinemaResponse.model_validate(c) for c in page],
-        pagination=PaginationMeta(limit=limit, offset=offset, total=total),
+        items=[CinemaResponse.model_validate(c) for c in output.cinemas],
+        pagination=PaginationMeta(limit=limit, offset=offset, total=output.total),
     )
 
 
@@ -124,6 +124,8 @@ async def get_cinema_showtimes(
                 cinema_id=cinema_id,
                 start_date=from_,
                 end_date=to,
+                limit=limit,
+                offset=offset,
             )
         )
     except CinemaNotFoundError as exc:
@@ -131,11 +133,9 @@ async def get_cinema_showtimes(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    total = len(output.screenings)
-    page = output.screenings[offset : offset + limit]
     return CinemaShowtimesResponse(
         cinema_id=output.cinema_id,
         cinema_name=output.cinema_name,
-        screenings=[ScreeningResponse.model_validate(s) for s in page],
-        pagination=PaginationMeta(limit=limit, offset=offset, total=total),
+        screenings=[ScreeningResponse.model_validate(s) for s in output.screenings],
+        pagination=PaginationMeta(limit=limit, offset=offset, total=output.total),
     )

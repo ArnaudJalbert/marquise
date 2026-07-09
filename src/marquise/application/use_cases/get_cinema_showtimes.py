@@ -21,17 +21,24 @@ class GetCinemaShowtimesUseCase:
             cinema_id: The cinema to fetch showtimes for.
             start_date: Start of the range (inclusive).
             end_date: End of the range (inclusive).
+            limit: Max number of screenings to return. If None, all matching
+                screenings are returned unbounded.
+            offset: Number of matching screenings to skip before returning
+                results.
         """
 
         cinema_id: str
         start_date: datetime
         end_date: datetime
+        limit: int | None = None
+        offset: int = 0
 
         def __post_init__(self) -> None:
             """Validate input data.
 
             Raises:
-                ValueError: If cinema_id is empty or the range is inverted.
+                ValueError: If cinema_id is empty, the range is inverted,
+                    limit is provided but not positive, or offset is negative.
             """
             if not self.cinema_id.strip():
                 raise ValueError("cinema_id must not be empty")
@@ -43,6 +50,10 @@ class GetCinemaShowtimesUseCase:
             end = self.end_date.replace(tzinfo=self.end_date.tzinfo or UTC)
             if start > end:
                 raise ValueError("start_date must not be after end_date")
+            if self.limit is not None and self.limit < 1:
+                raise ValueError("limit must be positive when provided")
+            if self.offset < 0:
+                raise ValueError("offset must not be negative")
 
     @dataclass(frozen=True, slots=True)
     class ScreeningData:
@@ -73,12 +84,15 @@ class GetCinemaShowtimesUseCase:
         Attributes:
             cinema_id: The cinema's ID.
             cinema_name: The cinema's display name.
-            screenings: The matching screenings, ordered by showtime.
+            screenings: The matching page of screenings, ordered by showtime.
+            total: Total number of screenings matching the cinema and date
+                range, ignoring limit/offset.
         """
 
         cinema_id: str
         cinema_name: str
         screenings: tuple[GetCinemaShowtimesUseCase.ScreeningData, ...]
+        total: int
 
     def __init__(
         self,
@@ -98,10 +112,12 @@ class GetCinemaShowtimesUseCase:
         """List a cinema's screenings within the requested date range.
 
         Args:
-            request: The input data with cinema ID and date range.
+            request: The input data with cinema ID, date range, and
+                pagination parameters.
 
         Returns:
-            The output data with the cinema and its screenings.
+            The output data with the cinema, its page of screenings, and the
+            total count.
 
         Raises:
             CinemaNotFoundError: If no cinema with the given ID exists.
@@ -113,10 +129,12 @@ class GetCinemaShowtimesUseCase:
                 f"A cinema with ID '{request.cinema_id}' was not found"
             )
 
-        screenings = await self.screening_repository.find_by_cinema_and_date_range(
+        page = await self.screening_repository.find_by_cinema_and_date_range(
             cinema_id=cinema_id,
             start_date=request.start_date,
             end_date=request.end_date,
+            limit=request.limit,
+            offset=request.offset,
         )
 
         screening_data = tuple(
@@ -129,11 +147,12 @@ class GetCinemaShowtimesUseCase:
                 room=s.room,
                 language=s.language,
             )
-            for s in screenings
+            for s in page.items
         )
 
         return self.OutputData(
             cinema_id=str(cinema.id),
             cinema_name=cinema.name,
             screenings=screening_data,
+            total=page.total,
         )

@@ -5,6 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from datetime import datetime
 
+from marquise.application.repositories.page import Page
 from marquise.domain.entities import Screening
 from marquise.domain.value_objects import CinemaId, ScreeningId
 
@@ -63,15 +64,23 @@ class ScreeningRepository(ABC):
         cinema_id: CinemaId,
         start_date: datetime,
         end_date: datetime,
-    ) -> list[Screening]:
-        """Find all screenings for a cinema within a date range.
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> Page[Screening]:
+        """Find screenings for a cinema within a date range, paginated.
 
         Args:
             cinema_id: The cinema to filter by.
             start_date: Start of the date range (inclusive).
             end_date: End of the date range (inclusive).
+            limit: Max number of screenings to return. If None, all matching
+                screenings are returned unbounded.
+            offset: Number of matching screenings to skip before returning
+                results.
 
         Returns:
-            A list of matching screening entities.
+            A ``Page[Screening]`` with the matching screenings and the total
+            count matching the cinema and date range, ignoring
+            ``limit``/``offset``.
         """
         ...

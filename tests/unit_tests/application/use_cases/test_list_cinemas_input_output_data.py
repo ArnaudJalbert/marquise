@@ -120,19 +120,44 @@ def test_cinema_data_rejects_whitespace_website_when_provided() -> None:
 def test_output_data_creation() -> None:
     """Verify OutputData can be created with a list of CinemaData."""
     cinema = ListCinemasUseCase.CinemaData(id="id-1", name="Test Cinema")
-    data = ListCinemasUseCase.OutputData(cinemas=[cinema])
+    data = ListCinemasUseCase.OutputData(cinemas=[cinema], total=1)
     assert len(data.cinemas) == 1
     assert data.cinemas[0].id == "id-1"
     assert data.cinemas[0].name == "Test Cinema"
+    assert data.total == 1
 
 
 def test_output_data_empty_list() -> None:
     """Verify OutputData accepts an empty list."""
-    data = ListCinemasUseCase.OutputData(cinemas=[])
+    data = ListCinemasUseCase.OutputData(cinemas=[], total=0)
     assert len(data.cinemas) == 0
 
 
 def test_output_data_rejects_none_cinemas() -> None:
     """Verify OutputData rejects None for cinemas."""
     with pytest.raises(ValueError, match="cinemas must not be None"):
-        ListCinemasUseCase.OutputData(cinemas=None)  # type: ignore
+        ListCinemasUseCase.OutputData(cinemas=None, total=0)  # type: ignore
+
+
+def test_output_data_rejects_negative_total() -> None:
+    """Verify OutputData rejects a negative total."""
+    with pytest.raises(ValueError, match="total must not be negative"):
+        ListCinemasUseCase.OutputData(cinemas=[], total=-1)
+
+
+def test_input_data_rejects_negative_offset() -> None:
+    """Verify InputData rejects a negative offset."""
+    with pytest.raises(ValueError, match="offset must not be negative"):
+        ListCinemasUseCase.InputData(offset=-1)
+
+
+def test_input_data_rejects_non_positive_limit() -> None:
+    """Verify InputData rejects a limit less than 1 when provided."""
+    with pytest.raises(ValueError, match="limit must be positive when provided"):
+        ListCinemasUseCase.InputData(limit=0)
+
+
+def test_input_data_allows_none_limit() -> None:
+    """Verify InputData allows limit=None (unbounded)."""
+    data = ListCinemasUseCase.InputData(limit=None)
+    assert data.limit is None
