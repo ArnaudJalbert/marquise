@@ -5,6 +5,14 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict
 
 
+class PaginationMeta(BaseModel):
+    """Pagination metadata for a paginated list response."""
+
+    limit: int
+    offset: int
+    total: int
+
+
 class CinemaResponse(BaseModel):
     """A cinema in an API response."""
 
@@ -15,6 +23,13 @@ class CinemaResponse(BaseModel):
     address: str | None = None
     city: str | None = None
     website: str | None = None
+
+
+class CinemaListResponse(BaseModel):
+    """A page of cinemas."""
+
+    items: list[CinemaResponse]
+    pagination: PaginationMeta
 
 
 class MovieResponse(BaseModel):
@@ -59,3 +74,4 @@ class CinemaShowtimesResponse(BaseModel):
     cinema_id: str
     cinema_name: str
     screenings: list[ScreeningResponse]
+    pagination: PaginationMeta

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.12.0 (2026-07-09)
+
+### New Features
+
+- **Pagination for `GET /cinemas` and `GET /cinemas/{id}/showtimes`**: both endpoints now accept `limit` (default 20, max 100) and `offset` (default 0) query parameters and return a `pagination` object (`limit`, `offset`, `total`) alongside the page of results. `GET /cinemas` now returns `{"items": [...], "pagination": {...}}` instead of a bare array, and `GET /cinemas/{id}/showtimes` gained the same `pagination` field next to its existing `screenings` array. Bounds response size for large result sets. Closes #49.
+
 ## 0.11.0 (2026-07-09)
 
 ### New Features
