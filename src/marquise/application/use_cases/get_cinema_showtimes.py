@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 
 from marquise.application.exceptions import CinemaNotFoundError
 from marquise.application.repositories import CinemaRepository, ScreeningRepository
@@ -35,7 +35,13 @@ class GetCinemaShowtimesUseCase:
             """
             if not self.cinema_id.strip():
                 raise ValueError("cinema_id must not be empty")
-            if self.start_date > self.end_date:
+            # Comparing an aware and a naive datetime raises TypeError, not
+            # ValueError, so normalize local copies for the comparison only
+            # (naive values are assumed UTC, matching the rest of the
+            # persistence layer) rather than letting mixed inputs crash.
+            start = self.start_date.replace(tzinfo=self.start_date.tzinfo or UTC)
+            end = self.end_date.replace(tzinfo=self.end_date.tzinfo or UTC)
+            if start > end:
                 raise ValueError("start_date must not be after end_date")
 
     @dataclass(frozen=True, slots=True)

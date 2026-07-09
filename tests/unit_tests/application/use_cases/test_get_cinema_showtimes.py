@@ -81,3 +81,27 @@ def test_input_rejects_inverted_range() -> None:
             start_date=datetime(2026, 6, 28, tzinfo=UTC),
             end_date=datetime(2026, 6, 27, tzinfo=UTC),
         )
+
+
+def test_input_rejects_inverted_range_with_mixed_tz_awareness() -> None:
+    """An inverted range raises ValueError even when only one side is tz-aware.
+
+    Comparing an aware and a naive datetime directly raises TypeError, not
+    ValueError, which the API layer doesn't catch, turning what should be a
+    422 into an unhandled 500.
+    """
+    with pytest.raises(ValueError, match="start_date must not be after end_date"):
+        GetCinemaShowtimesUseCase.InputData(
+            cinema_id="cin-1",
+            start_date=datetime(2026, 7, 1, tzinfo=UTC),
+            end_date=datetime(2026, 6, 30),
+        )
+
+
+def test_input_accepts_valid_range_with_mixed_tz_awareness() -> None:
+    """A valid (non-inverted) range does not raise when tz-awareness is mixed."""
+    GetCinemaShowtimesUseCase.InputData(
+        cinema_id="cin-1",
+        start_date=datetime(2026, 6, 30, tzinfo=UTC),
+        end_date=datetime(2026, 7, 1),
+    )

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -19,7 +18,11 @@ from marquise.infrastructure.di.container import Container
 #: absorbing the vast majority of repeat traffic between refreshes.
 DEFAULT_CACHE_TTL_SECONDS = 3600
 
-_CACHE_PREFIX = "marquise-api-cache"
+#: Namespace prefix for cached responses. Public so tests can clear
+#: exactly this app's cache entries between repeated create_app() calls
+#: (see tests/unit_tests/infrastructure/api/test_api.py) without reaching
+#: into fastapi-cache2's internals.
+CACHE_PREFIX = "marquise-api-cache"
 
 
 def create_app(container: Container | None = None) -> FastAPI:
@@ -38,26 +41,8 @@ def create_app(container: Container | None = None) -> FastAPI:
         os.environ.get("MARQUISE_API_CACHE_TTL_SECONDS", DEFAULT_CACHE_TTL_SECONDS)
     )
 
-    # InMemoryBackend stores its data on a class attribute shared by every
-    # instance, and FastAPICache.init() is a no-op once already initialized,
-    # so repeated create_app() calls in one process (e.g. one per test)
-    # would otherwise inherit a previous call's cached responses. Clear
-    # through the backend's own public clear() (via FastAPICache.clear())
-    # rather than reaching into its internals. This can only run when no
-    # event loop is already active (e.g. plain create_app() calls in
-    # tests) — uvicorn's factory=True calls create_app() from inside its
-    # own running loop, where asyncio.run() would raise; in that case
-    # this is the only create_app() call in the process, so there is
-    # nothing yet cached to clear.
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        try:
-            asyncio.run(FastAPICache.clear())
-        except AssertionError:
-            pass  # not yet initialized in this process — nothing to clear
     FastAPICache.reset()
-    FastAPICache.init(InMemoryBackend(), prefix=_CACHE_PREFIX, expire=cache_ttl_seconds)
+    FastAPICache.init(InMemoryBackend(), prefix=CACHE_PREFIX, expire=cache_ttl_seconds)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
