@@ -18,6 +18,7 @@ _CINEMA_LOCATION_MAPPINGS: dict[str, int] = {
     "Cin\u00e9ma Starcit\u00e9 Montr\u00e9al": 9401,
     "Cin\u00e9ma Cineplex Odeon Quartier Latin": 9172,
     "Cin\u00e9ma Banque Scotia Montr\u00e9al": 9406,
+    "Scotiabank Cinema Montreal": 9406,
     "Cin\u00e9ma Cineplex Forum et VIP": 9109,
     "Cin\u00e9ma Famous Players Carrefour Angrignon": 9195,
     "Cin\u00e9ma Cineplex Laval": 9408,
@@ -77,13 +78,29 @@ class CineplexAdapter:
         # (e.g. standard + IMAX), producing duplicate (movie_title, showtime)
         # pairs that would race on the DB unique constraint when upserted
         # concurrently. Keep the first occurrence of each pair.
-        seen: set[tuple[str, str]] = set()
+        #
+        # Cineplex also occasionally lists the same underlying session
+        # (identical external_id / vista session ID) under two different
+        # movie titles, which the (movie_title, showtime) key above would
+        # not catch and which would instead violate the DB's unique
+        # constraint on external_id. Dedupe on external_id first whenever
+        # it looks like a real session ID (source falls back to 0 when
+        # missing).
+        seen_external_ids: set[str] = set()
+        seen_pairs: set[tuple[str, str]] = set()
         deduped: list[dict[str, Any]] = []
         for row in rows:
-            key = (row["movie_title"], row["showtime"])
-            if key not in seen:
-                seen.add(key)
-                deduped.append(row)
+            external_id = row.get("external_id")
+            if external_id and external_id != "0":
+                if external_id in seen_external_ids:
+                    continue
+                seen_external_ids.add(external_id)
+            else:
+                pair = (row["movie_title"], row["showtime"])
+                if pair in seen_pairs:
+                    continue
+                seen_pairs.add(pair)
+            deduped.append(row)
         return deduped
 
     async def fetch_movie_detail(

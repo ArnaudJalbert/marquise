@@ -18,6 +18,18 @@
 ### New Features
 
 - **Read-only public REST API (FastAPI)**: Added a thin FastAPI layer (`infrastructure/api/`) exposing read access ahead of admin CRUD (#20): `GET /cinemas` (optional `name` filter), `GET /cinemas/{id}/showtimes?from=&to=`, `GET /movies/{id}`, plus a `GET /health` probe. Handlers do no data access themselves — they delegate to application use cases resolved from the DI container. Two new read-only use cases back the new endpoints: `GetMovieUseCase` and `GetCinemaShowtimesUseCase` (both additive; `ListCinemasUseCase` is reused via its public, no-auth path). The app is built by a `create_app()` factory whose lifespan opens/closes the database pool; tests inject a mocked container so they touch no database. All endpoints are public; admin mutations remain CLI-only. Added `fastapi` as a runtime dependency and `httpx` as a dev dependency (TestClient). Closes #20.
+## 0.8.2 (2026-07-08)
+
+### Bug Fixes
+
+- **Deduplicate movies by normalized title, not exact string match**: `MovieRepository.find_by_title` previously matched titles exactly, so the same film scraped with a different case (`"The Batman"` vs `"the batman"`) or stray whitespace (`"Beau Is Afraid "`) created a duplicate `Movie` row and eventually violated the `movies.title` unique constraint. `SupabaseMovieGateway.find_by_title` now matches case-insensitively (`WHERE LOWER(title) = LOWER($1)`), and `ImportScreeningsUseCase._resolve_or_create_movies` normalizes whitespace on scraped titles before using them as lookup/dict keys. Movies already saved keep their original title for display — no data migration needed. Closes #23.
+
+## 0.8.1 (2026-07-08)
+
+### Bug Fixes
+
+- **Fix daily `Scheduled import` workflow failures**: the nightly `marquise import all` run had been failing every day since June 30 for two reasons. First, `CineplexAdapter` mapped cinema display names to Cineplex theatre IDs by exact string match, and the DB's cinema row was named `"Scotiabank Cinema Montreal"` while the mapping only had the French `"Cinéma Banque Scotia Montréal"`, so every run raised `ValueError: No Cineplex location ID mapping for cinema 'Scotiabank Cinema Montreal'`. Added the English name as an alias for the same theatre ID (`9406`). Second, Cineplex occasionally lists the same underlying session (identical `external_id`/Vista session ID) under two different movie titles; the existing `(movie_title, showtime)` dedup key didn't catch this, so the second row hit the DB's unique constraint on `external_id` with `UniqueViolationError: duplicate key value violates unique constraint "screenings_external_id_key"`. `CineplexAdapter.fetch_showtimes` now dedupes on `external_id` first whenever it looks like a real session ID, falling back to the `(movie_title, showtime)` key otherwise.
+
 ## 0.8.0 (2026-06-27)
 
 ### New Features

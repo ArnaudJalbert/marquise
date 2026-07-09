@@ -221,16 +221,19 @@ class ImportScreeningsUseCase:
     ) -> dict[str, Movie]:
         """Look up movies by title in parallel, creating and enriching missing ones.
 
-        Enriches movies with metadata from the source when available.
+        Enriches movies with metadata from the source when available. Titles
+        are normalized (whitespace-collapsed) before being used as lookup or
+        dict keys so that scraper noise like a trailing space doesn't create
+        a duplicate movie; the repository additionally matches case-insensitively.
 
         Args:
             rows: The showtime rows from the source.
             source_name: The name of the source (used for enrichment queries).
 
         Returns:
-            A mapping of movie title to Movie entity.
+            A mapping of normalized movie title to Movie entity.
         """
-        titles = [row.movie_title for row in rows]
+        titles = [_normalize_title(row.movie_title) for row in rows]
         found_movies = await asyncio.gather(
             *[self.movie_repository.find_by_title(t) for t in titles]
         )
@@ -246,8 +249,9 @@ class ImportScreeningsUseCase:
         # Map each unique title to its identifier for enrichment
         title_to_identifier: dict[str, str | None] = {}
         for row in rows:
-            if row.movie_title not in title_to_identifier:
-                title_to_identifier[row.movie_title] = row.identifier
+            normalized_title = _normalize_title(row.movie_title)
+            if normalized_title not in title_to_identifier:
+                title_to_identifier[normalized_title] = row.identifier
 
         # -- New movies --
         new_movies_by_title: dict[str, Movie] = {}
@@ -292,6 +296,10 @@ class ImportScreeningsUseCase:
                     )
                     enriched_existing.add(title)
 
+        movies_to_save_keys: list[str] = [
+            *new_movies_by_title.keys(),
+            *enriched_existing,
+        ]
         movies_to_save: list[Movie] = [
             *new_movies_by_title.values(),
             *[movie_lookup[t] for t in enriched_existing],
@@ -302,8 +310,12 @@ class ImportScreeningsUseCase:
             saved_movies = await asyncio.gather(
                 *[self.movie_repository.save(m) for m in movies_to_save]
             )
-            for movie in saved_movies:
-                movie_lookup[movie.title] = movie
+            # Re-key by the lookup key used above (not the saved entity's own
+            # title) since find_by_title matches case-insensitively: the
+            # returned title may differ in case from the key rows in this
+            # batch are indexed under, and re-keying by it would orphan them.
+            for key, movie in zip(movies_to_save_keys, saved_movies):
+                movie_lookup[key] = movie
 
         return movie_lookup
 
@@ -317,13 +329,13 @@ class ImportScreeningsUseCase:
 
         Args:
             row: The showtime row to persist.
-            movie_lookup: Mapping of movie title to Movie entity.
+            movie_lookup: Mapping of normalized movie title to Movie entity.
             cinema: The cinema hosting the screening.
 
         Returns:
             A summary of the imported screening.
         """
-        movie = movie_lookup[row.movie_title]
+        movie = movie_lookup[_normalize_title(row.movie_title)]
         screening = Screening(
             id=ScreeningId(value=uuid4().hex),
             movie=movie,
@@ -342,6 +354,18 @@ class ImportScreeningsUseCase:
             showtime=row.showtime.strftime("%Y-%m-%d %H:%M"),
             imported=was_inserted,
         )
+
+
+def _normalize_title(title: str) -> str:
+    """Strip and collapse internal whitespace in a scraped movie title.
+
+    Different scrapers (or the same scraper on different days) can emit the
+    same title with a stray leading/trailing space or doubled internal
+    spaces; normalizing keeps those from being treated as distinct movies.
+    Case is left untouched — case-insensitive matching happens at the
+    repository layer.
+    """
+    return " ".join(title.strip().split())
 
 
 # Optional Movie fields that can be populated from enrichment data.
