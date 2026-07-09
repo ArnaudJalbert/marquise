@@ -107,10 +107,23 @@ def test_get_cinema_showtimes_not_found(
     assert response.status_code == 404
 
 
-def test_get_cinema_showtimes_requires_dates(client: TestClient) -> None:
-    """Missing from/to query params yield a 422 validation error."""
+def test_get_cinema_showtimes_with_default_dates(
+    client: TestClient, container: MagicMock
+) -> None:
+    """Omitting from/to query params uses defaults (today + 7 days)."""
+    container.get_cinema_showtimes_use_case.execute.return_value = SimpleNamespace(
+        cinema_id="cin-1",
+        cinema_name="Cinema One",
+        screenings=[],
+    )
+
     response = client.get("/cinemas/cin-1/showtimes")
-    assert response.status_code == 422
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["cinema_id"] == "cin-1"
+    assert body["cinema_name"] == "Cinema One"
+    container.get_cinema_showtimes_use_case.execute.assert_awaited_once()
 
 
 def test_get_movie(client: TestClient, container: MagicMock) -> None:

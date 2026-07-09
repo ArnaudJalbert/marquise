@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi_cache.decorator import cache
@@ -43,11 +43,23 @@ async def list_cinemas(
 @cache()
 async def get_cinema_showtimes(
     cinema_id: str,
-    from_: datetime = Query(alias="from", description="Start of range (inclusive)."),
-    to: datetime = Query(description="End of range (inclusive)."),
+    from_: datetime | None = Query(
+        default=None,
+        alias="from",
+        description="Start of range (inclusive). Defaults to today.",
+    ),
+    to: datetime | None = Query(
+        default=None,
+        description="End of range (inclusive). Defaults to one week from start.",
+    ),
     container: Container = Depends(get_container),
 ) -> CinemaShowtimesResponse:
     """List a cinema's screenings within a date range."""
+    if from_ is None:
+        from_ = datetime.now()
+    if to is None:
+        to = from_ + timedelta(days=7)
+
     use_case = container.get_cinema_showtimes_use_case
     try:
         output = await use_case.execute(
