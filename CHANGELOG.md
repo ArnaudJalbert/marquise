@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.13.0 (2026-07-09)
+
+### Improvements
+
+- **Cinema list/showtimes pagination pushed down to SQL**: `GET /cinemas` and `GET /cinemas/{id}/showtimes` previously fetched the full matching result set and sliced it in Python. `SupabaseCinemaGateway.find_all` and `SupabaseScreeningGateway.find_by_cinema_and_date_range` now apply `LIMIT`/`OFFSET` directly in SQL, with a `COUNT(*) OVER()` window function riding along on the same query to report an exact `total` in one round trip (falling back to a cheap standalone `COUNT(*)` only when the requested page is empty, e.g. an offset past the end of the result set). Bounds actual query cost and entity-mapping work instead of just the response payload. The admin/CLI cinema listing path (`CinemaController.list_cinemas`) is unaffected and stays fully unbounded by default.
+
 ## 0.12.0 (2026-07-09)
 
 ### New Features

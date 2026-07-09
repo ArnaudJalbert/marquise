@@ -197,7 +197,7 @@ async def test_list_returns_cinemas(
             city="Montreal",
         ),
     ]
-    expected = ListCinemasUseCase.OutputData(cinemas=cinema_data)
+    expected = ListCinemasUseCase.OutputData(cinemas=cinema_data, total=2)
     mock_list_use_case.execute = AsyncMock(return_value=expected)
 
     result = await controller.list()
@@ -214,7 +214,7 @@ async def test_list_passes_name_filter(
 ) -> None:
     """Verify list passes the name filter to the use case."""
     mock_list_use_case.execute = AsyncMock(
-        return_value=ListCinemasUseCase.OutputData(cinemas=[])
+        return_value=ListCinemasUseCase.OutputData(cinemas=[], total=0)
     )
 
     await controller.list(name="Parc")
@@ -226,6 +226,24 @@ async def test_list_passes_name_filter(
 
 
 @pytest.mark.asyncio
+async def test_list_passes_limit_and_offset(
+    controller: CinemaController,
+    mock_list_use_case: ListCinemasUseCase,
+) -> None:
+    """Verify list passes limit/offset through to the use case."""
+    mock_list_use_case.execute = AsyncMock(
+        return_value=ListCinemasUseCase.OutputData(cinemas=[], total=0)
+    )
+
+    await controller.list(limit=5, offset=10)
+
+    mock_list_use_case.execute.assert_awaited_once()
+    input_data = mock_list_use_case.execute.call_args[0][0]
+    assert input_data.limit == 5
+    assert input_data.offset == 10
+
+
+@pytest.mark.asyncio
 async def test_list_does_not_check_auth(
     controller: CinemaController,
     mock_auth_controller: AuthController,
@@ -233,7 +251,7 @@ async def test_list_does_not_check_auth(
 ) -> None:
     """Verify list does not call validate_admin (public operation)."""
     mock_list_use_case.execute = AsyncMock(
-        return_value=ListCinemasUseCase.OutputData(cinemas=[])
+        return_value=ListCinemasUseCase.OutputData(cinemas=[], total=0)
     )
 
     await controller.list()
@@ -268,7 +286,7 @@ async def test_list_cinemas_validates_admin_then_delegates_to_use_case(
             name="Cinema du Parc",
         ),
     ]
-    expected = ListCinemasUseCase.OutputData(cinemas=cinema_data)
+    expected = ListCinemasUseCase.OutputData(cinemas=cinema_data, total=1)
     mock_list_use_case.execute = AsyncMock(return_value=expected)
 
     result = await controller.list_cinemas(name_filter="Parc")
@@ -278,6 +296,8 @@ async def test_list_cinemas_validates_admin_then_delegates_to_use_case(
     mock_list_use_case.execute.assert_awaited_once()
     input_data = mock_list_use_case.execute.call_args[0][0]
     assert input_data.name == "Parc"
+    assert input_data.limit is None
+    assert input_data.offset == 0
 
 
 @pytest.mark.asyncio

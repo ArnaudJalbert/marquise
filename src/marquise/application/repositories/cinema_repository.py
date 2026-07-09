@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+from marquise.application.repositories.page import Page
 from marquise.domain.entities import Cinema
 from marquise.domain.value_objects import CinemaId
 
@@ -66,15 +67,25 @@ class CinemaRepository(ABC):
         ...
 
     @abstractmethod
-    async def find_all(self, name_filter: str | None = None) -> list[Cinema]:
-        """Retrieve all cinemas, optionally filtered by name.
+    async def find_all(
+        self,
+        name_filter: str | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> Page[Cinema]:
+        """Retrieve cinemas, optionally filtered by name and paginated.
 
         Args:
             name_filter: An optional substring to match against cinema names
                 (case-insensitive). If None, all cinemas are returned.
+            limit: Max number of cinemas to return. If None, all matching
+                cinemas are returned unbounded.
+            offset: Number of matching cinemas to skip before returning
+                results.
 
         Returns:
-            A list of cinema entities matching the filter.
+            A ``Page[Cinema]`` with the matching cinemas and the total count
+            matching ``name_filter``, ignoring ``limit``/``offset``.
         """
         ...
 

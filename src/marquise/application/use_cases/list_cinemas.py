@@ -16,18 +16,30 @@ class ListCinemasUseCase:
 
         Attributes:
             name: Optional name filter (substring, case-insensitive).
+            limit: Max number of cinemas to return. If None, all matching
+                cinemas are returned unbounded.
+            offset: Number of matching cinemas to skip before returning
+                results.
         """
 
         name: str | None = None
+        limit: int | None = None
+        offset: int = 0
 
         def __post_init__(self) -> None:
             """Validate input data.
 
             Raises:
-                ValueError: If name is provided but empty or whitespace-only.
+                ValueError: If name is provided but empty or whitespace-only,
+                    if limit is provided but not positive, or if offset is
+                    negative.
             """
             if self.name is not None and not self.name.strip():
                 raise ValueError("name must not be empty when provided")
+            if self.limit is not None and self.limit < 1:
+                raise ValueError("limit must be positive when provided")
+            if self.offset < 0:
+                raise ValueError("offset must not be negative")
 
     @dataclass(frozen=True, slots=True)
     class CinemaData:
@@ -70,19 +82,24 @@ class ListCinemasUseCase:
         """Output data containing the list of cinemas.
 
         Attributes:
-            cinemas: The list of matching cinemas.
+            cinemas: The page of matching cinemas.
+            total: Total number of cinemas matching the filter, ignoring
+                limit/offset.
         """
 
         cinemas: list[ListCinemasUseCase.CinemaData]
+        total: int
 
         def __post_init__(self) -> None:
             """Validate output data.
 
             Raises:
-                ValueError: If cinemas is None or any item is not a CinemaData.
+                ValueError: If cinemas is None, or if total is negative.
             """
             if self.cinemas is None:
                 raise ValueError("cinemas must not be None")
+            if self.total < 0:
+                raise ValueError("total must not be negative")
 
     def __init__(self, cinema_repository: CinemaRepository) -> None:
         """Initialize the use case.
@@ -93,16 +110,20 @@ class ListCinemasUseCase:
         self.cinema_repository = cinema_repository
 
     async def execute(self, request: InputData) -> OutputData:
-        """List cinemas, optionally filtered by name.
+        """List cinemas, optionally filtered by name and paginated.
 
         Args:
-            request: The input data containing optional name filter.
+            request: The input data containing optional name filter and
+                pagination parameters.
 
         Returns:
-            The output data containing matching cinemas.
+            The output data containing the matching page of cinemas and the
+            total count.
         """
-        cinemas = await self.cinema_repository.find_all(
+        page = await self.cinema_repository.find_all(
             name_filter=request.name,
+            limit=request.limit,
+            offset=request.offset,
         )
 
         cinema_data = [
@@ -113,7 +134,7 @@ class ListCinemasUseCase:
                 city=c.city,
                 website=c.website,
             )
-            for c in cinemas
+            for c in page.items
         ]
 
-        return self.OutputData(cinemas=cinema_data)
+        return self.OutputData(cinemas=cinema_data, total=page.total)

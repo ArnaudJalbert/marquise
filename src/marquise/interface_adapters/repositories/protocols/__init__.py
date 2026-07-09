@@ -9,7 +9,10 @@ from marquise.interface_adapters.repositories.protocols.auth import (
     AuthService,
     AuthSession,
 )
-from marquise.interface_adapters.repositories.protocols.base import GatewayError
+from marquise.interface_adapters.repositories.protocols.base import (
+    GatewayError,
+    GatewayPage,
+)
 from marquise.interface_adapters.repositories.protocols.cinema import (
     CinemaGateway,
 )
@@ -33,6 +36,7 @@ __all__ = [
     "CinemaGateway",
     "CinemaSourceAssignmentGateway",
     "GatewayError",
+    "GatewayPage",
     "MovieGateway",
     "ScreeningGateway",
     "ShowtimeSource",
