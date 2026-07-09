@@ -13,12 +13,18 @@ from marquise.application.use_cases.get_cinema_showtimes import (
 )
 from marquise.infrastructure.api.dependencies import get_container
 from marquise.infrastructure.api.schemas import (
+    CinemaListResponse,
     CinemaResponse,
     CinemaShowtimesResponse,
+    PaginationMeta,
+    ScreeningResponse,
 )
 from marquise.infrastructure.di.container import Container
 
 router = APIRouter(tags=["cinemas"])
+
+DEFAULT_PAGE_LIMIT = 20
+MAX_PAGE_LIMIT = 100
 
 
 def _start_of_today_utc() -> datetime:
@@ -59,17 +65,33 @@ def resolve_showtimes_date_range(
     return resolved_from, resolved_to
 
 
-@router.get("/cinemas", response_model=list[CinemaResponse])
+@router.get("/cinemas", response_model=CinemaListResponse)
 @cache()
 async def list_cinemas(
     name: str | None = Query(
         default=None, description="Filter cinemas by name (case-insensitive)."
     ),
+    limit: int = Query(
+        default=DEFAULT_PAGE_LIMIT,
+        ge=1,
+        le=MAX_PAGE_LIMIT,
+        description=f"Max number of items to return (1-{MAX_PAGE_LIMIT}).",
+    ),
+    offset: int = Query(
+        default=0,
+        ge=0,
+        description="Number of items to skip before starting to return results.",
+    ),
     container: Container = Depends(get_container),
-) -> list[CinemaResponse]:
+) -> CinemaListResponse:
     """List cinemas, optionally filtered by name."""
     output = await container.cinema_controller.list(name=name)
-    return [CinemaResponse.model_validate(c) for c in output.cinemas]
+    total = len(output.cinemas)
+    page = output.cinemas[offset : offset + limit]
+    return CinemaListResponse(
+        items=[CinemaResponse.model_validate(c) for c in page],
+        pagination=PaginationMeta(limit=limit, offset=offset, total=total),
+    )
 
 
 @router.get(
@@ -80,6 +102,17 @@ async def list_cinemas(
 async def get_cinema_showtimes(
     cinema_id: str,
     date_range: tuple[datetime, datetime] = Depends(resolve_showtimes_date_range),
+    limit: int = Query(
+        default=DEFAULT_PAGE_LIMIT,
+        ge=1,
+        le=MAX_PAGE_LIMIT,
+        description=f"Max number of items to return (1-{MAX_PAGE_LIMIT}).",
+    ),
+    offset: int = Query(
+        default=0,
+        ge=0,
+        description="Number of items to skip before starting to return results.",
+    ),
     container: Container = Depends(get_container),
 ) -> CinemaShowtimesResponse:
     """List a cinema's screenings within a date range."""
@@ -97,4 +130,12 @@ async def get_cinema_showtimes(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    return CinemaShowtimesResponse.model_validate(output)
+
+    total = len(output.screenings)
+    page = output.screenings[offset : offset + limit]
+    return CinemaShowtimesResponse(
+        cinema_id=output.cinema_id,
+        cinema_name=output.cinema_name,
+        screenings=[ScreeningResponse.model_validate(s) for s in page],
+        pagination=PaginationMeta(limit=limit, offset=offset, total=total),
+    )

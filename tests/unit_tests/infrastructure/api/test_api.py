@@ -75,9 +75,10 @@ def test_list_cinemas(client: TestClient, container: MagicMock) -> None:
 
     assert response.status_code == 200
     body = response.json()
-    assert len(body) == 1
-    assert body[0]["id"] == "cin-1"
-    assert body[0]["name"] == "Cinema One"
+    assert len(body["items"]) == 1
+    assert body["items"][0]["id"] == "cin-1"
+    assert body["items"][0]["name"] == "Cinema One"
+    assert body["pagination"] == {"limit": 20, "offset": 0, "total": 1}
 
 
 def test_list_cinemas_delegates_to_cinema_controller(
@@ -119,6 +120,71 @@ def test_get_cinema_showtimes(client: TestClient, container: MagicMock) -> None:
     body = response.json()
     assert body["cinema_name"] == "Cinema One"
     assert body["screenings"][0]["movie_title"] == "The Odyssey"
+    assert body["pagination"] == {"limit": 20, "offset": 0, "total": 1}
+
+
+def test_list_cinemas_pagination(client: TestClient, container: MagicMock) -> None:
+    """limit/offset slice the cinema list and report accurate pagination metadata."""
+    container.cinema_controller.list.return_value = SimpleNamespace(
+        cinemas=[
+            SimpleNamespace(
+                id=f"cin-{i}",
+                name=f"Cinema {i}",
+                address=None,
+                city=None,
+                website=None,
+            )
+            for i in range(5)
+        ]
+    )
+
+    response = client.get("/cinemas", params={"limit": 2, "offset": 1})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [c["id"] for c in body["items"]] == ["cin-1", "cin-2"]
+    assert body["pagination"] == {"limit": 2, "offset": 1, "total": 5}
+
+
+def test_list_cinemas_limit_out_of_range_is_rejected(
+    client: TestClient, container: MagicMock
+) -> None:
+    """A limit above the max page size is rejected with a 422."""
+    response = client.get("/cinemas", params={"limit": 101})
+
+    assert response.status_code == 422
+
+
+def test_get_cinema_showtimes_pagination(
+    client: TestClient, container: MagicMock
+) -> None:
+    """limit/offset slice the screenings and report accurate pagination metadata."""
+    container.get_cinema_showtimes_use_case.execute.return_value = SimpleNamespace(
+        cinema_id="cin-1",
+        cinema_name="Cinema One",
+        screenings=[
+            SimpleNamespace(
+                id=f"scr-{i}",
+                movie_id="mov-1",
+                movie_title="The Odyssey",
+                showtime="2026-06-27T19:30:00+00:00",
+                ticket_url=None,
+                room=None,
+                language=None,
+            )
+            for i in range(5)
+        ],
+    )
+
+    response = client.get(
+        "/cinemas/cin-1/showtimes",
+        params={"from": "2026-06-27", "to": "2026-06-28", "limit": 2, "offset": 3},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [s["id"] for s in body["screenings"]] == ["scr-3", "scr-4"]
+    assert body["pagination"] == {"limit": 2, "offset": 3, "total": 5}
 
 
 def test_get_cinema_showtimes_not_found(
@@ -525,8 +591,8 @@ def test_list_cinemas_with_name_filter_creates_separate_cache_entry(
     response2 = client.get("/cinemas", params={"name": "Landmark"})
     response1_again = client.get("/cinemas", params={"name": "Cineplex"})
 
-    assert response1.json()[0]["name"] == "Cineplex Downtown"
-    assert response2.json()[0]["name"] == "Landmark Cinemas"
+    assert response1.json()["items"][0]["name"] == "Cineplex Downtown"
+    assert response2.json()["items"][0]["name"] == "Landmark Cinemas"
     assert response1_again.json() == response1.json()
     assert response1_again.headers.get("X-FastAPI-Cache") == "HIT"
     assert container.cinema_controller.list.call_count == 2
