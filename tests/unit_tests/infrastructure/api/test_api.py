@@ -6,23 +6,39 @@ so these tests touch no database.
 
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
+from fastapi_cache.backends.inmemory import InMemoryBackend
 
 from marquise.application.exceptions import CinemaNotFoundError, MovieNotFoundError
+from marquise.application.use_cases.get_cinema_showtimes import (
+    GetCinemaShowtimesUseCase,
+)
 from marquise.application.use_cases.get_movie import GetMovieUseCase
-from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
-from marquise.infrastructure.api.app import create_app
+from marquise.infrastructure.api.app import CACHE_PREFIX, create_app
+
+
+@pytest.fixture(autouse=True)
+def _clear_response_cache() -> None:
+    """Clear cached responses after each test.
+
+    InMemoryBackend stores its data on a class attribute shared by every
+    instance, so repeated create_app() calls across tests would otherwise
+    leak cached responses between them.
+    """
+    yield
+    asyncio.run(InMemoryBackend().clear(namespace=CACHE_PREFIX))
 
 
 @pytest.fixture
 def container() -> MagicMock:
     """Provide a fake DI container with stubbable read use cases."""
     fake = MagicMock()
-    fake.list_cinemas_use_case.execute = AsyncMock()
+    fake.cinema_controller.list = AsyncMock()
     fake.get_cinema_showtimes_use_case.execute = AsyncMock()
     fake.get_movie_use_case.execute = AsyncMock()
     return fake
@@ -43,7 +59,7 @@ def test_health(client: TestClient) -> None:
 
 def test_list_cinemas(client: TestClient, container: MagicMock) -> None:
     """GET /cinemas returns the use case's cinemas."""
-    container.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+    container.cinema_controller.list.return_value = SimpleNamespace(
         cinemas=[
             SimpleNamespace(
                 id="cin-1",
@@ -62,6 +78,18 @@ def test_list_cinemas(client: TestClient, container: MagicMock) -> None:
     assert len(body) == 1
     assert body[0]["id"] == "cin-1"
     assert body[0]["name"] == "Cinema One"
+
+
+def test_list_cinemas_delegates_to_cinema_controller(
+    client: TestClient, container: MagicMock
+) -> None:
+    """GET /cinemas calls cinema_controller.list(), not the use case directly."""
+    container.cinema_controller.list.return_value = SimpleNamespace(cinemas=[])
+
+    response = client.get("/cinemas", params={"name": "Cineplex"})
+
+    assert response.status_code == 200
+    container.cinema_controller.list.assert_awaited_once_with(name="Cineplex")
 
 
 def test_get_cinema_showtimes(client: TestClient, container: MagicMock) -> None:
@@ -128,6 +156,53 @@ def test_get_cinema_showtimes_with_default_dates(
     container.get_cinema_showtimes_use_case.execute.assert_awaited_once()
 
 
+def test_get_cinema_showtimes_default_dates_are_utc_aware(
+    client: TestClient, container: MagicMock
+) -> None:
+    """Omitting from/to resolves a timezone-aware UTC range, not naive local time."""
+    captured: list[GetCinemaShowtimesUseCase.InputData] = []
+
+    async def fake_execute(
+        input_data: GetCinemaShowtimesUseCase.InputData,
+    ) -> SimpleNamespace:
+        captured.append(input_data)
+        return SimpleNamespace(
+            cinema_id="cin-1", cinema_name="Cinema One", screenings=[]
+        )
+
+    container.get_cinema_showtimes_use_case.execute.side_effect = fake_execute
+
+    response = client.get("/cinemas/cin-1/showtimes")
+
+    assert response.status_code == 200
+    assert captured[0].start_date.tzinfo is not None
+    assert captured[0].end_date.tzinfo is not None
+
+
+def test_get_cinema_showtimes_default_dates_are_cached_within_the_same_day(
+    client: TestClient, container: MagicMock
+) -> None:
+    """Repeat requests omitting from/to on the same day share one cache entry.
+
+    The default date range is resolved via a dependency (before the cached
+    endpoint runs), so the cache key reflects the resolved dates rather than
+    the raw None query params — otherwise every omitted-date request would
+    collide on a single entry frozen at whichever moment first populated it.
+    """
+    container.get_cinema_showtimes_use_case.execute.return_value = SimpleNamespace(
+        cinema_id="cin-1",
+        cinema_name="Cinema One",
+        screenings=[],
+    )
+
+    first = client.get("/cinemas/cin-1/showtimes")
+    second = client.get("/cinemas/cin-1/showtimes")
+
+    assert first.headers.get("X-FastAPI-Cache") == "MISS"
+    assert second.headers.get("X-FastAPI-Cache") == "HIT"
+    container.get_cinema_showtimes_use_case.execute.assert_awaited_once()
+
+
 def test_get_movie(client: TestClient, container: MagicMock) -> None:
     """GET /movies/{id} returns the movie."""
     container.get_movie_use_case.execute.return_value = SimpleNamespace(
@@ -165,7 +240,7 @@ def test_get_movie_not_found(client: TestClient, container: MagicMock) -> None:
 
 def test_list_cinemas_is_cached(client: TestClient, container: MagicMock) -> None:
     """A second identical request reuses the cached result instead of re-executing."""
-    container.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+    container.cinema_controller.list.return_value = SimpleNamespace(
         cinemas=[
             SimpleNamespace(
                 id="cin-1",
@@ -183,7 +258,7 @@ def test_list_cinemas_is_cached(client: TestClient, container: MagicMock) -> Non
     assert first.status_code == 200
     assert second.status_code == 200
     assert first.json() == second.json()
-    container.list_cinemas_use_case.execute.assert_awaited_once()
+    container.cinema_controller.list.assert_awaited_once()
 
 
 def test_get_movie_is_cached(client: TestClient, container: MagicMock) -> None:
@@ -235,7 +310,7 @@ def test_list_cinemas_cache_has_miss_header_on_first_request(
     client: TestClient, container: MagicMock
 ) -> None:
     """The first request for /cinemas has X-FastAPI-Cache: MISS header."""
-    container.list_cinemas_use_case.execute.return_value = SimpleNamespace(cinemas=[])
+    container.cinema_controller.list.return_value = SimpleNamespace(cinemas=[])
 
     response = client.get("/cinemas")
 
@@ -247,7 +322,7 @@ def test_list_cinemas_cache_has_hit_header_on_repeat_request(
     client: TestClient, container: MagicMock
 ) -> None:
     """Repeat requests for /cinemas have X-FastAPI-Cache: HIT header."""
-    container.list_cinemas_use_case.execute.return_value = SimpleNamespace(cinemas=[])
+    container.cinema_controller.list.return_value = SimpleNamespace(cinemas=[])
 
     client.get("/cinemas")
     response = client.get("/cinemas")
@@ -421,8 +496,8 @@ def test_list_cinemas_with_name_filter_creates_separate_cache_entry(
 ) -> None:
     """Query parameter differences create separate cache entries."""
 
-    def mock_execute(input_data: ListCinemasUseCase.InputData) -> SimpleNamespace:
-        if input_data.name == "Cineplex":
+    def mock_list(name: str | None) -> SimpleNamespace:
+        if name == "Cineplex":
             cinemas = [
                 SimpleNamespace(
                     id="cin-1",
@@ -444,7 +519,7 @@ def test_list_cinemas_with_name_filter_creates_separate_cache_entry(
             ]
         return SimpleNamespace(cinemas=cinemas)
 
-    container.list_cinemas_use_case.execute.side_effect = mock_execute
+    container.cinema_controller.list.side_effect = mock_list
 
     response1 = client.get("/cinemas", params={"name": "Cineplex"})
     response2 = client.get("/cinemas", params={"name": "Landmark"})
@@ -454,4 +529,4 @@ def test_list_cinemas_with_name_filter_creates_separate_cache_entry(
     assert response2.json()[0]["name"] == "Landmark Cinemas"
     assert response1_again.json() == response1.json()
     assert response1_again.headers.get("X-FastAPI-Cache") == "HIT"
-    assert container.list_cinemas_use_case.execute.call_count == 2
+    assert container.cinema_controller.list.call_count == 2

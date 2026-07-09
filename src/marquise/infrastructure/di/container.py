@@ -341,6 +341,21 @@ class Container:
         )
 
     # ------------------------------------------------------------------
+    # Use cases — Read-only (public API)
+    # ------------------------------------------------------------------
+
+    @property
+    def _get_movie_use_case(self) -> GetMovieUseCase:
+        return GetMovieUseCase(movie_repository=self._movie_repository)
+
+    @property
+    def _get_cinema_showtimes_use_case(self) -> GetCinemaShowtimesUseCase:
+        return GetCinemaShowtimesUseCase(
+            cinema_repository=self._cinema_repository,
+            screening_repository=self._screening_repository,
+        )
+
+    # ------------------------------------------------------------------
     # Read-only use cases (public — used by the REST API)
     # ------------------------------------------------------------------
 
@@ -352,15 +367,12 @@ class Container:
     @property
     def get_movie_use_case(self) -> GetMovieUseCase:
         """Public get-movie use case (no authentication required)."""
-        return GetMovieUseCase(movie_repository=self._movie_repository)
+        return self._get_movie_use_case
 
     @property
     def get_cinema_showtimes_use_case(self) -> GetCinemaShowtimesUseCase:
         """Public get-cinema-showtimes use case (no authentication required)."""
-        return GetCinemaShowtimesUseCase(
-            cinema_repository=self._cinema_repository,
-            screening_repository=self._screening_repository,
-        )
+        return self._get_cinema_showtimes_use_case
 
     # ------------------------------------------------------------------
     # Controllers (public)

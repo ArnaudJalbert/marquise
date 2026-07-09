@@ -6,6 +6,13 @@
 
 - **In-memory response caching for the read-only API**: `GET /cinemas`, `GET /cinemas/{id}/showtimes`, and `GET /movies/{id}` now serve repeat requests from an in-memory cache instead of re-invoking their use case and hitting the database every time, via the [`fastapi-cache2`](https://pypi.org/project/fastapi-cache2/) library's `@cache()` decorator and `InMemoryBackend`. `create_app()` initializes `FastAPICache` with a 1-hour default TTL — long enough to absorb the bulk of traffic between requests, short enough that responses are never more than an hour behind the nightly `marquise import all` refresh. The TTL is configurable via the optional `MARQUISE_API_CACHE_TTL_SECONDS` env var. `GET /health` is intentionally left uncached since it's a liveness probe.
 
+### Bug Fixes
+
+- **`GET /cinemas/{id}/showtimes` default date range no longer freezes under caching**: the `from`/`to` defaults ("today" through "+7 days") are now resolved by a dependency *before* the cached endpoint runs, so the cache key reflects the actual resolved dates instead of the raw, always-`None` query params. Previously, every request that omitted both dates collided on one cache entry frozen at whichever moment first populated it, for up to the TTL.
+- **Default date range is now UTC and timezone-aware**: the default `from` used to be naive local server time, which the database layer silently treats as UTC — on a non-UTC host this shifted the "today" window by the server's UTC offset.
+- **Mixed aware/naive `from`/`to` no longer 500s**: comparing an inverted range with one aware and one naive datetime raised an uncaught `TypeError` instead of the intended `ValueError`/422.
+- **`GET /cinemas` now reuses the existing `CinemaController.list()`** instead of calling the use case directly, matching the CLI's call path as originally intended.
+
 ## 0.9.0 (2026-06-27)
 
 ### New Features
