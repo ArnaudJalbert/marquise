@@ -214,3 +214,231 @@ def test_get_cinema_showtimes_is_cached(
     assert first.status_code == 200
     assert second.json() == first.json()
     container.get_cinema_showtimes_use_case.execute.assert_awaited_once()
+
+
+def test_list_cinemas_cache_has_miss_header_on_first_request(
+    client: TestClient, container: MagicMock
+) -> None:
+    """The first request for /cinemas has X-FastAPI-Cache: MISS header."""
+    container.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+        cinemas=[]
+    )
+
+    response = client.get("/cinemas")
+
+    assert response.status_code == 200
+    assert response.headers.get("X-FastAPI-Cache") == "MISS"
+
+
+def test_list_cinemas_cache_has_hit_header_on_repeat_request(
+    client: TestClient, container: MagicMock
+) -> None:
+    """Repeat requests for /cinemas have X-FastAPI-Cache: HIT header."""
+    container.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+        cinemas=[]
+    )
+
+    client.get("/cinemas")
+    response = client.get("/cinemas")
+
+    assert response.status_code == 200
+    assert response.headers.get("X-FastAPI-Cache") == "HIT"
+
+
+def test_get_movie_cache_has_miss_header_on_first_request(
+    client: TestClient, container: MagicMock
+) -> None:
+    """The first request for /movies/{id} has X-FastAPI-Cache: MISS header."""
+    container.get_movie_use_case.execute.return_value = SimpleNamespace(
+        id="mov-1",
+        title="Test Movie",
+        release_year=2026,
+        directors=None,
+        cast=None,
+        duration_minutes=None,
+        description=None,
+        poster_url=None,
+        trailer_url=None,
+        genres=None,
+        original_title=None,
+        rating=None,
+        origin_countries=None,
+    )
+
+    response = client.get("/movies/mov-1")
+
+    assert response.status_code == 200
+    assert response.headers.get("X-FastAPI-Cache") == "MISS"
+
+
+def test_get_movie_cache_has_hit_header_on_repeat_request(
+    client: TestClient, container: MagicMock
+) -> None:
+    """Repeat requests for /movies/{id} have X-FastAPI-Cache: HIT header."""
+    container.get_movie_use_case.execute.return_value = SimpleNamespace(
+        id="mov-1",
+        title="Test Movie",
+        release_year=2026,
+        directors=None,
+        cast=None,
+        duration_minutes=None,
+        description=None,
+        poster_url=None,
+        trailer_url=None,
+        genres=None,
+        original_title=None,
+        rating=None,
+        origin_countries=None,
+    )
+
+    client.get("/movies/mov-1")
+    response = client.get("/movies/mov-1")
+
+    assert response.status_code == 200
+    assert response.headers.get("X-FastAPI-Cache") == "HIT"
+
+
+def test_get_cinema_showtimes_cache_has_miss_header_on_first_request(
+    client: TestClient, container: MagicMock
+) -> None:
+    """The first request for /cinemas/{id}/showtimes has X-FastAPI-Cache: MISS header."""
+    container.get_cinema_showtimes_use_case.execute.return_value = SimpleNamespace(
+        cinema_id="cin-1",
+        cinema_name="Cinema One",
+        screenings=[],
+    )
+    params = {"from": "2026-06-27", "to": "2026-06-28"}
+
+    response = client.get("/cinemas/cin-1/showtimes", params=params)
+
+    assert response.status_code == 200
+    assert response.headers.get("X-FastAPI-Cache") == "MISS"
+
+
+def test_get_cinema_showtimes_cache_has_hit_header_on_repeat_request(
+    client: TestClient, container: MagicMock
+) -> None:
+    """Repeat requests for /cinemas/{id}/showtimes have X-FastAPI-Cache: HIT header."""
+    container.get_cinema_showtimes_use_case.execute.return_value = SimpleNamespace(
+        cinema_id="cin-1",
+        cinema_name="Cinema One",
+        screenings=[],
+    )
+    params = {"from": "2026-06-27", "to": "2026-06-28"}
+
+    client.get("/cinemas/cin-1/showtimes", params=params)
+    response = client.get("/cinemas/cin-1/showtimes", params=params)
+
+    assert response.status_code == 200
+    assert response.headers.get("X-FastAPI-Cache") == "HIT"
+
+
+def test_different_movies_have_separate_cache_entries(
+    client: TestClient, container: MagicMock
+) -> None:
+    """Requests for different movie IDs have separate cache entries."""
+    def mock_execute(input_data):
+        return SimpleNamespace(
+            id=input_data.movie_id,
+            title=f"Movie {input_data.movie_id}",
+            release_year=2026,
+            directors=None,
+            cast=None,
+            duration_minutes=None,
+            description=None,
+            poster_url=None,
+            trailer_url=None,
+            genres=None,
+            original_title=None,
+            rating=None,
+            origin_countries=None,
+        )
+
+    container.get_movie_use_case.execute.side_effect = mock_execute
+
+    response1 = client.get("/movies/mov-1")
+    response2 = client.get("/movies/mov-2")
+    response1_again = client.get("/movies/mov-1")
+
+    assert response1.json()["id"] == "mov-1"
+    assert response2.json()["id"] == "mov-2"
+    assert response1_again.json() == response1.json()
+    assert container.get_movie_use_case.execute.call_count == 2
+
+
+def test_different_date_ranges_have_separate_cache_entries(
+    client: TestClient, container: MagicMock
+) -> None:
+    """Different date ranges for the same cinema create separate cache entries."""
+    container.get_cinema_showtimes_use_case.execute.return_value = SimpleNamespace(
+        cinema_id="cin-1",
+        cinema_name="Cinema One",
+        screenings=[],
+    )
+
+    params1 = {"from": "2026-06-27", "to": "2026-06-28"}
+    params2 = {"from": "2026-06-29", "to": "2026-06-30"}
+
+    response1 = client.get("/cinemas/cin-1/showtimes", params=params1)
+    response2 = client.get("/cinemas/cin-1/showtimes", params=params2)
+    response1_again = client.get("/cinemas/cin-1/showtimes", params=params1)
+
+    assert response1.status_code == 200
+    assert response2.status_code == 200
+    assert response1_again.status_code == 200
+    assert response1_again.headers.get("X-FastAPI-Cache") == "HIT"
+    assert container.get_cinema_showtimes_use_case.execute.call_count == 2
+
+
+def test_not_found_errors_are_not_cached(
+    client: TestClient, container: MagicMock
+) -> None:
+    """404 responses are not cached; repeat requests re-execute the use case."""
+    container.get_movie_use_case.execute.side_effect = MovieNotFoundError("not found")
+
+    response1 = client.get("/movies/missing")
+    response2 = client.get("/movies/missing")
+
+    assert response1.status_code == 404
+    assert response2.status_code == 404
+    assert container.get_movie_use_case.execute.call_count == 2
+
+
+def test_list_cinemas_with_name_filter_creates_separate_cache_entry(
+    client: TestClient, container: MagicMock
+) -> None:
+    """Query parameter differences create separate cache entries."""
+    def mock_execute(input_data):
+        if input_data.name == "Cineplex":
+            cinemas = [
+                SimpleNamespace(
+                    id="cin-1",
+                    name="Cineplex Downtown",
+                    address=None,
+                    city=None,
+                    website=None,
+                )
+            ]
+        else:
+            cinemas = [
+                SimpleNamespace(
+                    id="cin-2",
+                    name="Landmark Cinemas",
+                    address=None,
+                    city=None,
+                    website=None,
+                )
+            ]
+        return SimpleNamespace(cinemas=cinemas)
+
+    container.list_cinemas_use_case.execute.side_effect = mock_execute
+
+    response1 = client.get("/cinemas", params={"name": "Cineplex"})
+    response2 = client.get("/cinemas", params={"name": "Landmark"})
+    response1_again = client.get("/cinemas", params={"name": "Cineplex"})
+
+    assert response1.json()[0]["name"] == "Cineplex Downtown"
+    assert response2.json()[0]["name"] == "Landmark Cinemas"
+    assert response1_again.json() == response1.json()
+    assert response1_again.headers.get("X-FastAPI-Cache") == "HIT"
+    assert container.list_cinemas_use_case.execute.call_count == 2
