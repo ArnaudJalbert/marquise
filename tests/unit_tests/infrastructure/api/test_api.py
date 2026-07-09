@@ -79,7 +79,9 @@ def test_list_cinemas(client: TestClient, container: MagicMock) -> None:
     assert len(body["items"]) == 1
     assert body["items"][0]["id"] == "cin-1"
     assert body["items"][0]["name"] == "Cinema One"
-    assert body["pagination"] == {"limit": 20, "offset": 0, "total": 1}
+    assert body["total"] == 1
+    assert body["page"] == 1
+    assert body["size"] == 50
 
 
 def test_list_cinemas_delegates_to_cinema_controller(
@@ -92,7 +94,7 @@ def test_list_cinemas_delegates_to_cinema_controller(
 
     assert response.status_code == 200
     container.cinema_controller.list.assert_awaited_once_with(
-        name="Cineplex", limit=20, offset=0
+        name="Cineplex", page=1, size=50
     )
 
 
@@ -122,16 +124,17 @@ def test_get_cinema_showtimes(client: TestClient, container: MagicMock) -> None:
 
     assert response.status_code == 200
     body = response.json()
-    assert body["cinema_name"] == "Cinema One"
-    assert body["screenings"][0]["movie_title"] == "The Odyssey"
-    assert body["pagination"] == {"limit": 20, "offset": 0, "total": 1}
+    assert body["items"][0]["movie_title"] == "The Odyssey"
+    assert body["total"] == 1
+    assert body["page"] == 1
+    assert body["size"] == 50
 
 
 def test_list_cinemas_pagination(client: TestClient, container: MagicMock) -> None:
-    """The router forwards limit/offset and reports the controller's total.
+    """The router forwards page/size and reports the controller's total.
 
     The controller is mocked as already having applied pagination (as it
-    does once limit/offset are pushed down to SQL), so this test verifies
+    does once page/size are pushed down to SQL), so this test verifies
     the router passes params through and reports ``total`` from the
     response rather than computing it from the page length.
     """
@@ -147,22 +150,22 @@ def test_list_cinemas_pagination(client: TestClient, container: MagicMock) -> No
         total=5,
     )
 
-    response = client.get("/cinemas", params={"limit": 2, "offset": 1})
+    response = client.get("/cinemas", params={"page": 2, "size": 2})
 
     assert response.status_code == 200
     body = response.json()
     assert [c["id"] for c in body["items"]] == ["cin-1", "cin-2"]
-    assert body["pagination"] == {"limit": 2, "offset": 1, "total": 5}
-    container.cinema_controller.list.assert_awaited_once_with(
-        name=None, limit=2, offset=1
-    )
+    assert body["total"] == 5
+    assert body["page"] == 2
+    assert body["size"] == 2
+    container.cinema_controller.list.assert_awaited_once_with(name=None, page=2, size=2)
 
 
-def test_list_cinemas_limit_out_of_range_is_rejected(
+def test_list_cinemas_size_out_of_range_is_rejected(
     client: TestClient, container: MagicMock
 ) -> None:
-    """A limit above the max page size is rejected with a 422."""
-    response = client.get("/cinemas", params={"limit": 101})
+    """A size above the max page size is rejected with a 422."""
+    response = client.get("/cinemas", params={"size": 101})
 
     assert response.status_code == 422
 
@@ -170,10 +173,10 @@ def test_list_cinemas_limit_out_of_range_is_rejected(
 def test_get_cinema_showtimes_pagination(
     client: TestClient, container: MagicMock
 ) -> None:
-    """The router forwards limit/offset and reports the use case's total.
+    """The router forwards page/size and reports the use case's total.
 
     The use case is mocked as already having applied pagination (as it does
-    once limit/offset are pushed down to SQL), so this test verifies the
+    once page/size are pushed down to SQL), so this test verifies the
     router passes params through and reports ``total`` from the response
     rather than computing it from the page length.
     """
@@ -205,16 +208,18 @@ def test_get_cinema_showtimes_pagination(
 
     response = client.get(
         "/cinemas/cin-1/showtimes",
-        params={"from": "2026-06-27", "to": "2026-06-28", "limit": 2, "offset": 3},
+        params={"from": "2026-06-27", "to": "2026-06-28", "page": 2, "size": 2},
     )
 
     assert response.status_code == 200
     body = response.json()
-    assert [s["id"] for s in body["screenings"]] == ["scr-3", "scr-4"]
-    assert body["pagination"] == {"limit": 2, "offset": 3, "total": 5}
+    assert [s["id"] for s in body["items"]] == ["scr-3", "scr-4"]
+    assert body["total"] == 5
+    assert body["page"] == 2
+    assert body["size"] == 2
     input_data = container.get_cinema_showtimes_use_case.execute.call_args[0][0]
-    assert input_data.limit == 2
-    assert input_data.offset == 3
+    assert input_data.page == 2
+    assert input_data.size == 2
 
 
 def test_get_cinema_showtimes_not_found(
@@ -248,8 +253,8 @@ def test_get_cinema_showtimes_with_default_dates(
 
     assert response.status_code == 200
     body = response.json()
-    assert body["cinema_id"] == "cin-1"
-    assert body["cinema_name"] == "Cinema One"
+    assert len(body["items"]) == 0
+    assert body["total"] == 0
     container.get_cinema_showtimes_use_case.execute.assert_awaited_once()
 
 
@@ -599,7 +604,9 @@ def test_list_cinemas_with_name_filter_creates_separate_cache_entry(
 ) -> None:
     """Query parameter differences create separate cache entries."""
 
-    def mock_list(name: str | None, limit: int, offset: int) -> SimpleNamespace:
+    def mock_list(
+        name: str | None, page: int = 1, size: int | None = None
+    ) -> SimpleNamespace:
         if name == "Cineplex":
             cinemas = [
                 SimpleNamespace(

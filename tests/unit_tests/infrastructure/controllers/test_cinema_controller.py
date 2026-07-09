@@ -226,21 +226,21 @@ async def test_list_passes_name_filter(
 
 
 @pytest.mark.asyncio
-async def test_list_passes_limit_and_offset(
+async def test_list_passes_page_and_size(
     controller: CinemaController,
     mock_list_use_case: ListCinemasUseCase,
 ) -> None:
-    """Verify list passes limit/offset through to the use case."""
+    """Verify list passes page/size through to the use case."""
     mock_list_use_case.execute = AsyncMock(
         return_value=ListCinemasUseCase.OutputData(cinemas=[], total=0)
     )
 
-    await controller.list(limit=5, offset=10)
+    await controller.list(page=2, size=5)
 
     mock_list_use_case.execute.assert_awaited_once()
     input_data = mock_list_use_case.execute.call_args[0][0]
-    assert input_data.limit == 5
-    assert input_data.offset == 10
+    assert input_data.page == 2
+    assert input_data.size == 5
 
 
 @pytest.mark.asyncio
@@ -296,8 +296,8 @@ async def test_list_cinemas_validates_admin_then_delegates_to_use_case(
     mock_list_use_case.execute.assert_awaited_once()
     input_data = mock_list_use_case.execute.call_args[0][0]
     assert input_data.name == "Parc"
-    assert input_data.limit is None
-    assert input_data.offset == 0
+    assert input_data.page == 1
+    assert input_data.size is None
 
 
 @pytest.mark.asyncio

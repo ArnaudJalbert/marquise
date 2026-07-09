@@ -145,19 +145,19 @@ def test_output_data_rejects_negative_total() -> None:
         ListCinemasUseCase.OutputData(cinemas=[], total=-1)
 
 
-def test_input_data_rejects_negative_offset() -> None:
-    """Verify InputData rejects a negative offset."""
-    with pytest.raises(ValueError, match="offset must not be negative"):
-        ListCinemasUseCase.InputData(offset=-1)
+def test_input_data_rejects_page_below_one() -> None:
+    """Verify InputData rejects a page less than 1."""
+    with pytest.raises(ValueError, match="page must be at least 1"):
+        ListCinemasUseCase.InputData(page=0)
 
 
-def test_input_data_rejects_non_positive_limit() -> None:
-    """Verify InputData rejects a limit less than 1 when provided."""
-    with pytest.raises(ValueError, match="limit must be positive when provided"):
-        ListCinemasUseCase.InputData(limit=0)
+def test_input_data_rejects_non_positive_size() -> None:
+    """Verify InputData rejects a size less than 1 when provided."""
+    with pytest.raises(ValueError, match="size must be positive when provided"):
+        ListCinemasUseCase.InputData(size=0)
 
 
-def test_input_data_allows_none_limit() -> None:
-    """Verify InputData allows limit=None (unbounded)."""
-    data = ListCinemasUseCase.InputData(limit=None)
-    assert data.limit is None
+def test_input_data_allows_none_size() -> None:
+    """Verify InputData allows size=None (unbounded)."""
+    data = ListCinemasUseCase.InputData(size=None)
+    assert data.size is None

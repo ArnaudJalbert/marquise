@@ -16,30 +16,29 @@ class ListCinemasUseCase:
 
         Attributes:
             name: Optional name filter (substring, case-insensitive).
-            limit: Max number of cinemas to return. If None, all matching
-                cinemas are returned unbounded.
-            offset: Number of matching cinemas to skip before returning
-                results.
+            page: Page number (1-based). Ignored when size is None.
+            size: Max number of items per page. If None, all matching
+                cinemas are returned unbounded (page is ignored).
         """
 
         name: str | None = None
-        limit: int | None = None
-        offset: int = 0
+        page: int = 1
+        size: int | None = None
 
         def __post_init__(self) -> None:
             """Validate input data.
 
             Raises:
                 ValueError: If name is provided but empty or whitespace-only,
-                    if limit is provided but not positive, or if offset is
-                    negative.
+                    if size is provided but not positive, or if page is less
+                    than 1.
             """
             if self.name is not None and not self.name.strip():
                 raise ValueError("name must not be empty when provided")
-            if self.limit is not None and self.limit < 1:
-                raise ValueError("limit must be positive when provided")
-            if self.offset < 0:
-                raise ValueError("offset must not be negative")
+            if self.size is not None and self.size < 1:
+                raise ValueError("size must be positive when provided")
+            if self.page < 1:
+                raise ValueError("page must be at least 1")
 
     @dataclass(frozen=True, slots=True)
     class CinemaData:
@@ -120,10 +119,17 @@ class ListCinemasUseCase:
             The output data containing the matching page of cinemas and the
             total count.
         """
+        if request.size is not None:
+            limit = request.size
+            offset = (request.page - 1) * request.size
+        else:
+            limit = None
+            offset = 0
+
         page = await self.cinema_repository.find_all(
             name_filter=request.name,
-            limit=request.limit,
-            offset=request.offset,
+            limit=limit,
+            offset=offset,
         )
 
         cinema_data = [
