@@ -15,6 +15,7 @@ from marquise.infrastructure.supabase.gateways.movie import (
 from marquise.infrastructure.supabase.gateways.screening import (
     SupabaseScreeningGateway,
 )
+from marquise.interface_adapters.repositories.protocols.base import GatewayError
 
 
 async def _seed_parents(
@@ -144,3 +145,35 @@ async def test_save_upserts_on_unique_key_conflict(
 
     new_id = await screening_gateway.find_by_id("scr-007")
     assert new_id is None
+
+
+@pytest.mark.asyncio
+async def test_save_raises_gateway_error_on_external_id_conflict(
+    screening_gateway: SupabaseScreeningGateway,
+    gateway: SupabaseCinemaGateway,
+    movie_gateway: SupabaseMovieGateway,
+) -> None:
+    """Verify save raises GatewayError when external_id collides across rows.
+
+    Reproduces the Cineplex bug: an external_id reused for a different
+    (cinema_id, movie_id, showtime) can't be resolved by the composite-key
+    ON CONFLICT clause and must surface as a GatewayError instead of a raw
+    asyncpg.UniqueViolationError.
+    """
+    await _seed_parents(gateway, movie_gateway)
+    await screening_gateway.save(
+        screening_id="scr-008",
+        movie_id="mov-001",
+        cinema_id="cin-004",
+        showtime=datetime(2026, 6, 11, 19, 30, 0, tzinfo=UTC),
+        external_id="ext-conflict",
+    )
+
+    with pytest.raises(GatewayError, match="ext-conflict"):
+        await screening_gateway.save(
+            screening_id="scr-009",
+            movie_id="mov-002",
+            cinema_id="cin-004",
+            showtime=datetime(2026, 6, 12, 21, 0, 0, tzinfo=UTC),
+            external_id="ext-conflict",
+        )

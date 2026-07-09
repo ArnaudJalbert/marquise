@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.2 (2026-07-09)
+
+### Bug Fixes
+
+- **Cineplex import no longer aborts on an `external_id` collision**: `screenings.external_id` carries its own `UNIQUE` constraint, separate from the `(cinema_id, movie_id, showtime)` key that `SupabaseScreeningGateway.save`'s `ON CONFLICT` targets. When Cineplex's Vista session ID was reused for a different movie/showtime than the one already stored under it, the `INSERT` fell through to a raw `UniqueViolationError` that `ImportScreeningsUseCase` propagated unhandled, failing the entire cinema's import via `asyncio.gather`. The gateway now catches this specific violation and raises a `GatewayError`, which `SupabaseScreeningRepository.save` translates into `ScreeningAlreadyExistsError`; `ImportScreeningsUseCase.execute` catches that per-row (`asyncio.gather(..., return_exceptions=True)`) and skips just the conflicting screening instead of failing the whole cinema. `OutputData.skipped_count` (and the CLI's `import all` / `source import` output) now reports how many screenings were skipped this way. Closes #58.
+
 ## 0.9.1 (2026-07-08)
 
 ### New Features

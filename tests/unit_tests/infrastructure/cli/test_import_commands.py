@@ -36,8 +36,8 @@ async def test_run_import_all_imports_each_cinema() -> None:
         SimpleNamespace(id="cin-2", name="Cinema Two"),
     ]
     outputs = [
-        SimpleNamespace(imported_count=3, updated_count=1),
-        SimpleNamespace(imported_count=0, updated_count=5),
+        SimpleNamespace(imported_count=3, updated_count=1, skipped_count=0),
+        SimpleNamespace(imported_count=0, updated_count=5, skipped_count=0),
     ]
     container = _make_container(cinemas, import_side_effect=outputs)
 
@@ -76,7 +76,7 @@ async def test_run_import_all_records_failure_without_aborting() -> None:
         cinemas,
         import_side_effect=[
             CinemaNotFoundError("gone"),
-            SimpleNamespace(imported_count=2, updated_count=0),
+            SimpleNamespace(imported_count=2, updated_count=0, skipped_count=0),
         ],
     )
 
@@ -93,7 +93,9 @@ async def test_run_import_all_passes_inclusive_date_window() -> None:
     cinemas = [SimpleNamespace(id="cin-1", name="Cinema One")]
     container = _make_container(
         cinemas,
-        import_side_effect=[SimpleNamespace(imported_count=1, updated_count=0)],
+        import_side_effect=[
+            SimpleNamespace(imported_count=1, updated_count=0, skipped_count=0)
+        ],
     )
 
     await run_import_all(container, days=3)
