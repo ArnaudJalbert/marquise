@@ -43,11 +43,19 @@ def create_app(container: Container | None = None) -> FastAPI:
     # so repeated create_app() calls in one process (e.g. one per test)
     # would otherwise inherit a previous call's cached responses. Clear
     # through the backend's own public clear() (via FastAPICache.clear())
-    # rather than reaching into its internals.
+    # rather than reaching into its internals. This can only run when no
+    # event loop is already active (e.g. plain create_app() calls in
+    # tests) — uvicorn's factory=True calls create_app() from inside its
+    # own running loop, where asyncio.run() would raise; in that case
+    # this is the only create_app() call in the process, so there is
+    # nothing yet cached to clear.
     try:
-        asyncio.run(FastAPICache.clear())
-    except AssertionError:
-        pass  # not yet initialized in this process — nothing to clear
+        asyncio.get_running_loop()
+    except RuntimeError:
+        try:
+            asyncio.run(FastAPICache.clear())
+        except AssertionError:
+            pass  # not yet initialized in this process — nothing to clear
     FastAPICache.reset()
     FastAPICache.init(InMemoryBackend(), prefix=_CACHE_PREFIX, expire=cache_ttl_seconds)
 
