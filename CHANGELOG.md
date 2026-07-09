@@ -1,10 +1,16 @@
 # Changelog
 
-## 0.9.2 (2026-07-09)
+## 0.10.1 (2026-07-09)
 
 ### Bug Fixes
 
 - **Cineplex import no longer aborts on an `external_id` collision**: `screenings.external_id` carries its own `UNIQUE` constraint, separate from the `(cinema_id, movie_id, showtime)` key that `SupabaseScreeningGateway.save`'s `ON CONFLICT` targets. When Cineplex's Vista session ID was reused for a different movie/showtime than the one already stored under it, the `INSERT` fell through to a raw `UniqueViolationError` that `ImportScreeningsUseCase` propagated unhandled, failing the entire cinema's import via `asyncio.gather`. The gateway now catches this specific violation and raises a `GatewayError`, which `SupabaseScreeningRepository.save` translates into `ScreeningAlreadyExistsError`; `ImportScreeningsUseCase.execute` catches that per-row (`asyncio.gather(..., return_exceptions=True)`) and skips just the conflicting screening instead of failing the whole cinema. `OutputData.skipped_count` (and the CLI's `import all` / `source import` output) now reports how many screenings were skipped this way. Closes #58.
+
+## 0.10.0 (2026-07-09)
+
+### New Features
+
+- **New source: Cinémathèque québécoise**: Added a scraper source for Cinémathèque québécoise, fetching from the venue's OmniWeb ticketing portal (the cinema's own `cinematheque.qc.ca` site sits behind a Cloudflare challenge that blocks scraping, but its ticketing backend does not). Each day's schedule page embeds the full day's programming as an inline JS data blob (`gMovieData`) alongside a calendar of other available dates — `fetch_showtimes` bootstraps from today's page to discover the schedule window, then fetches each additional in-range date concurrently. `fetch_movie_detail` re-fetches a showtime's date page to pull synopsis/runtime/rating/poster enrichment, since the site has no separate film detail page. Titles carry a trailing parenthetical version marker (e.g. `"Romería (VOSTF)"`) which is split off into the `language` field, leaving `movie_title` clean. Registered as `"cinematheque"` in the DI container's source registry. Closes #47.
 
 ## 0.9.1 (2026-07-08)
 
