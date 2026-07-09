@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -17,6 +18,8 @@ from marquise.infrastructure.di.container import Container
 #: refreshed once a day, so an hour keeps responses fresh while still
 #: absorbing the vast majority of repeat traffic between refreshes.
 DEFAULT_CACHE_TTL_SECONDS = 3600
+
+_CACHE_PREFIX = "marquise-api-cache"
 
 
 def create_app(container: Container | None = None) -> FastAPI:
@@ -35,15 +38,18 @@ def create_app(container: Container | None = None) -> FastAPI:
         os.environ.get("MARQUISE_API_CACHE_TTL_SECONDS", DEFAULT_CACHE_TTL_SECONDS)
     )
 
-    # InMemoryBackend stores its data on a class attribute, so a new instance
-    # does not start empty, and FastAPICache.init() is a no-op after the
-    # first call in the process — both must be reset explicitly, or repeated
-    # create_app() calls (e.g. one per test) would all share one cache.
-    InMemoryBackend._store.clear()
+    # InMemoryBackend stores its data on a class attribute shared by every
+    # instance, and FastAPICache.init() is a no-op once already initialized,
+    # so repeated create_app() calls in one process (e.g. one per test)
+    # would otherwise inherit a previous call's cached responses. Clear
+    # through the backend's own public clear() (via FastAPICache.clear())
+    # rather than reaching into its internals.
+    try:
+        asyncio.run(FastAPICache.clear())
+    except AssertionError:
+        pass  # not yet initialized in this process — nothing to clear
     FastAPICache.reset()
-    FastAPICache.init(
-        InMemoryBackend(), prefix="marquise-api-cache", expire=cache_ttl_seconds
-    )
+    FastAPICache.init(InMemoryBackend(), prefix=_CACHE_PREFIX, expire=cache_ttl_seconds)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:

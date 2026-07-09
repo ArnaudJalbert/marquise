@@ -13,6 +13,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from marquise.application.exceptions import CinemaNotFoundError, MovieNotFoundError
+from marquise.application.use_cases.get_movie import GetMovieUseCase
+from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.infrastructure.api.app import create_app
 
 
@@ -233,9 +235,7 @@ def test_list_cinemas_cache_has_miss_header_on_first_request(
     client: TestClient, container: MagicMock
 ) -> None:
     """The first request for /cinemas has X-FastAPI-Cache: MISS header."""
-    container.list_cinemas_use_case.execute.return_value = SimpleNamespace(
-        cinemas=[]
-    )
+    container.list_cinemas_use_case.execute.return_value = SimpleNamespace(cinemas=[])
 
     response = client.get("/cinemas")
 
@@ -247,9 +247,7 @@ def test_list_cinemas_cache_has_hit_header_on_repeat_request(
     client: TestClient, container: MagicMock
 ) -> None:
     """Repeat requests for /cinemas have X-FastAPI-Cache: HIT header."""
-    container.list_cinemas_use_case.execute.return_value = SimpleNamespace(
-        cinemas=[]
-    )
+    container.list_cinemas_use_case.execute.return_value = SimpleNamespace(cinemas=[])
 
     client.get("/cinemas")
     response = client.get("/cinemas")
@@ -314,7 +312,7 @@ def test_get_movie_cache_has_hit_header_on_repeat_request(
 def test_get_cinema_showtimes_cache_has_miss_header_on_first_request(
     client: TestClient, container: MagicMock
 ) -> None:
-    """The first request for /cinemas/{id}/showtimes has X-FastAPI-Cache: MISS header."""
+    """The first showtimes request has an X-FastAPI-Cache MISS header."""
     container.get_cinema_showtimes_use_case.execute.return_value = SimpleNamespace(
         cinema_id="cin-1",
         cinema_name="Cinema One",
@@ -350,7 +348,8 @@ def test_different_movies_have_separate_cache_entries(
     client: TestClient, container: MagicMock
 ) -> None:
     """Requests for different movie IDs have separate cache entries."""
-    def mock_execute(input_data):
+
+    def mock_execute(input_data: GetMovieUseCase.InputData) -> SimpleNamespace:
         return SimpleNamespace(
             id=input_data.movie_id,
             title=f"Movie {input_data.movie_id}",
@@ -421,7 +420,8 @@ def test_list_cinemas_with_name_filter_creates_separate_cache_entry(
     client: TestClient, container: MagicMock
 ) -> None:
     """Query parameter differences create separate cache entries."""
-    def mock_execute(input_data):
+
+    def mock_execute(input_data: ListCinemasUseCase.InputData) -> SimpleNamespace:
         if input_data.name == "Cineplex":
             cinemas = [
                 SimpleNamespace(
