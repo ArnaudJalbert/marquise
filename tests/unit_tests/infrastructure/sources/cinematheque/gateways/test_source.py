@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 from urllib.error import HTTPError
 
@@ -231,6 +231,28 @@ async def test_fetch_showtimes_excludes_out_of_range_dates() -> None:
         )
 
     assert len(calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_fetch_showtimes_accepts_timezone_aware_range() -> None:
+    """Timezone-aware start/end (as ImportScreeningsUseCase passes) don't crash.
+
+    Regression test: comparing a naive date parsed from the schedule page
+    against a tz-aware start/end datetime used to raise
+    ``TypeError: can't compare offset-naive and offset-aware datetimes``.
+    """
+    today_html = _schedule_html({}, option_dates=["2026-12-25"])
+
+    with patch(
+        "marquise.infrastructure.sources.cinematheque.gateways.source._fetch",
+        return_value=today_html,
+    ):
+        rows = fetch_showtimes(
+            start_date=datetime.now(UTC),
+            end_date=datetime.now(UTC) + timedelta(days=7),
+        )
+
+    assert rows == []
 
 
 @pytest.mark.asyncio

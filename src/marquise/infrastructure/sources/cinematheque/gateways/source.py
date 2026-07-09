@@ -220,9 +220,12 @@ def fetch_showtimes(
             seen.add(date_str)
             ordered_dates.append(date_str)
 
+    range_start_date = range_start.date()
+    range_end_date = range_end.date()
+
     def _in_range(date_str: str) -> bool:
-        dt = datetime.strptime(date_str, "%Y-%m-%d")
-        return range_start <= dt <= range_end
+        dt = datetime.strptime(date_str, "%Y-%m-%d").date()
+        return range_start_date <= dt <= range_end_date
 
     dates_to_fetch = [d for d in ordered_dates if _in_range(d)]
 
