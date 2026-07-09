@@ -31,9 +31,11 @@ _CINEMA_COLUMNS = (
     " c.address AS cinema__address, c.city AS cinema__city,"
     " c.website AS cinema__website"
 )
-_JOINED_COLUMNS = (
-    f"s.id, s.movie_id, s.cinema_id, s.showtime, {_MOVIE_COLUMNS}, {_CINEMA_COLUMNS}"
+_SCREENING_COLUMNS = (
+    "s.id, s.movie_id, s.cinema_id, s.showtime,"
+    " s.external_id, s.ticket_url, s.room, s.language"
 )
+_JOINED_COLUMNS = f"{_SCREENING_COLUMNS}, {_MOVIE_COLUMNS}, {_CINEMA_COLUMNS}"
 
 
 def _naive_utc(dt: datetime) -> datetime:
