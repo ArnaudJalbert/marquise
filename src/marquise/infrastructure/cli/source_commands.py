@@ -563,6 +563,10 @@ def import_screenings() -> None:
             summary.append(" new  |  ")
             summary.append(f"{result.updated_count}", style="yellow")
             summary.append(" updated")
+            if result.skipped_count:
+                summary.append("  |  ")
+                summary.append(f"{result.skipped_count}", style="red")
+                summary.append(" skipped")
             _console.print(summary)
         finally:
             await container.shutdown()
