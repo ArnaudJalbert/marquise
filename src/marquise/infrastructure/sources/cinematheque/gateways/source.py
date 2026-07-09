@@ -82,17 +82,21 @@ def _extract_available_dates(html: str) -> list[str]:
     return _DATE_OPTION_RE.findall(html)
 
 
-def _extract_language(title: str) -> str | None:
-    """Extract a trailing parenthetical version marker from a title.
+def _split_title_and_language(title: str) -> tuple[str, str | None]:
+    """Strip a trailing parenthetical version marker off a title.
 
     Args:
         title: The film title, e.g. ``"Romería (VOSTF)"``.
 
     Returns:
-        The marker (e.g. ``"VOSTF"``), or ``None`` if absent.
+        A ``(clean_title, marker)`` tuple, e.g. ``("Romería", "VOSTF")``.
+        ``marker`` is ``None`` if the title has no such marker, in which
+        case ``clean_title`` is the title unchanged.
     """
     match = _LANGUAGE_RE.search(title)
-    return match.group(1) if match else None
+    if not match:
+        return title, None
+    return title[: match.start()].rstrip(), match.group(1)
 
 
 def _parse_runtime(run_time_str: str | None) -> int | None:
@@ -130,10 +134,10 @@ def _parse_movie_data(
     """
     rows: list[dict[str, Any]] = []
     for code, film in movie_data.items():
-        title = film.get("title") or ""
-        if not title.strip():
+        raw_title = film.get("title") or ""
+        if not raw_title.strip():
             continue
-        language = _extract_language(title)
+        title, language = _split_title_and_language(raw_title)
         for aud in (film.get("schAuds") or {}).values():
             room = aud.get("name")
             for group_key in ("schPerfsReserved", "schPerfsGeneral"):
