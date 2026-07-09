@@ -12,10 +12,10 @@ import pytest
 from marquise.infrastructure.sources.cinematheque.gateways.source import (
     CinemathequeSource,
     _extract_available_dates,
-    _extract_language,
     _extract_movie_data,
     _parse_movie_data,
     _parse_runtime,
+    _split_title_and_language,
     fetch_showtimes,
 )
 
@@ -109,17 +109,17 @@ def test_extract_available_dates_finds_all_option_values() -> None:
 @pytest.mark.parametrize(
     ("title", "expected"),
     [
-        ("Romería (VOSTF)", "VOSTF"),
-        ("Santo vs. the Evil Brain (VOSTA)", "VOSTA"),
-        ("Le chant des forêts (VOF)", "VOF"),
-        ("A Movie With No Marker", None),
+        ("Romería (VOSTF)", ("Romería", "VOSTF")),
+        ("Santo vs. the Evil Brain (VOSTA)", ("Santo vs. the Evil Brain", "VOSTA")),
+        ("Le chant des forêts (VOF)", ("Le chant des forêts", "VOF")),
+        ("A Movie With No Marker", ("A Movie With No Marker", None)),
     ],
 )
-def test_extract_language_reads_trailing_marker(
-    title: str, expected: str | None
+def test_split_title_and_language_strips_trailing_marker(
+    title: str, expected: tuple[str, str | None]
 ) -> None:
-    """A trailing parenthetical version marker is parsed out of the title."""
-    assert _extract_language(title) == expected
+    """A trailing parenthetical version marker is stripped off the title."""
+    assert _split_title_and_language(title) == expected
 
 
 @pytest.mark.parametrize(
@@ -154,7 +154,7 @@ def test_parse_movie_data_builds_showtime_rows() -> None:
 
     assert rows == [
         {
-            "movie_title": "Romería (VOSTF)",
+            "movie_title": "Romería",
             "showtime": "2026-07-09T14:00",
             "identifier": "2026-07-09|123",
             "external_id": "14093",
