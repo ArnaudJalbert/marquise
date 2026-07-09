@@ -11,6 +11,7 @@ from uuid import uuid4
 from marquise.application.exceptions import (
     CinemaNotFoundError,
     CinemaSourceAssignmentNotFoundError,
+    ScreeningAlreadyExistsError,
 )
 from marquise.application.repositories import (
     CinemaRepository,
@@ -91,6 +92,8 @@ class ImportScreeningsUseCase:
             total_count: Total number of screenings processed.
             imported_count: Number of new screenings created.
             updated_count: Number of existing screenings found and updated in place.
+            skipped_count: Number of screenings skipped because their
+                external_id collided with a different existing screening.
         """
 
         cinema_id: str
@@ -100,6 +103,7 @@ class ImportScreeningsUseCase:
         total_count: int
         imported_count: int
         updated_count: int
+        skipped_count: int = 0
 
         def __post_init__(self) -> None:
             if not self.cinema_id.strip():
@@ -114,6 +118,8 @@ class ImportScreeningsUseCase:
                 raise ValueError("imported_count must not be negative")
             if self.updated_count < 0:
                 raise ValueError("updated_count must not be negative")
+            if self.skipped_count < 0:
+                raise ValueError("skipped_count must not be negative")
 
     def __init__(
         self,
@@ -131,6 +137,12 @@ class ImportScreeningsUseCase:
 
     async def execute(self, request: InputData) -> OutputData:
         """Import screenings from a cinema's showtime source.
+
+        Screenings whose external_id collides with a different existing
+        screening are skipped (counted in ``skipped_count``) rather than
+        aborting the whole import — a source can report the same
+        source-native ID against a different showtime (e.g. a rescheduled
+        or reused session ID).
 
         Args:
             request: The input data specifying which cinema and date range.
@@ -161,9 +173,20 @@ class ImportScreeningsUseCase:
         movie_lookup = await self._resolve_or_create_movies(
             rows, str(source_definition.name)
         )
-        results = await asyncio.gather(
-            *[self._upsert_screening(row, movie_lookup, cinema) for row in rows]
+        raw_results = await asyncio.gather(
+            *[self._upsert_screening(row, movie_lookup, cinema) for row in rows],
+            return_exceptions=True,
         )
+
+        results: list[ImportedScreeningData] = []
+        skipped_count = 0
+        for outcome in raw_results:
+            if isinstance(outcome, ScreeningAlreadyExistsError):
+                skipped_count += 1
+                continue
+            if isinstance(outcome, BaseException):
+                raise outcome
+            results.append(outcome)
 
         return self.OutputData(
             cinema_id=str(cinema.id),
@@ -173,6 +196,7 @@ class ImportScreeningsUseCase:
             total_count=len(results),
             imported_count=sum(1 for r in results if r.imported),
             updated_count=sum(1 for r in results if not r.imported),
+            skipped_count=skipped_count,
         )
 
     async def _resolve_cinema_and_source(

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from marquise.application.exceptions import ScreeningAlreadyExistsError
 from marquise.application.repositories import ScreeningRepository
 from marquise.domain.entities import Movie, Screening
 from marquise.domain.value_objects import (
@@ -16,6 +17,7 @@ from marquise.domain.value_objects import (
     ScreeningId,
     Showtime,
 )
+from marquise.interface_adapters.repositories.protocols.base import GatewayError
 from marquise.interface_adapters.repositories.protocols.screening import (
     ScreeningGateway,
 )
@@ -98,17 +100,24 @@ class SupabaseScreeningRepository(ScreeningRepository):
 
         Returns:
             A tuple of (saved_screening, was_inserted).
+
+        Raises:
+            ScreeningAlreadyExistsError: If ``external_id`` collides with a
+                row that has a different (cinema_id, movie_id, showtime).
         """
-        outcome = await self._gateway.save(
-            screening_id=str(screening.id),
-            movie_id=str(screening.movie.id),
-            cinema_id=str(screening.cinema.id),
-            showtime=screening.showtime.value,
-            external_id=screening.external_id,
-            ticket_url=screening.ticket_url,
-            room=screening.room,
-            language=screening.language,
-        )
+        try:
+            outcome = await self._gateway.save(
+                screening_id=str(screening.id),
+                movie_id=str(screening.movie.id),
+                cinema_id=str(screening.cinema.id),
+                showtime=screening.showtime.value,
+                external_id=screening.external_id,
+                ticket_url=screening.ticket_url,
+                room=screening.room,
+                language=screening.language,
+            )
+        except GatewayError as exc:
+            raise ScreeningAlreadyExistsError(str(exc)) from exc
         data = outcome.row
         was_inserted = outcome.inserted
         saved = Screening(

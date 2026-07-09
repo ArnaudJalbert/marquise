@@ -10,6 +10,7 @@ import pytest
 from marquise.application.exceptions import (
     CinemaNotFoundError,
     CinemaSourceAssignmentNotFoundError,
+    ScreeningAlreadyExistsError,
 )
 from marquise.application.repositories import (
     CinemaRepository,
@@ -149,6 +150,86 @@ async def test_import_screenings_creates_new_screenings() -> None:
     )
     assert mock_movie_repo.save.await_count == 2
     assert mock_screening_repo.save.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_import_screenings_skips_external_id_conflict() -> None:
+    """Test that a single external_id collision is skipped, not fatal.
+
+    Reproduces the Cineplex bug where a reused/rescheduled external_id
+    (source-native session ID) collides with a screening already stored
+    under a different (cinema_id, movie_id, showtime): the whole cinema
+    import must not abort, and the other screenings must still succeed.
+    """
+    mock_cinema_repo = create_autospec(CinemaRepository, instance=True)
+    mock_assignment_repo = create_autospec(
+        CinemaSourceAssignmentRepository, instance=True
+    )
+    mock_registry = create_autospec(SourceRegistryQuery, instance=True)
+    mock_movie_repo = create_autospec(MovieRepository, instance=True)
+    mock_screening_repo = create_autospec(ScreeningRepository, instance=True)
+
+    cinema = Cinema(
+        id=CinemaId(value="cin-123"),
+        name="Cinéma Cineplex Forum et VIP",
+        city="Montreal",
+    )
+    mock_cinema_repo.find_by_id.return_value = cinema
+
+    source_definition = SourceDefinition(
+        name=SourceName(value="cineplex"),
+        display_name="Cineplex",
+    )
+    assignment = CinemaSourceAssignment(cinema=cinema, source=source_definition)
+    mock_assignment_repo.find_by_cinema_id.return_value = assignment
+
+    rows = [
+        _make_showtime_row(
+            "Movie A",
+            datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC),
+            external_id="486899",
+        ),
+        _make_showtime_row(
+            "Movie B",
+            datetime(2026, 6, 7, 21, 0, 0, tzinfo=UTC),
+            external_id="486900",
+        ),
+    ]
+    mock_registry.fetch_showtimes.return_value = rows
+
+    movie_a = Movie(id=MovieId(value="mov-a"), title="Movie A")
+    movie_b = Movie(id=MovieId(value="mov-b"), title="Movie B")
+    mock_movie_repo.find_by_title.side_effect = [None, None]
+    mock_movie_repo.save.side_effect = [movie_a, movie_b]
+
+    mock_screening_repo.save.side_effect = [
+        ScreeningAlreadyExistsError(
+            "A screening with external_id='486899' already exists for a "
+            "different (cinema_id, movie_id, showtime)"
+        ),
+        (None, True),
+    ]
+
+    use_case = ImportScreeningsUseCase(
+        cinema_repository=mock_cinema_repo,
+        assignment_repository=mock_assignment_repo,
+        source_registry=mock_registry,
+        movie_repository=mock_movie_repo,
+        screening_repository=mock_screening_repo,
+    )
+
+    request = ImportScreeningsUseCase.InputData(
+        cinema_id="cin-123",
+        start_date=date(2026, 6, 7),
+        end_date=date(2026, 6, 7),
+    )
+    result = await use_case.execute(request)
+
+    assert result.total_count == 1
+    assert result.imported_count == 1
+    assert result.updated_count == 0
+    assert result.skipped_count == 1
+    assert result.screenings[0].movie_title == "Movie B"
 
 
 @pytest.mark.asyncio
@@ -527,6 +608,21 @@ def test_output_data_rejects_negative_updated_count() -> None:
             total_count=0,
             imported_count=0,
             updated_count=-1,
+        )
+
+
+def test_output_data_rejects_negative_skipped_count() -> None:
+    """Test OutputData rejects negative skipped_count."""
+    with pytest.raises(ValueError, match="skipped_count must not be negative"):
+        ImportScreeningsUseCase.OutputData(
+            cinema_id="cin-123",
+            cinema_name="Cinéma Beaubien",
+            source_name="cinemacinema",
+            screenings=(),
+            total_count=0,
+            imported_count=0,
+            updated_count=0,
+            skipped_count=-1,
         )
 
 

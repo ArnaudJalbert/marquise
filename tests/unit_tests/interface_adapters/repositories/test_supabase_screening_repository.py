@@ -7,6 +7,7 @@ from unittest.mock import create_autospec
 
 import pytest
 
+from marquise.application.exceptions import ScreeningAlreadyExistsError
 from marquise.domain.entities import Cinema, Movie, Screening
 from marquise.domain.value_objects import (
     CinemaId,
@@ -14,6 +15,7 @@ from marquise.domain.value_objects import (
     ScreeningId,
     Showtime,
 )
+from marquise.interface_adapters.repositories.protocols.base import GatewayError
 from marquise.interface_adapters.repositories.protocols.screening import (
     SaveOutcome,
     ScreeningGateway,
@@ -133,6 +135,23 @@ async def test_save(
         room=None,
         language=None,
     )
+
+
+@pytest.mark.asyncio
+async def test_save_raises_screening_already_exists_on_gateway_error(
+    sample_screening: Screening,
+) -> None:
+    """Test save translates a gateway external_id conflict into an app error."""
+    mock_gateway = create_autospec(ScreeningGateway, instance=True)
+    mock_gateway.save.side_effect = GatewayError(
+        "A screening with external_id='486899' already exists for a "
+        "different (cinema_id, movie_id, showtime)"
+    )
+
+    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+
+    with pytest.raises(ScreeningAlreadyExistsError, match="external_id='486899'"):
+        await repo.save(sample_screening)
 
 
 @pytest.mark.asyncio
