@@ -39,6 +39,9 @@ from marquise.infrastructure.sources.cinemacinema.gateways.source import (
 from marquise.infrastructure.sources.cinemapublic.gateways.source import (
     CinemaPublicSource,
 )
+from marquise.infrastructure.sources.cinematheque.gateways.source import (
+    CinemathequeSource,
+)
 from marquise.infrastructure.sources.cineplex.gateways.source import (
     CineplexSource,
 )
@@ -60,6 +63,9 @@ from marquise.interface_adapters.repositories.source_adapters.cinemacinema impor
 )
 from marquise.interface_adapters.repositories.source_adapters.cinemapublic import (
     CinemaPublicAdapter,
+)
+from marquise.interface_adapters.repositories.source_adapters.cinematheque import (
+    CinemathequeAdapter,
 )
 from marquise.interface_adapters.repositories.source_adapters.cineplex import (
     CineplexAdapter,
@@ -230,6 +236,10 @@ class Container:
             registry.register(
                 "cinemapublic",
                 CinemaPublicAdapter(CinemaPublicSource()),
+            )
+            registry.register(
+                "cinematheque",
+                CinemathequeAdapter(CinemathequeSource()),
             )
             registry.register(
                 "cineplex",
