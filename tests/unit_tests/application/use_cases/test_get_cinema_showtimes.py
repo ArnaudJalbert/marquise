@@ -65,8 +65,11 @@ async def test_returns_cinema_and_screenings() -> None:
 
 
 @pytest.mark.asyncio
-async def test_passes_limit_and_offset_to_repository() -> None:
-    """limit/offset from the input are forwarded to the repository."""
+async def test_passes_page_and_size_to_repository_as_limit_offset() -> None:
+    """page/size from the input are converted to limit/offset for the repository.
+
+    Page 2, size 5 should produce limit=5, offset=5.
+    """
     cinema = Cinema(id=CinemaId(value="cin-1"), name="Cinema One")
     cinema_repo = create_autospec(CinemaRepository, instance=True)
     cinema_repo.find_by_id.return_value = cinema
@@ -81,8 +84,8 @@ async def test_passes_limit_and_offset_to_repository() -> None:
         cinema_id="cin-1",
         start_date=datetime(2026, 6, 27, tzinfo=UTC),
         end_date=datetime(2026, 6, 28, tzinfo=UTC),
-        limit=5,
-        offset=10,
+        page=2,
+        size=5,
     )
     result = await use_case.execute(request)
 
@@ -91,30 +94,30 @@ async def test_passes_limit_and_offset_to_repository() -> None:
         start_date=request.start_date,
         end_date=request.end_date,
         limit=5,
-        offset=10,
+        offset=5,
     )
     assert result.total == 50
 
 
-def test_input_rejects_negative_offset() -> None:
-    """A negative offset is rejected."""
-    with pytest.raises(ValueError, match="offset must not be negative"):
+def test_input_rejects_page_below_one() -> None:
+    """A page less than 1 is rejected."""
+    with pytest.raises(ValueError, match="page must be at least 1"):
         GetCinemaShowtimesUseCase.InputData(
             cinema_id="cin-1",
             start_date=datetime(2026, 6, 27, tzinfo=UTC),
             end_date=datetime(2026, 6, 28, tzinfo=UTC),
-            offset=-1,
+            page=0,
         )
 
 
-def test_input_rejects_non_positive_limit() -> None:
-    """A non-positive limit is rejected when provided."""
-    with pytest.raises(ValueError, match="limit must be positive when provided"):
+def test_input_rejects_non_positive_size() -> None:
+    """A non-positive size is rejected when provided."""
+    with pytest.raises(ValueError, match="size must be positive when provided"):
         GetCinemaShowtimesUseCase.InputData(
             cinema_id="cin-1",
             start_date=datetime(2026, 6, 27, tzinfo=UTC),
             end_date=datetime(2026, 6, 28, tzinfo=UTC),
-            limit=0,
+            size=0,
         )
 
 

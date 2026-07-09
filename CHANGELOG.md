@@ -1,16 +1,11 @@
 # Changelog
 
-## 0.13.0 (2026-07-09)
+## 0.12.0 (2026-07-09)
 
 ### Improvements
 
-- **Cinema list/showtimes pagination pushed down to SQL**: `GET /cinemas` and `GET /cinemas/{id}/showtimes` previously fetched the full matching result set and sliced it in Python. `SupabaseCinemaGateway.find_all` and `SupabaseScreeningGateway.find_by_cinema_and_date_range` now apply `LIMIT`/`OFFSET` directly in SQL, with a `COUNT(*) OVER()` window function riding along on the same query to report an exact `total` in one round trip (falling back to a cheap standalone `COUNT(*)` only when the requested page is empty, e.g. an offset past the end of the result set). Bounds actual query cost and entity-mapping work instead of just the response payload. The admin/CLI cinema listing path (`CinemaController.list_cinemas`) is unaffected and stays fully unbounded by default.
-
-## 0.12.0 (2026-07-09)
-
-### New Features
-
-- **Pagination for `GET /cinemas` and `GET /cinemas/{id}/showtimes`**: both endpoints now accept `limit` (default 20, max 100) and `offset` (default 0) query parameters and return a `pagination` object (`limit`, `offset`, `total`) alongside the page of results. `GET /cinemas` now returns `{"items": [...], "pagination": {...}}` instead of a bare array, and `GET /cinemas/{id}/showtimes` gained the same `pagination` field next to its existing `screenings` array. Bounds response size for large result sets. Closes #49.
+- **Cinema list/showtimes pagination pushed down to SQL**: `GET /cinemas` and `GET /cinemas/{id}/showtimes` previously fetched the full matching result set and sliced it in Python. `SupabaseCinemaGateway.find_all` and `SupabaseScreeningGateway.find_by_cinema_and_date_range` now apply `LIMIT`/`OFFSET` directly in SQL, with a `COUNT(*) OVER()` window function riding along on the same query to report an exact `total` in one round trip (falling back to a cheap standalone `COUNT(*)` only when the requested page is empty). The admin/CLI cinema listing path is unaffected and stays fully unbounded by default.
+- **Replaced custom limit/offset pagination with fastapi-pagination**: the API layer no longer defines its own `limit`/`offset` query parameters and `PaginationMeta` response object. `GET /cinemas` and `GET /cinemas/{id}/showtimes` now use fastapi-pagination `Page`/`Params` classes, accepting `page`/`size` query params and returning `items`, `total`, `page`, `size`, `pages` in a consistent format. The `page`/`size` to `limit`/`offset` conversion is handled inside the use cases, so the repository layer is unaffected. Thin wrapper response classes were removed in favour of using `Page[CinemaResponse]` and `Page[ScreeningResponse]` directly. The CLI and admin listing paths remain unbounded by default (`size=None`).
 
 ## 0.11.0 (2026-07-09)
 

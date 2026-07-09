@@ -21,24 +21,23 @@ class GetCinemaShowtimesUseCase:
             cinema_id: The cinema to fetch showtimes for.
             start_date: Start of the range (inclusive).
             end_date: End of the range (inclusive).
-            limit: Max number of screenings to return. If None, all matching
-                screenings are returned unbounded.
-            offset: Number of matching screenings to skip before returning
-                results.
+            page: Page number (1-based). Ignored when size is None.
+            size: Max number of screenings per page. If None, all matching
+                screenings are returned unbounded (page is ignored).
         """
 
         cinema_id: str
         start_date: datetime
         end_date: datetime
-        limit: int | None = None
-        offset: int = 0
+        page: int = 1
+        size: int | None = None
 
         def __post_init__(self) -> None:
             """Validate input data.
 
             Raises:
                 ValueError: If cinema_id is empty, the range is inverted,
-                    limit is provided but not positive, or offset is negative.
+                    size is provided but not positive, or page is less than 1.
             """
             if not self.cinema_id.strip():
                 raise ValueError("cinema_id must not be empty")
@@ -50,10 +49,10 @@ class GetCinemaShowtimesUseCase:
             end = self.end_date.replace(tzinfo=self.end_date.tzinfo or UTC)
             if start > end:
                 raise ValueError("start_date must not be after end_date")
-            if self.limit is not None and self.limit < 1:
-                raise ValueError("limit must be positive when provided")
-            if self.offset < 0:
-                raise ValueError("offset must not be negative")
+            if self.size is not None and self.size < 1:
+                raise ValueError("size must be positive when provided")
+            if self.page < 1:
+                raise ValueError("page must be at least 1")
 
     @dataclass(frozen=True, slots=True)
     class ScreeningData:
@@ -129,12 +128,19 @@ class GetCinemaShowtimesUseCase:
                 f"A cinema with ID '{request.cinema_id}' was not found"
             )
 
+        if request.size is not None:
+            limit = request.size
+            offset = (request.page - 1) * request.size
+        else:
+            limit = None
+            offset = 0
+
         page = await self.screening_repository.find_by_cinema_and_date_range(
             cinema_id=cinema_id,
             start_date=request.start_date,
             end_date=request.end_date,
-            limit=request.limit,
-            offset=request.offset,
+            limit=limit,
+            offset=offset,
         )
 
         screening_data = tuple(

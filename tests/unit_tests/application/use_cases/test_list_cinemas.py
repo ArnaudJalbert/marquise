@@ -49,6 +49,37 @@ async def test_list_cinemas_returns_all_when_no_filter() -> None:
 
 
 @pytest.mark.asyncio
+async def test_list_cinemas_passes_page_and_size_as_limit_offset() -> None:
+    """Verify page/size are converted to limit/offset for the repository.
+
+    Page 2, size 5 should produce limit=5, offset=5.
+    """
+    mock_repo = create_autospec(CinemaRepository, instance=True)
+    mock_repo.find_all.return_value = Page(items=[], total=50)
+
+    use_case = ListCinemasUseCase(cinema_repository=mock_repo)
+    request = ListCinemasUseCase.InputData(page=2, size=5)
+
+    await use_case.execute(request)
+
+    mock_repo.find_all.assert_awaited_once_with(name_filter=None, limit=5, offset=5)
+
+
+@pytest.mark.asyncio
+async def test_list_cinemas_passes_none_size_as_unbounded() -> None:
+    """Verify size=None passes limit=None, offset=0 (unbounded)."""
+    mock_repo = create_autospec(CinemaRepository, instance=True)
+    mock_repo.find_all.return_value = Page(items=[], total=50)
+
+    use_case = ListCinemasUseCase(cinema_repository=mock_repo)
+    request = ListCinemasUseCase.InputData(page=1, size=None)
+
+    await use_case.execute(request)
+
+    mock_repo.find_all.assert_awaited_once_with(name_filter=None, limit=None, offset=0)
+
+
+@pytest.mark.asyncio
 async def test_list_cinemas_filters_by_name() -> None:
     """Verify cinemas are filtered when a name filter is provided."""
     mock_repo = create_autospec(CinemaRepository, instance=True)
@@ -152,20 +183,6 @@ async def test_list_cinemas_maps_optional_none_fields() -> None:
 
 
 @pytest.mark.asyncio
-async def test_list_cinemas_passes_limit_and_offset_to_repository() -> None:
-    """Verify limit/offset are forwarded to the repository unchanged."""
-    mock_repo = create_autospec(CinemaRepository, instance=True)
-    mock_repo.find_all.return_value = Page(items=[], total=50)
-
-    use_case = ListCinemasUseCase(cinema_repository=mock_repo)
-    request = ListCinemasUseCase.InputData(limit=5, offset=10)
-
-    await use_case.execute(request)
-
-    mock_repo.find_all.assert_awaited_once_with(name_filter=None, limit=5, offset=10)
-
-
-@pytest.mark.asyncio
 async def test_list_cinemas_output_total_reflects_repository_total() -> None:
     """The output's total reflects the repository's total, not the page size."""
     mock_repo = create_autospec(CinemaRepository, instance=True)
@@ -177,7 +194,7 @@ async def test_list_cinemas_output_total_reflects_repository_total() -> None:
     )
 
     use_case = ListCinemasUseCase(cinema_repository=mock_repo)
-    request = ListCinemasUseCase.InputData(limit=1)
+    request = ListCinemasUseCase.InputData(size=1)
 
     response = await use_case.execute(request)
 
@@ -186,14 +203,14 @@ async def test_list_cinemas_output_total_reflects_repository_total() -> None:
 
 
 @pytest.mark.asyncio
-async def test_list_cinemas_rejects_negative_offset() -> None:
-    """A negative offset is rejected before the repository is called."""
-    with pytest.raises(ValueError, match="offset must not be negative"):
-        ListCinemasUseCase.InputData(offset=-1)
+async def test_list_cinemas_rejects_page_below_one() -> None:
+    """A page number less than 1 is rejected before the repository is called."""
+    with pytest.raises(ValueError, match="page must be at least 1"):
+        ListCinemasUseCase.InputData(page=0)
 
 
 @pytest.mark.asyncio
-async def test_list_cinemas_rejects_zero_or_negative_limit() -> None:
-    """A non-positive limit is rejected before the repository is called."""
-    with pytest.raises(ValueError, match="limit must be positive"):
-        ListCinemasUseCase.InputData(limit=0)
+async def test_list_cinemas_rejects_zero_or_negative_size() -> None:
+    """A non-positive size is rejected before the repository is called."""
+    with pytest.raises(ValueError, match="size must be positive when provided"):
+        ListCinemasUseCase.InputData(size=0)

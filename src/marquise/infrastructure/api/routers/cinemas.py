@@ -6,25 +6,17 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi_cache.decorator import cache
+from fastapi_pagination import Page, Params
 
 from marquise.application.exceptions import CinemaNotFoundError
 from marquise.application.use_cases.get_cinema_showtimes import (
     GetCinemaShowtimesUseCase,
 )
 from marquise.infrastructure.api.dependencies import get_container
-from marquise.infrastructure.api.schemas import (
-    CinemaListResponse,
-    CinemaResponse,
-    CinemaShowtimesResponse,
-    PaginationMeta,
-    ScreeningResponse,
-)
+from marquise.infrastructure.api.schemas import CinemaResponse, ScreeningResponse
 from marquise.infrastructure.di.container import Container
 
 router = APIRouter(tags=["cinemas"])
-
-DEFAULT_PAGE_LIMIT = 20
-MAX_PAGE_LIMIT = 100
 
 
 def _start_of_today_utc() -> datetime:
@@ -65,56 +57,37 @@ def resolve_showtimes_date_range(
     return resolved_from, resolved_to
 
 
-@router.get("/cinemas", response_model=CinemaListResponse)
+@router.get("/cinemas", response_model=Page[CinemaResponse])
 @cache()
 async def list_cinemas(
     name: str | None = Query(
         default=None, description="Filter cinemas by name (case-insensitive)."
     ),
-    limit: int = Query(
-        default=DEFAULT_PAGE_LIMIT,
-        ge=1,
-        le=MAX_PAGE_LIMIT,
-        description=f"Max number of items to return (1-{MAX_PAGE_LIMIT}).",
-    ),
-    offset: int = Query(
-        default=0,
-        ge=0,
-        description="Number of items to skip before starting to return results.",
-    ),
+    params: Params = Depends(),
     container: Container = Depends(get_container),
-) -> CinemaListResponse:
+) -> Page[CinemaResponse]:
     """List cinemas, optionally filtered by name."""
     output = await container.cinema_controller.list(
-        name=name, limit=limit, offset=offset
+        name=name, page=params.page, size=params.size
     )
-    return CinemaListResponse(
+    return Page.create(
         items=[CinemaResponse.model_validate(c) for c in output.cinemas],
-        pagination=PaginationMeta(limit=limit, offset=offset, total=output.total),
+        total=output.total,
+        params=params,
     )
 
 
 @router.get(
     "/cinemas/{cinema_id}/showtimes",
-    response_model=CinemaShowtimesResponse,
+    response_model=Page[ScreeningResponse],
 )
 @cache()
 async def get_cinema_showtimes(
     cinema_id: str,
     date_range: tuple[datetime, datetime] = Depends(resolve_showtimes_date_range),
-    limit: int = Query(
-        default=DEFAULT_PAGE_LIMIT,
-        ge=1,
-        le=MAX_PAGE_LIMIT,
-        description=f"Max number of items to return (1-{MAX_PAGE_LIMIT}).",
-    ),
-    offset: int = Query(
-        default=0,
-        ge=0,
-        description="Number of items to skip before starting to return results.",
-    ),
+    params: Params = Depends(),
     container: Container = Depends(get_container),
-) -> CinemaShowtimesResponse:
+) -> Page[ScreeningResponse]:
     """List a cinema's screenings within a date range."""
     from_, to = date_range
     use_case = container.get_cinema_showtimes_use_case
@@ -124,8 +97,8 @@ async def get_cinema_showtimes(
                 cinema_id=cinema_id,
                 start_date=from_,
                 end_date=to,
-                limit=limit,
-                offset=offset,
+                page=params.page,
+                size=params.size,
             )
         )
     except CinemaNotFoundError as exc:
@@ -133,9 +106,8 @@ async def get_cinema_showtimes(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    return CinemaShowtimesResponse(
-        cinema_id=output.cinema_id,
-        cinema_name=output.cinema_name,
-        screenings=[ScreeningResponse.model_validate(s) for s in output.screenings],
-        pagination=PaginationMeta(limit=limit, offset=offset, total=output.total),
+    return Page.create(
+        items=[ScreeningResponse.model_validate(s) for s in output.screenings],
+        total=output.total,
+        params=params,
     )
