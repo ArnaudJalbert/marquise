@@ -7,10 +7,16 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.inmemory import InMemoryBackend
 
-from marquise.infrastructure.api.cache import DEFAULT_TTL_SECONDS, TTLCache
 from marquise.infrastructure.api.routers import cinemas_router, movies_router
 from marquise.infrastructure.di.container import Container
+
+#: Default in-memory response cache TTL, in seconds. The database is only
+#: refreshed once a day, so an hour keeps responses fresh while still
+#: absorbing the vast majority of repeat traffic between refreshes.
+DEFAULT_CACHE_TTL_SECONDS = 3600
 
 
 def create_app(container: Container | None = None) -> FastAPI:
@@ -25,8 +31,18 @@ def create_app(container: Container | None = None) -> FastAPI:
     Returns:
         A configured ``FastAPI`` instance.
     """
-    cache_ttl_seconds = float(
-        os.environ.get("MARQUISE_API_CACHE_TTL_SECONDS", DEFAULT_TTL_SECONDS)
+    cache_ttl_seconds = int(
+        os.environ.get("MARQUISE_API_CACHE_TTL_SECONDS", DEFAULT_CACHE_TTL_SECONDS)
+    )
+
+    # InMemoryBackend stores its data on a class attribute, so a new instance
+    # does not start empty, and FastAPICache.init() is a no-op after the
+    # first call in the process — both must be reset explicitly, or repeated
+    # create_app() calls (e.g. one per test) would all share one cache.
+    InMemoryBackend._store.clear()
+    FastAPICache.reset()
+    FastAPICache.init(
+        InMemoryBackend(), prefix="marquise-api-cache", expire=cache_ttl_seconds
     )
 
     @asynccontextmanager
@@ -49,8 +65,6 @@ def create_app(container: Container | None = None) -> FastAPI:
         version="1.0.0",
         lifespan=lifespan,
     )
-
-    app.state.cache = TTLCache(ttl_seconds=cache_ttl_seconds)
 
     # When a container is injected (e.g. in tests), make it available even if
     # the lifespan startup is not run by the test client.

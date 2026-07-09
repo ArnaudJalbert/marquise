@@ -5,14 +5,14 @@ from __future__ import annotations
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi_cache.decorator import cache
 
 from marquise.application.exceptions import CinemaNotFoundError
 from marquise.application.use_cases.get_cinema_showtimes import (
     GetCinemaShowtimesUseCase,
 )
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
-from marquise.infrastructure.api.cache import TTLCache, cached
-from marquise.infrastructure.api.dependencies import get_cache, get_container
+from marquise.infrastructure.api.dependencies import get_container
 from marquise.infrastructure.api.schemas import (
     CinemaResponse,
     CinemaShowtimesResponse,
@@ -23,13 +23,12 @@ router = APIRouter(tags=["cinemas"])
 
 
 @router.get("/cinemas", response_model=list[CinemaResponse])
-@cached("list_cinemas", key_params=("name",))
+@cache()
 async def list_cinemas(
     name: str | None = Query(
         default=None, description="Filter cinemas by name (case-insensitive)."
     ),
     container: Container = Depends(get_container),
-    cache: TTLCache = Depends(get_cache),
 ) -> list[CinemaResponse]:
     """List cinemas, optionally filtered by name."""
     use_case = container.list_cinemas_use_case
@@ -41,13 +40,12 @@ async def list_cinemas(
     "/cinemas/{cinema_id}/showtimes",
     response_model=CinemaShowtimesResponse,
 )
-@cached("get_cinema_showtimes", key_params=("cinema_id", "from_", "to"))
+@cache()
 async def get_cinema_showtimes(
     cinema_id: str,
     from_: datetime = Query(alias="from", description="Start of range (inclusive)."),
     to: datetime = Query(description="End of range (inclusive)."),
     container: Container = Depends(get_container),
-    cache: TTLCache = Depends(get_cache),
 ) -> CinemaShowtimesResponse:
     """List a cinema's screenings within a date range."""
     use_case = container.get_cinema_showtimes_use_case
