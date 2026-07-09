@@ -32,7 +32,7 @@ _CINEMA_COLUMNS = (
     " c.website AS cinema__website"
 )
 _JOINED_COLUMNS = (
-    f"s.id, s.movie_id, s.cinema_id, s.showtime, {_MOVIE_COLUMNS}, {_CINEMA_COLUMNS}"
+    f"s.id, s.movie_id, s.cinema_id, s.showtime, s.external_id, s.ticket_url, s.room, s.language, {_MOVIE_COLUMNS}, {_CINEMA_COLUMNS}"
 )
 
 
