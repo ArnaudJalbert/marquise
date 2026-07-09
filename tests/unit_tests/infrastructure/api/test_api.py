@@ -68,28 +68,34 @@ def test_list_cinemas(client: TestClient, container: MagicMock) -> None:
                 city="Montréal",
                 website=None,
             )
-        ]
+        ],
+        total=1,
     )
 
     response = client.get("/cinemas")
 
     assert response.status_code == 200
     body = response.json()
-    assert len(body) == 1
-    assert body[0]["id"] == "cin-1"
-    assert body[0]["name"] == "Cinema One"
+    assert len(body["items"]) == 1
+    assert body["items"][0]["id"] == "cin-1"
+    assert body["items"][0]["name"] == "Cinema One"
+    assert body["total"] == 1
+    assert body["page"] == 1
+    assert body["size"] == 50
 
 
 def test_list_cinemas_delegates_to_cinema_controller(
     client: TestClient, container: MagicMock
 ) -> None:
     """GET /cinemas calls cinema_controller.list(), not the use case directly."""
-    container.cinema_controller.list.return_value = SimpleNamespace(cinemas=[])
+    container.cinema_controller.list.return_value = SimpleNamespace(cinemas=[], total=0)
 
     response = client.get("/cinemas", params={"name": "Cineplex"})
 
     assert response.status_code == 200
-    container.cinema_controller.list.assert_awaited_once_with(name="Cineplex")
+    container.cinema_controller.list.assert_awaited_once_with(
+        name="Cineplex", page=1, size=50
+    )
 
 
 def test_get_cinema_showtimes(client: TestClient, container: MagicMock) -> None:
@@ -108,6 +114,7 @@ def test_get_cinema_showtimes(client: TestClient, container: MagicMock) -> None:
                 language=None,
             )
         ],
+        total=1,
     )
 
     response = client.get(
@@ -117,8 +124,102 @@ def test_get_cinema_showtimes(client: TestClient, container: MagicMock) -> None:
 
     assert response.status_code == 200
     body = response.json()
-    assert body["cinema_name"] == "Cinema One"
-    assert body["screenings"][0]["movie_title"] == "The Odyssey"
+    assert body["items"][0]["movie_title"] == "The Odyssey"
+    assert body["total"] == 1
+    assert body["page"] == 1
+    assert body["size"] == 50
+
+
+def test_list_cinemas_pagination(client: TestClient, container: MagicMock) -> None:
+    """The router forwards page/size and reports the controller's total.
+
+    The controller is mocked as already having applied pagination (as it
+    does once page/size are pushed down to SQL), so this test verifies
+    the router passes params through and reports ``total`` from the
+    response rather than computing it from the page length.
+    """
+    container.cinema_controller.list.return_value = SimpleNamespace(
+        cinemas=[
+            SimpleNamespace(
+                id="cin-1", name="Cinema 1", address=None, city=None, website=None
+            ),
+            SimpleNamespace(
+                id="cin-2", name="Cinema 2", address=None, city=None, website=None
+            ),
+        ],
+        total=5,
+    )
+
+    response = client.get("/cinemas", params={"page": 2, "size": 2})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [c["id"] for c in body["items"]] == ["cin-1", "cin-2"]
+    assert body["total"] == 5
+    assert body["page"] == 2
+    assert body["size"] == 2
+    container.cinema_controller.list.assert_awaited_once_with(name=None, page=2, size=2)
+
+
+def test_list_cinemas_size_out_of_range_is_rejected(
+    client: TestClient, container: MagicMock
+) -> None:
+    """A size above the max page size is rejected with a 422."""
+    response = client.get("/cinemas", params={"size": 101})
+
+    assert response.status_code == 422
+
+
+def test_get_cinema_showtimes_pagination(
+    client: TestClient, container: MagicMock
+) -> None:
+    """The router forwards page/size and reports the use case's total.
+
+    The use case is mocked as already having applied pagination (as it does
+    once page/size are pushed down to SQL), so this test verifies the
+    router passes params through and reports ``total`` from the response
+    rather than computing it from the page length.
+    """
+    container.get_cinema_showtimes_use_case.execute.return_value = SimpleNamespace(
+        cinema_id="cin-1",
+        cinema_name="Cinema One",
+        screenings=[
+            SimpleNamespace(
+                id="scr-3",
+                movie_id="mov-1",
+                movie_title="The Odyssey",
+                showtime="2026-06-27T19:30:00+00:00",
+                ticket_url=None,
+                room=None,
+                language=None,
+            ),
+            SimpleNamespace(
+                id="scr-4",
+                movie_id="mov-1",
+                movie_title="The Odyssey",
+                showtime="2026-06-27T21:30:00+00:00",
+                ticket_url=None,
+                room=None,
+                language=None,
+            ),
+        ],
+        total=5,
+    )
+
+    response = client.get(
+        "/cinemas/cin-1/showtimes",
+        params={"from": "2026-06-27", "to": "2026-06-28", "page": 2, "size": 2},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [s["id"] for s in body["items"]] == ["scr-3", "scr-4"]
+    assert body["total"] == 5
+    assert body["page"] == 2
+    assert body["size"] == 2
+    input_data = container.get_cinema_showtimes_use_case.execute.call_args[0][0]
+    assert input_data.page == 2
+    assert input_data.size == 2
 
 
 def test_get_cinema_showtimes_not_found(
@@ -145,14 +246,15 @@ def test_get_cinema_showtimes_with_default_dates(
         cinema_id="cin-1",
         cinema_name="Cinema One",
         screenings=[],
+        total=0,
     )
 
     response = client.get("/cinemas/cin-1/showtimes")
 
     assert response.status_code == 200
     body = response.json()
-    assert body["cinema_id"] == "cin-1"
-    assert body["cinema_name"] == "Cinema One"
+    assert len(body["items"]) == 0
+    assert body["total"] == 0
     container.get_cinema_showtimes_use_case.execute.assert_awaited_once()
 
 
@@ -167,7 +269,7 @@ def test_get_cinema_showtimes_default_dates_are_utc_aware(
     ) -> SimpleNamespace:
         captured.append(input_data)
         return SimpleNamespace(
-            cinema_id="cin-1", cinema_name="Cinema One", screenings=[]
+            cinema_id="cin-1", cinema_name="Cinema One", screenings=[], total=0
         )
 
     container.get_cinema_showtimes_use_case.execute.side_effect = fake_execute
@@ -193,6 +295,7 @@ def test_get_cinema_showtimes_default_dates_are_cached_within_the_same_day(
         cinema_id="cin-1",
         cinema_name="Cinema One",
         screenings=[],
+        total=0,
     )
 
     first = client.get("/cinemas/cin-1/showtimes")
@@ -249,7 +352,8 @@ def test_list_cinemas_is_cached(client: TestClient, container: MagicMock) -> Non
                 city=None,
                 website=None,
             )
-        ]
+        ],
+        total=1,
     )
 
     first = client.get("/cinemas")
@@ -295,6 +399,7 @@ def test_get_cinema_showtimes_is_cached(
         cinema_id="cin-1",
         cinema_name="Cinema One",
         screenings=[],
+        total=0,
     )
     params = {"from": "2026-06-27", "to": "2026-06-28"}
 
@@ -310,7 +415,7 @@ def test_list_cinemas_cache_has_miss_header_on_first_request(
     client: TestClient, container: MagicMock
 ) -> None:
     """The first request for /cinemas has X-FastAPI-Cache: MISS header."""
-    container.cinema_controller.list.return_value = SimpleNamespace(cinemas=[])
+    container.cinema_controller.list.return_value = SimpleNamespace(cinemas=[], total=0)
 
     response = client.get("/cinemas")
 
@@ -322,7 +427,7 @@ def test_list_cinemas_cache_has_hit_header_on_repeat_request(
     client: TestClient, container: MagicMock
 ) -> None:
     """Repeat requests for /cinemas have X-FastAPI-Cache: HIT header."""
-    container.cinema_controller.list.return_value = SimpleNamespace(cinemas=[])
+    container.cinema_controller.list.return_value = SimpleNamespace(cinemas=[], total=0)
 
     client.get("/cinemas")
     response = client.get("/cinemas")
@@ -392,6 +497,7 @@ def test_get_cinema_showtimes_cache_has_miss_header_on_first_request(
         cinema_id="cin-1",
         cinema_name="Cinema One",
         screenings=[],
+        total=0,
     )
     params = {"from": "2026-06-27", "to": "2026-06-28"}
 
@@ -409,6 +515,7 @@ def test_get_cinema_showtimes_cache_has_hit_header_on_repeat_request(
         cinema_id="cin-1",
         cinema_name="Cinema One",
         screenings=[],
+        total=0,
     )
     params = {"from": "2026-06-27", "to": "2026-06-28"}
 
@@ -461,6 +568,7 @@ def test_different_date_ranges_have_separate_cache_entries(
         cinema_id="cin-1",
         cinema_name="Cinema One",
         screenings=[],
+        total=0,
     )
 
     params1 = {"from": "2026-06-27", "to": "2026-06-28"}
@@ -496,7 +604,9 @@ def test_list_cinemas_with_name_filter_creates_separate_cache_entry(
 ) -> None:
     """Query parameter differences create separate cache entries."""
 
-    def mock_list(name: str | None) -> SimpleNamespace:
+    def mock_list(
+        name: str | None, page: int = 1, size: int | None = None
+    ) -> SimpleNamespace:
         if name == "Cineplex":
             cinemas = [
                 SimpleNamespace(
@@ -517,7 +627,7 @@ def test_list_cinemas_with_name_filter_creates_separate_cache_entry(
                     website=None,
                 )
             ]
-        return SimpleNamespace(cinemas=cinemas)
+        return SimpleNamespace(cinemas=cinemas, total=len(cinemas))
 
     container.cinema_controller.list.side_effect = mock_list
 
@@ -525,8 +635,8 @@ def test_list_cinemas_with_name_filter_creates_separate_cache_entry(
     response2 = client.get("/cinemas", params={"name": "Landmark"})
     response1_again = client.get("/cinemas", params={"name": "Cineplex"})
 
-    assert response1.json()[0]["name"] == "Cineplex Downtown"
-    assert response2.json()[0]["name"] == "Landmark Cinemas"
+    assert response1.json()["items"][0]["name"] == "Cineplex Downtown"
+    assert response2.json()["items"][0]["name"] == "Landmark Cinemas"
     assert response1_again.json() == response1.json()
     assert response1_again.headers.get("X-FastAPI-Cache") == "HIT"
     assert container.cinema_controller.list.call_count == 2

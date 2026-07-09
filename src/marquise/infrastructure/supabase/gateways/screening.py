@@ -6,7 +6,10 @@ from datetime import UTC, datetime
 
 import asyncpg
 
-from marquise.interface_adapters.repositories.protocols.base import GatewayError
+from marquise.interface_adapters.repositories.protocols.base import (
+    GatewayError,
+    GatewayPage,
+)
 from marquise.interface_adapters.repositories.protocols.screening import SaveOutcome
 
 DEFAULT_SCHEMA = "marquise"
@@ -226,30 +229,76 @@ class SupabaseScreeningGateway:
         cinema_id: str,
         start_date: datetime,
         end_date: datetime,
-    ) -> list[dict]:
-        """Find screenings for a cinema within a date range.
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> GatewayPage:
+        """Find screenings for a cinema within a date range, paginated.
 
         Args:
             cinema_id: The cinema to filter by.
             start_date: Start of the range (inclusive).
             end_date: End of the range (inclusive).
+            limit: Max number of rows to return. If None, all matching rows
+                are returned unbounded (no ``LIMIT`` clause is applied).
+            offset: Number of matching rows to skip before returning results.
 
         Returns:
-            A list of dicts representing matching rows with joined
-            movie and cinema data.
+            A ``GatewayPage`` with the matching rows (joined with movie and
+            cinema data) and the total count of rows matching the cinema
+            and date range, ignoring ``limit``/``offset``.
         """
+        params = (cinema_id, _naive_utc(start_date), _naive_utc(end_date))
+        where_clause = (
+            "WHERE s.cinema_id = $1 AND s.showtime >= $2 AND s.showtime <= $3"
+        )
+
         async with self._pool.acquire() as conn:
+            if limit is None:
+                rows = await conn.fetch(
+                    f"""
+                    SELECT {_JOINED_COLUMNS}
+                    FROM "{self._schema}".screenings s
+                    JOIN "{self._schema}".movies m ON s.movie_id = m.id
+                    JOIN "{self._schema}".cinemas c ON s.cinema_id = c.id
+                    {where_clause}
+                    ORDER BY s.showtime
+                    """,
+                    *params,
+                )
+                return GatewayPage(rows=[dict(r) for r in rows], total=len(rows))
+
+            # COUNT(*) OVER() rides along with the paginated SELECT so the
+            # common case (a non-empty page) costs one round trip. It can't
+            # report a total when the page itself is empty (e.g. offset past
+            # the end of the result set), since there is no row to read it
+            # off — that case falls back to a separate, cheap COUNT(*)
+            # against the screenings table alone (no joins needed).
             rows = await conn.fetch(
                 f"""
-                SELECT {_JOINED_COLUMNS}
+                SELECT {_JOINED_COLUMNS}, COUNT(*) OVER() AS __total
                 FROM "{self._schema}".screenings s
                 JOIN "{self._schema}".movies m ON s.movie_id = m.id
                 JOIN "{self._schema}".cinemas c ON s.cinema_id = c.id
-                WHERE s.cinema_id = $1 AND s.showtime >= $2 AND s.showtime <= $3
+                {where_clause}
                 ORDER BY s.showtime
+                LIMIT $4 OFFSET $5
                 """,
-                cinema_id,
-                _naive_utc(start_date),
-                _naive_utc(end_date),
+                *params,
+                limit,
+                offset,
             )
-        return [dict(r) for r in rows]
+            if not rows:
+                total = await conn.fetchval(
+                    f"""
+                    SELECT COUNT(*) FROM "{self._schema}".screenings s
+                    {where_clause}
+                    """,
+                    *params,
+                )
+                return GatewayPage(rows=[], total=total)
+
+            total = rows[0]["__total"]
+            result_rows = [dict(r) for r in rows]
+            for row in result_rows:
+                row.pop("__total")
+        return GatewayPage(rows=result_rows, total=total)

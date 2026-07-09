@@ -153,16 +153,22 @@ class CinemaController:
     async def list(
         self,
         name: str | None = None,
+        page: int = 1,
+        size: int | None = None,
     ) -> ListCinemasUseCase.OutputData:
-        """List cinemas, optionally filtered by name.
+        """List cinemas, optionally filtered by name and paginated.
 
         This is a public operation — no authentication required.
 
         Args:
             name: Optional name filter (case-insensitive substring).
+            page: Page number (1-based). Ignored when size is None.
+            size: Max number of items per page. If None, all matching
+                cinemas are returned unbounded (page is ignored).
 
         Returns:
-            The output data containing matching cinemas.
+            The output data containing the matching page of cinemas and the
+            total count.
         """
-        request = ListCinemasUseCase.InputData(name=name)
+        request = ListCinemasUseCase.InputData(name=name, page=page, size=size)
         return await self._list_use_case.execute(request)

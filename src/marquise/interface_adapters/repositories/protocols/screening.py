@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
+from marquise.interface_adapters.repositories.protocols.base import GatewayPage
+
 
 @dataclass(frozen=True, slots=True)
 class SaveOutcome:
@@ -105,15 +107,20 @@ class ScreeningGateway(Protocol):
         cinema_id: str,
         start_date: datetime,
         end_date: datetime,
-    ) -> list[dict]:
-        """Find screenings for a cinema within a date range.
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> GatewayPage:
+        """Find screenings for a cinema within a date range, paginated.
 
         Args:
             cinema_id: The cinema to filter by.
             start_date: Start of the range (inclusive).
             end_date: End of the range (inclusive).
+            limit: Max number of rows to return. If None, all matching rows
+                are returned unbounded.
+            offset: Number of matching rows to skip before returning results.
 
         Returns:
-            A list of dicts representing matching rows.
+            A ``GatewayPage`` with the matching rows and the total count.
         """
         ...

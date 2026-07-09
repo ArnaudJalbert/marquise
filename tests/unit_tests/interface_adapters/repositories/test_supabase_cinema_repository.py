@@ -12,6 +12,7 @@ from marquise.application.exceptions import (
 )
 from marquise.domain.entities import Cinema
 from marquise.domain.value_objects import CinemaId
+from marquise.interface_adapters.repositories.protocols.base import GatewayPage
 from marquise.interface_adapters.repositories.protocols.cinema import (
     CinemaGateway,
     GatewayError,
@@ -253,29 +254,35 @@ async def test_find_all_without_filter(
     repo: SupabaseCinemaRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify find_all without filter returns all mapped cinemas."""
-    mock_gateway.find_all.return_value = [
-        {
-            "id": "cin-001",
-            "name": "A Cinema",
-            "address": "123 St",
-            "city": "Montreal",
-            "website": None,
-        },
-        {
-            "id": "cin-002",
-            "name": "B Cinema",
-            "address": "456 Ave",
-            "city": "Quebec",
-            "website": "https://b.example.com",
-        },
-    ]
+    mock_gateway.find_all.return_value = GatewayPage(
+        rows=[
+            {
+                "id": "cin-001",
+                "name": "A Cinema",
+                "address": "123 St",
+                "city": "Montreal",
+                "website": None,
+            },
+            {
+                "id": "cin-002",
+                "name": "B Cinema",
+                "address": "456 Ave",
+                "city": "Quebec",
+                "website": "https://b.example.com",
+            },
+        ],
+        total=2,
+    )
 
     result = await repo.find_all()
 
-    assert len(result) == 2
-    assert result[0].name == "A Cinema"
-    assert result[1].name == "B Cinema"
-    mock_gateway.find_all.assert_awaited_once_with(name_filter=None)
+    assert len(result.items) == 2
+    assert result.items[0].name == "A Cinema"
+    assert result.items[1].name == "B Cinema"
+    assert result.total == 2
+    mock_gateway.find_all.assert_awaited_once_with(
+        name_filter=None, limit=None, offset=0
+    )
 
 
 @pytest.mark.asyncio
@@ -283,30 +290,61 @@ async def test_find_all_with_filter(
     repo: SupabaseCinemaRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify find_all with filter delegates the filter to the gateway."""
-    mock_gateway.find_all.return_value = [
-        {
-            "id": "cin-001",
-            "name": "Cinema A",
-            "address": "123 St",
-            "city": "Montreal",
-            "website": None,
-        }
-    ]
+    mock_gateway.find_all.return_value = GatewayPage(
+        rows=[
+            {
+                "id": "cin-001",
+                "name": "Cinema A",
+                "address": "123 St",
+                "city": "Montreal",
+                "website": None,
+            }
+        ],
+        total=1,
+    )
 
     result = await repo.find_all(name_filter="Cinema")
 
-    assert len(result) == 1
-    assert result[0].name == "Cinema A"
-    mock_gateway.find_all.assert_awaited_once_with(name_filter="Cinema")
+    assert len(result.items) == 1
+    assert result.items[0].name == "Cinema A"
+    mock_gateway.find_all.assert_awaited_once_with(
+        name_filter="Cinema", limit=None, offset=0
+    )
+
+
+@pytest.mark.asyncio
+async def test_find_all_with_pagination(
+    repo: SupabaseCinemaRepository, mock_gateway: AsyncMock
+) -> None:
+    """Verify find_all forwards limit/offset and surfaces the gateway's total."""
+    mock_gateway.find_all.return_value = GatewayPage(
+        rows=[
+            {
+                "id": "cin-001",
+                "name": "Cinema A",
+                "address": None,
+                "city": None,
+                "website": None,
+            }
+        ],
+        total=50,
+    )
+
+    result = await repo.find_all(limit=1, offset=10)
+
+    assert len(result.items) == 1
+    assert result.total == 50
+    mock_gateway.find_all.assert_awaited_once_with(name_filter=None, limit=1, offset=10)
 
 
 @pytest.mark.asyncio
 async def test_find_all_empty(
     repo: SupabaseCinemaRepository, mock_gateway: AsyncMock
 ) -> None:
-    """Verify find_all returns empty list when no cinemas match."""
-    mock_gateway.find_all.return_value = []
+    """Verify find_all returns an empty page when no cinemas match."""
+    mock_gateway.find_all.return_value = GatewayPage(rows=[], total=0)
 
     result = await repo.find_all()
 
-    assert result == []
+    assert result.items == []
+    assert result.total == 0

@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.inmemory import InMemoryBackend
+from fastapi_pagination import add_pagination
 
 from marquise.infrastructure.api.routers import cinemas_router, movies_router
 from marquise.infrastructure.di.container import Container
@@ -77,5 +78,7 @@ def create_app(container: Container | None = None) -> FastAPI:
 
     app.include_router(cinemas_router)
     app.include_router(movies_router)
+
+    add_pagination(app)
 
     return app

@@ -5,6 +5,7 @@ from marquise.application.repositories.cinema_source_assignment_repository impor
     CinemaSourceAssignmentRepository,
 )
 from marquise.application.repositories.movie_repository import MovieRepository
+from marquise.application.repositories.page import Page
 from marquise.application.repositories.screening_repository import (
     ScreeningRepository,
 )
@@ -23,6 +24,7 @@ __all__ = [
     "CinemaSourceAssignmentRepository",
     "MovieEnrichmentData",
     "MovieRepository",
+    "Page",
     "RegistrySourceEntry",
     "ScreeningRepository",
     "ShowtimeRow",
