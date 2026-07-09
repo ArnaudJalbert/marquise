@@ -33,6 +33,8 @@ class CinemaImportResult:
         status: One of ``"imported"``, ``"skipped"``, or ``"failed"``.
         imported_count: Number of new screenings created (0 unless imported).
         updated_count: Number of existing screenings updated (0 unless imported).
+        skipped_screenings_count: Number of individual screenings skipped
+            due to an external_id collision (0 unless imported).
         detail: Optional human-readable detail (e.g. an error or skip reason).
     """
 
@@ -40,6 +42,7 @@ class CinemaImportResult:
     status: str
     imported_count: int = 0
     updated_count: int = 0
+    skipped_screenings_count: int = 0
     detail: str | None = None
 
 
@@ -96,6 +99,7 @@ async def run_import_all(container: Container, days: int) -> list[CinemaImportRe
                 status="imported",
                 imported_count=output.imported_count,
                 updated_count=output.updated_count,
+                skipped_screenings_count=output.skipped_count,
             )
 
     return list(
@@ -141,9 +145,14 @@ def import_all(
 
     typer.echo("\nResults:")
     for r in imported:
+        suffix = (
+            f", {r.skipped_screenings_count} skipped"
+            if r.skipped_screenings_count
+            else ""
+        )
         typer.echo(
             f"  [ok]      {r.cinema_name}: "
-            f"{r.imported_count} new, {r.updated_count} updated"
+            f"{r.imported_count} new, {r.updated_count} updated{suffix}"
         )
     for r in skipped:
         typer.echo(f"  [skipped] {r.cinema_name}: {r.detail}")

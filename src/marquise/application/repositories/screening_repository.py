@@ -23,6 +23,10 @@ class ScreeningRepository(ABC):
             A tuple of (saved_screening, was_inserted) where ``was_inserted``
             is True if a new row was created, False if an existing row was
             found.
+
+        Raises:
+            ScreeningAlreadyExistsError: If the screening's ``external_id``
+                collides with a different existing screening.
         """
         ...
 

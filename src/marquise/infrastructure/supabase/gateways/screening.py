@@ -95,39 +95,47 @@ class SupabaseScreeningGateway:
             A ``SaveOutcome`` carrying the row and whether it was newly inserted.
 
         Raises:
-            GatewayError: On data-layer failure.
+            GatewayError: On data-layer failure, including when
+                ``external_id`` collides with a row that has a different
+                (cinema_id, movie_id, showtime).
         """
         async with self._pool.acquire() as conn:
-            row = await conn.fetchrow(
-                f"""
-                WITH inserted AS (
-                    INSERT INTO {self._table}
-                        (id, movie_id, cinema_id, showtime,
-                         external_id, ticket_url, room, language)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                    ON CONFLICT (cinema_id, movie_id, showtime) DO NOTHING
-                    RETURNING {_COLUMNS}, true AS __inserted
-                ),
-                existing AS (
-                    SELECT {_COLUMNS}, false AS __inserted
-                    FROM {self._table}
-                    WHERE cinema_id = $3 AND movie_id = $2
-                        AND showtime = $4
-                        AND NOT EXISTS (SELECT 1 FROM inserted)
+            try:
+                row = await conn.fetchrow(
+                    f"""
+                    WITH inserted AS (
+                        INSERT INTO {self._table}
+                            (id, movie_id, cinema_id, showtime,
+                             external_id, ticket_url, room, language)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                        ON CONFLICT (cinema_id, movie_id, showtime) DO NOTHING
+                        RETURNING {_COLUMNS}, true AS __inserted
+                    ),
+                    existing AS (
+                        SELECT {_COLUMNS}, false AS __inserted
+                        FROM {self._table}
+                        WHERE cinema_id = $3 AND movie_id = $2
+                            AND showtime = $4
+                            AND NOT EXISTS (SELECT 1 FROM inserted)
+                    )
+                    SELECT * FROM inserted
+                    UNION ALL
+                    SELECT * FROM existing
+                    """,
+                    screening_id,
+                    movie_id,
+                    cinema_id,
+                    _naive_utc(showtime),
+                    external_id,
+                    ticket_url,
+                    room,
+                    language,
                 )
-                SELECT * FROM inserted
-                UNION ALL
-                SELECT * FROM existing
-                """,
-                screening_id,
-                movie_id,
-                cinema_id,
-                _naive_utc(showtime),
-                external_id,
-                ticket_url,
-                room,
-                language,
-            )
+            except asyncpg.exceptions.UniqueViolationError as exc:
+                raise GatewayError(
+                    f"A screening with external_id={external_id!r} already "
+                    "exists for a different (cinema_id, movie_id, showtime)"
+                ) from exc
         if row is None:
             raise GatewayError(
                 f"Screening upsert returned no row for "
