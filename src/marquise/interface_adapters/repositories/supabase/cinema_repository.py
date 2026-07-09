@@ -10,7 +10,7 @@ from marquise.application.exceptions import (
     CinemaIdAlreadyExistsError,
     CinemaNotFoundError,
 )
-from marquise.application.repositories import CinemaRepository
+from marquise.application.repositories import CinemaRepository, Page
 from marquise.domain.entities import Cinema
 from marquise.domain.value_objects import CinemaId
 from marquise.interface_adapters.repositories.protocols.cinema import (
@@ -99,18 +99,32 @@ class SupabaseCinemaRepository(CinemaRepository):
         """
         return await self._gateway.exists_by_id(cinema_id=str(cinema_id))
 
-    async def find_all(self, name_filter: str | None = None) -> list[Cinema]:
-        """Retrieve all cinemas, optionally filtered by name.
+    async def find_all(
+        self,
+        name_filter: str | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> Page[Cinema]:
+        """Retrieve cinemas, optionally filtered by name and paginated.
 
         Args:
             name_filter: An optional substring to match against cinema names
                 (case-insensitive). If None, all cinemas are returned.
+            limit: Max number of cinemas to return. If None, all matching
+                cinemas are returned unbounded.
+            offset: Number of matching cinemas to skip before returning
+                results.
 
         Returns:
-            A list of matching cinema entities.
+            A ``Page[Cinema]`` with the matching cinemas and the total count.
         """
-        rows = await self._gateway.find_all(name_filter=name_filter)
-        return [self._to_entity(row) for row in rows]
+        gateway_page = await self._gateway.find_all(
+            name_filter=name_filter, limit=limit, offset=offset
+        )
+        return Page(
+            items=[self._to_entity(row) for row in gateway_page.rows],
+            total=gateway_page.total,
+        )
 
     async def update(self, cinema: Cinema) -> Cinema:
         """Update an existing cinema via the gateway.

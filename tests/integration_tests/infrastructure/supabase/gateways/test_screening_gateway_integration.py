@@ -95,27 +95,89 @@ async def test_find_by_cinema_and_date_range(
         showtime=datetime(2026, 6, 10, 21, 0, 0, tzinfo=UTC),
     )
 
-    found = await screening_gateway.find_by_cinema_and_date_range(
+    page = await screening_gateway.find_by_cinema_and_date_range(
         cinema_id="cin-003",
         start_date=datetime(2026, 6, 7, 0, 0, 0, tzinfo=UTC),
         end_date=datetime(2026, 6, 8, 23, 59, 59, tzinfo=UTC),
     )
-    assert len(found) == 2
-    assert found[0]["id"] == "scr-003"
-    assert found[1]["id"] == "scr-004"
+    assert page.total == 2
+    assert len(page.rows) == 2
+    assert page.rows[0]["id"] == "scr-003"
+    assert page.rows[1]["id"] == "scr-004"
 
 
 @pytest.mark.asyncio
 async def test_find_by_cinema_and_date_range_empty(
     screening_gateway: SupabaseScreeningGateway,
 ) -> None:
-    """Verify find_by_cinema_and_date_range returns empty list when no match."""
-    found = await screening_gateway.find_by_cinema_and_date_range(
+    """Verify find_by_cinema_and_date_range returns an empty page when no match."""
+    page = await screening_gateway.find_by_cinema_and_date_range(
         cinema_id="cin-empty",
         start_date=datetime(2026, 1, 1, 0, 0, 0, tzinfo=UTC),
         end_date=datetime(2026, 1, 31, 23, 59, 59, tzinfo=UTC),
     )
-    assert found == []
+    assert page.rows == []
+    assert page.total == 0
+
+
+@pytest.mark.asyncio
+async def test_find_by_cinema_and_date_range_with_limit_and_offset(
+    screening_gateway: SupabaseScreeningGateway,
+    gateway: SupabaseCinemaGateway,
+    movie_gateway: SupabaseMovieGateway,
+) -> None:
+    """Verify limit/offset return the correct slice while total reflects all rows."""
+    await _seed_parents(gateway, movie_gateway)
+    for i, day in enumerate((7, 8, 10)):
+        await screening_gateway.save(
+            screening_id=f"scr-page-{i}",
+            movie_id="mov-001",
+            cinema_id="cin-003",
+            showtime=datetime(2026, 6, day, 19, 0, 0, tzinfo=UTC),
+        )
+
+    page = await screening_gateway.find_by_cinema_and_date_range(
+        cinema_id="cin-003",
+        start_date=datetime(2026, 6, 1, 0, 0, 0, tzinfo=UTC),
+        end_date=datetime(2026, 6, 30, 23, 59, 59, tzinfo=UTC),
+        limit=2,
+        offset=1,
+    )
+
+    assert page.total == 3
+    assert [row["id"] for row in page.rows] == ["scr-page-1", "scr-page-2"]
+
+
+@pytest.mark.asyncio
+async def test_find_by_cinema_and_date_range_offset_past_total(
+    screening_gateway: SupabaseScreeningGateway,
+    gateway: SupabaseCinemaGateway,
+    movie_gateway: SupabaseMovieGateway,
+) -> None:
+    """An offset beyond the result set returns no rows but the true total.
+
+    Exercises the fallback COUNT(*) path: when LIMIT/OFFSET returns zero
+    rows, there is no row to read a windowed total off, so the gateway must
+    fall back to a separate count query.
+    """
+    await _seed_parents(gateway, movie_gateway)
+    await screening_gateway.save(
+        screening_id="scr-past-0",
+        movie_id="mov-001",
+        cinema_id="cin-003",
+        showtime=datetime(2026, 6, 7, 19, 0, 0, tzinfo=UTC),
+    )
+
+    page = await screening_gateway.find_by_cinema_and_date_range(
+        cinema_id="cin-003",
+        start_date=datetime(2026, 6, 1, 0, 0, 0, tzinfo=UTC),
+        end_date=datetime(2026, 6, 30, 23, 59, 59, tzinfo=UTC),
+        limit=10,
+        offset=100,
+    )
+
+    assert page.rows == []
+    assert page.total == 1
 
 
 @pytest.mark.asyncio

@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import asyncpg
 
-from marquise.interface_adapters.repositories.protocols.base import GatewayError
+from marquise.interface_adapters.repositories.protocols.base import (
+    GatewayError,
+    GatewayPage,
+)
 
 DEFAULT_SCHEMA = "marquise"
 
@@ -185,28 +188,69 @@ class SupabaseCinemaGateway:
             ) from None
         return dict(row)
 
-    async def find_all(self, name_filter: str | None = None) -> list[dict]:
-        """Retrieve all cinemas, optionally filtered by name.
+    async def find_all(
+        self,
+        name_filter: str | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> GatewayPage:
+        """Retrieve cinemas, optionally filtered by name and paginated.
 
         Args:
             name_filter: An optional substring to match against cinema names
                 (case-insensitive). If None, all cinemas are returned.
+            limit: Max number of rows to return. If None, all matching rows
+                are returned unbounded (no ``LIMIT`` clause is applied).
+            offset: Number of matching rows to skip before returning results.
 
         Returns:
-            A list of dicts representing cinema rows.
+            A ``GatewayPage`` with the matching rows (as dicts) and the total
+            count of rows matching ``name_filter``, ignoring ``limit``/
+            ``offset``.
         """
+        where_clause = "WHERE LOWER(name) LIKE LOWER($1)" if name_filter else ""
+        params: list = [f"%{name_filter}%"] if name_filter else []
+
         async with self._pool.acquire() as conn:
-            if name_filter:
+            if limit is None:
                 rows = await conn.fetch(
                     f"""
                     SELECT {_COLUMNS} FROM {self._table}
-                    WHERE LOWER(name) LIKE LOWER($1)
+                    {where_clause}
                     ORDER BY name
                     """,
-                    f"%{name_filter}%",
+                    *params,
                 )
-            else:
-                rows = await conn.fetch(
-                    f"SELECT {_COLUMNS} FROM {self._table} ORDER BY name"
+                return GatewayPage(rows=[dict(r) for r in rows], total=len(rows))
+
+            # COUNT(*) OVER() rides along with the paginated SELECT so the
+            # common case (a non-empty page) costs one round trip. It can't
+            # report a total when the page itself is empty (e.g. offset past
+            # the end of the result set), since there is no row to read it
+            # off — that case falls back to a separate, cheap COUNT(*).
+            limit_param = len(params) + 1
+            offset_param = len(params) + 2
+            rows = await conn.fetch(
+                f"""
+                SELECT {_COLUMNS}, COUNT(*) OVER() AS __total
+                FROM {self._table}
+                {where_clause}
+                ORDER BY name
+                LIMIT ${limit_param} OFFSET ${offset_param}
+                """,
+                *params,
+                limit,
+                offset,
+            )
+            if not rows:
+                total = await conn.fetchval(
+                    f"SELECT COUNT(*) FROM {self._table} {where_clause}",
+                    *params,
                 )
-        return [dict(r) for r in rows]
+                return GatewayPage(rows=[], total=total)
+
+            total = rows[0]["__total"]
+            result_rows = [dict(r) for r in rows]
+            for row in result_rows:
+                row.pop("__total")
+        return GatewayPage(rows=result_rows, total=total)

@@ -4,9 +4,12 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from marquise.interface_adapters.repositories.protocols.base import GatewayError
+from marquise.interface_adapters.repositories.protocols.base import (
+    GatewayError,
+    GatewayPage,
+)
 
-__all__ = ["CinemaGateway", "GatewayError"]
+__all__ = ["CinemaGateway", "GatewayError", "GatewayPage"]
 
 
 class CinemaGateway(Protocol):
@@ -113,14 +116,22 @@ class CinemaGateway(Protocol):
         """
         ...
 
-    async def find_all(self, name_filter: str | None = None) -> list[dict]:
-        """Retrieve all cinemas, optionally filtered by name.
+    async def find_all(
+        self,
+        name_filter: str | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> GatewayPage:
+        """Retrieve cinemas, optionally filtered by name and paginated.
 
         Args:
             name_filter: An optional substring to match against cinema names
                 (case-insensitive). If None, all cinemas are returned.
+            limit: Max number of rows to return. If None, all matching rows
+                are returned unbounded.
+            offset: Number of matching rows to skip before returning results.
 
         Returns:
-            A list of dicts representing cinema rows.
+            A ``GatewayPage`` with the matching rows and the total count.
         """
         ...

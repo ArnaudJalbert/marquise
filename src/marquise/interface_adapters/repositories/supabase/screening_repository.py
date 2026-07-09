@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from marquise.application.exceptions import ScreeningAlreadyExistsError
-from marquise.application.repositories import ScreeningRepository
+from marquise.application.repositories import Page, ScreeningRepository
 from marquise.domain.entities import Movie, Screening
 from marquise.domain.value_objects import (
     CinemaId,
@@ -180,23 +180,35 @@ class SupabaseScreeningRepository(ScreeningRepository):
         cinema_id: CinemaId,
         start_date: datetime,
         end_date: datetime,
-    ) -> list[Screening]:
-        """Find screenings for a cinema within a date range.
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> Page[Screening]:
+        """Find screenings for a cinema within a date range, paginated.
 
         Args:
             cinema_id: The cinema to filter by.
             start_date: Start of the date range (inclusive).
             end_date: End of the date range (inclusive).
+            limit: Max number of screenings to return. If None, all matching
+                screenings are returned unbounded.
+            offset: Number of matching screenings to skip before returning
+                results.
 
         Returns:
-            A list of matching screening entities.
+            A ``Page[Screening]`` with the matching screenings and the total
+            count.
         """
-        rows = await self._gateway.find_by_cinema_and_date_range(
+        gateway_page = await self._gateway.find_by_cinema_and_date_range(
             cinema_id=str(cinema_id),
             start_date=start_date,
             end_date=end_date,
+            limit=limit,
+            offset=offset,
         )
-        return [self._to_entity(row) for row in rows]
+        return Page(
+            items=[self._to_entity(row) for row in gateway_page.rows],
+            total=gateway_page.total,
+        )
 
     @staticmethod
     def _to_entity(data: dict) -> Screening:

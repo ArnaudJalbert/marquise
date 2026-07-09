@@ -493,7 +493,7 @@ def test_cinema_delete_success(
 
     cinema = _make_cinema_data()
     mock_cinema_controller_for_delete.list_cinemas.return_value = (
-        ListCinemasUseCase.OutputData(cinemas=[cinema])
+        ListCinemasUseCase.OutputData(cinemas=[cinema], total=1)
     )
     mock_cinema_controller_for_delete.delete.return_value = (
         DeleteCinemaUseCase.OutputData(cinema_id="cin-001")
@@ -536,7 +536,7 @@ def test_cinema_delete_name_mismatch(
     from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 
     mock_cinema_controller_for_delete.list_cinemas.return_value = (
-        ListCinemasUseCase.OutputData(cinemas=[_make_cinema_data()])
+        ListCinemasUseCase.OutputData(cinemas=[_make_cinema_data()], total=1)
     )
     mock_container.cinema_controller = mock_cinema_controller_for_delete
     mock_container.initialize = AsyncMock()
@@ -575,7 +575,7 @@ def test_cinema_delete_no_cinemas(
     from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 
     mock_cinema_controller_for_delete.list_cinemas.return_value = (
-        ListCinemasUseCase.OutputData(cinemas=[])
+        ListCinemasUseCase.OutputData(cinemas=[], total=0)
     )
     mock_container.cinema_controller = mock_cinema_controller_for_delete
     mock_container.initialize = AsyncMock()
@@ -605,7 +605,7 @@ def test_cinema_delete_cancelled_at_select(
     from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 
     mock_cinema_controller_for_delete.list_cinemas.return_value = (
-        ListCinemasUseCase.OutputData(cinemas=[_make_cinema_data()])
+        ListCinemasUseCase.OutputData(cinemas=[_make_cinema_data()], total=1)
     )
     mock_container.cinema_controller = mock_cinema_controller_for_delete
     mock_container.initialize = AsyncMock()
@@ -640,7 +640,7 @@ def test_cinema_delete_cancelled_at_confirmation(
     from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 
     mock_cinema_controller_for_delete.list_cinemas.return_value = (
-        ListCinemasUseCase.OutputData(cinemas=[_make_cinema_data()])
+        ListCinemasUseCase.OutputData(cinemas=[_make_cinema_data()], total=1)
     )
     mock_container.cinema_controller = mock_cinema_controller_for_delete
     mock_container.initialize = AsyncMock()
@@ -678,7 +678,7 @@ def test_cinema_delete_failure(
     from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 
     mock_cinema_controller_for_delete.list_cinemas.return_value = (
-        ListCinemasUseCase.OutputData(cinemas=[_make_cinema_data()])
+        ListCinemasUseCase.OutputData(cinemas=[_make_cinema_data()], total=1)
     )
     mock_cinema_controller_for_delete.delete = AsyncMock(
         side_effect=ValueError("Something went wrong"),
@@ -745,7 +745,7 @@ def test_cinema_list_success(
     cinemas = _make_list_mock_cinemas()
     mock_cinema_controller = create_autospec(CinemaController, instance=True)
     mock_cinema_controller.list = AsyncMock(
-        return_value=ListCinemasUseCase.OutputData(cinemas=cinemas)
+        return_value=ListCinemasUseCase.OutputData(cinemas=cinemas, total=len(cinemas))
     )
     mock_container.cinema_controller = mock_cinema_controller
     mock_container.initialize = AsyncMock()
@@ -778,7 +778,7 @@ def test_cinema_list_empty(
 
     mock_cinema_controller = create_autospec(CinemaController, instance=True)
     mock_cinema_controller.list = AsyncMock(
-        return_value=ListCinemasUseCase.OutputData(cinemas=[])
+        return_value=ListCinemasUseCase.OutputData(cinemas=[], total=0)
     )
     mock_container.cinema_controller = mock_cinema_controller
     mock_container.initialize = AsyncMock()
@@ -839,7 +839,7 @@ def test_cinema_list_verbose(
     cinemas = _make_list_mock_cinemas()
     mock_cinema_controller = create_autospec(CinemaController, instance=True)
     mock_cinema_controller.list = AsyncMock(
-        return_value=ListCinemasUseCase.OutputData(cinemas=cinemas)
+        return_value=ListCinemasUseCase.OutputData(cinemas=cinemas, total=len(cinemas))
     )
     mock_container.cinema_controller = mock_cinema_controller
     mock_container.initialize = AsyncMock()
@@ -875,7 +875,7 @@ def test_cinema_list_with_name_filter(
 
     mock_cinema_controller = create_autospec(CinemaController, instance=True)
     mock_cinema_controller.list = AsyncMock(
-        return_value=ListCinemasUseCase.OutputData(cinemas=[])
+        return_value=ListCinemasUseCase.OutputData(cinemas=[], total=0)
     )
     mock_container.cinema_controller = mock_cinema_controller
     mock_container.initialize = AsyncMock()
@@ -912,7 +912,7 @@ def test_cinema_update_success(
 
     cinema = _make_cinema_data()
     mock_cinema_controller_for_update.list_cinemas.return_value = (
-        ListCinemasUseCase.OutputData(cinemas=[cinema])
+        ListCinemasUseCase.OutputData(cinemas=[cinema], total=1)
     )
     mock_cinema_controller_for_update.update.return_value = (
         UpdateCinemaUseCase.OutputData(
@@ -973,7 +973,7 @@ def test_cinema_update_single_field(
 
     cinema = _make_cinema_data()
     mock_cinema_controller_for_update.list_cinemas.return_value = (
-        ListCinemasUseCase.OutputData(cinemas=[cinema])
+        ListCinemasUseCase.OutputData(cinemas=[cinema], total=1)
     )
     mock_cinema_controller_for_update.update.return_value = (
         UpdateCinemaUseCase.OutputData(
@@ -1028,7 +1028,7 @@ def test_cinema_update_clear_optional_field(
 
     cinema = _make_cinema_data()
     mock_cinema_controller_for_update.list_cinemas.return_value = (
-        ListCinemasUseCase.OutputData(cinemas=[cinema])
+        ListCinemasUseCase.OutputData(cinemas=[cinema], total=1)
     )
     mock_cinema_controller_for_update.update.return_value = (
         UpdateCinemaUseCase.OutputData(
@@ -1077,7 +1077,7 @@ def test_cinema_update_no_cinemas(
 ) -> None:
     """Verify cinema update shows message when no cinemas exist."""
     mock_cinema_controller_for_update.list_cinemas.return_value = (
-        ListCinemasUseCase.OutputData(cinemas=[])
+        ListCinemasUseCase.OutputData(cinemas=[], total=0)
     )
     mock_container.cinema_controller = mock_cinema_controller_for_update
     mock_container.initialize = AsyncMock()
@@ -1105,7 +1105,7 @@ def test_cinema_update_cancelled_at_select(
 ) -> None:
     """Verify cinema update handles cancellation at the selection prompt."""
     mock_cinema_controller_for_update.list_cinemas.return_value = (
-        ListCinemasUseCase.OutputData(cinemas=[_make_cinema_data()])
+        ListCinemasUseCase.OutputData(cinemas=[_make_cinema_data()], total=1)
     )
     mock_container.cinema_controller = mock_cinema_controller_for_update
     mock_container.initialize = AsyncMock()
@@ -1141,7 +1141,7 @@ def test_cinema_update_cancelled_at_fields(
 
     cinema = _make_cinema_data()
     mock_cinema_controller_for_update.list_cinemas.return_value = (
-        ListCinemasUseCase.OutputData(cinemas=[cinema])
+        ListCinemasUseCase.OutputData(cinemas=[cinema], total=1)
     )
     mock_container.cinema_controller = mock_cinema_controller_for_update
     mock_container.initialize = AsyncMock()
@@ -1178,7 +1178,7 @@ def test_cinema_update_failure(
 
     cinema = _make_cinema_data()
     mock_cinema_controller_for_update.list_cinemas.return_value = (
-        ListCinemasUseCase.OutputData(cinemas=[cinema])
+        ListCinemasUseCase.OutputData(cinemas=[cinema], total=1)
     )
     mock_cinema_controller_for_update.update.side_effect = ValueError(
         "Something went wrong"

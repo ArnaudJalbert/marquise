@@ -49,13 +49,3 @@ class ScreeningResponse(BaseModel):
     ticket_url: str | None = None
     room: str | None = None
     language: str | None = None
-
-
-class CinemaShowtimesResponse(BaseModel):
-    """A cinema with its screenings in a date range."""
-
-    model_config = ConfigDict(from_attributes=True)
-
-    cinema_id: str
-    cinema_name: str
-    screenings: list[ScreeningResponse]

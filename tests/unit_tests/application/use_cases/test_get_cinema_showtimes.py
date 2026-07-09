@@ -8,7 +8,11 @@ from unittest.mock import create_autospec
 import pytest
 
 from marquise.application.exceptions import CinemaNotFoundError
-from marquise.application.repositories import CinemaRepository, ScreeningRepository
+from marquise.application.repositories import (
+    CinemaRepository,
+    Page,
+    ScreeningRepository,
+)
 from marquise.application.use_cases.get_cinema_showtimes import (
     GetCinemaShowtimesUseCase,
 )
@@ -43,7 +47,9 @@ async def test_returns_cinema_and_screenings() -> None:
     cinema_repo = create_autospec(CinemaRepository, instance=True)
     cinema_repo.find_by_id.return_value = cinema
     screening_repo = create_autospec(ScreeningRepository, instance=True)
-    screening_repo.find_by_cinema_and_date_range.return_value = [screening]
+    screening_repo.find_by_cinema_and_date_range.return_value = Page(
+        items=[screening], total=1
+    )
 
     use_case = GetCinemaShowtimesUseCase(
         cinema_repository=cinema_repo,
@@ -55,6 +61,64 @@ async def test_returns_cinema_and_screenings() -> None:
     assert len(result.screenings) == 1
     assert result.screenings[0].movie_title == "The Odyssey"
     assert result.screenings[0].showtime.startswith("2026-06-27T19:30")
+    assert result.total == 1
+
+
+@pytest.mark.asyncio
+async def test_passes_page_and_size_to_repository_as_limit_offset() -> None:
+    """page/size from the input are converted to limit/offset for the repository.
+
+    Page 2, size 5 should produce limit=5, offset=5.
+    """
+    cinema = Cinema(id=CinemaId(value="cin-1"), name="Cinema One")
+    cinema_repo = create_autospec(CinemaRepository, instance=True)
+    cinema_repo.find_by_id.return_value = cinema
+    screening_repo = create_autospec(ScreeningRepository, instance=True)
+    screening_repo.find_by_cinema_and_date_range.return_value = Page(items=[], total=50)
+
+    use_case = GetCinemaShowtimesUseCase(
+        cinema_repository=cinema_repo,
+        screening_repository=screening_repo,
+    )
+    request = GetCinemaShowtimesUseCase.InputData(
+        cinema_id="cin-1",
+        start_date=datetime(2026, 6, 27, tzinfo=UTC),
+        end_date=datetime(2026, 6, 28, tzinfo=UTC),
+        page=2,
+        size=5,
+    )
+    result = await use_case.execute(request)
+
+    screening_repo.find_by_cinema_and_date_range.assert_awaited_once_with(
+        cinema_id=CinemaId(value="cin-1"),
+        start_date=request.start_date,
+        end_date=request.end_date,
+        limit=5,
+        offset=5,
+    )
+    assert result.total == 50
+
+
+def test_input_rejects_page_below_one() -> None:
+    """A page less than 1 is rejected."""
+    with pytest.raises(ValueError, match="page must be at least 1"):
+        GetCinemaShowtimesUseCase.InputData(
+            cinema_id="cin-1",
+            start_date=datetime(2026, 6, 27, tzinfo=UTC),
+            end_date=datetime(2026, 6, 28, tzinfo=UTC),
+            page=0,
+        )
+
+
+def test_input_rejects_non_positive_size() -> None:
+    """A non-positive size is rejected when provided."""
+    with pytest.raises(ValueError, match="size must be positive when provided"):
+        GetCinemaShowtimesUseCase.InputData(
+            cinema_id="cin-1",
+            start_date=datetime(2026, 6, 27, tzinfo=UTC),
+            end_date=datetime(2026, 6, 28, tzinfo=UTC),
+            size=0,
+        )
 
 
 @pytest.mark.asyncio

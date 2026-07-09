@@ -120,19 +120,44 @@ def test_cinema_data_rejects_whitespace_website_when_provided() -> None:
 def test_output_data_creation() -> None:
     """Verify OutputData can be created with a list of CinemaData."""
     cinema = ListCinemasUseCase.CinemaData(id="id-1", name="Test Cinema")
-    data = ListCinemasUseCase.OutputData(cinemas=[cinema])
+    data = ListCinemasUseCase.OutputData(cinemas=[cinema], total=1)
     assert len(data.cinemas) == 1
     assert data.cinemas[0].id == "id-1"
     assert data.cinemas[0].name == "Test Cinema"
+    assert data.total == 1
 
 
 def test_output_data_empty_list() -> None:
     """Verify OutputData accepts an empty list."""
-    data = ListCinemasUseCase.OutputData(cinemas=[])
+    data = ListCinemasUseCase.OutputData(cinemas=[], total=0)
     assert len(data.cinemas) == 0
 
 
 def test_output_data_rejects_none_cinemas() -> None:
     """Verify OutputData rejects None for cinemas."""
     with pytest.raises(ValueError, match="cinemas must not be None"):
-        ListCinemasUseCase.OutputData(cinemas=None)  # type: ignore
+        ListCinemasUseCase.OutputData(cinemas=None, total=0)  # type: ignore
+
+
+def test_output_data_rejects_negative_total() -> None:
+    """Verify OutputData rejects a negative total."""
+    with pytest.raises(ValueError, match="total must not be negative"):
+        ListCinemasUseCase.OutputData(cinemas=[], total=-1)
+
+
+def test_input_data_rejects_page_below_one() -> None:
+    """Verify InputData rejects a page less than 1."""
+    with pytest.raises(ValueError, match="page must be at least 1"):
+        ListCinemasUseCase.InputData(page=0)
+
+
+def test_input_data_rejects_non_positive_size() -> None:
+    """Verify InputData rejects a size less than 1 when provided."""
+    with pytest.raises(ValueError, match="size must be positive when provided"):
+        ListCinemasUseCase.InputData(size=0)
+
+
+def test_input_data_allows_none_size() -> None:
+    """Verify InputData allows size=None (unbounded)."""
+    data = ListCinemasUseCase.InputData(size=None)
+    assert data.size is None
