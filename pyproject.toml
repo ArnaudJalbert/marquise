@@ -8,6 +8,7 @@ dependencies = [
     "asyncpg>=0.31.0",
     "certifi>=2024.0.0",
     "fastapi>=0.138.1",
+    "fastapi-cache2>=0.2.2",
     "python-dotenv>=1.2.2",
     "questionary>=2.1.1",
     "rich>=15.0.0",
