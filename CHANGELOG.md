@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.11.0 (2026-07-09)
+
+### New Features
+
+- **New source: Cinéma Moderne**: Added a scraper source for Cinéma Moderne, fetching directly from the venue's `/horaire/<year>/<month>` schedule pages — unlike other sources, the full month's calendar (showtimes, ticket links, film links) is server-rendered straight into the page HTML, with no JSON-LD block or AJAX endpoint. Each month page renders a full calendar grid that overlaps its neighbours at the boundary, so `fetch_showtimes` fetches every month in the requested range concurrently and deduplicates rows by `(movie_url, showtime)`. Per-performance `external_id` is derived by combining the ticketing system's `EvenementID` (shared across all showings of a given film run) with the showtime, since the raw `EvenementID` alone is not unique per performance. `fetch_movie_detail` scrapes the film detail page's structured `<dl>` metadata block (director, country, year, duration) plus a synopsis paragraph and poster image. Registered as `"cinemamoderne"` in the DI container's source registry. Closes #48.
+
 ## 0.10.1 (2026-07-09)
 
 ### Bug Fixes
