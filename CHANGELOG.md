@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.0 (2026-07-09)
+
+### New Features
+
+- **New source: Cinémathèque québécoise**: Added a scraper source for Cinémathèque québécoise, fetching from the venue's OmniWeb ticketing portal (the cinema's own `cinematheque.qc.ca` site sits behind a Cloudflare challenge that blocks scraping, but its ticketing backend does not). Each day's schedule page embeds the full day's programming as an inline JS data blob (`gMovieData`) alongside a calendar of other available dates — `fetch_showtimes` bootstraps from today's page to discover the schedule window, then fetches each additional in-range date concurrently. `fetch_movie_detail` re-fetches a showtime's date page to pull synopsis/runtime/rating/poster enrichment, since the site has no separate film detail page. Registered as `"cinematheque"` in the DI container's source registry. Closes #47.
+
 ## 0.9.1 (2026-07-08)
 
 ### New Features

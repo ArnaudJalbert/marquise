@@ -6,8 +6,12 @@ from marquise.interface_adapters.repositories.source_adapters.cinemacinema impor
 from marquise.interface_adapters.repositories.source_adapters.cinemapublic import (
     CinemaPublicAdapter,
 )
+from marquise.interface_adapters.repositories.source_adapters.cinematheque import (
+    CinemathequeAdapter,
+)
 
 __all__ = [
     "CinemaCinemaAdapter",
     "CinemaPublicAdapter",
+    "CinemathequeAdapter",
 ]
