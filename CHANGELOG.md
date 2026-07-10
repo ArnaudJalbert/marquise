@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.14.0 (2026-07-09)
+
+### New Features
+
+- **Per-IP rate limiting for the public API**: `create_app()` now wires up [slowapi](https://pypi.org/project/slowapi/) with an in-memory counter store (consistent with the existing `fastapi-cache2` in-memory cache — no Redis or other external store required). Default limit is `60/minute` per client IP, configurable via `MARQUISE_API_RATE_LIMIT` (slowapi's `<count>/<period>` syntax). Requests over the limit get a `429` with `Retry-After`, `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset` headers. `GET /health` is exempt. The shared `Limiter` lives in a new `rate_limit.py` module and is applied explicitly via `@limiter.limit(...)` on each `cinemas`/`movies` router endpoint — the FastAPI version this project pins defers `include_router()`-registered routes behind an internal `_IncludedRouter` wrapper that slowapi's route-matching middleware can't see, so per-route decoration (rather than middleware-only `default_limits`) is required for those endpoints; `SlowAPIMiddleware` is still registered for top-level routes and is what makes `/health`'s `@limiter.exempt` take effect. Closes #50.
+
 ## 0.13.0 (2026-07-09)
 
 ### New Features

@@ -712,3 +712,64 @@ def test_cors_origin_not_allowed_rejected(monkeypatch: pytest.MonkeyPatch) -> No
 
     assert response.status_code == 200
     assert "access-control-allow-origin" not in response.headers
+
+
+def test_rate_limit_headers_present_on_success(
+    client: TestClient, container: MagicMock
+) -> None:
+    """A normal request under the limit reports rate-limit headers."""
+    container.cinema_controller.list.return_value = SimpleNamespace(cinemas=[], total=0)
+
+    response = client.get("/cinemas")
+
+    assert response.status_code == 200
+    assert "x-ratelimit-limit" in response.headers
+    assert "x-ratelimit-remaining" in response.headers
+    assert "x-ratelimit-reset" in response.headers
+
+
+def test_rate_limit_exceeded_returns_429(
+    monkeypatch: pytest.MonkeyPatch, container: MagicMock
+) -> None:
+    """A client exceeding the configured rate limit gets a 429 with Retry-After."""
+    monkeypatch.setenv("MARQUISE_API_RATE_LIMIT", "1/minute")
+    container.cinema_controller.list = AsyncMock(
+        return_value=SimpleNamespace(cinemas=[], total=0)
+    )
+    client = TestClient(create_app(container=container))
+
+    first = client.get("/cinemas")
+    second = client.get("/cinemas")
+
+    assert first.status_code == 200
+    assert second.status_code == 429
+    assert "retry-after" in second.headers
+    assert "error" in second.json()
+
+
+def test_health_is_exempt_from_rate_limiting(
+    monkeypatch: pytest.MonkeyPatch, container: MagicMock
+) -> None:
+    """/health keeps responding 200 even past the configured rate limit."""
+    monkeypatch.setenv("MARQUISE_API_RATE_LIMIT", "1/minute")
+    client = TestClient(create_app(container=container))
+
+    responses = [client.get("/health") for _ in range(5)]
+
+    assert all(response.status_code == 200 for response in responses)
+
+
+def test_rate_limit_is_configurable_via_env_var(
+    monkeypatch: pytest.MonkeyPatch, container: MagicMock
+) -> None:
+    """A higher configured limit allows more requests before a 429."""
+    monkeypatch.setenv("MARQUISE_API_RATE_LIMIT", "5/minute")
+    container.cinema_controller.list = AsyncMock(
+        return_value=SimpleNamespace(cinemas=[], total=0)
+    )
+    client = TestClient(create_app(container=container))
+
+    responses = [client.get("/cinemas") for _ in range(5)]
+
+    assert all(response.status_code == 200 for response in responses)
+    assert client.get("/cinemas").status_code == 429
