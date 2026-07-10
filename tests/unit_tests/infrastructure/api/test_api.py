@@ -72,7 +72,7 @@ def test_list_cinemas(client: TestClient, container: MagicMock) -> None:
         total=1,
     )
 
-    response = client.get("/cinemas")
+    response = client.get("/v1/cinemas")
 
     assert response.status_code == 200
     body = response.json()
@@ -90,7 +90,7 @@ def test_list_cinemas_delegates_to_cinema_controller(
     """GET /cinemas calls cinema_controller.list(), not the use case directly."""
     container.cinema_controller.list.return_value = SimpleNamespace(cinemas=[], total=0)
 
-    response = client.get("/cinemas", params={"name": "Cineplex"})
+    response = client.get("/v1/cinemas", params={"name": "Cineplex"})
 
     assert response.status_code == 200
     container.cinema_controller.list.assert_awaited_once_with(
@@ -118,7 +118,7 @@ def test_get_cinema_showtimes(client: TestClient, container: MagicMock) -> None:
     )
 
     response = client.get(
-        "/cinemas/cin-1/showtimes",
+        "/v1/cinemas/cin-1/showtimes",
         params={"from": "2026-06-27", "to": "2026-06-28"},
     )
 
@@ -150,7 +150,7 @@ def test_list_cinemas_pagination(client: TestClient, container: MagicMock) -> No
         total=5,
     )
 
-    response = client.get("/cinemas", params={"page": 2, "size": 2})
+    response = client.get("/v1/cinemas", params={"page": 2, "size": 2})
 
     assert response.status_code == 200
     body = response.json()
@@ -165,7 +165,7 @@ def test_list_cinemas_size_out_of_range_is_rejected(
     client: TestClient, container: MagicMock
 ) -> None:
     """A size above the max page size is rejected with a 422."""
-    response = client.get("/cinemas", params={"size": 101})
+    response = client.get("/v1/cinemas", params={"size": 101})
 
     assert response.status_code == 422
 
@@ -207,7 +207,7 @@ def test_get_cinema_showtimes_pagination(
     )
 
     response = client.get(
-        "/cinemas/cin-1/showtimes",
+        "/v1/cinemas/cin-1/showtimes",
         params={"from": "2026-06-27", "to": "2026-06-28", "page": 2, "size": 2},
     )
 
@@ -231,7 +231,7 @@ def test_get_cinema_showtimes_not_found(
     )
 
     response = client.get(
-        "/cinemas/missing/showtimes",
+        "/v1/cinemas/missing/showtimes",
         params={"from": "2026-06-27", "to": "2026-06-28"},
     )
 
@@ -249,7 +249,7 @@ def test_get_cinema_showtimes_with_default_dates(
         total=0,
     )
 
-    response = client.get("/cinemas/cin-1/showtimes")
+    response = client.get("/v1/cinemas/cin-1/showtimes")
 
     assert response.status_code == 200
     body = response.json()
@@ -274,7 +274,7 @@ def test_get_cinema_showtimes_default_dates_are_utc_aware(
 
     container.get_cinema_showtimes_use_case.execute.side_effect = fake_execute
 
-    response = client.get("/cinemas/cin-1/showtimes")
+    response = client.get("/v1/cinemas/cin-1/showtimes")
 
     assert response.status_code == 200
     assert captured[0].start_date.tzinfo is not None
@@ -298,8 +298,8 @@ def test_get_cinema_showtimes_default_dates_are_cached_within_the_same_day(
         total=0,
     )
 
-    first = client.get("/cinemas/cin-1/showtimes")
-    second = client.get("/cinemas/cin-1/showtimes")
+    first = client.get("/v1/cinemas/cin-1/showtimes")
+    second = client.get("/v1/cinemas/cin-1/showtimes")
 
     assert first.headers.get("X-FastAPI-Cache") == "MISS"
     assert second.headers.get("X-FastAPI-Cache") == "HIT"
@@ -324,7 +324,7 @@ def test_get_movie(client: TestClient, container: MagicMock) -> None:
         origin_countries=None,
     )
 
-    response = client.get("/movies/mov-1")
+    response = client.get("/v1/movies/mov-1")
 
     assert response.status_code == 200
     body = response.json()
@@ -336,7 +336,7 @@ def test_get_movie_not_found(client: TestClient, container: MagicMock) -> None:
     """A missing movie yields 404."""
     container.get_movie_use_case.execute.side_effect = MovieNotFoundError("nope")
 
-    response = client.get("/movies/missing")
+    response = client.get("/v1/movies/missing")
 
     assert response.status_code == 404
 
@@ -356,8 +356,8 @@ def test_list_cinemas_is_cached(client: TestClient, container: MagicMock) -> Non
         total=1,
     )
 
-    first = client.get("/cinemas")
-    second = client.get("/cinemas")
+    first = client.get("/v1/cinemas")
+    second = client.get("/v1/cinemas")
 
     assert first.status_code == 200
     assert second.status_code == 200
@@ -383,8 +383,8 @@ def test_get_movie_is_cached(client: TestClient, container: MagicMock) -> None:
         origin_countries=None,
     )
 
-    first = client.get("/movies/mov-1")
-    second = client.get("/movies/mov-1")
+    first = client.get("/v1/movies/mov-1")
+    second = client.get("/v1/movies/mov-1")
 
     assert first.status_code == 200
     assert second.json() == first.json()
@@ -403,8 +403,8 @@ def test_get_cinema_showtimes_is_cached(
     )
     params = {"from": "2026-06-27", "to": "2026-06-28"}
 
-    first = client.get("/cinemas/cin-1/showtimes", params=params)
-    second = client.get("/cinemas/cin-1/showtimes", params=params)
+    first = client.get("/v1/cinemas/cin-1/showtimes", params=params)
+    second = client.get("/v1/cinemas/cin-1/showtimes", params=params)
 
     assert first.status_code == 200
     assert second.json() == first.json()
@@ -417,7 +417,7 @@ def test_list_cinemas_cache_has_miss_header_on_first_request(
     """The first request for /cinemas has X-FastAPI-Cache: MISS header."""
     container.cinema_controller.list.return_value = SimpleNamespace(cinemas=[], total=0)
 
-    response = client.get("/cinemas")
+    response = client.get("/v1/cinemas")
 
     assert response.status_code == 200
     assert response.headers.get("X-FastAPI-Cache") == "MISS"
@@ -429,8 +429,8 @@ def test_list_cinemas_cache_has_hit_header_on_repeat_request(
     """Repeat requests for /cinemas have X-FastAPI-Cache: HIT header."""
     container.cinema_controller.list.return_value = SimpleNamespace(cinemas=[], total=0)
 
-    client.get("/cinemas")
-    response = client.get("/cinemas")
+    client.get("/v1/cinemas")
+    response = client.get("/v1/cinemas")
 
     assert response.status_code == 200
     assert response.headers.get("X-FastAPI-Cache") == "HIT"
@@ -456,7 +456,7 @@ def test_get_movie_cache_has_miss_header_on_first_request(
         origin_countries=None,
     )
 
-    response = client.get("/movies/mov-1")
+    response = client.get("/v1/movies/mov-1")
 
     assert response.status_code == 200
     assert response.headers.get("X-FastAPI-Cache") == "MISS"
@@ -482,8 +482,8 @@ def test_get_movie_cache_has_hit_header_on_repeat_request(
         origin_countries=None,
     )
 
-    client.get("/movies/mov-1")
-    response = client.get("/movies/mov-1")
+    client.get("/v1/movies/mov-1")
+    response = client.get("/v1/movies/mov-1")
 
     assert response.status_code == 200
     assert response.headers.get("X-FastAPI-Cache") == "HIT"
@@ -501,7 +501,7 @@ def test_get_cinema_showtimes_cache_has_miss_header_on_first_request(
     )
     params = {"from": "2026-06-27", "to": "2026-06-28"}
 
-    response = client.get("/cinemas/cin-1/showtimes", params=params)
+    response = client.get("/v1/cinemas/cin-1/showtimes", params=params)
 
     assert response.status_code == 200
     assert response.headers.get("X-FastAPI-Cache") == "MISS"
@@ -519,8 +519,8 @@ def test_get_cinema_showtimes_cache_has_hit_header_on_repeat_request(
     )
     params = {"from": "2026-06-27", "to": "2026-06-28"}
 
-    client.get("/cinemas/cin-1/showtimes", params=params)
-    response = client.get("/cinemas/cin-1/showtimes", params=params)
+    client.get("/v1/cinemas/cin-1/showtimes", params=params)
+    response = client.get("/v1/cinemas/cin-1/showtimes", params=params)
 
     assert response.status_code == 200
     assert response.headers.get("X-FastAPI-Cache") == "HIT"
@@ -550,9 +550,9 @@ def test_different_movies_have_separate_cache_entries(
 
     container.get_movie_use_case.execute.side_effect = mock_execute
 
-    response1 = client.get("/movies/mov-1")
-    response2 = client.get("/movies/mov-2")
-    response1_again = client.get("/movies/mov-1")
+    response1 = client.get("/v1/movies/mov-1")
+    response2 = client.get("/v1/movies/mov-2")
+    response1_again = client.get("/v1/movies/mov-1")
 
     assert response1.json()["id"] == "mov-1"
     assert response2.json()["id"] == "mov-2"
@@ -574,9 +574,9 @@ def test_different_date_ranges_have_separate_cache_entries(
     params1 = {"from": "2026-06-27", "to": "2026-06-28"}
     params2 = {"from": "2026-06-29", "to": "2026-06-30"}
 
-    response1 = client.get("/cinemas/cin-1/showtimes", params=params1)
-    response2 = client.get("/cinemas/cin-1/showtimes", params=params2)
-    response1_again = client.get("/cinemas/cin-1/showtimes", params=params1)
+    response1 = client.get("/v1/cinemas/cin-1/showtimes", params=params1)
+    response2 = client.get("/v1/cinemas/cin-1/showtimes", params=params2)
+    response1_again = client.get("/v1/cinemas/cin-1/showtimes", params=params1)
 
     assert response1.status_code == 200
     assert response2.status_code == 200
@@ -591,8 +591,8 @@ def test_not_found_errors_are_not_cached(
     """404 responses are not cached; repeat requests re-execute the use case."""
     container.get_movie_use_case.execute.side_effect = MovieNotFoundError("not found")
 
-    response1 = client.get("/movies/missing")
-    response2 = client.get("/movies/missing")
+    response1 = client.get("/v1/movies/missing")
+    response2 = client.get("/v1/movies/missing")
 
     assert response1.status_code == 404
     assert response2.status_code == 404
@@ -631,9 +631,9 @@ def test_list_cinemas_with_name_filter_creates_separate_cache_entry(
 
     container.cinema_controller.list.side_effect = mock_list
 
-    response1 = client.get("/cinemas", params={"name": "Cineplex"})
-    response2 = client.get("/cinemas", params={"name": "Landmark"})
-    response1_again = client.get("/cinemas", params={"name": "Cineplex"})
+    response1 = client.get("/v1/cinemas", params={"name": "Cineplex"})
+    response2 = client.get("/v1/cinemas", params={"name": "Landmark"})
+    response1_again = client.get("/v1/cinemas", params={"name": "Cineplex"})
 
     assert response1.json()["items"][0]["name"] == "Cineplex Downtown"
     assert response2.json()["items"][0]["name"] == "Landmark Cinemas"
@@ -651,7 +651,7 @@ def test_cors_not_configured_by_default(
     the default (empty) origins, so no CORSMiddleware was installed.
     """
     monkeypatch.delenv("MARQUISE_API_CORS_ORIGINS", raising=False)
-    response = client.get("/cinemas")
+    response = client.get("/v1/cinemas")
     assert response.status_code == 200
     assert "access-control-allow-origin" not in response.headers
 
@@ -666,7 +666,7 @@ def test_cors_headers_present_when_configured(monkeypatch: pytest.MonkeyPatch) -
     client = TestClient(create_app(container=container))
 
     response = client.get(
-        "/cinemas",
+        "/v1/cinemas",
         headers={"Origin": "http://localhost:3000"},
     )
 
@@ -684,7 +684,7 @@ def test_cors_preflight_when_configured(monkeypatch: pytest.MonkeyPatch) -> None
     client = TestClient(create_app(container=container))
 
     response = client.options(
-        "/cinemas",
+        "/v1/cinemas",
         headers={
             "Origin": "http://localhost:3000",
             "Access-Control-Request-Method": "GET",
@@ -706,7 +706,7 @@ def test_cors_origin_not_allowed_rejected(monkeypatch: pytest.MonkeyPatch) -> No
     client = TestClient(create_app(container=container))
 
     response = client.get(
-        "/cinemas",
+        "/v1/cinemas",
         headers={"Origin": "https://evil.com"},
     )
 
@@ -720,7 +720,7 @@ def test_rate_limit_headers_present_on_success(
     """A normal request under the limit reports rate-limit headers."""
     container.cinema_controller.list.return_value = SimpleNamespace(cinemas=[], total=0)
 
-    response = client.get("/cinemas")
+    response = client.get("/v1/cinemas")
 
     assert response.status_code == 200
     assert "x-ratelimit-limit" in response.headers
@@ -738,8 +738,8 @@ def test_rate_limit_exceeded_returns_429(
     )
     client = TestClient(create_app(container=container))
 
-    first = client.get("/cinemas")
-    second = client.get("/cinemas")
+    first = client.get("/v1/cinemas")
+    second = client.get("/v1/cinemas")
 
     assert first.status_code == 200
     assert second.status_code == 429
@@ -769,7 +769,7 @@ def test_rate_limit_is_configurable_via_env_var(
     )
     client = TestClient(create_app(container=container))
 
-    responses = [client.get("/cinemas") for _ in range(5)]
+    responses = [client.get("/v1/cinemas") for _ in range(5)]
 
     assert all(response.status_code == 200 for response in responses)
-    assert client.get("/cinemas").status_code == 429
+    assert client.get("/v1/cinemas").status_code == 429

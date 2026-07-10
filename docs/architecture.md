@@ -90,7 +90,7 @@ marquise source import
 ### API request flow
 
 ```
-HTTP GET /cinemas
+HTTP GET /v1/cinemas
   → FastAPI route (infrastructure/api/routers/cinemas.py)
   → Container.cinema_controller.list()
   → ListCinemasUseCase (application/use_cases/)

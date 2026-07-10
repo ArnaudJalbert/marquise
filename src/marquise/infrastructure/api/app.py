@@ -19,7 +19,7 @@ import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.inmemory import InMemoryBackend
@@ -141,8 +141,10 @@ def create_app(container: Container | None = None) -> FastAPI:
         """Liveness probe."""
         return {"status": "ok"}
 
-    app.include_router(cinemas_router)
-    app.include_router(movies_router)
+    v1_router = APIRouter(prefix="/v1")
+    v1_router.include_router(cinemas_router)
+    v1_router.include_router(movies_router)
+    app.include_router(v1_router)
 
     add_pagination(app)
 

@@ -13,12 +13,16 @@ By default the server listens on `http://localhost:8000`. OpenAPI docs are at
 
 ## Endpoints
 
+All routes except `/health` are versioned under a `/v1` prefix, so that
+breaking changes (pagination, response shape, etc.) can ship as `/v2` without
+disrupting existing consumers.
+
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/health` | Liveness probe — returns `{"status": "ok"}` |
-| `GET` | `/cinemas` | List cinemas, optionally filtered by `?name=` |
-| `GET` | `/cinemas/{id}/showtimes` | List screenings within a date range (`?from=&to=`) |
-| `GET` | `/movies/{id}` | Retrieve a single movie by its ID |
+| `GET` | `/v1/cinemas` | List cinemas, optionally filtered by `?name=` |
+| `GET` | `/v1/cinemas/{id}/showtimes` | List screenings within a date range (`?from=&to=`) |
+| `GET` | `/v1/movies/{id}` | Retrieve a single movie by its ID |
 
 ### Pagination
 
@@ -26,7 +30,7 @@ List endpoints use `page`/`size` query parameters (from fastapi-pagination):
 
 ```bash
 # Page 2, 10 items per page
-curl "http://localhost:8000/cinemas?page=2&size=10"
+curl "http://localhost:8000/v1/cinemas?page=2&size=10"
 
 # Response includes: items[], total, page, size, pages
 ```
@@ -35,11 +39,11 @@ Default: `page=1`, `size=50`. Maximum `size` is 100.
 
 ### Date ranges
 
-`GET /cinemas/{id}/showtimes` accepts `from` and `to` query parameters in
+`GET /v1/cinemas/{id}/showtimes` accepts `from` and `to` query parameters in
 ISO-8601 format:
 
 ```bash
-curl "http://localhost:8000/cinemas/cin-1/showtimes?from=2026-07-09&to=2026-07-16"
+curl "http://localhost:8000/v1/cinemas/cin-1/showtimes?from=2026-07-09&to=2026-07-16"
 ```
 
 Defaults (when omitted): `from` = start of today (UTC), `to` = `from` + 7 days.
@@ -136,9 +140,13 @@ src/marquise/infrastructure/api/
 ├── schemas.py          # Pydantic response models
 └── routers/
     ├── __init__.py     # Re-exports routers
-    ├── cinemas.py      # GET /cinemas, GET /cinemas/{id}/showtimes
-    └── movies.py       # GET /movies/{id}
+    ├── cinemas.py      # GET /cinemas, GET /cinemas/{id}/showtimes (mounted under /v1)
+    └── movies.py       # GET /movies/{id} (mounted under /v1)
 ```
+
+Routers themselves are unprefixed; `create_app()` wraps them in an
+`APIRouter(prefix="/v1")` before mounting them on the app, so the `/v1`
+boundary lives in one place.
 
 All routes delegate to application-layer use cases via the DI container. There
 is no business logic or data access in the routers.
