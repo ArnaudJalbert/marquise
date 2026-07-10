@@ -35,7 +35,7 @@ uv run marquise api
 # → http://localhost:8000/health
 ```
 
-Endpoints: `GET /cinemas`, `GET /cinemas/{id}/showtimes`, `GET /movies/{id}`.
+Endpoints (versioned under `/v1`): `GET /v1/cinemas`, `GET /v1/cinemas/{id}/showtimes`, `GET /v1/movies/{id}`.
 
 See the [API docs](api.md) for details, including how to configure CORS origins, cache TTL, and rate limiting.
 
