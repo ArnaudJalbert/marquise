@@ -1,0 +1,113 @@
+# Read-Only REST API
+
+Marquise ships a read-only FastAPI with pagination, in-memory caching, and configurable CORS.
+
+## Starting the API
+
+```bash
+uv run marquise api
+```
+
+By default the server listens on `http://localhost:8000`. OpenAPI docs are at
+`/docs` and a liveness probe at `/health`.
+
+## Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/health` | Liveness probe — returns `{"status": "ok"}` |
+| `GET` | `/cinemas` | List cinemas, optionally filtered by `?name=` |
+| `GET` | `/cinemas/{id}/showtimes` | List screenings within a date range (`?from=&to=`) |
+| `GET` | `/movies/{id}` | Retrieve a single movie by its ID |
+
+### Pagination
+
+List endpoints use `page`/`size` query parameters (from fastapi-pagination):
+
+```bash
+# Page 2, 10 items per page
+curl "http://localhost:8000/cinemas?page=2&size=10"
+
+# Response includes: items[], total, page, size, pages
+```
+
+Default: `page=1`, `size=50`. Maximum `size` is 100.
+
+### Date ranges
+
+`GET /cinemas/{id}/showtimes` accepts `from` and `to` query parameters in
+ISO-8601 format:
+
+```bash
+curl "http://localhost:8000/cinemas/cin-1/showtimes?from=2026-07-09&to=2026-07-16"
+```
+
+Defaults (when omitted): `from` = start of today (UTC), `to` = `from` + 7 days.
+
+## Caching
+
+Responses are cached in-memory via fastapi-cache2. The first request for a given
+combination of endpoint + query parameters is a cache miss; subsequent identical
+requests hit the cache until the TTL expires.
+
+Configure the TTL:
+
+```bash
+export MARQUISE_API_CACHE_TTL_SECONDS=3600   # 1 hour (default)
+```
+
+`GET /health` is intentionally never cached.
+
+## CORS
+
+The API is **CORS-restrictive by default**: no cross-origin requests are
+permitted. Browser-based clients (e.g. a JavaScript frontend) will be blocked
+unless you configure allowed origins.
+
+### Configuring CORS
+
+Set the `MARQUISE_API_CORS_ORIGINS` environment variable to a comma-separated
+list of origins:
+
+```bash
+# Single origin
+export MARQUISE_API_CORS_ORIGINS="http://localhost:3000"
+
+# Multiple origins
+export MARQUISE_API_CORS_ORIGINS="http://localhost:3000,https://myapp.example.com"
+```
+
+When the env var is set, the API responds with appropriate CORS headers:
+
+- `Access-Control-Allow-Origin` — echoes the requesting origin (if allowed)
+- `Access-Control-Allow-Methods: GET` — the API is read-only
+- `Access-Control-Allow-Credentials: true`
+- `Access-Control-Allow-Headers: *`
+
+### How it works
+
+The middleware is registered in `create_app()` in
+`src/marquise/infrastructure/api/app.py`. It reads the env var, parses it via
+the `_parse_cors_origins()` helper, and only adds `CORSMiddleware` when at least
+one origin is configured — so there is zero overhead when CORS is not needed.
+
+### Preflight requests
+
+The API handles `OPTIONS` preflight requests automatically when CORS origins
+are configured. No additional setup is required.
+
+## How the code is organized
+
+```
+src/marquise/infrastructure/api/
+├── app.py              # create_app() factory, lifespan, CORS, caching
+├── dependencies.py     # get_container() FastAPI dependency
+├── schemas.py          # Pydantic response models
+└── routers/
+    ├── __init__.py     # Re-exports routers
+    ├── cinemas.py      # GET /cinemas, GET /cinemas/{id}/showtimes
+    └── movies.py       # GET /movies/{id}
+```
+
+All routes delegate to application-layer use cases via the DI container. There
+is no business logic or data access in the routers.
