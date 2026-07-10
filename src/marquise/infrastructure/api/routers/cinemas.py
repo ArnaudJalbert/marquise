@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi_cache.decorator import cache
 from fastapi_pagination import Page, Params
 
@@ -13,6 +13,7 @@ from marquise.application.use_cases.get_cinema_showtimes import (
     GetCinemaShowtimesUseCase,
 )
 from marquise.infrastructure.api.dependencies import get_container
+from marquise.infrastructure.api.rate_limit import current_rate_limit, limiter
 from marquise.infrastructure.api.schemas import CinemaResponse, ScreeningResponse
 from marquise.infrastructure.di.container import Container
 
@@ -58,8 +59,11 @@ def resolve_showtimes_date_range(
 
 
 @router.get("/cinemas", response_model=Page[CinemaResponse])
+@limiter.limit(current_rate_limit)
 @cache()
 async def list_cinemas(
+    request: Request,
+    response: Response,
     name: str | None = Query(
         default=None, description="Filter cinemas by name (case-insensitive)."
     ),
@@ -81,8 +85,11 @@ async def list_cinemas(
     "/cinemas/{cinema_id}/showtimes",
     response_model=Page[ScreeningResponse],
 )
+@limiter.limit(current_rate_limit)
 @cache()
 async def get_cinema_showtimes(
+    request: Request,
+    response: Response,
     cinema_id: str,
     date_range: tuple[datetime, datetime] = Depends(resolve_showtimes_date_range),
     params: Params = Depends(),

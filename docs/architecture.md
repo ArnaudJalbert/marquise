@@ -115,5 +115,5 @@ HTTP GET /cinemas
 ## Planned Additions
 
 - **Admin CRUD API** — endpoints for managing cinemas, sources, and assignments
-- **Authentication & API keys** — rate-limited access for third-party consumers
+- **Authentication & API keys** — per-key rate limiting for third-party consumers, layered on top of the existing per-IP limiting
 - **Event sourcing / webhooks** — notify consumers when new screenings are imported

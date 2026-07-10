@@ -8,6 +8,9 @@ MARQUISE_API_CORS_ORIGINS
     Comma-separated list of allowed CORS origins (default: empty — no
     cross-origin requests permitted). Example:
     ``http://localhost:3000,https://myfrontend.example.com``
+MARQUISE_API_RATE_LIMIT
+    Per-IP request rate limit, in slowapi's ``<count>/<period>`` string
+    syntax (default: ``60/minute``). Example: ``120/minute``.
 """
 
 from __future__ import annotations
@@ -21,7 +24,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.inmemory import InMemoryBackend
 from fastapi_pagination import add_pagination
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
+from marquise.infrastructure.api.rate_limit import limiter
 from marquise.infrastructure.api.routers import cinemas_router, movies_router
 from marquise.infrastructure.di.container import Container
 
@@ -101,6 +108,19 @@ def create_app(container: Container | None = None) -> FastAPI:
     if container is not None:
         app.state.container = container
 
+    # Per-IP rate limiting. The limiter itself is a shared singleton (see
+    # rate_limit.py) so that router-level `@limiter.limit(...)` decorators,
+    # applied at import time, share its in-memory counters. Reset here so
+    # repeated create_app() calls (e.g. across tests) start from a clean
+    # slate. Registered before CORSMiddleware below so that CORS ends up as
+    # the outermost middleware (Starlette applies the last-registered
+    # middleware first) — otherwise 429 responses would be returned before
+    # CORS headers are attached, breaking browser clients.
+    limiter.reset()
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    app.add_middleware(SlowAPIMiddleware)
+
     # CORS — restrictive by default (no origins allowed). Override via the
     # MARQUISE_API_CORS_ORIGINS env var as a comma-separated list.
     cors_origins = _parse_cors_origins(
@@ -116,6 +136,7 @@ def create_app(container: Container | None = None) -> FastAPI:
         )
 
     @app.get("/health", tags=["meta"])
+    @limiter.exempt
     async def health() -> dict[str, str]:
         """Liveness probe."""
         return {"status": "ok"}
