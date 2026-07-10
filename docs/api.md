@@ -58,6 +58,36 @@ export MARQUISE_API_CACHE_TTL_SECONDS=3600   # 1 hour (default)
 
 `GET /health` is intentionally never cached.
 
+## Rate Limiting
+
+The API applies a per-IP request rate limit via [slowapi](https://pypi.org/project/slowapi/),
+backed by the same in-memory approach as the response cache — no external
+store (e.g. Redis) required.
+
+Default: **60 requests per minute per client IP**. Requests over the limit
+receive a `429` response:
+
+```json
+{"error": "Rate limit exceeded: 60 per 1 minute"}
+```
+
+along with these headers:
+
+- `X-RateLimit-Limit` — the configured limit
+- `X-RateLimit-Remaining` — requests left in the current window
+- `X-RateLimit-Reset` — Unix timestamp when the window resets
+- `Retry-After` — seconds to wait before retrying
+
+`GET /health` is exempt from rate limiting.
+
+Configure the limit with the `MARQUISE_API_RATE_LIMIT` env var, using
+[slowapi's](https://limits.readthedocs.io/en/stable/quickstart.html#rate-limit-string-notation)
+`<count>/<second|minute|hour|day>` string syntax:
+
+```bash
+export MARQUISE_API_RATE_LIMIT="120/minute"
+```
+
 ## CORS
 
 The API is **CORS-restrictive by default**: no cross-origin requests are
@@ -100,8 +130,9 @@ are configured. No additional setup is required.
 
 ```
 src/marquise/infrastructure/api/
-├── app.py              # create_app() factory, lifespan, CORS, caching
+├── app.py              # create_app() factory, lifespan, CORS, caching, rate limiting
 ├── dependencies.py     # get_container() FastAPI dependency
+├── rate_limit.py       # Shared slowapi Limiter used by app.py and the routers
 ├── schemas.py          # Pydantic response models
 └── routers/
     ├── __init__.py     # Re-exports routers
