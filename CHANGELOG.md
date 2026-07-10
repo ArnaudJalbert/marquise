@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.13.0 (2026-07-09)
+
+### New Features
+
+- **CORS support for the read-only API**: `create_app()` now configures `CORSMiddleware` when the `MARQUISE_API_CORS_ORIGINS` env var is set. Restricted to `GET` only (the API is read-only) plus `allow_credentials=True`. Defaults to an empty origins list (no cross-origin requests permitted), i.e. a restrictive policy rather than `*`. A `_parse_cors_origins` helper splits the comma-separated env var value into a list, filtering empty entries. Closes #52.
+
 ## 0.12.0 (2026-07-09)
 
 ### Improvements
