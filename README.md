@@ -52,6 +52,7 @@ cp .env.example .env
 | `CINEPLEX_API_KEY` | No | Cineplex API subscription key (`Ocp-Apim-Subscription-Key`) |
 | `DATABASE_SCHEMA` | No | Schema name (default: `marquise`) |
 | `MARQUISE_API_CACHE_TTL_SECONDS` | No | Read-only API in-memory response cache TTL, in seconds (default: `3600`) |
+| `MARQUISE_API_CORS_ORIGINS` | No | Comma-separated list of allowed CORS origins for the read-only API (default: empty — no cross-origin requests permitted) |
 
 See the [Supabase setup guide](docs/setup/supabase-cinema-table.md) to initialize the database schema.
 

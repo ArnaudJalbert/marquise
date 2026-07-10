@@ -55,12 +55,14 @@ This means:
 └────────────────────────────────────────────────────────────────────┘
 ```
 
-### API (Future)
+### API
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
 │  FastAPI routes read showtimes from DB via repository queries.     │
 │  Never calls external sources directly.                            │
+│  Caching via fastapi-cache2 (configurable TTL).                    │
+│  CORS via MARQUISE_API_CORS_ORIGINS env var.                       │
 └────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -127,8 +129,10 @@ This means:
 | Cineplex | `sources/cineplex/` | `source_adapters/cineplex.py` | Yes |
 | CinemaCinema | `sources/cinemacinema/` | `source_adapters/cinemacinema.py` | Yes |
 | Cinema Public | `sources/cinemapublic/` | `source_adapters/cinemapublic.py` | Yes |
+| Cinémathèque québécoise | `sources/cinematheque/` | `source_adapters/cinematheque.py` | Yes |
+| Cinéma Moderne | `sources/cinemamoderne/` | `source_adapters/cinemamoderne.py` | Yes |
 
-All three support movie enrichment via `fetch_movie_detail`, fetching poster
+All five sources support movie enrichment via `fetch_movie_detail`, fetching poster
 URLs, cast, directors, genres, description, and more from their detail pages.
 
 ### Cineplex
@@ -149,6 +153,22 @@ URLs, cast, directors, genres, description, and more from their detail pages.
 - **API**: `cinemapublic.ca/en/films/` (HTML scraping)
 - **Detail pages**: Individual film pages (HTML + JSON-LD)
 - **Venues**: Casa d'Italia, Livart
+
+### Cinémathèque québécoise
+
+- **API**: `cinematheque.qc.ca` ticketing portal (OmniWeb JS data blob)
+- **Detail pages**: Re-fetches the showtime's date page (no standalone film detail page)
+- **Discovery**: Bootstraps from today's page to discover the schedule window
+- **Title cleaning**: Strips trailing parenthetical version markers (e.g. `(VOSTF)`) into the `language` field
+- **Venues**: Cinémathèque québécoise
+
+### Cinéma Moderne
+
+- **API**: `/horaire/<year>/<month>` — server-rendered HTML calendar grid
+- **Detail pages**: Film detail page with structured `<dl>` metadata block
+- **Deduplication**: Fetches every month in the requested range concurrently, deduplicates by `(movie_url, showtime)`
+- **External ID**: Derived from `EvenementID` + showtime (since `EvenementID` alone is shared across all showings of a film run)
+- **Venues**: Cinéma Moderne
 
 ## Database Schema
 
@@ -247,6 +267,8 @@ The `MovieEnrichmentData` dataclass carries optional fields:
 | `SUPABASE_PUBLISHABLE_KEY` | Yes | — | Supabase auth key |
 | `CINEPLEX_API_KEY` | No | `""` | Cineplex API subscription key |
 | `DATABASE_SCHEMA` | No | `marquise` | Database schema name |
+| `MARQUISE_API_CACHE_TTL_SECONDS` | No | `3600` | Read-only API in-memory response cache TTL, in seconds |
+| `MARQUISE_API_CORS_ORIGINS` | No | `""` | Comma-separated list of allowed CORS origins for the read-only API |
 
 ## CLI Usage
 
