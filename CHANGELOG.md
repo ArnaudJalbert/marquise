@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.0 (2026-07-09)
+
+### New Features
+
+- **API versioning (`/v1` prefix)**: all public API routes except `GET /health` are now mounted under `/v1` (e.g. `GET /v1/cinemas`, `GET /v1/cinemas/{id}/showtimes`, `GET /v1/movies/{id}`). `create_app()` wraps the existing `cinemas_router`/`movies_router` in a single `APIRouter(prefix="/v1")` rather than prefixing each router individually, keeping the version boundary in one place. `/health` stays unversioned as a meta/infra endpoint. This establishes a version boundary before the API has external consumers, so future breaking changes (pagination, response shape, etc.) can ship as `/v2` without disrupting existing clients. Closes #54.
+
 ## 0.14.0 (2026-07-09)
 
 ### New Features
