@@ -640,3 +640,75 @@ def test_list_cinemas_with_name_filter_creates_separate_cache_entry(
     assert response1_again.json() == response1.json()
     assert response1_again.headers.get("X-FastAPI-Cache") == "HIT"
     assert container.cinema_controller.list.call_count == 2
+
+
+def test_cors_not_configured_by_default(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """CORS headers are absent when MARQUISE_API_CORS_ORIGINS is not set.
+
+    Creating the client before clearing the env var means it was built with
+    the default (empty) origins, so no CORSMiddleware was installed.
+    """
+    monkeypatch.delenv("MARQUISE_API_CORS_ORIGINS", raising=False)
+    response = client.get("/cinemas")
+    assert response.status_code == 200
+    assert "access-control-allow-origin" not in response.headers
+
+
+def test_cors_headers_present_when_configured(monkeypatch: pytest.MonkeyPatch) -> None:
+    """CORS headers are returned when MARQUISE_API_CORS_ORIGINS is set."""
+    monkeypatch.setenv("MARQUISE_API_CORS_ORIGINS", "http://localhost:3000")
+    container = MagicMock()
+    container.cinema_controller.list = AsyncMock(
+        return_value=SimpleNamespace(cinemas=[], total=0)
+    )
+    client = TestClient(create_app(container=container))
+
+    response = client.get(
+        "/cinemas",
+        headers={"Origin": "http://localhost:3000"},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+
+
+def test_cors_preflight_when_configured(monkeypatch: pytest.MonkeyPatch) -> None:
+    """OPTIONS preflight requests return CORS headers when configured."""
+    monkeypatch.setenv("MARQUISE_API_CORS_ORIGINS", "http://localhost:3000")
+    container = MagicMock()
+    container.cinema_controller.list = AsyncMock(
+        return_value=SimpleNamespace(cinemas=[], total=0)
+    )
+    client = TestClient(create_app(container=container))
+
+    response = client.options(
+        "/cinemas",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+    assert response.headers["access-control-allow-methods"] == "GET"
+
+
+def test_cors_origin_not_allowed_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Requests from an origin not in the allowed list get no CORS headers."""
+    monkeypatch.setenv("MARQUISE_API_CORS_ORIGINS", "http://localhost:3000")
+    container = MagicMock()
+    container.cinema_controller.list = AsyncMock(
+        return_value=SimpleNamespace(cinemas=[], total=0)
+    )
+    client = TestClient(create_app(container=container))
+
+    response = client.get(
+        "/cinemas",
+        headers={"Origin": "https://evil.com"},
+    )
+
+    assert response.status_code == 200
+    assert "access-control-allow-origin" not in response.headers

@@ -7,11 +7,11 @@ Marquise follows **Clean Architecture**. Dependencies point **inward only** — 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  src/marquise/infrastructure/                           │
-│  CLI (Typer), DI container, auth, source scrapers,     │
+│  CLI (Typer), DI container, auth, source scrapers,      │
 │  Supabase gateways                                      │
 ├─────────────────────────────────────────────────────────┤
 │  src/marquise/interface_adapters/                       │
-│  Repository implementations (Supabase),                │
+│  Repository implementations (Supabase),                 │
 │  source adapters, gateway protocols                     │
 ├─────────────────────────────────────────────────────────┤
 │  src/marquise/application/                              │
@@ -41,6 +41,10 @@ src/marquise/
 │       └── source_adapters/  # Cineplex, CinemaCinema, CinemaPublic adapters
 └── infrastructure/
     ├── cli/               # Typer app and command modules
+    ├── api/               # FastAPI read-only REST API
+    │   ├── routers/       # Endpoints (cinemas, movies)
+    │   ├── schemas.py     # Pydantic response models
+    │   └── dependencies.py # Shared DI dependency
     ├── controllers/       # CinemaController (thin CLI wiring layer)
     ├── di/                # Dependency injection container
     ├── auth/              # Admin authentication
@@ -48,9 +52,11 @@ src/marquise/
     │   ├── config/        # Connection configuration
     │   └── gateways/      # Raw SQL operations (cinema, movie, screening, …)
     └── sources/
-        ├── cineplex/      # Cineplex scraper (API + web)
-        ├── cinemacinema/  # CinemaCinema scraper
-        └── cinemapublic/  # Cinema Public scraper
+        ├── cineplex/          # Cineplex scraper (API + web)
+        ├── cinemacinema/      # CinemaCinema scraper
+        ├── cinemapublic/      # Cinema Public scraper
+        ├── cinemamoderne/     # Cinéma Moderne scraper
+        └── cinematheque/      # Cinémathèque québécoise scraper
 ```
 
 ## Key Patterns
@@ -81,6 +87,18 @@ marquise source import
   → OutputData displayed via Rich
 ```
 
+### API request flow
+
+```
+HTTP GET /cinemas
+  → FastAPI route (infrastructure/api/routers/cinemas.py)
+  → Container.cinema_controller.list()
+  → ListCinemasUseCase (application/use_cases/)
+    → CinemaRepository.find_all()      # Supabase
+  → Pydantic response model
+  ← JSON response (cached via fastapi-cache2)
+```
+
 ## Tech Stack
 
 | Component | Technology |
@@ -96,7 +114,6 @@ marquise source import
 
 ## Planned Additions
 
-- **FastAPI REST API** — read-only public endpoints:
-  - `GET /cinemas`
-  - `GET /cinemas/{id}/showtimes?from=&to=`
-  - `GET /movies/{id}`
+- **Admin CRUD API** — endpoints for managing cinemas, sources, and assignments
+- **Authentication & API keys** — rate-limited access for third-party consumers
+- **Event sourcing / webhooks** — notify consumers when new screenings are imported
