@@ -275,7 +275,9 @@ def test_get_cinema_showtimes_not_found(
     )
 
     assert response.status_code == 404
-    assert response.json() == {"detail": "nope", "error_code": "not_found"}
+    body = response.json()
+    assert body.pop("request_id")
+    assert body == {"detail": "nope", "error_code": "not_found"}
 
 
 def test_get_cinema_showtimes_invalid_range_returns_422_envelope(
@@ -292,7 +294,9 @@ def test_get_cinema_showtimes_invalid_range_returns_422_envelope(
     )
 
     assert response.status_code == 422
-    assert response.json() == {"detail": "bad range", "error_code": "invalid_input"}
+    body = response.json()
+    assert body.pop("request_id")
+    assert body == {"detail": "bad range", "error_code": "invalid_input"}
 
 
 def test_get_cinema_showtimes_with_default_dates(
@@ -396,7 +400,9 @@ def test_get_movie_not_found(client: TestClient, container: MagicMock) -> None:
     response = client.get("/v1/movies/missing")
 
     assert response.status_code == 404
-    assert response.json() == {"detail": "nope", "error_code": "not_found"}
+    body = response.json()
+    assert body.pop("request_id")
+    assert body == {"detail": "nope", "error_code": "not_found"}
 
 
 def test_unhandled_exception_returns_generic_500(container: MagicMock) -> None:
@@ -413,7 +419,9 @@ def test_unhandled_exception_returns_generic_500(container: MagicMock) -> None:
     response = client.get("/v1/movies/mov-1")
 
     assert response.status_code == 500
-    assert response.json() == {
+    body = response.json()
+    assert body.pop("request_id")
+    assert body == {
         "detail": "An unexpected RuntimeError occurred while processing the request.",
         "error_code": "internal_server_error",
     }
