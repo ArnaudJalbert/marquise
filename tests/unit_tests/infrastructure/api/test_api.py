@@ -19,6 +19,7 @@ from marquise.application.use_cases.get_cinema_showtimes import (
     GetCinemaShowtimesUseCase,
 )
 from marquise.application.use_cases.get_movie import GetMovieUseCase
+from marquise.application.use_cases.list_movies import ListMoviesUseCase
 from marquise.infrastructure.api.app import CACHE_PREFIX, create_app
 
 
@@ -41,6 +42,7 @@ def container() -> MagicMock:
     fake.cinema_controller.list = AsyncMock()
     fake.get_cinema_showtimes_use_case.execute = AsyncMock()
     fake.get_movie_use_case.execute = AsyncMock()
+    fake.list_movies_use_case.execute = AsyncMock()
     return fake
 
 
@@ -341,6 +343,117 @@ def test_get_movie_not_found(client: TestClient, container: MagicMock) -> None:
     assert response.status_code == 404
 
 
+def test_list_movies(client: TestClient, container: MagicMock) -> None:
+    """GET /movies returns the use case's movies."""
+    container.list_movies_use_case.execute.return_value = SimpleNamespace(
+        movies=[
+            SimpleNamespace(
+                id="mov-1",
+                title="The Odyssey",
+                release_year=2026,
+                directors=None,
+                cast=None,
+                duration_minutes=None,
+                description=None,
+                poster_url=None,
+                trailer_url=None,
+                genres=None,
+                original_title=None,
+                rating=None,
+                origin_countries=None,
+            )
+        ],
+        total=1,
+    )
+
+    response = client.get("/v1/movies")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["items"]) == 1
+    assert body["items"][0]["id"] == "mov-1"
+    assert body["items"][0]["title"] == "The Odyssey"
+    assert body["total"] == 1
+    assert body["page"] == 1
+    assert body["size"] == 50
+
+
+def test_list_movies_delegates_to_use_case_with_title_filter(
+    client: TestClient, container: MagicMock
+) -> None:
+    """GET /movies calls list_movies_use_case with the title filter and paging."""
+    container.list_movies_use_case.execute.return_value = SimpleNamespace(
+        movies=[], total=0
+    )
+
+    response = client.get("/v1/movies", params={"title": "Odyssey"})
+
+    assert response.status_code == 200
+    container.list_movies_use_case.execute.assert_awaited_once_with(
+        ListMoviesUseCase.InputData(title="Odyssey", page=1, size=50)
+    )
+
+
+def test_list_movies_pagination(client: TestClient, container: MagicMock) -> None:
+    """The router forwards page/size and reports the use case's total."""
+    container.list_movies_use_case.execute.return_value = SimpleNamespace(
+        movies=[
+            SimpleNamespace(
+                id="mov-1",
+                title="Movie 1",
+                release_year=None,
+                directors=None,
+                cast=None,
+                duration_minutes=None,
+                description=None,
+                poster_url=None,
+                trailer_url=None,
+                genres=None,
+                original_title=None,
+                rating=None,
+                origin_countries=None,
+            ),
+            SimpleNamespace(
+                id="mov-2",
+                title="Movie 2",
+                release_year=None,
+                directors=None,
+                cast=None,
+                duration_minutes=None,
+                description=None,
+                poster_url=None,
+                trailer_url=None,
+                genres=None,
+                original_title=None,
+                rating=None,
+                origin_countries=None,
+            ),
+        ],
+        total=5,
+    )
+
+    response = client.get("/v1/movies", params={"page": 2, "size": 2})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [m["id"] for m in body["items"]] == ["mov-1", "mov-2"]
+    assert body["total"] == 5
+    assert body["page"] == 2
+    assert body["size"] == 2
+    container.list_movies_use_case.execute.assert_awaited_once_with(
+        ListMoviesUseCase.InputData(title=None, page=2, size=2)
+    )
+
+
+def test_list_movies_size_out_of_range_is_rejected(
+    client: TestClient, container: MagicMock
+) -> None:
+    """A size above the max page size is rejected with a 422."""
+    response = client.get("/v1/movies", params={"size": 101})
+
+    assert response.status_code == 422
+
+
 def test_list_cinemas_is_cached(client: TestClient, container: MagicMock) -> None:
     """A second identical request reuses the cached result instead of re-executing."""
     container.cinema_controller.list.return_value = SimpleNamespace(
@@ -389,6 +502,38 @@ def test_get_movie_is_cached(client: TestClient, container: MagicMock) -> None:
     assert first.status_code == 200
     assert second.json() == first.json()
     container.get_movie_use_case.execute.assert_awaited_once()
+
+
+def test_list_movies_is_cached(client: TestClient, container: MagicMock) -> None:
+    """A second identical request reuses the cached result instead of re-executing."""
+    container.list_movies_use_case.execute.return_value = SimpleNamespace(
+        movies=[
+            SimpleNamespace(
+                id="mov-1",
+                title="The Odyssey",
+                release_year=None,
+                directors=None,
+                cast=None,
+                duration_minutes=None,
+                description=None,
+                poster_url=None,
+                trailer_url=None,
+                genres=None,
+                original_title=None,
+                rating=None,
+                origin_countries=None,
+            )
+        ],
+        total=1,
+    )
+
+    first = client.get("/v1/movies")
+    second = client.get("/v1/movies")
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json() == second.json()
+    container.list_movies_use_case.execute.assert_awaited_once()
 
 
 def test_get_cinema_showtimes_is_cached(

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncpg
 
+from marquise.interface_adapters.repositories.protocols.base import GatewayPage
+
 DEFAULT_SCHEMA = "marquise"
 
 _COLUMNS = (
@@ -146,3 +148,65 @@ class SupabaseMovieGateway:
                 title,
             )
         return dict(row) if row is not None else None
+
+    async def find_all(
+        self,
+        title_filter: str | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> GatewayPage:
+        """Retrieve movies, optionally filtered by title and paginated.
+
+        Args:
+            title_filter: An optional substring to match against movie
+                titles (case-insensitive). If None, all movies are returned.
+            limit: Max number of rows to return. If None, all matching rows
+                are returned unbounded (no ``LIMIT`` clause is applied).
+            offset: Number of matching rows to skip before returning results.
+
+        Returns:
+            A ``GatewayPage`` with the matching rows (as dicts) and the total
+            count of rows matching ``title_filter``, ignoring ``limit``/
+            ``offset``.
+        """
+        where_clause = "WHERE LOWER(title) LIKE LOWER($1)" if title_filter else ""
+        params: list = [f"%{title_filter}%"] if title_filter else []
+
+        async with self._pool.acquire() as conn:
+            if limit is None:
+                rows = await conn.fetch(
+                    f"""
+                    SELECT {_COLUMNS} FROM {self._table}
+                    {where_clause}
+                    ORDER BY title
+                    """,
+                    *params,
+                )
+                return GatewayPage(rows=[dict(r) for r in rows], total=len(rows))
+
+            limit_param = len(params) + 1
+            offset_param = len(params) + 2
+            rows = await conn.fetch(
+                f"""
+                SELECT {_COLUMNS}, COUNT(*) OVER() AS __total
+                FROM {self._table}
+                {where_clause}
+                ORDER BY title
+                LIMIT ${limit_param} OFFSET ${offset_param}
+                """,
+                *params,
+                limit,
+                offset,
+            )
+            if not rows:
+                total = await conn.fetchval(
+                    f"SELECT COUNT(*) FROM {self._table} {where_clause}",
+                    *params,
+                )
+                return GatewayPage(rows=[], total=total)
+
+            total = rows[0]["__total"]
+            result_rows = [dict(r) for r in rows]
+            for row in result_rows:
+                row.pop("__total")
+        return GatewayPage(rows=result_rows, total=total)

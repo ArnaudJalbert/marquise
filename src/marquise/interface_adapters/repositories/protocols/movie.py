@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from marquise.interface_adapters.repositories.protocols.base import GatewayPage
+
+__all__ = ["GatewayPage", "MovieGateway"]
+
 
 class MovieGateway(Protocol):
     """Protocol for movie data access.
@@ -73,5 +77,25 @@ class MovieGateway(Protocol):
 
         Returns:
             A dict representing the row, or None.
+        """
+        ...
+
+    async def find_all(
+        self,
+        title_filter: str | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> GatewayPage:
+        """Retrieve movies, optionally filtered by title and paginated.
+
+        Args:
+            title_filter: An optional substring to match against movie
+                titles (case-insensitive). If None, all movies are returned.
+            limit: Max number of rows to return. If None, all matching rows
+                are returned unbounded.
+            offset: Number of matching rows to skip before returning results.
+
+        Returns:
+            A ``GatewayPage`` with the matching rows and the total count.
         """
         ...
