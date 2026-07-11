@@ -23,6 +23,7 @@ from marquise.application.use_cases.import_screenings import (
     ImportScreeningsUseCase,
 )
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
+from marquise.application.use_cases.list_movies import ListMoviesUseCase
 from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
@@ -369,6 +370,10 @@ class Container:
         return GetMovieUseCase(movie_repository=self._movie_repository)
 
     @property
+    def _list_movies_use_case(self) -> ListMoviesUseCase:
+        return ListMoviesUseCase(movie_repository=self._movie_repository)
+
+    @property
     def _get_cinema_showtimes_use_case(self) -> GetCinemaShowtimesUseCase:
         return GetCinemaShowtimesUseCase(
             cinema_repository=self._cinema_repository,
@@ -388,6 +393,11 @@ class Container:
     def get_movie_use_case(self) -> GetMovieUseCase:
         """Public get-movie use case (no authentication required)."""
         return self._get_movie_use_case
+
+    @property
+    def list_movies_use_case(self) -> ListMoviesUseCase:
+        """Public list-movies use case (no authentication required)."""
+        return self._list_movies_use_case
 
     @property
     def get_cinema_showtimes_use_case(self) -> GetCinemaShowtimesUseCase:

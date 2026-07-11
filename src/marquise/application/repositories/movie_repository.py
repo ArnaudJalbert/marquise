@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+from marquise.application.repositories.page import Page
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
 
@@ -44,5 +45,28 @@ class MovieRepository(ABC):
 
         Returns:
             The matching movie, or None if not found.
+        """
+        ...
+
+    @abstractmethod
+    async def find_all(
+        self,
+        title_filter: str | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> Page[Movie]:
+        """Retrieve movies, optionally filtered by title and paginated.
+
+        Args:
+            title_filter: An optional substring to match against movie
+                titles (case-insensitive). If None, all movies are returned.
+            limit: Max number of movies to return. If None, all matching
+                movies are returned unbounded.
+            offset: Number of matching movies to skip before returning
+                results.
+
+        Returns:
+            A ``Page[Movie]`` with the matching movies and the total count
+            matching ``title_filter``, ignoring ``limit``/``offset``.
         """
         ...

@@ -6,7 +6,7 @@ interface (application).  No SQL, no asyncpg — pure entity mapping.
 
 from __future__ import annotations
 
-from marquise.application.repositories import MovieRepository
+from marquise.application.repositories import MovieRepository, Page
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
 from marquise.interface_adapters.repositories.protocols.movie import MovieGateway
@@ -77,6 +77,33 @@ class SupabaseMovieRepository(MovieRepository):
         """
         data = await self._gateway.find_by_title(title=title)
         return self._to_entity(data) if data is not None else None
+
+    async def find_all(
+        self,
+        title_filter: str | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> Page[Movie]:
+        """Retrieve movies, optionally filtered by title and paginated.
+
+        Args:
+            title_filter: An optional substring to match against movie
+                titles (case-insensitive). If None, all movies are returned.
+            limit: Max number of movies to return. If None, all matching
+                movies are returned unbounded.
+            offset: Number of matching movies to skip before returning
+                results.
+
+        Returns:
+            A ``Page[Movie]`` with the matching movies and the total count.
+        """
+        gateway_page = await self._gateway.find_all(
+            title_filter=title_filter, limit=limit, offset=offset
+        )
+        return Page(
+            items=[self._to_entity(row) for row in gateway_page.rows],
+            total=gateway_page.total,
+        )
 
     @staticmethod
     def _to_entity(data: dict) -> Movie:

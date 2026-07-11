@@ -149,3 +149,69 @@ async def test_save_does_not_overwrite_with_none_on_conflict(
     assert result["release_year"] == 2020
     assert result["directors"] == "Known Director"
     assert result["cast_members"] == "Known Cast"
+
+
+@pytest.mark.asyncio
+async def test_find_all_unbounded_returns_all_rows_with_exact_total(
+    movie_gateway: SupabaseMovieGateway,
+) -> None:
+    """Verify find_all with limit=None returns every row and a matching total."""
+    for i in range(3):
+        await movie_gateway.save(movie_id=f"mov-all-{i}", title=f"All Movie {i}")
+
+    page = await movie_gateway.find_all()
+
+    assert page.total == 3
+    assert len(page.rows) == 3
+    assert {row["id"] for row in page.rows} == {
+        "mov-all-0",
+        "mov-all-1",
+        "mov-all-2",
+    }
+
+
+@pytest.mark.asyncio
+async def test_find_all_with_limit_and_offset_returns_correct_slice_and_total(
+    movie_gateway: SupabaseMovieGateway,
+) -> None:
+    """Verify limit/offset return the correct page while total reflects all rows."""
+    for i in range(5):
+        await movie_gateway.save(movie_id=f"mov-page-{i}", title=f"Page Movie {i}")
+
+    page = await movie_gateway.find_all(limit=2, offset=1)
+
+    assert page.total == 5
+    assert [row["title"] for row in page.rows] == [
+        "Page Movie 1",
+        "Page Movie 2",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_find_all_offset_past_total_returns_empty_rows_with_correct_total(
+    movie_gateway: SupabaseMovieGateway,
+) -> None:
+    """Verify an offset beyond the result set returns no rows but the true total."""
+    for i in range(2):
+        await movie_gateway.save(movie_id=f"mov-past-{i}", title=f"Past Movie {i}")
+
+    page = await movie_gateway.find_all(limit=10, offset=100)
+
+    assert page.rows == []
+    assert page.total == 2
+
+
+@pytest.mark.asyncio
+async def test_find_all_with_title_filter_and_limit(
+    movie_gateway: SupabaseMovieGateway,
+) -> None:
+    """Verify title_filter and limit/offset combine correctly."""
+    await movie_gateway.save(movie_id="mov-match-1", title="Space Odyssey Downtown")
+    await movie_gateway.save(movie_id="mov-match-2", title="Space Odyssey Uptown")
+    await movie_gateway.save(movie_id="mov-nomatch", title="Landmark Feature")
+
+    page = await movie_gateway.find_all(title_filter="odyssey", limit=1, offset=0)
+
+    assert page.total == 2
+    assert len(page.rows) == 1
+    assert page.rows[0]["title"] == "Space Odyssey Downtown"
