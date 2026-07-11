@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.20.0 (2026-07-11)
+
+### New Features
+
+- **Structured JSON request logging (`GET`/`POST` on the public API)**: production debugging had no signal beyond uvicorn's default access log — no way to correlate a specific failure with a log line, measure per-request latency, or ingest logs into a structured pipeline. Adds a new `logging_middleware.py` module: a `JsonFormatter` (stdlib `logging.Formatter` subclass, no new dependency) that renders every log record as one JSON line, and a `RequestLoggingMiddleware` that assigns each request an ID — honoring an incoming `X-Request-ID` header when present (e.g. behind a gateway that already assigns trace IDs), otherwise generating a `uuid4` — logs one `"request completed"` line per request (`method`, `path`, `status_code`, `duration_ms`, `request_id`), and echoes the ID back via the `X-Request-ID` response header. `configure_logging()` installs the JSON handler on the root logger from `create_app()`, so existing `logger.exception(...)` calls in `exception_handlers.py` come out as JSON too. Threaded the request ID into every error envelope (new `ErrorResponse.request_id` field) so a client-reported failure can be traced straight to its server log line. Configurable via `MARQUISE_API_LOG_LEVEL` (default `INFO`). Closes #55.
+
 ## 0.19.0 (2026-07-11)
 
 ### Improvements

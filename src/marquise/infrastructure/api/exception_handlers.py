@@ -66,10 +66,16 @@ async def application_error_handler(
     status_code, error_code = _APPLICATION_ERROR_MAPPING.get(
         type(exc), (_DEFAULT_APPLICATION_ERROR_STATUS, _DEFAULT_APPLICATION_ERROR_CODE)
     )
+    request_id = getattr(request.state, "request_id", None)
     if status_code >= 500:
-        logger.exception("Unexpected application error", exc_info=exc)
+        logger.exception(
+            "Unexpected application error",
+            exc_info=exc,
+            extra={"request_id": request_id},
+        )
     return JSONResponse(
-        {"detail": str(exc), "error_code": error_code}, status_code=status_code
+        {"detail": str(exc), "error_code": error_code, "request_id": request_id},
+        status_code=status_code,
     )
 
 
@@ -83,8 +89,14 @@ async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse
     Returns:
         A JSONResponse with the standard error envelope and status 422.
     """
+    request_id = getattr(request.state, "request_id", None)
     return JSONResponse(
-        {"detail": str(exc), "error_code": "invalid_input"}, status_code=422
+        {
+            "detail": str(exc),
+            "error_code": "invalid_input",
+            "request_id": request_id,
+        },
+        status_code=422,
     )
 
 
@@ -101,7 +113,12 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
         but never its message/args, which could contain internal details
         such as SQL fragments or connection info.
     """
-    logger.exception("Unhandled exception processing request %s", request.url.path)
+    request_id = getattr(request.state, "request_id", None)
+    logger.exception(
+        "Unhandled exception processing request %s",
+        request.url.path,
+        extra={"request_id": request_id},
+    )
     return JSONResponse(
         {
             "detail": (
@@ -109,6 +126,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
                 "processing the request."
             ),
             "error_code": "internal_server_error",
+            "request_id": request_id,
         },
         status_code=500,
     )
