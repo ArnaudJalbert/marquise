@@ -59,6 +59,43 @@ def test_health(client: TestClient) -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_ready_returns_200_when_database_healthy(
+    client: TestClient, container: MagicMock
+) -> None:
+    """The ready endpoint reports OK when the DB pool is healthy."""
+    container.check_database_health = AsyncMock(return_value=True)
+
+    response = client.get("/ready")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
+def test_ready_returns_503_when_database_unhealthy(
+    client: TestClient, container: MagicMock
+) -> None:
+    """The ready endpoint reports 503 when the DB pool is unhealthy."""
+    container.check_database_health = AsyncMock(return_value=False)
+
+    response = client.get("/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {"status": "unavailable"}
+
+
+def test_ready_is_exempt_from_rate_limiting(
+    monkeypatch: pytest.MonkeyPatch, container: MagicMock
+) -> None:
+    """/ready keeps responding even past the configured rate limit."""
+    monkeypatch.setenv("MARQUISE_API_RATE_LIMIT", "1/minute")
+    container.check_database_health = AsyncMock(return_value=True)
+    client = TestClient(create_app(container=container))
+
+    responses = [client.get("/ready") for _ in range(5)]
+
+    assert all(response.status_code == 200 for response in responses)
+
+
 def test_list_cinemas(client: TestClient, container: MagicMock) -> None:
     """GET /cinemas returns the use case's cinemas."""
     container.cinema_controller.list.return_value = SimpleNamespace(

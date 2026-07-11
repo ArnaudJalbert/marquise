@@ -81,3 +81,19 @@ class Database:
         if self._pool is None:
             raise RuntimeError("Database not connected")
         return self._pool
+
+    async def ping(self) -> bool:
+        """Check that the pool can serve a live connection.
+
+        Returns:
+            True if a trivial query succeeds against the pool. False if the
+            pool hasn't been opened yet, or the query/connection fails.
+        """
+        if self._pool is None:
+            return False
+        try:
+            async with self._pool.acquire() as conn:
+                await conn.fetchval("SELECT 1")
+        except (OSError, asyncpg.PostgresError):
+            return False
+        return True
