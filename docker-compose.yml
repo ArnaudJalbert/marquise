@@ -1,0 +1,21 @@
+# Docker Compose for local development of the Marquise read-only API.
+#
+# Prerequisites
+# -------------
+# Create a `.env` file at the project root with the required environment
+# variables (see `.env.example` for the template).
+#
+# Usage
+# -----
+#     docker compose up --build
+#
+# The API will be available at http://localhost:8000.  Hit `/health` to
+# confirm it's alive — no database connection is needed for that endpoint.
+
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
