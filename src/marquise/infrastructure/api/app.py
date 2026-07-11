@@ -36,6 +36,10 @@ from marquise.infrastructure.api.exception_handlers import (
     unhandled_exception_handler,
     value_error_handler,
 )
+from marquise.infrastructure.api.logging_middleware import (
+    RequestLoggingMiddleware,
+    configure_logging,
+)
 from marquise.infrastructure.api.rate_limit import limiter
 from marquise.infrastructure.api.routers import cinemas_router, movies_router
 from marquise.infrastructure.di.container import Container
@@ -83,6 +87,8 @@ def create_app(container: Container | None = None) -> FastAPI:
     Returns:
         A configured ``FastAPI`` instance.
     """
+    configure_logging()
+
     cache_ttl_seconds = int(
         os.environ.get("MARQUISE_API_CACHE_TTL_SECONDS", DEFAULT_CACHE_TTL_SECONDS)
     )
@@ -189,6 +195,11 @@ Server operators can allow specific origins via `MARQUISE_API_CORS_ORIGINS`.
             allow_methods=["GET"],
             allow_headers=["*"],
         )
+
+    # Structured request logging — registered last (outermost) so it wraps
+    # the entire stack above (CORS, rate limiting, routing) and its logged
+    # duration reflects true end-to-end request time.
+    app.add_middleware(RequestLoggingMiddleware)
 
     @app.get("/health", tags=["meta"])
     @limiter.exempt
