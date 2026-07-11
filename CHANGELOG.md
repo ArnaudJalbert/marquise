@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.16.0 (2026-07-11)
+
+### New Features
+
+- **`GET /movies` list/search endpoint**: adds a `title` filter (case-insensitive substring match) so movies can be discovered without already knowing their ID, mirroring `GET /cinemas?name=`. Composes with the existing pagination stack (`fastapi-pagination` `Page`/`Params`, SQL-level `LIMIT`/`OFFSET` with a `COUNT(*) OVER()` window function) rather than introducing a separate mechanism. Adds `MovieRepository.find_all`/`MovieGateway.find_all`/`SupabaseMovieGateway.find_all` and a new `ListMoviesUseCase`, following the exact shape of the existing cinema list stack. Closes #53.
+
 ## 0.15.0 (2026-07-09)
 
 ### New Features
