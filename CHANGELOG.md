@@ -1,6 +1,10 @@
 # Changelog
 
-## 0.16.0 (2026-07-11)
+## 0.17.0 (2026-07-11)
+
+### Improvements
+
+- **Global exception handlers for the public API**: `routers/cinemas.py` and `routers/movies.py` no longer hand-roll per-endpoint `try/except` blocks to translate `ApplicationError` subclasses (and a bare `ValueError`) into `HTTPException`s. `create_app()` now registers three handlers (new `exception_handlers.py` module) covering every endpoint uniformly: an explicit `_APPLICATION_ERROR_MAPPING` table maps each concrete `ApplicationError` subclass to a `(status_code, error_code)` pair (`*NotFoundError` → 404/`not_found`, `*AlreadyExistsError` → 409/`conflict`, with `CinemaIdAlreadyExistsError` deliberately mapped to 500/`internal_server_error` since it's an internal UUID-collision retry condition rather than a client-facing conflict), a `ValueError` handler preserves the existing 422/`invalid_input` behavior, and a catch-all `Exception` handler logs the full exception/traceback server-side and returns a generic 500 that names only the exception's class (e.g. "An unexpected RuntimeError occurred...") — never its message/args, to avoid leaking internals like SQL fragments or connection details. Every error response now shares one envelope shape: `{"detail": ..., "error_code": ...}` (new `ErrorResponse` schema). Closes #51.
 
 ### New Features
 

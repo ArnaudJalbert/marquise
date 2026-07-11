@@ -28,6 +28,12 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
+from marquise.application.exceptions import ApplicationError
+from marquise.infrastructure.api.exception_handlers import (
+    application_error_handler,
+    unhandled_exception_handler,
+    value_error_handler,
+)
 from marquise.infrastructure.api.rate_limit import limiter
 from marquise.infrastructure.api.routers import cinemas_router, movies_router
 from marquise.infrastructure.di.container import Container
@@ -120,6 +126,12 @@ def create_app(container: Container | None = None) -> FastAPI:
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     app.add_middleware(SlowAPIMiddleware)
+
+    # Global error-to-response mapping, in one place instead of per-router
+    # try/except (see exception_handlers.py for the status/error_code table).
+    app.add_exception_handler(ApplicationError, application_error_handler)
+    app.add_exception_handler(ValueError, value_error_handler)
+    app.add_exception_handler(Exception, unhandled_exception_handler)
 
     # CORS — restrictive by default (no origins allowed). Override via the
     # MARQUISE_API_CORS_ORIGINS env var as a comma-separated list.
