@@ -9,6 +9,7 @@ from fastapi_pagination import Page, Params
 from marquise.application.use_cases.get_movie import GetMovieUseCase
 from marquise.application.use_cases.list_movies import ListMoviesUseCase
 from marquise.infrastructure.api.dependencies import get_container
+from marquise.infrastructure.api.openapi_responses import error_responses
 from marquise.infrastructure.api.rate_limit import current_rate_limit, limiter
 from marquise.infrastructure.api.schemas import MovieResponse
 from marquise.infrastructure.di.container import Container
@@ -16,7 +17,11 @@ from marquise.infrastructure.di.container import Container
 router = APIRouter(tags=["movies"])
 
 
-@router.get("/movies", response_model=Page[MovieResponse])
+@router.get(
+    "/movies",
+    response_model=Page[MovieResponse],
+    responses=error_responses(422, 429),
+)
 @limiter.limit(current_rate_limit)
 @cache()
 async def list_movies(
@@ -40,7 +45,11 @@ async def list_movies(
     )
 
 
-@router.get("/movies/{movie_id}", response_model=MovieResponse)
+@router.get(
+    "/movies/{movie_id}",
+    response_model=MovieResponse,
+    responses=error_responses(404, 422, 429),
+)
 @limiter.limit(current_rate_limit)
 @cache()
 async def get_movie(

@@ -106,7 +106,48 @@ def create_app(container: Container | None = None) -> FastAPI:
 
     app = FastAPI(
         title="Marquise API",
-        description="Read-only public access to Montreal cinema showtimes.",
+        description="""
+Read-only public access to Montreal cinema showtimes, aggregated across
+multiple cinema chains and independent theatres.
+
+## Authentication
+
+None. Every endpoint under `/v1` is public and read-only — there is no API
+key, token, or account system. Do not send credentials; there is nothing to
+authenticate.
+
+## Rate limiting
+
+Requests are limited per client IP to **60 requests/minute** by default
+(configurable server-side via `MARQUISE_API_RATE_LIMIT`). Exceeding the
+limit returns `429 Too Many Requests`. `/health` and `/ready` are exempt
+(they're intended for uptime monitors, not API clients).
+
+## Caching
+
+Responses are cached in-memory for **1 hour** by default (configurable via
+`MARQUISE_API_CACHE_TTL_SECONDS`). The underlying showtime data itself is
+refreshed at most once a day, so cached responses are never meaningfully
+stale relative to the source data.
+
+## Errors
+
+Every error response, including unexpected server errors, shares one JSON
+envelope:
+
+```json
+{"detail": "human-readable message", "error_code": "machine_readable_code"}
+```
+
+Prefer matching on `error_code` over parsing `detail`, whose wording may
+change without notice. See each endpoint's documented responses below for
+the specific `error_code` values it can return.
+
+## CORS
+
+Disabled by default (no cross-origin browser requests are permitted).
+Server operators can allow specific origins via `MARQUISE_API_CORS_ORIGINS`.
+""",
         version="1.0.0",
         lifespan=lifespan,
     )
@@ -155,7 +196,16 @@ def create_app(container: Container | None = None) -> FastAPI:
         """Liveness probe."""
         return {"status": "ok"}
 
-    @app.get("/ready", tags=["meta"])
+    @app.get(
+        "/ready",
+        tags=["meta"],
+        responses={
+            503: {
+                "description": "The database pool cannot currently serve queries.",
+                "content": {"application/json": {"example": {"status": "unavailable"}}},
+            }
+        },
+    )
     @limiter.exempt
     async def ready(container: Container = Depends(get_container)) -> JSONResponse:
         """Readiness probe — verifies the database pool can serve queries."""
