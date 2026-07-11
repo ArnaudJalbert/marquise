@@ -1,0 +1,44 @@
+# fly.toml app configuration file generated for marquise-api on 2026-07-11T16:36:56-04:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+# ── Secrets ──────────────────────────────────────────────────────────────────
+# The following secrets are required at runtime.  They are set via
+#   fly secrets set KEY=VALUE
+# and are NEVER stored in this file (which is committed to version control).
+#
+# Secrets that MUST be set:
+#   fly secrets set DATABASE_URL="postgresql://..."
+#   fly secrets set SUPABASE_URL="https://xxxxxxxxxxxxxxxxxxxx.supabase.co"
+#   fly secrets set SUPABASE_PUBLISHABLE_KEY="sb_publishable_..."
+#
+# Optional secrets:
+#   fly secrets set CINEPLEX_API_KEY="..."
+#   fly secrets set OMDB_API_KEY="..."
+#   fly secrets set MARQUISE_EMAIL="user@example.com"
+#   fly secrets set MARQUISE_PASSWORD="hunter2"
+#
+# To list currently set secrets:
+#   fly secrets list
+# ─────────────────────────────────────────────────────────────────────────────
+
+app = 'marquise-api'
+primary_region = 'yyz'
+
+[build]
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+[env]
+  # Optional — overrides the default "marquise" database schema.
+  DATABASE_SCHEMA = "marquise"
+
+[[vm]]
+  memory = '256mb'
+  cpus = 1
+  memory_mb = 256

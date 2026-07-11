@@ -1,0 +1,27 @@
+# Development and CI directories
+.git/
+.venv/
+tests/
+docs/
+.idea/
+.github/
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+
+# Environment and build
+.env
+.env.example
+*.md
+!README.md
+mkdocs.yml
+docker-compose.yml
+bin/
+scripts/
