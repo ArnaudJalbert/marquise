@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.21.0 (2026-07-11)
+
+### New Features
+
+- **Docker image + Compose for the read-only API**: adds a multi-stage `Dockerfile` at the repo root that builds a production container for the FastAPI read-only API. The `builder` stage installs production dependencies via `uv` (`--no-dev --frozen`) and compiles bytecode; the `final` stage runs `uvicorn` with the `--factory` app loader as a non-root `appuser` (uid 1000). A `.dockerignore` file excludes `tests/`, `.venv/`, `.git/`, `docs/`, `*.md`, and standard cache/coverage artifacts from the build context. A `docker-compose.yml` provides a one-command local launch (`docker compose up --build`) that passes env vars from `.env`. A new `.env.example` documents the required and optional environment variables (matching the setup instructions in `CONTRIBUTING.md`). Required env vars (`DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`) are read from the environment at runtime — no `.env` file is baked into the image. Closes #119.
+
+
 ## 0.20.0 (2026-07-11)
 
 ### New Features
