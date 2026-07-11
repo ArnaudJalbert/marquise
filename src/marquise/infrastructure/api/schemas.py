@@ -5,6 +5,13 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict
 
 
+class ErrorResponse(BaseModel):
+    """The standard error envelope returned by all API error responses."""
+
+    detail: str
+    error_code: str
+
+
 class CinemaResponse(BaseModel):
     """A cinema in an API response."""
 

@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi_cache.decorator import cache
 from fastapi_pagination import Page, Params
 
-from marquise.application.exceptions import MovieNotFoundError
 from marquise.application.use_cases.get_movie import GetMovieUseCase
 from marquise.application.use_cases.list_movies import ListMoviesUseCase
 from marquise.infrastructure.api.dependencies import get_container
@@ -52,8 +51,5 @@ async def get_movie(
 ) -> MovieResponse:
     """Retrieve a single movie by its ID."""
     use_case = container.get_movie_use_case
-    try:
-        output = await use_case.execute(GetMovieUseCase.InputData(movie_id=movie_id))
-    except MovieNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    output = await use_case.execute(GetMovieUseCase.InputData(movie_id=movie_id))
     return MovieResponse.model_validate(output)

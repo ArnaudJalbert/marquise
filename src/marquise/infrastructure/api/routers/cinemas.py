@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi_cache.decorator import cache
 from fastapi_pagination import Page, Params
 
-from marquise.application.exceptions import CinemaNotFoundError
 from marquise.application.use_cases.get_cinema_showtimes import (
     GetCinemaShowtimesUseCase,
 )
@@ -98,20 +97,15 @@ async def get_cinema_showtimes(
     """List a cinema's screenings within a date range."""
     from_, to = date_range
     use_case = container.get_cinema_showtimes_use_case
-    try:
-        output = await use_case.execute(
-            GetCinemaShowtimesUseCase.InputData(
-                cinema_id=cinema_id,
-                start_date=from_,
-                end_date=to,
-                page=params.page,
-                size=params.size,
-            )
+    output = await use_case.execute(
+        GetCinemaShowtimesUseCase.InputData(
+            cinema_id=cinema_id,
+            start_date=from_,
+            end_date=to,
+            page=params.page,
+            size=params.size,
         )
-    except CinemaNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    )
 
     return Page.create(
         items=[ScreeningResponse.model_validate(s) for s in output.screenings],
