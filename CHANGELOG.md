@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.0 (2026-07-11)
+
+### New Features
+
+- **DB-aware readiness check (`GET /ready`)**: `GET /health` was a pure liveness probe that never touched the DI container or the database, so there was no way to distinguish "process is up" from "process is up and can actually serve traffic". Adds `Database.ping()` (opens a pooled connection and runs `SELECT 1`, swallowing `OSError`/`asyncpg.PostgresError` and returning `False` rather than propagating) and `Container.check_database_health()`, wired into a new `GET /ready` endpoint that returns `{"status": "ok"}`/200 when the pool is healthy and `{"status": "unavailable"}`/503 otherwise. Registered the same way as `/health` — unversioned, `@limiter.exempt` — since orchestrator probes must not be rate-limited or count against `/v1` clients. `/health` is unchanged and stays DB-free. Closes #56.
+
 ## 0.17.0 (2026-07-11)
 
 ### Improvements
