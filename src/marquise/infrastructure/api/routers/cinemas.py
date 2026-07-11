@@ -12,6 +12,7 @@ from marquise.application.use_cases.get_cinema_showtimes import (
     GetCinemaShowtimesUseCase,
 )
 from marquise.infrastructure.api.dependencies import get_container
+from marquise.infrastructure.api.openapi_responses import error_responses
 from marquise.infrastructure.api.rate_limit import current_rate_limit, limiter
 from marquise.infrastructure.api.schemas import CinemaResponse, ScreeningResponse
 from marquise.infrastructure.di.container import Container
@@ -57,7 +58,11 @@ def resolve_showtimes_date_range(
     return resolved_from, resolved_to
 
 
-@router.get("/cinemas", response_model=Page[CinemaResponse])
+@router.get(
+    "/cinemas",
+    response_model=Page[CinemaResponse],
+    responses=error_responses(422, 429),
+)
 @limiter.limit(current_rate_limit)
 @cache()
 async def list_cinemas(
@@ -83,6 +88,7 @@ async def list_cinemas(
 @router.get(
     "/cinemas/{cinema_id}/showtimes",
     response_model=Page[ScreeningResponse],
+    responses=error_responses(404, 422, 429),
 )
 @limiter.limit(current_rate_limit)
 @cache()

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.19.0 (2026-07-11)
+
+### Improvements
+
+- **Polished OpenAPI docs for public API consumers**: the auto-generated `/docs` schema was previously too thin for external consumers — no worked examples, no per-endpoint error documentation, and no explanation of auth/rate-limiting/caching. Expands the top-level `FastAPI(description=...)` (markdown, rendered in Swagger UI/Redoc) to cover authentication (none — public/read-only), rate limiting, caching, the standard `{"detail", "error_code"}` error envelope, and CORS. Adds a realistic `json_schema_extra` example plus field-level descriptions to every response model in `schemas.py` (`ErrorResponse`, `CinemaResponse`, `MovieResponse`, `ScreeningResponse`). Adds a new `openapi_responses.py` helper (`error_responses(*status_codes)`) so each endpoint documents the concrete 404/422/429 error responses it can actually return via `responses=`, without repeating `{"model": ErrorResponse, "description": ...}` boilerplate per route; 500 is deliberately left undocumented per-endpoint since it's the universal unhandled-exception fallback, not endpoint-specific. `/ready`'s 503 is documented separately with its actual ad hoc `{"status": "unavailable"}` body, since that's an orchestrator probe response, not the client-facing error envelope. Closes #57.
+
 ## 0.18.0 (2026-07-11)
 
 ### New Features
