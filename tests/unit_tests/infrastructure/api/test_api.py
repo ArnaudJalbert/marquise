@@ -227,7 +227,7 @@ def test_get_cinema_showtimes_pagination(
 def test_get_cinema_showtimes_not_found(
     client: TestClient, container: MagicMock
 ) -> None:
-    """A missing cinema yields 404."""
+    """A missing cinema yields 404 with the standard error envelope."""
     container.get_cinema_showtimes_use_case.execute.side_effect = CinemaNotFoundError(
         "nope"
     )
@@ -238,6 +238,24 @@ def test_get_cinema_showtimes_not_found(
     )
 
     assert response.status_code == 404
+    assert response.json() == {"detail": "nope", "error_code": "not_found"}
+
+
+def test_get_cinema_showtimes_invalid_range_returns_422_envelope(
+    client: TestClient, container: MagicMock
+) -> None:
+    """A ValueError from the use case (e.g. bad date range) yields a 422 envelope."""
+    container.get_cinema_showtimes_use_case.execute.side_effect = ValueError(
+        "bad range"
+    )
+
+    response = client.get(
+        "/v1/cinemas/cin-1/showtimes",
+        params={"from": "2026-06-27", "to": "2026-06-28"},
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "bad range", "error_code": "invalid_input"}
 
 
 def test_get_cinema_showtimes_with_default_dates(
@@ -335,12 +353,33 @@ def test_get_movie(client: TestClient, container: MagicMock) -> None:
 
 
 def test_get_movie_not_found(client: TestClient, container: MagicMock) -> None:
-    """A missing movie yields 404."""
+    """A missing movie yields 404 with the standard error envelope."""
     container.get_movie_use_case.execute.side_effect = MovieNotFoundError("nope")
 
     response = client.get("/v1/movies/missing")
 
     assert response.status_code == 404
+    assert response.json() == {"detail": "nope", "error_code": "not_found"}
+
+
+def test_unhandled_exception_returns_generic_500(container: MagicMock) -> None:
+    """An unexpected exception from a use case yields a generic 500 envelope.
+
+    Uses a separate TestClient with raise_server_exceptions=False: the
+    default client fixture re-raises the original exception after the
+    handler's response is sent (Starlette's ServerErrorMiddleware behavior),
+    which would make this test raise instead of asserting on the response.
+    """
+    container.get_movie_use_case.execute.side_effect = RuntimeError("db exploded")
+    client = TestClient(create_app(container=container), raise_server_exceptions=False)
+
+    response = client.get("/v1/movies/mov-1")
+
+    assert response.status_code == 500
+    assert response.json() == {
+        "detail": "An unexpected RuntimeError occurred while processing the request.",
+        "error_code": "internal_server_error",
+    }
 
 
 def test_list_movies(client: TestClient, container: MagicMock) -> None:
