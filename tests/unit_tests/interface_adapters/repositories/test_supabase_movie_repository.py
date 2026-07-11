@@ -8,6 +8,7 @@ import pytest
 
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
+from marquise.interface_adapters.repositories.protocols.base import GatewayPage
 from marquise.interface_adapters.repositories.protocols.movie import MovieGateway
 from marquise.interface_adapters.repositories.supabase.movie_repository import (
     SupabaseMovieRepository,
@@ -257,3 +258,66 @@ async def test_save_handles_none_fields() -> None:
         rating=None,
         origin_countries=None,
     )
+
+
+@pytest.mark.asyncio
+async def test_find_all_without_filter(gateway_dict: dict) -> None:
+    """Verify find_all without filter returns all mapped movies."""
+    mock_gateway = create_autospec(MovieGateway, instance=True)
+    mock_gateway.find_all.return_value = GatewayPage(rows=[gateway_dict], total=1)
+
+    repo = SupabaseMovieRepository(gateway=mock_gateway)
+    result = await repo.find_all()
+
+    assert len(result.items) == 1
+    assert result.items[0].title == "Inception"
+    assert result.total == 1
+    mock_gateway.find_all.assert_awaited_once_with(
+        title_filter=None, limit=None, offset=0
+    )
+
+
+@pytest.mark.asyncio
+async def test_find_all_with_filter(gateway_dict: dict) -> None:
+    """Verify find_all with filter delegates the filter to the gateway."""
+    mock_gateway = create_autospec(MovieGateway, instance=True)
+    mock_gateway.find_all.return_value = GatewayPage(rows=[gateway_dict], total=1)
+
+    result = await SupabaseMovieRepository(gateway=mock_gateway).find_all(
+        title_filter="Incep"
+    )
+
+    assert len(result.items) == 1
+    assert result.items[0].title == "Inception"
+    mock_gateway.find_all.assert_awaited_once_with(
+        title_filter="Incep", limit=None, offset=0
+    )
+
+
+@pytest.mark.asyncio
+async def test_find_all_with_pagination(gateway_dict: dict) -> None:
+    """Verify find_all forwards limit/offset and surfaces the gateway's total."""
+    mock_gateway = create_autospec(MovieGateway, instance=True)
+    mock_gateway.find_all.return_value = GatewayPage(rows=[gateway_dict], total=50)
+
+    result = await SupabaseMovieRepository(gateway=mock_gateway).find_all(
+        limit=1, offset=5
+    )
+
+    assert len(result.items) == 1
+    assert result.total == 50
+    mock_gateway.find_all.assert_awaited_once_with(title_filter=None, limit=1, offset=5)
+
+
+@pytest.mark.asyncio
+async def test_find_all_returns_empty_page() -> None:
+    """Verify find_all returns an empty page when no rows match."""
+    mock_gateway = create_autospec(MovieGateway, instance=True)
+    mock_gateway.find_all.return_value = GatewayPage(rows=[], total=0)
+
+    result = await SupabaseMovieRepository(gateway=mock_gateway).find_all(
+        title_filter="Nonexistent"
+    )
+
+    assert result.items == []
+    assert result.total == 0
