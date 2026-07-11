@@ -19,7 +19,7 @@ import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.inmemory import InMemoryBackend
@@ -27,8 +27,10 @@ from fastapi_pagination import add_pagination
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+from starlette.responses import JSONResponse
 
 from marquise.application.exceptions import ApplicationError
+from marquise.infrastructure.api.dependencies import get_container
 from marquise.infrastructure.api.exception_handlers import (
     application_error_handler,
     unhandled_exception_handler,
@@ -152,6 +154,14 @@ def create_app(container: Container | None = None) -> FastAPI:
     async def health() -> dict[str, str]:
         """Liveness probe."""
         return {"status": "ok"}
+
+    @app.get("/ready", tags=["meta"])
+    @limiter.exempt
+    async def ready(container: Container = Depends(get_container)) -> JSONResponse:
+        """Readiness probe — verifies the database pool can serve queries."""
+        if await container.check_database_health():
+            return JSONResponse({"status": "ok"}, status_code=200)
+        return JSONResponse({"status": "unavailable"}, status_code=503)
 
     v1_router = APIRouter(prefix="/v1")
     v1_router.include_router(cinemas_router)

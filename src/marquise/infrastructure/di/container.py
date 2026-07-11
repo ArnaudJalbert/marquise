@@ -163,6 +163,18 @@ class Container:
             self._database = None
             self._pool = None
 
+    async def check_database_health(self) -> bool:
+        """Report whether the database pool can currently serve queries.
+
+        Returns:
+            True if the pool is initialized and a trivial query succeeds,
+            False otherwise (including when ``initialize()`` was never
+            called).
+        """
+        if self._database is None:
+            return False
+        return await self._database.ping()
+
     # ------------------------------------------------------------------
     # Settings
     # ------------------------------------------------------------------

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, create_autospec
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from unittest.mock import AsyncMock, MagicMock, create_autospec
 
 import asyncpg
 import pytest
@@ -105,3 +107,48 @@ def test_constructor_sanitizes_dsn() -> None:
     )
     assert db._dsn != dsn
     assert "%23" in db._dsn
+
+
+@pytest.mark.asyncio
+async def test_ping_before_connect_returns_false() -> None:
+    """Verify ping returns False when the pool was never opened."""
+    db = Database(_TEST_SETTINGS)
+    assert await db.ping() is False
+
+
+@pytest.mark.asyncio
+async def test_ping_returns_true_when_query_succeeds() -> None:
+    """Verify ping returns True when a trivial query succeeds."""
+    conn = AsyncMock()
+    conn.fetchval = AsyncMock(return_value=1)
+
+    @asynccontextmanager
+    async def acquire() -> AsyncIterator[AsyncMock]:
+        yield conn
+
+    mock_pool = MagicMock()
+    mock_pool.acquire = MagicMock(side_effect=acquire)
+
+    db = Database(_TEST_SETTINGS)
+    db._pool = mock_pool
+
+    assert await db.ping() is True
+    conn.fetchval.assert_awaited_once_with("SELECT 1")
+
+
+@pytest.mark.asyncio
+async def test_ping_returns_false_when_query_raises() -> None:
+    """Verify ping returns False when the connection/query fails."""
+
+    @asynccontextmanager
+    async def acquire() -> AsyncIterator[AsyncMock]:
+        raise asyncpg.PostgresError("connection lost")
+        yield  # pragma: no cover - unreachable, satisfies generator shape
+
+    mock_pool = MagicMock()
+    mock_pool.acquire = MagicMock(side_effect=acquire)
+
+    db = Database(_TEST_SETTINGS)
+    db._pool = mock_pool
+
+    assert await db.ping() is False
