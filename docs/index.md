@@ -37,6 +37,8 @@ uv run marquise api
 
 Endpoints (versioned under `/v1`): `GET /v1/cinemas`, `GET /v1/cinemas/{id}/showtimes`, `GET /v1/movies/{id}`.
 
+A production instance is live at `https://marquise-api.fly.dev` — see [https://marquise-api.fly.dev/docs](https://marquise-api.fly.dev/docs) for the hosted OpenAPI UI.
+
 See the [API docs](api.md) for details, including how to configure CORS origins, cache TTL, and rate limiting.
 
 ## Supported Sources
