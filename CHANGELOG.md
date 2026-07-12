@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.21.1 (2026-07-12)
+
+### Improvements
+
+- **Post-deploy verification and docs for the Fly.io production deployment**: smoke-tested the live `marquise-api` Fly app (`GET /health`, `GET /ready`, `GET /v1/cinemas`) — all reachable and returning real data. Documents the production base URL (`https://marquise-api.fly.dev`) in `README.md`, `docs/index.md`, and `docs/api.md` so teammates without Fly CLI access can find and use it. Adds an automated smoke-test step to `.github/workflows/fly-deploy.yml`, run after every `flyctl deploy`, that hits `/health`, `/ready`, and `/v1/cinemas` and fails the workflow (with retries to ride out the scale-to-zero cold start) if any of them don't return successfully. Note: `fly.toml` runs with `min_machines_running = 0` (scale-to-zero), so the first request after idle may see a brief cold-start delay. Closes #123.
+
 ## 0.21.0 (2026-07-11)
 
 ### New Features
