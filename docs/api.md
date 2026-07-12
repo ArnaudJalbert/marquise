@@ -11,6 +11,12 @@ uv run marquise api
 By default the server listens on `http://localhost:8000`. OpenAPI docs are at
 `/docs` and a liveness probe at `/health`.
 
+## Production
+
+A production instance is deployed to Fly.io and publicly reachable at
+`https://marquise-api.fly.dev`. Hosted OpenAPI docs are at
+[https://marquise-api.fly.dev/docs](https://marquise-api.fly.dev/docs).
+
 ## Endpoints
 
 All routes except `/health` are versioned under a `/v1` prefix, so that
