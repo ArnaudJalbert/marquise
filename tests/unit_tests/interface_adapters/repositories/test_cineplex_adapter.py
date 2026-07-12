@@ -81,6 +81,27 @@ async def test_fetch_showtimes_maps_scotiabank_alias_to_same_location_id(
 
 
 @pytest.mark.asyncio
+async def test_fetch_showtimes_maps_royalmount_to_location_id(
+    mock_source: AsyncMock,
+) -> None:
+    """Verify 'Cinéma Cineplex Royalmount' resolves to location_id 9121."""
+    start = datetime(2026, 6, 7, tzinfo=UTC)
+    end = datetime(2026, 6, 7, 23, 59, 59, tzinfo=UTC)
+    mock_source.fetch_showtimes.return_value = []
+    cinema = Cinema(id=CinemaId(value="cin-9121"), name="Cinéma Cineplex Royalmount")
+
+    adapter = CineplexAdapter(mock_source)
+    result = await adapter.fetch_showtimes(cinema, start, end)
+
+    assert result == []
+    mock_source.fetch_showtimes.assert_awaited_once_with(
+        location_id=9121,
+        start_date=start,
+        end_date=end,
+    )
+
+
+@pytest.mark.asyncio
 async def test_fetch_showtimes_dedupes_same_movie_and_showtime(
     sample_cinema: Cinema,
     mock_source: AsyncMock,
