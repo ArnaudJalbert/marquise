@@ -28,6 +28,15 @@ Marquise fetches showtime data from multiple theater chains and independent cine
 | Linting / formatting | Ruff |
 | Type checking | ty |
 
+## Live API
+
+The read-only REST API is deployed and publicly reachable at `https://marquise-api.fly.dev`:
+
+- [`https://marquise-api.fly.dev/docs`](https://marquise-api.fly.dev/docs) — interactive OpenAPI (Swagger) UI
+- [`https://marquise-api.fly.dev/health`](https://marquise-api.fly.dev/health) — liveness probe
+
+See [docs/api.md](docs/api.md) for the full endpoint reference.
+
 ## Installation
 
 Requires Python 3.13 and [uv](https://docs.astral.sh/uv/).
