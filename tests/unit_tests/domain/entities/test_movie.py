@@ -75,6 +75,17 @@ def test_movie_rejects_non_positive_duration() -> None:
         )
 
 
+def test_movie_rejects_non_positive_release_year() -> None:
+    """Verify that Movie release year must be positive."""
+    with pytest.raises(ValueError, match="Movie release year must be positive"):
+        Movie(
+            id=MovieId(value="mov-123"),
+            title="Inception",
+            directors=("Christopher Nolan",),
+            release_year=0,
+        )
+
+
 def test_movie_allows_none_duration() -> None:
     """Verify that Movie duration can be None (unknown)."""
     movie = Movie(

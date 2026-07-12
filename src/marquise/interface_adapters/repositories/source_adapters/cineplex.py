@@ -25,6 +25,7 @@ _CINEMA_LOCATION_MAPPINGS: dict[str, int] = {
     "Cin\u00e9ma Cineplex Odeon Saint-Bruno": 9143,
     "Cin\u00e9ma Cineplex Odeon Brossard et VIP": 9185,
     "Cin\u00e9ma Cineplex Kirkland": 9407,
+    "Cin\u00e9ma Cineplex Royalmount": 9121,
 }
 
 
