@@ -192,6 +192,29 @@ def _strip_html(text: str) -> str:
     return " ".join(text.split()).strip()
 
 
+def _extract_release_year(raw_year: object) -> int | None:
+    """Parse a release year from the ``annee`` field, discarding junk values.
+
+    The API sometimes reports ``0`` or a blank value for films with no known
+    release date, which would otherwise fail ``Movie`` validation.
+
+    Args:
+        raw_year: The raw ``annee`` value from the API (int, str, or None).
+
+    Returns:
+        A positive release year, or ``None`` if unavailable/invalid.
+    """
+    if isinstance(raw_year, bool):
+        return None
+    if isinstance(raw_year, int) and raw_year > 0:
+        return raw_year
+    if isinstance(raw_year, str) and raw_year.strip().isdigit():
+        parsed_year = int(raw_year.strip())
+        if parsed_year > 0:
+            return parsed_year
+    return None
+
+
 def _extract_film_detail(film: dict) -> dict[str, Any]:
     """Extract enriched movie metadata from a ``cmFilmCurrent`` dict.
 
@@ -231,7 +254,7 @@ def _extract_film_detail(film: dict) -> dict[str, Any]:
         "directors": directors if directors else None,
         "cast": cast_list if cast_list else None,
         "duration_minutes": film.get("duree"),
-        "release_year": film.get("annee"),
+        "release_year": _extract_release_year(film.get("annee")),
         "origin_countries": origin_countries if origin_countries else None,
         "poster_url": film.get("poster_url"),
         "trailer_url": film.get("bande_annonce_url"),
