@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.21.1 (2026-07-12)
+
+### Fixes
+
+- **`marquise source import` failing for Cinéma Cineplex Royalmount**: `_CINEMA_LOCATION_MAPPINGS` in `interface_adapters/repositories/source_adapters/cineplex.py` had no entry for "Cinéma Cineplex Royalmount", so `CineplexAdapter.fetch_showtimes` raised `ValueError: No Cineplex location ID mapping for cinema 'Cinéma Cineplex Royalmount'` as soon as it was selected in the CLI. Adds the missing mapping (`location_id` `9121`, sourced from Cineplex's own theatre page).
+
+- **`marquise source import` crashing on Cinéma Cinéma films with an unknown release year**: `_extract_film_detail` in `infrastructure/sources/cinemacinema/gateways/source.py` passed the API's raw `annee` field straight through as `release_year`, unlike the `cinemamoderne`/`cinemapublic` adapters which already guard this. When the API reports `annee: 0` (or a negative/blank value, e.g. for a film with no known release date), that value flowed unvalidated into `Movie.__post_init__`, which rejects any `release_year <= 0`, crashing the entire import command with no per-movie error isolation. Adds `_extract_release_year()` to only accept a genuine positive int (or numeric string), returning `None` otherwise, bringing the adapter in line with its siblings.
+
+### Testing
+
+- **Live integration coverage for the four newly onboarded cinemas (#83-#86)**: adds `tests/integration_tests/infrastructure/sources/cinemacinema/gateways/test_source_integration.py`, parametrized over `du-musee` and `du-parc`, and extends `tests/integration_tests/infrastructure/sources/cineplex/gateways/test_source_integration.py` to also cover `location_id` `9121` (Royalmount) alongside the existing Quartier Latin (`9172`) coverage. Each test hits the real upstream API and asserts on response shape (non-empty results, required keys present, showtime within the requested window) rather than specific movie titles, since prior coverage for these cinemas only exercised mocked adapters and couldn't catch a location ID being rejected outright or the response shape changing upstream.
+
 ## 0.21.0 (2026-07-11)
 
 ### New Features
