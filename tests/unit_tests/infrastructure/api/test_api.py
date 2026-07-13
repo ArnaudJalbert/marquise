@@ -19,6 +19,7 @@ from marquise.application.exceptions import (
     MovieNotFoundError,
     ScreeningNotFoundError,
 )
+from marquise.application.use_cases.get_cinema import GetCinemaUseCase
 from marquise.application.use_cases.get_movie import GetMovieUseCase
 from marquise.application.use_cases.list_movies import ListMoviesUseCase
 from marquise.infrastructure.api.app import CACHE_PREFIX, create_app
@@ -41,6 +42,7 @@ def container() -> MagicMock:
     """Provide a fake DI container with stubbable read use cases."""
     fake = MagicMock()
     fake.cinema_controller.list = AsyncMock()
+    fake.get_cinema_use_case.execute = AsyncMock()
     fake.get_cinema_screenings_use_case.execute = AsyncMock()
     fake.get_movie_use_case.execute = AsyncMock()
     fake.list_movies_use_case.execute = AsyncMock()
@@ -215,6 +217,136 @@ def test_list_cinemas_size_out_of_range_is_rejected(
     response = client.get("/v1/cinemas", params={"size": 101})
 
     assert response.status_code == 422
+
+
+def test_get_cinema(client: TestClient, container: MagicMock) -> None:
+    """GET /cinemas/{id} returns the cinema."""
+    container.get_cinema_use_case.execute.return_value = SimpleNamespace(
+        id="cin-1",
+        name="Cinema One",
+        address="123 Rue Sainte-Catherine",
+        city="Montréal",
+        website=None,
+    )
+
+    response = client.get("/v1/cinemas/cin-1")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == "cin-1"
+    assert body["name"] == "Cinema One"
+    assert body["address"] == "123 Rue Sainte-Catherine"
+    assert body["city"] == "Montréal"
+    assert body["website"] is None
+
+
+def test_get_cinema_not_found(client: TestClient, container: MagicMock) -> None:
+    """A missing cinema yields 404 with the standard error envelope."""
+    container.get_cinema_use_case.execute.side_effect = CinemaNotFoundError("nope")
+
+    response = client.get("/v1/cinemas/missing")
+
+    assert response.status_code == 404
+    body = response.json()
+    assert body.pop("request_id")
+    assert body == {"detail": "nope", "error_code": "not_found"}
+
+
+def test_get_cinema_is_cached(client: TestClient, container: MagicMock) -> None:
+    """A second request for the same cinema reuses the cached response."""
+    container.get_cinema_use_case.execute.return_value = SimpleNamespace(
+        id="cin-1",
+        name="Cinema One",
+        address=None,
+        city=None,
+        website=None,
+    )
+
+    first = client.get("/v1/cinemas/cin-1")
+    second = client.get("/v1/cinemas/cin-1")
+
+    assert first.status_code == 200
+    assert second.json() == first.json()
+    container.get_cinema_use_case.execute.assert_awaited_once()
+
+
+def test_get_cinema_cache_has_miss_header_on_first_request(
+    client: TestClient, container: MagicMock
+) -> None:
+    """The first request for /cinemas/{id} has X-FastAPI-Cache: MISS header."""
+    container.get_cinema_use_case.execute.return_value = SimpleNamespace(
+        id="cin-1",
+        name="Test Cinema",
+        address=None,
+        city=None,
+        website=None,
+    )
+
+    response = client.get("/v1/cinemas/cin-1")
+
+    assert response.status_code == 200
+    assert response.headers.get("X-FastAPI-Cache") == "MISS"
+
+
+def test_get_cinema_cache_has_hit_header_on_repeat_request(
+    client: TestClient, container: MagicMock
+) -> None:
+    """Repeat requests for /cinemas/{id} have X-FastAPI-Cache: HIT header."""
+    container.get_cinema_use_case.execute.return_value = SimpleNamespace(
+        id="cin-1",
+        name="Test Cinema",
+        address=None,
+        city=None,
+        website=None,
+    )
+
+    client.get("/v1/cinemas/cin-1")
+    response = client.get("/v1/cinemas/cin-1")
+
+    assert response.status_code == 200
+    assert response.headers.get("X-FastAPI-Cache") == "HIT"
+
+
+def test_different_cinemas_have_separate_cache_entries(
+    client: TestClient, container: MagicMock
+) -> None:
+    """Requests for different cinema IDs have separate cache entries."""
+
+    def mock_execute(
+        input_data: GetCinemaUseCase.InputData,
+    ) -> SimpleNamespace:
+        return SimpleNamespace(
+            id=input_data.cinema_id,
+            name=f"Cinema {input_data.cinema_id}",
+            address=None,
+            city=None,
+            website=None,
+        )
+
+    container.get_cinema_use_case.execute.side_effect = mock_execute
+
+    response1 = client.get("/v1/cinemas/cin-1")
+    response2 = client.get("/v1/cinemas/cin-2")
+    response1_again = client.get("/v1/cinemas/cin-1")
+
+    assert response1.json()["id"] == "cin-1"
+    assert response2.json()["id"] == "cin-2"
+    assert response1_again.json() == response1.json()
+    assert container.get_cinema_use_case.execute.call_count == 2
+
+
+def test_get_cinema_not_found_errors_are_not_cached(
+    client: TestClient, container: MagicMock
+) -> None:
+    """404 responses are not cached; repeat requests re-execute the use case."""
+    container.get_cinema_use_case.execute.side_effect = CinemaNotFoundError("not found")
+
+    response1 = client.get("/v1/cinemas/missing")
+    response2 = client.get("/v1/cinemas/missing")
+
+    assert response1.status_code == 404
+    assert response2.status_code == 404
+    assert container.get_cinema_use_case.execute.call_count == 2
 
 
 def test_get_cinema_screenings_pagination(

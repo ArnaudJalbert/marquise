@@ -78,6 +78,7 @@ def container() -> MagicMock:
     fake.cinema_controller.list = AsyncMock(
         return_value=SimpleNamespace(cinemas=[], total=0)
     )
+    fake.get_cinema_use_case.execute = AsyncMock()
     fake.get_movie_use_case.execute = AsyncMock()
     return fake
 

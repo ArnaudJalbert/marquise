@@ -51,6 +51,7 @@ def test_openapi_description_documents_no_auth(client: TestClient) -> None:
     ("path", "expected_status_codes"),
     [
         ("/v1/cinemas", {"422", "429"}),
+        ("/v1/cinemas/{cinema_id}", {"404", "422", "429"}),
         ("/v1/cinemas/{cinema_id}/screenings", {"404", "422", "429"}),
         ("/v1/cinemas/{cinema_id}/movies", {"404", "422", "429"}),
         ("/v1/movies", {"422", "429"}),
