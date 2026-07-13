@@ -25,7 +25,6 @@ router = APIRouter(tags=["screenings"])
     responses=error_responses(422, 429),
 )
 @limiter.limit(current_rate_limit)
-@cache()
 async def search_screenings(
     request: Request,
     response: Response,

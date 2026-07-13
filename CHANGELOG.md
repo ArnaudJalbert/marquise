@@ -12,6 +12,7 @@
   - `GET /v1/cinemas/{cinema_id}/movies`: list the distinct movies currently screening at a cinema in a date range; 404s on unknown cinema. New `GetCinemaMoviesUseCase` and `ScreeningRepository.find_distinct_movies_by_cinema`.
   - Extracted the `resolve_showtimes_date_range` FastAPI dependency out of `cinemas.py` into a shared `infrastructure/api/routers/_dependencies.py` so all of the above endpoints share the same today→+7-days default.
   - Adds three supporting indexes on `screenings` (`movie_id`; `(cinema_id, showtime)`; `(movie_id, showtime)`) via `scripts/003_screening_search_indexes.sql`, since none of the new query patterns were served well by the existing `(cinema_id, movie_id, showtime)` unique index alone.
+  - `GET /v1/screenings` is no longer cached: its `movie` filter is free-text, giving it an effectively unbounded cache key space on the shared in-memory `@cache()` backend, unlike every other endpoint's bounded filters — every distinct search string would otherwise sit in memory for the full TTL. `GET /v1/screenings/{screening_id}` keeps its cache since its key space (screening IDs) is bounded.
 
 ### Breaking Changes
 
