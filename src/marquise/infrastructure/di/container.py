@@ -14,6 +14,7 @@ from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
+from marquise.application.use_cases.get_cinema import GetCinemaUseCase
 from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
 from marquise.application.use_cases.get_cinema_screenings import (
     GetCinemaScreeningsUseCase,
@@ -384,6 +385,10 @@ class Container:
     # ------------------------------------------------------------------
 
     @property
+    def _get_cinema_use_case(self) -> GetCinemaUseCase:
+        return GetCinemaUseCase(cinema_repository=self._cinema_repository)
+
+    @property
     def _get_movie_use_case(self) -> GetMovieUseCase:
         return GetMovieUseCase(movie_repository=self._movie_repository)
 
@@ -432,6 +437,11 @@ class Container:
     def list_cinemas_use_case(self) -> ListCinemasUseCase:
         """Public list-cinemas use case (no authentication required)."""
         return self._list_cinemas_use_case
+
+    @property
+    def get_cinema_use_case(self) -> GetCinemaUseCase:
+        """Public get-cinema use case (no authentication required)."""
+        return self._get_cinema_use_case
 
     @property
     def get_movie_use_case(self) -> GetMovieUseCase:
