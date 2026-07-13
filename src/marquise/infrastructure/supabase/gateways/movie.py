@@ -149,6 +149,22 @@ class SupabaseMovieGateway:
             )
         return dict(row) if row is not None else None
 
+    async def exists_by_id(self, movie_id: str) -> bool:
+        """Check whether a movie exists with the given ID.
+
+        Args:
+            movie_id: The ID to check for.
+
+        Returns:
+            True if a row with that ID exists, False otherwise.
+        """
+        async with self._pool.acquire() as conn:
+            result = await conn.fetchval(
+                f"SELECT EXISTS(SELECT 1 FROM {self._table} WHERE id = $1)",
+                movie_id,
+            )
+        return bool(result)
+
     async def find_all(
         self,
         title_filter: str | None = None,

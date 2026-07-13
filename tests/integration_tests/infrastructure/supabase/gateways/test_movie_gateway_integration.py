@@ -39,6 +39,15 @@ async def test_find_by_id_missing(movie_gateway: SupabaseMovieGateway) -> None:
 
 
 @pytest.mark.asyncio
+async def test_exists_by_id(movie_gateway: SupabaseMovieGateway) -> None:
+    """Verify exists_by_id returns correct results."""
+    await movie_gateway.save(movie_id="mov-exists", title="Existing Movie")
+
+    assert await movie_gateway.exists_by_id("mov-exists") is True
+    assert await movie_gateway.exists_by_id("mov-nonexistent") is False
+
+
+@pytest.mark.asyncio
 async def test_find_by_title(movie_gateway: SupabaseMovieGateway) -> None:
     """Verify a movie can be found by its title."""
     await movie_gateway.save(

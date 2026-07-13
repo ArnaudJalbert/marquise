@@ -102,7 +102,41 @@ class ScreeningGateway(Protocol):
         """
         ...
 
-    async def find_by_cinema_and_date_range(
+    async def search(
+        self,
+        movie_id: str | None = None,
+        movie_title: str | None = None,
+        cinema_id: str | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        language: str | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> GatewayPage:
+        """Find screenings matching any combination of filters, paginated.
+
+        All filters are optional and combinable. Omitting a filter means it
+        is not applied.
+
+        Args:
+            movie_id: Filter by exact movie ID.
+            movie_title: Filter by movie title substring (case-insensitive).
+            cinema_id: Filter by exact cinema ID.
+            start_date: Start of the showtime range (inclusive).
+            end_date: End of the showtime range (inclusive).
+            language: Filter by exact language/subtitle version.
+            limit: Max number of rows to return. If None, all matching rows
+                are returned unbounded.
+            offset: Number of matching rows to skip before returning results.
+
+        Returns:
+            A ``GatewayPage`` with the matching rows (joined with movie and
+            cinema data) and the total count of rows matching the filters,
+            ignoring ``limit``/``offset``.
+        """
+        ...
+
+    async def find_distinct_movies_by_cinema(
         self,
         cinema_id: str,
         start_date: datetime,
@@ -110,17 +144,20 @@ class ScreeningGateway(Protocol):
         limit: int | None = None,
         offset: int = 0,
     ) -> GatewayPage:
-        """Find screenings for a cinema within a date range, paginated.
+        """Find distinct movies with a screening at a cinema in a date range.
 
         Args:
             cinema_id: The cinema to filter by.
-            start_date: Start of the range (inclusive).
-            end_date: End of the range (inclusive).
-            limit: Max number of rows to return. If None, all matching rows
-                are returned unbounded.
-            offset: Number of matching rows to skip before returning results.
+            start_date: Start of the showtime range (inclusive).
+            end_date: End of the showtime range (inclusive).
+            limit: Max number of movies to return. If None, all matching
+                movies are returned unbounded.
+            offset: Number of matching movies to skip before returning
+                results.
 
         Returns:
-            A ``GatewayPage`` with the matching rows and the total count.
+            A ``GatewayPage`` with the matching movie rows (plain movie
+            columns, not prefixed) and the total count of distinct movies
+            matching the cinema and date range, ignoring ``limit``/``offset``.
         """
         ...

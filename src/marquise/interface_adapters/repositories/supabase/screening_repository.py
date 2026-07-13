@@ -8,7 +8,10 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from marquise.application.exceptions import ScreeningAlreadyExistsError
+from marquise.application.exceptions import (
+    ScreeningAlreadyExistsError,
+    ScreeningNotFoundError,
+)
 from marquise.application.repositories import Page, ScreeningRepository
 from marquise.domain.entities import Movie, Screening
 from marquise.domain.value_objects import (
@@ -163,32 +166,45 @@ class SupabaseScreeningRepository(ScreeningRepository):
             language=data.get("language"),
         )
 
-    async def find_by_id(self, screening_id: ScreeningId) -> Screening | None:
+    async def find_by_id(self, screening_id: ScreeningId) -> Screening:
         """Retrieve a screening by ID.
 
         Args:
             screening_id: The unique identifier of the screening.
 
         Returns:
-            The matching screening entity, or None if not found.
+            The matching screening entity.
+
+        Raises:
+            ScreeningNotFoundError: If no screening with the given ID exists.
         """
         data = await self._gateway.find_by_id(screening_id=str(screening_id))
-        return self._to_entity(data) if data is not None else None
+        if data is None:
+            raise ScreeningNotFoundError(
+                f"A screening with ID '{screening_id}' was not found"
+            )
+        return self._to_entity(data)
 
-    async def find_by_cinema_and_date_range(
+    async def search(
         self,
-        cinema_id: CinemaId,
-        start_date: datetime,
-        end_date: datetime,
+        movie_id: MovieId | None = None,
+        movie_title: str | None = None,
+        cinema_id: CinemaId | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        language: str | None = None,
         limit: int | None = None,
         offset: int = 0,
     ) -> Page[Screening]:
-        """Find screenings for a cinema within a date range, paginated.
+        """Find screenings matching any combination of filters, paginated.
 
         Args:
-            cinema_id: The cinema to filter by.
-            start_date: Start of the date range (inclusive).
-            end_date: End of the date range (inclusive).
+            movie_id: Filter by exact movie ID.
+            movie_title: Filter by movie title substring (case-insensitive).
+            cinema_id: Filter by exact cinema ID.
+            start_date: Start of the showtime range (inclusive).
+            end_date: End of the showtime range (inclusive).
+            language: Filter by exact language/subtitle version.
             limit: Max number of screenings to return. If None, all matching
                 screenings are returned unbounded.
             offset: Number of matching screenings to skip before returning
@@ -196,9 +212,47 @@ class SupabaseScreeningRepository(ScreeningRepository):
 
         Returns:
             A ``Page[Screening]`` with the matching screenings and the total
-            count.
+            count matching the filters.
         """
-        gateway_page = await self._gateway.find_by_cinema_and_date_range(
+        gateway_page = await self._gateway.search(
+            movie_id=str(movie_id) if movie_id is not None else None,
+            movie_title=movie_title,
+            cinema_id=str(cinema_id) if cinema_id is not None else None,
+            start_date=start_date,
+            end_date=end_date,
+            language=language,
+            limit=limit,
+            offset=offset,
+        )
+        return Page(
+            items=[self._to_entity(row) for row in gateway_page.rows],
+            total=gateway_page.total,
+        )
+
+    async def find_distinct_movies_by_cinema(
+        self,
+        cinema_id: CinemaId,
+        start_date: datetime,
+        end_date: datetime,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> Page[Movie]:
+        """Find distinct movies with a screening at a cinema in a date range.
+
+        Args:
+            cinema_id: The cinema to filter by.
+            start_date: Start of the showtime range (inclusive).
+            end_date: End of the showtime range (inclusive).
+            limit: Max number of movies to return. If None, all matching
+                movies are returned unbounded.
+            offset: Number of matching movies to skip before returning
+                results.
+
+        Returns:
+            A ``Page[Movie]`` with the matching movies and the total count of
+            distinct movies matching the cinema and date range.
+        """
+        gateway_page = await self._gateway.find_distinct_movies_by_cinema(
             cinema_id=str(cinema_id),
             start_date=start_date,
             end_date=end_date,
@@ -206,7 +260,7 @@ class SupabaseScreeningRepository(ScreeningRepository):
             offset=offset,
         )
         return Page(
-            items=[self._to_entity(row) for row in gateway_page.rows],
+            items=[_dict_to_movie(row) for row in gateway_page.rows],
             total=gateway_page.total,
         )
 

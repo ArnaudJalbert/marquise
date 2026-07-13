@@ -27,8 +27,18 @@ disrupting existing consumers.
 |--------|------|-------------|
 | `GET` | `/health` | Liveness probe — returns `{"status": "ok"}` |
 | `GET` | `/v1/cinemas` | List cinemas, optionally filtered by `?name=` |
-| `GET` | `/v1/cinemas/{id}/showtimes` | List screenings within a date range (`?from=&to=`) |
+| `GET` | `/v1/cinemas/{id}/screenings` | List all of a cinema's screenings (no filters beyond pagination — see below) |
+| `GET` | `/v1/cinemas/{id}/movies` | List distinct movies currently screening at a cinema (`?from=&to=`) |
+| `GET` | `/v1/movies` | List movies, optionally filtered by `?title=` |
 | `GET` | `/v1/movies/{id}` | Retrieve a single movie by its ID |
+| `GET` | `/v1/movies/{id}/screenings` | List all of a movie's screenings (no filters beyond pagination — see below) |
+| `GET` | `/v1/screenings` | Search screenings across all cinemas (`?movie=&movie_id=&cinema_id=&from=&to=&language=`) |
+| `GET` | `/v1/screenings/{id}` | Retrieve a single screening by its ID |
+
+`GET /v1/cinemas/{id}/screenings` and `GET /v1/movies/{id}/screenings` are
+deliberately unfiltered beyond their path-scoped ID (only `page`/`size` are
+accepted) — use `GET /v1/screenings` for date range, cross-entity, or
+language filtering.
 
 ### Pagination
 
@@ -45,14 +55,16 @@ Default: `page=1`, `size=50`. Maximum `size` is 100.
 
 ### Date ranges
 
-`GET /v1/cinemas/{id}/showtimes` accepts `from` and `to` query parameters in
-ISO-8601 format:
+`GET /v1/cinemas/{id}/movies` and `GET /v1/screenings` accept `from` and `to`
+query parameters in ISO-8601 format:
 
 ```bash
-curl "http://localhost:8000/v1/cinemas/cin-1/showtimes?from=2026-07-09&to=2026-07-16"
+curl "http://localhost:8000/v1/screenings?cinema_id=cin-1&from=2026-07-09&to=2026-07-16"
 ```
 
-Defaults (when omitted): `from` = start of today (UTC), `to` = `from` + 7 days.
+`GET /v1/cinemas/{id}/movies` defaults to `from` = start of today (UTC),
+`to` = `from` + 7 days when omitted. `GET /v1/screenings` is unbounded when
+`from`/`to` are omitted — it searches the full screenings dataset.
 
 ## Caching
 
@@ -146,8 +158,10 @@ src/marquise/infrastructure/api/
 ├── schemas.py          # Pydantic response models
 └── routers/
     ├── __init__.py     # Re-exports routers
-    ├── cinemas.py      # GET /cinemas, GET /cinemas/{id}/showtimes (mounted under /v1)
-    └── movies.py       # GET /movies/{id} (mounted under /v1)
+    ├── _dependencies.py # Shared resolve_showtimes_date_range dependency
+    ├── cinemas.py      # GET /cinemas, GET /cinemas/{id}/screenings, GET /cinemas/{id}/movies
+    ├── movies.py       # GET /movies, GET /movies/{id}, GET /movies/{id}/screenings
+    └── screenings.py   # GET /screenings, GET /screenings/{id}
 ```
 
 Routers themselves are unprefixed; `create_app()` wraps them in an
