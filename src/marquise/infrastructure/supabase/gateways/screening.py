@@ -39,6 +39,11 @@ _SCREENING_COLUMNS = (
     " s.external_id, s.ticket_url, s.room, s.language"
 )
 _JOINED_COLUMNS = f"{_SCREENING_COLUMNS}, {_MOVIE_COLUMNS}, {_CINEMA_COLUMNS}"
+_PLAIN_MOVIE_COLUMNS = (
+    "m.id, m.title, m.release_year, m.directors, m.cast_members,"
+    " m.duration_minutes, m.description, m.poster_url, m.trailer_url,"
+    " m.genres, m.original_title, m.rating, m.origin_countries"
+)
 
 
 def _naive_utc(dt: datetime) -> datetime:
@@ -224,33 +229,56 @@ class SupabaseScreeningGateway:
             )
         return dict(row) if row is not None else None
 
-    async def find_by_cinema_and_date_range(
+    async def search(
         self,
-        cinema_id: str,
-        start_date: datetime,
-        end_date: datetime,
+        movie_id: str | None = None,
+        movie_title: str | None = None,
+        cinema_id: str | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        language: str | None = None,
         limit: int | None = None,
         offset: int = 0,
     ) -> GatewayPage:
-        """Find screenings for a cinema within a date range, paginated.
+        """Find screenings matching any combination of filters, paginated.
 
         Args:
-            cinema_id: The cinema to filter by.
-            start_date: Start of the range (inclusive).
-            end_date: End of the range (inclusive).
+            movie_id: Filter by exact movie ID.
+            movie_title: Filter by movie title substring (case-insensitive).
+            cinema_id: Filter by exact cinema ID.
+            start_date: Start of the showtime range (inclusive).
+            end_date: End of the showtime range (inclusive).
+            language: Filter by exact language/subtitle version.
             limit: Max number of rows to return. If None, all matching rows
                 are returned unbounded (no ``LIMIT`` clause is applied).
             offset: Number of matching rows to skip before returning results.
 
         Returns:
             A ``GatewayPage`` with the matching rows (joined with movie and
-            cinema data) and the total count of rows matching the cinema
-            and date range, ignoring ``limit``/``offset``.
+            cinema data) and the total count of rows matching the filters,
+            ignoring ``limit``/``offset``.
         """
-        params = (cinema_id, _naive_utc(start_date), _naive_utc(end_date))
-        where_clause = (
-            "WHERE s.cinema_id = $1 AND s.showtime >= $2 AND s.showtime <= $3"
-        )
+        conditions: list[str] = []
+        params: list[object] = []
+
+        def _add(expr: str, value: object) -> None:
+            params.append(value)
+            conditions.append(f"{expr} ${len(params)}")
+
+        if movie_id is not None:
+            _add("s.movie_id =", movie_id)
+        if movie_title is not None:
+            _add("m.title ILIKE", f"%{movie_title}%")
+        if cinema_id is not None:
+            _add("s.cinema_id =", cinema_id)
+        if start_date is not None:
+            _add("s.showtime >=", _naive_utc(start_date))
+        if end_date is not None:
+            _add("s.showtime <=", _naive_utc(end_date))
+        if language is not None:
+            _add("s.language =", language)
+
+        where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
         async with self._pool.acquire() as conn:
             if limit is None:
@@ -267,12 +295,8 @@ class SupabaseScreeningGateway:
                 )
                 return GatewayPage(rows=[dict(r) for r in rows], total=len(rows))
 
-            # COUNT(*) OVER() rides along with the paginated SELECT so the
-            # common case (a non-empty page) costs one round trip. It can't
-            # report a total when the page itself is empty (e.g. offset past
-            # the end of the result set), since there is no row to read it
-            # off — that case falls back to a separate, cheap COUNT(*)
-            # against the screenings table alone (no joins needed).
+            limit_param = f"${len(params) + 1}"
+            offset_param = f"${len(params) + 2}"
             rows = await conn.fetch(
                 f"""
                 SELECT {_JOINED_COLUMNS}, COUNT(*) OVER() AS __total
@@ -281,7 +305,7 @@ class SupabaseScreeningGateway:
                 JOIN "{self._schema}".cinemas c ON s.cinema_id = c.id
                 {where_clause}
                 ORDER BY s.showtime
-                LIMIT $4 OFFSET $5
+                LIMIT {limit_param} OFFSET {offset_param}
                 """,
                 *params,
                 limit,
@@ -291,6 +315,7 @@ class SupabaseScreeningGateway:
                 total = await conn.fetchval(
                     f"""
                     SELECT COUNT(*) FROM "{self._schema}".screenings s
+                    JOIN "{self._schema}".movies m ON s.movie_id = m.id
                     {where_clause}
                     """,
                     *params,
@@ -302,3 +327,71 @@ class SupabaseScreeningGateway:
             for row in result_rows:
                 row.pop("__total")
         return GatewayPage(rows=result_rows, total=total)
+
+    async def find_distinct_movies_by_cinema(
+        self,
+        cinema_id: str,
+        start_date: datetime,
+        end_date: datetime,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> GatewayPage:
+        """Find distinct movies with a screening at a cinema in a date range.
+
+        Args:
+            cinema_id: The cinema to filter by.
+            start_date: Start of the showtime range (inclusive).
+            end_date: End of the showtime range (inclusive).
+            limit: Max number of movies to return. If None, all matching
+                movies are returned unbounded (no ``LIMIT`` clause is
+                applied).
+            offset: Number of matching movies to skip before returning
+                results.
+
+        Returns:
+            A ``GatewayPage`` with the matching movie rows (plain movie
+            columns, not prefixed) and the total count of distinct movies
+            matching the cinema and date range, ignoring ``limit``/``offset``.
+        """
+        params = (cinema_id, _naive_utc(start_date), _naive_utc(end_date))
+        where_clause = (
+            "WHERE s.cinema_id = $1 AND s.showtime >= $2 AND s.showtime <= $3"
+        )
+
+        async with self._pool.acquire() as conn:
+            total = await conn.fetchval(
+                f"""
+                SELECT COUNT(DISTINCT s.movie_id)
+                FROM "{self._schema}".screenings s
+                {where_clause}
+                """,
+                *params,
+            )
+
+            distinct_movies_query = f"""
+                SELECT DISTINCT ON (m.id) {_PLAIN_MOVIE_COLUMNS}
+                FROM "{self._schema}".screenings s
+                JOIN "{self._schema}".movies m ON s.movie_id = m.id
+                {where_clause}
+                ORDER BY m.id
+            """
+            if limit is None:
+                rows = await conn.fetch(
+                    f"""
+                    SELECT * FROM ({distinct_movies_query}) AS distinct_movies
+                    ORDER BY title
+                    """,
+                    *params,
+                )
+            else:
+                rows = await conn.fetch(
+                    f"""
+                    SELECT * FROM ({distinct_movies_query}) AS distinct_movies
+                    ORDER BY title
+                    LIMIT ${len(params) + 1} OFFSET ${len(params) + 2}
+                    """,
+                    *params,
+                    limit,
+                    offset,
+                )
+        return GatewayPage(rows=[dict(r) for r in rows], total=total)

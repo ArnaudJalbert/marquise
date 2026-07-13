@@ -41,7 +41,11 @@ from marquise.infrastructure.api.logging_middleware import (
     configure_logging,
 )
 from marquise.infrastructure.api.rate_limit import limiter
-from marquise.infrastructure.api.routers import cinemas_router, movies_router
+from marquise.infrastructure.api.routers import (
+    cinemas_router,
+    movies_router,
+    screenings_router,
+)
 from marquise.infrastructure.di.container import Container
 
 #: Default in-memory response cache TTL, in seconds. The database is only
@@ -227,6 +231,7 @@ Server operators can allow specific origins via `MARQUISE_API_CORS_ORIGINS`.
     v1_router = APIRouter(prefix="/v1")
     v1_router.include_router(cinemas_router)
     v1_router.include_router(movies_router)
+    v1_router.include_router(screenings_router)
     app.include_router(v1_router)
 
     add_pagination(app)

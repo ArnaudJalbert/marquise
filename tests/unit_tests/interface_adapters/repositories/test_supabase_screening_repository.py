@@ -214,69 +214,6 @@ async def test_find_by_id_missing() -> None:
 
 
 @pytest.mark.asyncio
-async def test_find_by_cinema_and_date_range(gateway_dict: dict) -> None:
-    """Test find_by_cinema_and_date_range returns a page of entities."""
-    mock_gateway = create_autospec(ScreeningGateway, instance=True)
-    mock_gateway.find_by_cinema_and_date_range.return_value = GatewayPage(
-        rows=[gateway_dict], total=1
-    )
-
-    repo = SupabaseScreeningRepository(gateway=mock_gateway)
-    start = datetime(2026, 6, 7, tzinfo=UTC)
-    end = datetime(2026, 6, 7, 23, 59, 59, tzinfo=UTC)
-    result = await repo.find_by_cinema_and_date_range(
-        cinema_id=CinemaId(value="cin-789"),
-        start_date=start,
-        end_date=end,
-    )
-
-    assert len(result.items) == 1
-    assert result.total == 1
-    assert result.items[0].id == ScreeningId(value="scr-123")
-    assert result.items[0].showtime.value.tzinfo == UTC
-    assert result.items[0].showtime.value == datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC)
-    mock_gateway.find_by_cinema_and_date_range.assert_awaited_once_with(
-        cinema_id="cin-789",
-        start_date=start,
-        end_date=end,
-        limit=None,
-        offset=0,
-    )
-
-
-@pytest.mark.asyncio
-async def test_find_by_cinema_and_date_range_with_pagination(
-    gateway_dict: dict,
-) -> None:
-    """Verify limit/offset are forwarded and the gateway's total is surfaced."""
-    mock_gateway = create_autospec(ScreeningGateway, instance=True)
-    mock_gateway.find_by_cinema_and_date_range.return_value = GatewayPage(
-        rows=[gateway_dict], total=50
-    )
-
-    repo = SupabaseScreeningRepository(gateway=mock_gateway)
-    start = datetime(2026, 6, 7, tzinfo=UTC)
-    end = datetime(2026, 6, 7, 23, 59, 59, tzinfo=UTC)
-    result = await repo.find_by_cinema_and_date_range(
-        cinema_id=CinemaId(value="cin-789"),
-        start_date=start,
-        end_date=end,
-        limit=1,
-        offset=10,
-    )
-
-    assert len(result.items) == 1
-    assert result.total == 50
-    mock_gateway.find_by_cinema_and_date_range.assert_awaited_once_with(
-        cinema_id="cin-789",
-        start_date=start,
-        end_date=end,
-        limit=1,
-        offset=10,
-    )
-
-
-@pytest.mark.asyncio
 async def test_to_entity_populates_release_year() -> None:
     """Test _to_entity populates release_year from gateway data."""
     mock_gateway = create_autospec(ScreeningGateway, instance=True)
@@ -318,16 +255,130 @@ async def test_to_entity_populates_release_year() -> None:
 
 
 @pytest.mark.asyncio
-async def test_find_by_cinema_and_date_range_empty() -> None:
-    """Test find_by_cinema_and_date_range returns an empty page."""
+async def test_search_with_all_filters(gateway_dict: dict) -> None:
+    """Test search converts value objects to strings and maps the result."""
     mock_gateway = create_autospec(ScreeningGateway, instance=True)
-    mock_gateway.find_by_cinema_and_date_range.return_value = GatewayPage(
+    mock_gateway.search.return_value = GatewayPage(rows=[gateway_dict], total=1)
+
+    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    start = datetime(2026, 6, 7, tzinfo=UTC)
+    end = datetime(2026, 6, 7, 23, 59, 59, tzinfo=UTC)
+    result = await repo.search(
+        movie_id=MovieId(value="mov-456"),
+        movie_title="Test",
+        cinema_id=CinemaId(value="cin-789"),
+        start_date=start,
+        end_date=end,
+        language="V.O.",
+        limit=10,
+        offset=0,
+    )
+
+    assert len(result.items) == 1
+    assert result.total == 1
+    mock_gateway.search.assert_awaited_once_with(
+        movie_id="mov-456",
+        movie_title="Test",
+        cinema_id="cin-789",
+        start_date=start,
+        end_date=end,
+        language="V.O.",
+        limit=10,
+        offset=0,
+    )
+
+
+@pytest.mark.asyncio
+async def test_search_with_no_filters(gateway_dict: dict) -> None:
+    """Test search passes None through for every omitted filter."""
+    mock_gateway = create_autospec(ScreeningGateway, instance=True)
+    mock_gateway.search.return_value = GatewayPage(rows=[gateway_dict], total=1)
+
+    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    await repo.search()
+
+    mock_gateway.search.assert_awaited_once_with(
+        movie_id=None,
+        movie_title=None,
+        cinema_id=None,
+        start_date=None,
+        end_date=None,
+        language=None,
+        limit=None,
+        offset=0,
+    )
+
+
+@pytest.mark.asyncio
+async def test_search_empty() -> None:
+    """Test search returns an empty page."""
+    mock_gateway = create_autospec(ScreeningGateway, instance=True)
+    mock_gateway.search.return_value = GatewayPage(rows=[], total=0)
+
+    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    result = await repo.search(movie_title="nonexistent")
+
+    assert result.items == []
+    assert result.total == 0
+
+
+@pytest.mark.asyncio
+async def test_find_distinct_movies_by_cinema() -> None:
+    """Test find_distinct_movies_by_cinema maps rows to Movie entities."""
+    movie_row = {
+        "id": "mov-456",
+        "title": "Test Movie",
+        "release_year": 2026,
+        "directors": None,
+        "cast_members": None,
+        "duration_minutes": None,
+        "description": None,
+        "poster_url": None,
+        "trailer_url": None,
+        "genres": None,
+        "original_title": None,
+        "rating": None,
+        "origin_countries": None,
+    }
+    mock_gateway = create_autospec(ScreeningGateway, instance=True)
+    mock_gateway.find_distinct_movies_by_cinema.return_value = GatewayPage(
+        rows=[movie_row], total=1
+    )
+
+    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    start = datetime(2026, 6, 7, tzinfo=UTC)
+    end = datetime(2026, 6, 7, 23, 59, 59, tzinfo=UTC)
+    result = await repo.find_distinct_movies_by_cinema(
+        cinema_id=CinemaId(value="cin-789"),
+        start_date=start,
+        end_date=end,
+    )
+
+    assert len(result.items) == 1
+    assert result.total == 1
+    assert result.items[0].id == MovieId(value="mov-456")
+    assert result.items[0].title == "Test Movie"
+    assert result.items[0].release_year == 2026
+    mock_gateway.find_distinct_movies_by_cinema.assert_awaited_once_with(
+        cinema_id="cin-789",
+        start_date=start,
+        end_date=end,
+        limit=None,
+        offset=0,
+    )
+
+
+@pytest.mark.asyncio
+async def test_find_distinct_movies_by_cinema_empty() -> None:
+    """Test find_distinct_movies_by_cinema returns an empty page."""
+    mock_gateway = create_autospec(ScreeningGateway, instance=True)
+    mock_gateway.find_distinct_movies_by_cinema.return_value = GatewayPage(
         rows=[], total=0
     )
 
     repo = SupabaseScreeningRepository(gateway=mock_gateway)
-    result = await repo.find_by_cinema_and_date_range(
-        cinema_id=CinemaId(value="cin-789"),
+    result = await repo.find_distinct_movies_by_cinema(
+        cinema_id=CinemaId(value="cin-empty"),
         start_date=datetime(2026, 6, 7, tzinfo=UTC),
         end_date=datetime(2026, 6, 7, 23, 59, 59, tzinfo=UTC),
     )

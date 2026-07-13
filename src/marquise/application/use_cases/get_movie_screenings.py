@@ -1,0 +1,177 @@
+"""Get a movie's screenings within a date range use case (read-only)."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import UTC, datetime
+
+from marquise.application.exceptions import MovieNotFoundError
+from marquise.application.repositories import MovieRepository, ScreeningRepository
+from marquise.domain.value_objects import CinemaId, MovieId
+
+
+class GetMovieScreeningsUseCase:
+    """Use case for listing a movie's screenings, optionally filtered."""
+
+    @dataclass(frozen=True, slots=True)
+    class InputData:
+        """Input data for fetching a movie's screenings.
+
+        Attributes:
+            movie_id: The movie to fetch screenings for.
+            start_date: Start of the range (inclusive).
+            end_date: End of the range (inclusive).
+            cinema_id: Optional exact cinema ID filter.
+            language: Optional exact language/subtitle version filter.
+            page: Page number (1-based). Ignored when size is None.
+            size: Max number of screenings per page. If None, all matching
+                screenings are returned unbounded (page is ignored).
+        """
+
+        movie_id: str
+        start_date: datetime
+        end_date: datetime
+        cinema_id: str | None = None
+        language: str | None = None
+        page: int = 1
+        size: int | None = None
+
+        def __post_init__(self) -> None:
+            """Validate input data.
+
+            Raises:
+                ValueError: If movie_id is empty, cinema_id/language are
+                    provided but empty, the range is inverted, size is
+                    provided but not positive, or page is less than 1.
+            """
+            if not self.movie_id.strip():
+                raise ValueError("movie_id must not be empty")
+            if self.cinema_id is not None and not self.cinema_id.strip():
+                raise ValueError("cinema_id must not be empty when provided")
+            if self.language is not None and not self.language.strip():
+                raise ValueError("language must not be empty when provided")
+            # Comparing an aware and a naive datetime raises TypeError, not
+            # ValueError, so normalize local copies for the comparison only
+            # (naive values are assumed UTC, matching the rest of the
+            # persistence layer) rather than letting mixed inputs crash.
+            start = self.start_date.replace(tzinfo=self.start_date.tzinfo or UTC)
+            end = self.end_date.replace(tzinfo=self.end_date.tzinfo or UTC)
+            if start > end:
+                raise ValueError("start_date must not be after end_date")
+            if self.size is not None and self.size < 1:
+                raise ValueError("size must be positive when provided")
+            if self.page < 1:
+                raise ValueError("page must be at least 1")
+
+    @dataclass(frozen=True, slots=True)
+    class ScreeningData:
+        """A single screening in the output.
+
+        Attributes:
+            id: Unique identifier of the screening.
+            movie_id: The screened movie's ID.
+            movie_title: The screened movie's title.
+            showtime: The screening time in ISO 8601 format.
+            ticket_url: Link to purchase tickets (optional).
+            room: Room or auditorium name (optional).
+            language: Language or subtitle version (optional).
+        """
+
+        id: str
+        movie_id: str
+        movie_title: str
+        showtime: str
+        ticket_url: str | None = None
+        room: str | None = None
+        language: str | None = None
+
+    @dataclass(frozen=True, slots=True)
+    class OutputData:
+        """Output data containing the movie's screenings.
+
+        Attributes:
+            movie_id: The movie's ID.
+            movie_title: The movie's title.
+            screenings: The matching page of screenings, ordered by showtime.
+            total: Total number of screenings matching the movie and filters,
+                ignoring limit/offset.
+        """
+
+        movie_id: str
+        movie_title: str
+        screenings: tuple[GetMovieScreeningsUseCase.ScreeningData, ...]
+        total: int
+
+    def __init__(
+        self,
+        movie_repository: MovieRepository,
+        screening_repository: ScreeningRepository,
+    ) -> None:
+        """Initialize the use case.
+
+        Args:
+            movie_repository: A repository for querying movies.
+            screening_repository: A repository for querying screenings.
+        """
+        self.movie_repository = movie_repository
+        self.screening_repository = screening_repository
+
+    async def execute(self, request: InputData) -> OutputData:
+        """List a movie's screenings within the requested date range.
+
+        Args:
+            request: The input data with movie ID, date range, optional
+                cinema/language filters, and pagination parameters.
+
+        Returns:
+            The output data with the movie, its page of screenings, and the
+            total count.
+
+        Raises:
+            MovieNotFoundError: If no movie with the given ID exists.
+        """
+        movie_id = MovieId(value=request.movie_id)
+        movie = await self.movie_repository.find_by_id(movie_id)
+        if movie is None:
+            raise MovieNotFoundError(
+                f"A movie with ID '{request.movie_id}' was not found"
+            )
+
+        if request.size is not None:
+            limit = request.size
+            offset = (request.page - 1) * request.size
+        else:
+            limit = None
+            offset = 0
+
+        page = await self.screening_repository.search(
+            movie_id=movie_id,
+            cinema_id=CinemaId(value=request.cinema_id)
+            if request.cinema_id is not None
+            else None,
+            start_date=request.start_date,
+            end_date=request.end_date,
+            language=request.language,
+            limit=limit,
+            offset=offset,
+        )
+
+        screening_data = tuple(
+            self.ScreeningData(
+                id=str(s.id),
+                movie_id=str(s.movie.id),
+                movie_title=s.movie.title,
+                showtime=s.showtime.value.isoformat(),
+                ticket_url=s.ticket_url,
+                room=s.room,
+                language=s.language,
+            )
+            for s in page.items
+        )
+
+        return self.OutputData(
+            movie_id=str(movie.id),
+            movie_title=movie.title,
+            screenings=screening_data,
+            total=page.total,
+        )

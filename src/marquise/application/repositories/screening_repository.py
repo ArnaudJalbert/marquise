@@ -6,8 +6,8 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 
 from marquise.application.repositories.page import Page
-from marquise.domain.entities import Screening
-from marquise.domain.value_objects import CinemaId, ScreeningId
+from marquise.domain.entities import Movie, Screening
+from marquise.domain.value_objects import CinemaId, MovieId, ScreeningId
 
 
 class ScreeningRepository(ABC):
@@ -59,20 +59,29 @@ class ScreeningRepository(ABC):
         ...
 
     @abstractmethod
-    async def find_by_cinema_and_date_range(
+    async def search(
         self,
-        cinema_id: CinemaId,
-        start_date: datetime,
-        end_date: datetime,
+        movie_id: MovieId | None = None,
+        movie_title: str | None = None,
+        cinema_id: CinemaId | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        language: str | None = None,
         limit: int | None = None,
         offset: int = 0,
     ) -> Page[Screening]:
-        """Find screenings for a cinema within a date range, paginated.
+        """Find screenings matching any combination of filters, paginated.
+
+        All filters are optional and combinable. Omitting a filter means it
+        is not applied.
 
         Args:
-            cinema_id: The cinema to filter by.
-            start_date: Start of the date range (inclusive).
-            end_date: End of the date range (inclusive).
+            movie_id: Filter by exact movie ID.
+            movie_title: Filter by movie title substring (case-insensitive).
+            cinema_id: Filter by exact cinema ID.
+            start_date: Start of the showtime range (inclusive).
+            end_date: End of the showtime range (inclusive).
+            language: Filter by exact language/subtitle version.
             limit: Max number of screenings to return. If None, all matching
                 screenings are returned unbounded.
             offset: Number of matching screenings to skip before returning
@@ -80,7 +89,33 @@ class ScreeningRepository(ABC):
 
         Returns:
             A ``Page[Screening]`` with the matching screenings and the total
-            count matching the cinema and date range, ignoring
+            count matching the filters, ignoring ``limit``/``offset``.
+        """
+        ...
+
+    @abstractmethod
+    async def find_distinct_movies_by_cinema(
+        self,
+        cinema_id: CinemaId,
+        start_date: datetime,
+        end_date: datetime,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> Page[Movie]:
+        """Find distinct movies with a screening at a cinema in a date range.
+
+        Args:
+            cinema_id: The cinema to filter by.
+            start_date: Start of the showtime range (inclusive).
+            end_date: End of the showtime range (inclusive).
+            limit: Max number of movies to return. If None, all matching
+                movies are returned unbounded.
+            offset: Number of matching movies to skip before returning
+                results.
+
+        Returns:
+            A ``Page[Movie]`` with the matching movies and the total count of
+            distinct movies matching the cinema and date range, ignoring
             ``limit``/``offset``.
         """
         ...
