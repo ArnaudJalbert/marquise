@@ -19,9 +19,6 @@ from marquise.application.exceptions import (
     MovieNotFoundError,
     ScreeningNotFoundError,
 )
-from marquise.application.use_cases.get_cinema_screenings import (
-    GetCinemaScreeningsUseCase,
-)
 from marquise.application.use_cases.get_movie import GetMovieUseCase
 from marquise.application.use_cases.list_movies import ListMoviesUseCase
 from marquise.infrastructure.api.app import CACHE_PREFIX, create_app
@@ -262,7 +259,7 @@ def test_get_cinema_screenings_pagination(
 
     response = client.get(
         "/v1/cinemas/cin-1/screenings",
-        params={"from": "2026-06-27", "to": "2026-06-28", "page": 2, "size": 2},
+        params={"page": 2, "size": 2},
     )
 
     assert response.status_code == 200
@@ -295,29 +292,26 @@ def test_get_cinema_screenings_not_found(
     assert body == {"detail": "nope", "error_code": "not_found"}
 
 
-def test_get_cinema_screenings_invalid_range_returns_422_envelope(
+def test_get_cinema_screenings_unexpected_value_error_returns_422_envelope(
     client: TestClient, container: MagicMock
 ) -> None:
-    """A ValueError from the use case (e.g. bad date range) yields a 422 envelope."""
+    """A ValueError from the use case yields a 422 envelope."""
     container.get_cinema_screenings_use_case.execute.side_effect = ValueError(
-        "bad range"
+        "bad input"
     )
 
-    response = client.get(
-        "/v1/cinemas/cin-1/screenings",
-        params={"from": "2026-06-27", "to": "2026-06-28"},
-    )
+    response = client.get("/v1/cinemas/cin-1/screenings")
 
     assert response.status_code == 422
     body = response.json()
     assert body.pop("request_id")
-    assert body == {"detail": "bad range", "error_code": "invalid_input"}
+    assert body == {"detail": "bad input", "error_code": "invalid_input"}
 
 
-def test_get_cinema_screenings_with_default_dates(
+def test_get_cinema_screenings_ignores_unsupported_query_params(
     client: TestClient, container: MagicMock
 ) -> None:
-    """Omitting from/to query params uses defaults (today + 7 days)."""
+    """Filters beyond cinema scope aren't accepted — use GET /v1/screenings instead."""
     container.get_cinema_screenings_use_case.execute.return_value = SimpleNamespace(
         cinema_id="cin-1",
         cinema_name="Cinema One",
@@ -325,61 +319,19 @@ def test_get_cinema_screenings_with_default_dates(
         total=0,
     )
 
-    response = client.get("/v1/cinemas/cin-1/screenings")
+    response = client.get(
+        "/v1/cinemas/cin-1/screenings",
+        params={"movie_id": "mov-1", "language": "V.O.", "from": "2026-06-27"},
+    )
 
     assert response.status_code == 200
     body = response.json()
     assert len(body["items"]) == 0
     assert body["total"] == 0
-    container.get_cinema_screenings_use_case.execute.assert_awaited_once()
-
-
-def test_get_cinema_screenings_default_dates_are_utc_aware(
-    client: TestClient, container: MagicMock
-) -> None:
-    """Omitting from/to resolves a timezone-aware UTC range, not naive local time."""
-    captured: list[GetCinemaScreeningsUseCase.InputData] = []
-
-    async def fake_execute(
-        input_data: GetCinemaScreeningsUseCase.InputData,
-    ) -> SimpleNamespace:
-        captured.append(input_data)
-        return SimpleNamespace(
-            cinema_id="cin-1", cinema_name="Cinema One", screenings=[], total=0
-        )
-
-    container.get_cinema_screenings_use_case.execute.side_effect = fake_execute
-
-    response = client.get("/v1/cinemas/cin-1/screenings")
-
-    assert response.status_code == 200
-    assert captured[0].start_date.tzinfo is not None
-    assert captured[0].end_date.tzinfo is not None
-
-
-def test_get_cinema_screenings_default_dates_are_cached_within_the_same_day(
-    client: TestClient, container: MagicMock
-) -> None:
-    """Repeat requests omitting from/to on the same day share one cache entry.
-
-    The default date range is resolved via a dependency (before the cached
-    endpoint runs), so the cache key reflects the resolved dates rather than
-    the raw None query params — otherwise every omitted-date request would
-    collide on a single entry frozen at whichever moment first populated it.
-    """
-    container.get_cinema_screenings_use_case.execute.return_value = SimpleNamespace(
-        cinema_id="cin-1",
-        cinema_name="Cinema One",
-        screenings=[],
-        total=0,
-    )
-
-    first = client.get("/v1/cinemas/cin-1/screenings")
-    second = client.get("/v1/cinemas/cin-1/screenings")
-
-    assert first.headers.get("X-FastAPI-Cache") == "MISS"
-    assert second.headers.get("X-FastAPI-Cache") == "HIT"
-    container.get_cinema_screenings_use_case.execute.assert_awaited_once()
+    input_data = container.get_cinema_screenings_use_case.execute.call_args[0][0]
+    assert input_data.cinema_id == "cin-1"
+    assert not hasattr(input_data, "movie_id")
+    assert not hasattr(input_data, "language")
 
 
 def test_get_movie(client: TestClient, container: MagicMock) -> None:
@@ -638,17 +590,16 @@ def test_list_movies_is_cached(client: TestClient, container: MagicMock) -> None
 def test_get_cinema_screenings_is_cached(
     client: TestClient, container: MagicMock
 ) -> None:
-    """A second request with the same range reuses the cached response."""
+    """A second request reuses the cached response."""
     container.get_cinema_screenings_use_case.execute.return_value = SimpleNamespace(
         cinema_id="cin-1",
         cinema_name="Cinema One",
         screenings=[],
         total=0,
     )
-    params = {"from": "2026-06-27", "to": "2026-06-28"}
 
-    first = client.get("/v1/cinemas/cin-1/screenings", params=params)
-    second = client.get("/v1/cinemas/cin-1/screenings", params=params)
+    first = client.get("/v1/cinemas/cin-1/screenings")
+    second = client.get("/v1/cinemas/cin-1/screenings")
 
     assert first.status_code == 200
     assert second.json() == first.json()
@@ -736,16 +687,15 @@ def test_get_movie_cache_has_hit_header_on_repeat_request(
 def test_get_cinema_screenings_cache_has_miss_header_on_first_request(
     client: TestClient, container: MagicMock
 ) -> None:
-    """The first showtimes request has an X-FastAPI-Cache MISS header."""
+    """The first screenings request has an X-FastAPI-Cache MISS header."""
     container.get_cinema_screenings_use_case.execute.return_value = SimpleNamespace(
         cinema_id="cin-1",
         cinema_name="Cinema One",
         screenings=[],
         total=0,
     )
-    params = {"from": "2026-06-27", "to": "2026-06-28"}
 
-    response = client.get("/v1/cinemas/cin-1/screenings", params=params)
+    response = client.get("/v1/cinemas/cin-1/screenings")
 
     assert response.status_code == 200
     assert response.headers.get("X-FastAPI-Cache") == "MISS"
@@ -761,10 +711,9 @@ def test_get_cinema_screenings_cache_has_hit_header_on_repeat_request(
         screenings=[],
         total=0,
     )
-    params = {"from": "2026-06-27", "to": "2026-06-28"}
 
-    client.get("/v1/cinemas/cin-1/screenings", params=params)
-    response = client.get("/v1/cinemas/cin-1/screenings", params=params)
+    client.get("/v1/cinemas/cin-1/screenings")
+    response = client.get("/v1/cinemas/cin-1/screenings")
 
     assert response.status_code == 200
     assert response.headers.get("X-FastAPI-Cache") == "HIT"
@@ -802,31 +751,6 @@ def test_different_movies_have_separate_cache_entries(
     assert response2.json()["id"] == "mov-2"
     assert response1_again.json() == response1.json()
     assert container.get_movie_use_case.execute.call_count == 2
-
-
-def test_different_date_ranges_have_separate_cache_entries(
-    client: TestClient, container: MagicMock
-) -> None:
-    """Different date ranges for the same cinema create separate cache entries."""
-    container.get_cinema_screenings_use_case.execute.return_value = SimpleNamespace(
-        cinema_id="cin-1",
-        cinema_name="Cinema One",
-        screenings=[],
-        total=0,
-    )
-
-    params1 = {"from": "2026-06-27", "to": "2026-06-28"}
-    params2 = {"from": "2026-06-29", "to": "2026-06-30"}
-
-    response1 = client.get("/v1/cinemas/cin-1/screenings", params=params1)
-    response2 = client.get("/v1/cinemas/cin-1/screenings", params=params2)
-    response1_again = client.get("/v1/cinemas/cin-1/screenings", params=params1)
-
-    assert response1.status_code == 200
-    assert response2.status_code == 200
-    assert response1_again.status_code == 200
-    assert response1_again.headers.get("X-FastAPI-Cache") == "HIT"
-    assert container.get_cinema_screenings_use_case.execute.call_count == 2
 
 
 def test_not_found_errors_are_not_cached(
@@ -1191,7 +1115,7 @@ def test_get_screening_not_found(client: TestClient, container: MagicMock) -> No
 
 
 def test_get_movie_screenings(client: TestClient, container: MagicMock) -> None:
-    """GET /movies/{id}/screenings returns screenings in range."""
+    """GET /movies/{id}/screenings returns all of the movie's screenings."""
     container.get_movie_screenings_use_case.execute.return_value = SimpleNamespace(
         movie_id="mov-1",
         movie_title="The Odyssey",
@@ -1211,10 +1135,7 @@ def test_get_movie_screenings(client: TestClient, container: MagicMock) -> None:
         total=1,
     )
 
-    response = client.get(
-        "/v1/movies/mov-1/screenings",
-        params={"from": "2026-06-27", "to": "2026-06-28"},
-    )
+    response = client.get("/v1/movies/mov-1/screenings")
 
     assert response.status_code == 200
     body = response.json()
@@ -1223,23 +1144,24 @@ def test_get_movie_screenings(client: TestClient, container: MagicMock) -> None:
     assert body["total"] == 1
 
 
-def test_get_movie_screenings_delegates_with_filters(
+def test_get_movie_screenings_ignores_unsupported_query_params(
     client: TestClient, container: MagicMock
 ) -> None:
-    """GET /movies/{id}/screenings forwards cinema_id/language filters."""
+    """Filters beyond movie scope aren't accepted — use GET /v1/screenings instead."""
     container.get_movie_screenings_use_case.execute.return_value = SimpleNamespace(
         movie_id="mov-1", movie_title="The Odyssey", screenings=[], total=0
     )
 
     response = client.get(
         "/v1/movies/mov-1/screenings",
-        params={"cinema_id": "cin-1", "language": "V.O."},
+        params={"cinema_id": "cin-1", "language": "V.O.", "from": "2026-06-27"},
     )
 
     assert response.status_code == 200
     input_data = container.get_movie_screenings_use_case.execute.call_args[0][0]
-    assert input_data.cinema_id == "cin-1"
-    assert input_data.language == "V.O."
+    assert input_data.movie_id == "mov-1"
+    assert not hasattr(input_data, "cinema_id")
+    assert not hasattr(input_data, "language")
 
 
 def test_get_movie_screenings_not_found(

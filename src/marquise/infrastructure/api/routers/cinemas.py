@@ -66,24 +66,18 @@ async def get_cinema_screenings(
     request: Request,
     response: Response,
     cinema_id: str,
-    date_range: tuple[datetime, datetime] = Depends(resolve_showtimes_date_range),
-    movie_id: str | None = Query(default=None, description="Filter by exact movie ID."),
-    language: str | None = Query(
-        default=None, description="Filter by exact language/subtitle version."
-    ),
     params: Params = Depends(),
     container: Container = Depends(get_container),
 ) -> Page[ScreeningResponse]:
-    """List a cinema's screenings within a date range."""
-    from_, to = date_range
+    """List all of a cinema's screenings.
+
+    No filtering beyond the cinema itself — use ``GET /v1/screenings`` for
+    date range, movie, or language filters.
+    """
     use_case = container.get_cinema_screenings_use_case
     output = await use_case.execute(
         GetCinemaScreeningsUseCase.InputData(
             cinema_id=cinema_id,
-            start_date=from_,
-            end_date=to,
-            movie_id=movie_id,
-            language=language,
             page=params.page,
             size=params.size,
         )
