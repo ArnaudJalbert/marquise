@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi_cache.decorator import cache
 from fastapi_pagination import Page, Params
 
+from marquise.application.use_cases.get_cinema import GetCinemaUseCase
 from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
 from marquise.application.use_cases.get_cinema_screenings import (
     GetCinemaScreeningsUseCase,
@@ -53,6 +54,25 @@ async def list_cinemas(
         total=output.total,
         params=params,
     )
+
+
+@router.get(
+    "/cinemas/{cinema_id}",
+    response_model=CinemaResponse,
+    responses=error_responses(404, 422, 429),
+)
+@limiter.limit(current_rate_limit)
+@cache()
+async def get_cinema(
+    request: Request,
+    response: Response,
+    cinema_id: str,
+    container: Container = Depends(get_container),
+) -> CinemaResponse:
+    """Retrieve a single cinema by its ID."""
+    use_case = container.get_cinema_use_case
+    output = await use_case.execute(GetCinemaUseCase.InputData(cinema_id=cinema_id))
+    return CinemaResponse.model_validate(output)
 
 
 @router.get(
