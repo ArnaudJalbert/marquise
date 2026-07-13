@@ -407,7 +407,11 @@ class Container:
 
     @property
     def _search_screenings_use_case(self) -> SearchScreeningsUseCase:
-        return SearchScreeningsUseCase(screening_repository=self._screening_repository)
+        return SearchScreeningsUseCase(
+            screening_repository=self._screening_repository,
+            cinema_repository=self._cinema_repository,
+            movie_repository=self._movie_repository,
+        )
 
     @property
     def _get_screening_use_case(self) -> GetScreeningUseCase:

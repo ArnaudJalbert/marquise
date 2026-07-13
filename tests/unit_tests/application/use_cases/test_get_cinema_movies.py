@@ -123,7 +123,7 @@ def test_input_rejects_inverted_range() -> None:
 async def test_raises_when_cinema_missing() -> None:
     """A missing cinema raises CinemaNotFoundError before querying movies."""
     cinema_repo = create_autospec(CinemaRepository, instance=True)
-    cinema_repo.find_by_id.return_value = None
+    cinema_repo.exists_by_id.return_value = False
     screening_repo = create_autospec(ScreeningRepository, instance=True)
 
     use_case = GetCinemaMoviesUseCase(

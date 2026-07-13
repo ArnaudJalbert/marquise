@@ -47,14 +47,17 @@ class ScreeningRepository(ABC):
         ...
 
     @abstractmethod
-    async def find_by_id(self, screening_id: ScreeningId) -> Screening | None:
+    async def find_by_id(self, screening_id: ScreeningId) -> Screening:
         """Retrieve a screening by its unique identifier.
 
         Args:
             screening_id: The ID of the screening to find.
 
         Returns:
-            The matching screening, or None if not found.
+            The matching screening.
+
+        Raises:
+            ScreeningNotFoundError: If no screening with the given ID exists.
         """
         ...
 
