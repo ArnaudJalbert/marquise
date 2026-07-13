@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-
 from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi_cache.decorator import cache
 from fastapi_pagination import Page, Params
@@ -16,9 +14,6 @@ from marquise.application.use_cases.list_movies import ListMoviesUseCase
 from marquise.infrastructure.api.dependencies import get_container
 from marquise.infrastructure.api.openapi_responses import error_responses
 from marquise.infrastructure.api.rate_limit import current_rate_limit, limiter
-from marquise.infrastructure.api.routers._dependencies import (
-    resolve_showtimes_date_range,
-)
 from marquise.infrastructure.api.schemas import MovieResponse, ScreeningResponse
 from marquise.infrastructure.di.container import Container
 
@@ -83,26 +78,18 @@ async def get_movie_screenings(
     request: Request,
     response: Response,
     movie_id: str,
-    date_range: tuple[datetime, datetime] = Depends(resolve_showtimes_date_range),
-    cinema_id: str | None = Query(
-        default=None, description="Filter by exact cinema ID."
-    ),
-    language: str | None = Query(
-        default=None, description="Filter by exact language/subtitle version."
-    ),
     params: Params = Depends(),
     container: Container = Depends(get_container),
 ) -> Page[ScreeningResponse]:
-    """List a movie's screenings within a date range."""
-    from_, to = date_range
+    """List all of a movie's screenings.
+
+    No filtering beyond the movie itself — use ``GET /v1/screenings`` for
+    date range, cinema, or language filters.
+    """
     use_case = container.get_movie_screenings_use_case
     output = await use_case.execute(
         GetMovieScreeningsUseCase.InputData(
             movie_id=movie_id,
-            start_date=from_,
-            end_date=to,
-            cinema_id=cinema_id,
-            language=language,
             page=params.page,
             size=params.size,
         )

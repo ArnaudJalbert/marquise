@@ -1,17 +1,21 @@
-"""Get a cinema's screenings within a date range use case (read-only)."""
+"""Get all of a cinema's screenings use case (read-only)."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
 
 from marquise.application.exceptions import CinemaNotFoundError
 from marquise.application.repositories import CinemaRepository, ScreeningRepository
-from marquise.domain.value_objects import CinemaId, MovieId
+from marquise.domain.value_objects import CinemaId
 
 
 class GetCinemaScreeningsUseCase:
-    """Use case for listing a cinema's screenings within a date range."""
+    """Use case for listing all of a cinema's screenings.
+
+    No filtering beyond the cinema scope is supported here — use
+    ``SearchScreeningsUseCase`` (``GET /v1/screenings``) for date range,
+    movie, or language filters.
+    """
 
     @dataclass(frozen=True, slots=True)
     class InputData:
@@ -19,20 +23,12 @@ class GetCinemaScreeningsUseCase:
 
         Attributes:
             cinema_id: The cinema to fetch screenings for.
-            start_date: Start of the range (inclusive).
-            end_date: End of the range (inclusive).
-            movie_id: Optional exact movie ID filter.
-            language: Optional exact language/subtitle version filter.
             page: Page number (1-based). Ignored when size is None.
             size: Max number of screenings per page. If None, all matching
                 screenings are returned unbounded (page is ignored).
         """
 
         cinema_id: str
-        start_date: datetime
-        end_date: datetime
-        movie_id: str | None = None
-        language: str | None = None
         page: int = 1
         size: int | None = None
 
@@ -40,24 +36,11 @@ class GetCinemaScreeningsUseCase:
             """Validate input data.
 
             Raises:
-                ValueError: If cinema_id is empty, movie_id/language are
-                    provided but empty, the range is inverted, size is
-                    provided but not positive, or page is less than 1.
+                ValueError: If cinema_id is empty, size is provided but not
+                    positive, or page is less than 1.
             """
             if not self.cinema_id.strip():
                 raise ValueError("cinema_id must not be empty")
-            if self.movie_id is not None and not self.movie_id.strip():
-                raise ValueError("movie_id must not be empty when provided")
-            if self.language is not None and not self.language.strip():
-                raise ValueError("language must not be empty when provided")
-            # Comparing an aware and a naive datetime raises TypeError, not
-            # ValueError, so normalize local copies for the comparison only
-            # (naive values are assumed UTC, matching the rest of the
-            # persistence layer) rather than letting mixed inputs crash.
-            start = self.start_date.replace(tzinfo=self.start_date.tzinfo or UTC)
-            end = self.end_date.replace(tzinfo=self.end_date.tzinfo or UTC)
-            if start > end:
-                raise ValueError("start_date must not be after end_date")
             if self.size is not None and self.size < 1:
                 raise ValueError("size must be positive when provided")
             if self.page < 1:
@@ -97,8 +80,8 @@ class GetCinemaScreeningsUseCase:
             cinema_id: The cinema's ID.
             cinema_name: The cinema's display name.
             screenings: The matching page of screenings, ordered by showtime.
-            total: Total number of screenings matching the cinema and date
-                range, ignoring limit/offset.
+            total: Total number of screenings for the cinema, ignoring
+                limit/offset.
         """
 
         cinema_id: str
@@ -121,11 +104,11 @@ class GetCinemaScreeningsUseCase:
         self.screening_repository = screening_repository
 
     async def execute(self, request: InputData) -> OutputData:
-        """List a cinema's screenings within the requested date range.
+        """List all of a cinema's screenings.
 
         Args:
-            request: The input data with cinema ID, date range, optional
-                movie/language filters, and pagination parameters.
+            request: The input data with cinema ID and pagination
+                parameters.
 
         Returns:
             The output data with the cinema, its page of screenings, and the
@@ -150,12 +133,6 @@ class GetCinemaScreeningsUseCase:
 
         page = await self.screening_repository.search(
             cinema_id=cinema_id,
-            movie_id=MovieId(value=request.movie_id)
-            if request.movie_id is not None
-            else None,
-            start_date=request.start_date,
-            end_date=request.end_date,
-            language=request.language,
             limit=limit,
             offset=offset,
         )

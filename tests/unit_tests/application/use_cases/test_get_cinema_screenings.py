@@ -26,11 +26,7 @@ from marquise.domain.value_objects import (
 
 
 def _input() -> GetCinemaScreeningsUseCase.InputData:
-    return GetCinemaScreeningsUseCase.InputData(
-        cinema_id="cin-1",
-        start_date=datetime(2026, 6, 27, tzinfo=UTC),
-        end_date=datetime(2026, 6, 28, tzinfo=UTC),
-    )
+    return GetCinemaScreeningsUseCase.InputData(cinema_id="cin-1")
 
 
 @pytest.mark.asyncio
@@ -65,6 +61,28 @@ async def test_returns_cinema_and_screenings() -> None:
 
 
 @pytest.mark.asyncio
+async def test_passes_only_cinema_id_to_repository() -> None:
+    """The repository is called with only cinema_id set — no other filters."""
+    cinema = Cinema(id=CinemaId(value="cin-1"), name="Cinema One")
+    cinema_repo = create_autospec(CinemaRepository, instance=True)
+    cinema_repo.find_by_id.return_value = cinema
+    screening_repo = create_autospec(ScreeningRepository, instance=True)
+    screening_repo.search.return_value = Page(items=[], total=0)
+
+    use_case = GetCinemaScreeningsUseCase(
+        cinema_repository=cinema_repo,
+        screening_repository=screening_repo,
+    )
+    await use_case.execute(_input())
+
+    screening_repo.search.assert_awaited_once_with(
+        cinema_id=CinemaId(value="cin-1"),
+        limit=None,
+        offset=0,
+    )
+
+
+@pytest.mark.asyncio
 async def test_passes_page_and_size_to_repository_as_limit_offset() -> None:
     """page/size from the input are converted to limit/offset for the repository.
 
@@ -82,8 +100,6 @@ async def test_passes_page_and_size_to_repository_as_limit_offset() -> None:
     )
     request = GetCinemaScreeningsUseCase.InputData(
         cinema_id="cin-1",
-        start_date=datetime(2026, 6, 27, tzinfo=UTC),
-        end_date=datetime(2026, 6, 28, tzinfo=UTC),
         page=2,
         size=5,
     )
@@ -91,91 +107,28 @@ async def test_passes_page_and_size_to_repository_as_limit_offset() -> None:
 
     screening_repo.search.assert_awaited_once_with(
         cinema_id=CinemaId(value="cin-1"),
-        movie_id=None,
-        start_date=request.start_date,
-        end_date=request.end_date,
-        language=None,
         limit=5,
         offset=5,
     )
     assert result.total == 50
 
 
-@pytest.mark.asyncio
-async def test_passes_movie_id_and_language_filters_to_repository() -> None:
-    """movie_id/language filters are converted and forwarded to the repository."""
-    cinema = Cinema(id=CinemaId(value="cin-1"), name="Cinema One")
-    cinema_repo = create_autospec(CinemaRepository, instance=True)
-    cinema_repo.find_by_id.return_value = cinema
-    screening_repo = create_autospec(ScreeningRepository, instance=True)
-    screening_repo.search.return_value = Page(items=[], total=0)
-
-    use_case = GetCinemaScreeningsUseCase(
-        cinema_repository=cinema_repo,
-        screening_repository=screening_repo,
-    )
-    request = GetCinemaScreeningsUseCase.InputData(
-        cinema_id="cin-1",
-        start_date=datetime(2026, 6, 27, tzinfo=UTC),
-        end_date=datetime(2026, 6, 28, tzinfo=UTC),
-        movie_id="mov-1",
-        language="V.O.",
-    )
-    await use_case.execute(request)
-
-    screening_repo.search.assert_awaited_once_with(
-        cinema_id=CinemaId(value="cin-1"),
-        movie_id=MovieId(value="mov-1"),
-        start_date=request.start_date,
-        end_date=request.end_date,
-        language="V.O.",
-        limit=None,
-        offset=0,
-    )
-
-
 def test_input_rejects_page_below_one() -> None:
     """A page less than 1 is rejected."""
     with pytest.raises(ValueError, match="page must be at least 1"):
-        GetCinemaScreeningsUseCase.InputData(
-            cinema_id="cin-1",
-            start_date=datetime(2026, 6, 27, tzinfo=UTC),
-            end_date=datetime(2026, 6, 28, tzinfo=UTC),
-            page=0,
-        )
+        GetCinemaScreeningsUseCase.InputData(cinema_id="cin-1", page=0)
 
 
 def test_input_rejects_non_positive_size() -> None:
     """A non-positive size is rejected when provided."""
     with pytest.raises(ValueError, match="size must be positive when provided"):
-        GetCinemaScreeningsUseCase.InputData(
-            cinema_id="cin-1",
-            start_date=datetime(2026, 6, 27, tzinfo=UTC),
-            end_date=datetime(2026, 6, 28, tzinfo=UTC),
-            size=0,
-        )
+        GetCinemaScreeningsUseCase.InputData(cinema_id="cin-1", size=0)
 
 
-def test_input_rejects_blank_movie_id() -> None:
-    """A whitespace-only movie_id is rejected when provided."""
-    with pytest.raises(ValueError, match="movie_id must not be empty when provided"):
-        GetCinemaScreeningsUseCase.InputData(
-            cinema_id="cin-1",
-            start_date=datetime(2026, 6, 27, tzinfo=UTC),
-            end_date=datetime(2026, 6, 28, tzinfo=UTC),
-            movie_id="  ",
-        )
-
-
-def test_input_rejects_blank_language() -> None:
-    """A whitespace-only language is rejected when provided."""
-    with pytest.raises(ValueError, match="language must not be empty when provided"):
-        GetCinemaScreeningsUseCase.InputData(
-            cinema_id="cin-1",
-            start_date=datetime(2026, 6, 27, tzinfo=UTC),
-            end_date=datetime(2026, 6, 28, tzinfo=UTC),
-            language="  ",
-        )
+def test_input_rejects_empty_cinema_id() -> None:
+    """A whitespace-only cinema_id is rejected."""
+    with pytest.raises(ValueError, match="cinema_id must not be empty"):
+        GetCinemaScreeningsUseCase.InputData(cinema_id="  ")
 
 
 @pytest.mark.asyncio
@@ -192,37 +145,3 @@ async def test_raises_when_cinema_missing() -> None:
     with pytest.raises(CinemaNotFoundError):
         await use_case.execute(_input())
     screening_repo.search.assert_not_awaited()
-
-
-def test_input_rejects_inverted_range() -> None:
-    """start_date after end_date is rejected."""
-    with pytest.raises(ValueError, match="start_date must not be after end_date"):
-        GetCinemaScreeningsUseCase.InputData(
-            cinema_id="cin-1",
-            start_date=datetime(2026, 6, 28, tzinfo=UTC),
-            end_date=datetime(2026, 6, 27, tzinfo=UTC),
-        )
-
-
-def test_input_rejects_inverted_range_with_mixed_tz_awareness() -> None:
-    """An inverted range raises ValueError even when only one side is tz-aware.
-
-    Comparing an aware and a naive datetime directly raises TypeError, not
-    ValueError, which the API layer doesn't catch, turning what should be a
-    422 into an unhandled 500.
-    """
-    with pytest.raises(ValueError, match="start_date must not be after end_date"):
-        GetCinemaScreeningsUseCase.InputData(
-            cinema_id="cin-1",
-            start_date=datetime(2026, 7, 1, tzinfo=UTC),
-            end_date=datetime(2026, 6, 30),
-        )
-
-
-def test_input_accepts_valid_range_with_mixed_tz_awareness() -> None:
-    """A valid (non-inverted) range does not raise when tz-awareness is mixed."""
-    GetCinemaScreeningsUseCase.InputData(
-        cinema_id="cin-1",
-        start_date=datetime(2026, 6, 30, tzinfo=UTC),
-        end_date=datetime(2026, 7, 1),
-    )
