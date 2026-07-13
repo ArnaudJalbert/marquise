@@ -1064,8 +1064,10 @@ def test_search_screenings_invalid_range_returns_422_envelope(
     assert body["error_code"] == "invalid_input"
 
 
-def test_search_screenings_is_cached(client: TestClient, container: MagicMock) -> None:
-    """Repeated identical requests to /screenings are served from cache."""
+def test_search_screenings_is_not_cached(
+    client: TestClient, container: MagicMock
+) -> None:
+    """Repeated identical requests to /screenings are not served from cache."""
     container.search_screenings_use_case.execute.return_value = SimpleNamespace(
         screenings=[], total=0
     )
@@ -1075,7 +1077,7 @@ def test_search_screenings_is_cached(client: TestClient, container: MagicMock) -
 
     assert first.status_code == 200
     assert second.status_code == 200
-    container.search_screenings_use_case.execute.assert_awaited_once()
+    assert container.search_screenings_use_case.execute.await_count == 2
 
 
 def test_get_screening(client: TestClient, container: MagicMock) -> None:
