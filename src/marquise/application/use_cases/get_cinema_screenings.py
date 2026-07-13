@@ -1,4 +1,4 @@
-"""Get a cinema's showtimes within a date range use case (read-only)."""
+"""Get a cinema's screenings within a date range use case (read-only)."""
 
 from __future__ import annotations
 
@@ -7,20 +7,22 @@ from datetime import UTC, datetime
 
 from marquise.application.exceptions import CinemaNotFoundError
 from marquise.application.repositories import CinemaRepository, ScreeningRepository
-from marquise.domain.value_objects import CinemaId
+from marquise.domain.value_objects import CinemaId, MovieId
 
 
-class GetCinemaShowtimesUseCase:
+class GetCinemaScreeningsUseCase:
     """Use case for listing a cinema's screenings within a date range."""
 
     @dataclass(frozen=True, slots=True)
     class InputData:
-        """Input data for fetching a cinema's showtimes.
+        """Input data for fetching a cinema's screenings.
 
         Attributes:
-            cinema_id: The cinema to fetch showtimes for.
+            cinema_id: The cinema to fetch screenings for.
             start_date: Start of the range (inclusive).
             end_date: End of the range (inclusive).
+            movie_id: Optional exact movie ID filter.
+            language: Optional exact language/subtitle version filter.
             page: Page number (1-based). Ignored when size is None.
             size: Max number of screenings per page. If None, all matching
                 screenings are returned unbounded (page is ignored).
@@ -29,6 +31,8 @@ class GetCinemaShowtimesUseCase:
         cinema_id: str
         start_date: datetime
         end_date: datetime
+        movie_id: str | None = None
+        language: str | None = None
         page: int = 1
         size: int | None = None
 
@@ -36,11 +40,16 @@ class GetCinemaShowtimesUseCase:
             """Validate input data.
 
             Raises:
-                ValueError: If cinema_id is empty, the range is inverted,
-                    size is provided but not positive, or page is less than 1.
+                ValueError: If cinema_id is empty, movie_id/language are
+                    provided but empty, the range is inverted, size is
+                    provided but not positive, or page is less than 1.
             """
             if not self.cinema_id.strip():
                 raise ValueError("cinema_id must not be empty")
+            if self.movie_id is not None and not self.movie_id.strip():
+                raise ValueError("movie_id must not be empty when provided")
+            if self.language is not None and not self.language.strip():
+                raise ValueError("language must not be empty when provided")
             # Comparing an aware and a naive datetime raises TypeError, not
             # ValueError, so normalize local copies for the comparison only
             # (naive values are assumed UTC, matching the rest of the
@@ -90,7 +99,7 @@ class GetCinemaShowtimesUseCase:
 
         cinema_id: str
         cinema_name: str
-        screenings: tuple[GetCinemaShowtimesUseCase.ScreeningData, ...]
+        screenings: tuple[GetCinemaScreeningsUseCase.ScreeningData, ...]
         total: int
 
     def __init__(
@@ -111,8 +120,8 @@ class GetCinemaShowtimesUseCase:
         """List a cinema's screenings within the requested date range.
 
         Args:
-            request: The input data with cinema ID, date range, and
-                pagination parameters.
+            request: The input data with cinema ID, date range, optional
+                movie/language filters, and pagination parameters.
 
         Returns:
             The output data with the cinema, its page of screenings, and the
@@ -135,10 +144,14 @@ class GetCinemaShowtimesUseCase:
             limit = None
             offset = 0
 
-        page = await self.screening_repository.find_by_cinema_and_date_range(
+        page = await self.screening_repository.search(
             cinema_id=cinema_id,
+            movie_id=MovieId(value=request.movie_id)
+            if request.movie_id is not None
+            else None,
             start_date=request.start_date,
             end_date=request.end_date,
+            language=request.language,
             limit=limit,
             offset=offset,
         )

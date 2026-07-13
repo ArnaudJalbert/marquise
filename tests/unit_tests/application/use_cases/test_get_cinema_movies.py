@@ -1,4 +1,4 @@
-"""Tests for GetCinemaShowtimesUseCase."""
+"""Tests for GetCinemaMoviesUseCase."""
 
 from __future__ import annotations
 
@@ -13,20 +13,13 @@ from marquise.application.repositories import (
     Page,
     ScreeningRepository,
 )
-from marquise.application.use_cases.get_cinema_showtimes import (
-    GetCinemaShowtimesUseCase,
-)
-from marquise.domain.entities import Cinema, Movie, Screening
-from marquise.domain.value_objects import (
-    CinemaId,
-    MovieId,
-    ScreeningId,
-    Showtime,
-)
+from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
+from marquise.domain.entities import Cinema, Movie
+from marquise.domain.value_objects import CinemaId, MovieId
 
 
-def _input() -> GetCinemaShowtimesUseCase.InputData:
-    return GetCinemaShowtimesUseCase.InputData(
+def _input() -> GetCinemaMoviesUseCase.InputData:
+    return GetCinemaMoviesUseCase.InputData(
         cinema_id="cin-1",
         start_date=datetime(2026, 6, 27, tzinfo=UTC),
         end_date=datetime(2026, 6, 28, tzinfo=UTC),
@@ -34,33 +27,26 @@ def _input() -> GetCinemaShowtimesUseCase.InputData:
 
 
 @pytest.mark.asyncio
-async def test_returns_cinema_and_screenings() -> None:
-    """The use case returns the cinema with its screenings."""
+async def test_returns_cinema_and_distinct_movies() -> None:
+    """The use case returns the cinema with its distinct movies."""
     cinema = Cinema(id=CinemaId(value="cin-1"), name="Cinema One")
     movie = Movie(id=MovieId(value="mov-1"), title="The Odyssey")
-    screening = Screening(
-        id=ScreeningId(value="scr-1"),
-        movie=movie,
-        cinema=cinema,
-        showtime=Showtime(value=datetime(2026, 6, 27, 19, 30, tzinfo=UTC)),
-    )
     cinema_repo = create_autospec(CinemaRepository, instance=True)
     cinema_repo.find_by_id.return_value = cinema
     screening_repo = create_autospec(ScreeningRepository, instance=True)
-    screening_repo.find_by_cinema_and_date_range.return_value = Page(
-        items=[screening], total=1
+    screening_repo.find_distinct_movies_by_cinema.return_value = Page(
+        items=[movie], total=1
     )
 
-    use_case = GetCinemaShowtimesUseCase(
+    use_case = GetCinemaMoviesUseCase(
         cinema_repository=cinema_repo,
         screening_repository=screening_repo,
     )
     result = await use_case.execute(_input())
 
     assert result.cinema_name == "Cinema One"
-    assert len(result.screenings) == 1
-    assert result.screenings[0].movie_title == "The Odyssey"
-    assert result.screenings[0].showtime.startswith("2026-06-27T19:30")
+    assert len(result.movies) == 1
+    assert result.movies[0].title == "The Odyssey"
     assert result.total == 1
 
 
@@ -74,13 +60,15 @@ async def test_passes_page_and_size_to_repository_as_limit_offset() -> None:
     cinema_repo = create_autospec(CinemaRepository, instance=True)
     cinema_repo.find_by_id.return_value = cinema
     screening_repo = create_autospec(ScreeningRepository, instance=True)
-    screening_repo.find_by_cinema_and_date_range.return_value = Page(items=[], total=50)
+    screening_repo.find_distinct_movies_by_cinema.return_value = Page(
+        items=[], total=50
+    )
 
-    use_case = GetCinemaShowtimesUseCase(
+    use_case = GetCinemaMoviesUseCase(
         cinema_repository=cinema_repo,
         screening_repository=screening_repo,
     )
-    request = GetCinemaShowtimesUseCase.InputData(
+    request = GetCinemaMoviesUseCase.InputData(
         cinema_id="cin-1",
         start_date=datetime(2026, 6, 27, tzinfo=UTC),
         end_date=datetime(2026, 6, 28, tzinfo=UTC),
@@ -89,7 +77,7 @@ async def test_passes_page_and_size_to_repository_as_limit_offset() -> None:
     )
     result = await use_case.execute(request)
 
-    screening_repo.find_by_cinema_and_date_range.assert_awaited_once_with(
+    screening_repo.find_distinct_movies_by_cinema.assert_awaited_once_with(
         cinema_id=CinemaId(value="cin-1"),
         start_date=request.start_date,
         end_date=request.end_date,
@@ -102,7 +90,7 @@ async def test_passes_page_and_size_to_repository_as_limit_offset() -> None:
 def test_input_rejects_page_below_one() -> None:
     """A page less than 1 is rejected."""
     with pytest.raises(ValueError, match="page must be at least 1"):
-        GetCinemaShowtimesUseCase.InputData(
+        GetCinemaMoviesUseCase.InputData(
             cinema_id="cin-1",
             start_date=datetime(2026, 6, 27, tzinfo=UTC),
             end_date=datetime(2026, 6, 28, tzinfo=UTC),
@@ -113,7 +101,7 @@ def test_input_rejects_page_below_one() -> None:
 def test_input_rejects_non_positive_size() -> None:
     """A non-positive size is rejected when provided."""
     with pytest.raises(ValueError, match="size must be positive when provided"):
-        GetCinemaShowtimesUseCase.InputData(
+        GetCinemaMoviesUseCase.InputData(
             cinema_id="cin-1",
             start_date=datetime(2026, 6, 27, tzinfo=UTC),
             end_date=datetime(2026, 6, 28, tzinfo=UTC),
@@ -121,51 +109,27 @@ def test_input_rejects_non_positive_size() -> None:
         )
 
 
-@pytest.mark.asyncio
-async def test_raises_when_cinema_missing() -> None:
-    """A missing cinema raises CinemaNotFoundError before querying screenings."""
-    cinema_repo = create_autospec(CinemaRepository, instance=True)
-    cinema_repo.find_by_id.return_value = None
-    screening_repo = create_autospec(ScreeningRepository, instance=True)
-
-    use_case = GetCinemaShowtimesUseCase(
-        cinema_repository=cinema_repo,
-        screening_repository=screening_repo,
-    )
-    with pytest.raises(CinemaNotFoundError):
-        await use_case.execute(_input())
-    screening_repo.find_by_cinema_and_date_range.assert_not_awaited()
-
-
 def test_input_rejects_inverted_range() -> None:
     """start_date after end_date is rejected."""
     with pytest.raises(ValueError, match="start_date must not be after end_date"):
-        GetCinemaShowtimesUseCase.InputData(
+        GetCinemaMoviesUseCase.InputData(
             cinema_id="cin-1",
             start_date=datetime(2026, 6, 28, tzinfo=UTC),
             end_date=datetime(2026, 6, 27, tzinfo=UTC),
         )
 
 
-def test_input_rejects_inverted_range_with_mixed_tz_awareness() -> None:
-    """An inverted range raises ValueError even when only one side is tz-aware.
+@pytest.mark.asyncio
+async def test_raises_when_cinema_missing() -> None:
+    """A missing cinema raises CinemaNotFoundError before querying movies."""
+    cinema_repo = create_autospec(CinemaRepository, instance=True)
+    cinema_repo.find_by_id.return_value = None
+    screening_repo = create_autospec(ScreeningRepository, instance=True)
 
-    Comparing an aware and a naive datetime directly raises TypeError, not
-    ValueError, which the API layer doesn't catch, turning what should be a
-    422 into an unhandled 500.
-    """
-    with pytest.raises(ValueError, match="start_date must not be after end_date"):
-        GetCinemaShowtimesUseCase.InputData(
-            cinema_id="cin-1",
-            start_date=datetime(2026, 7, 1, tzinfo=UTC),
-            end_date=datetime(2026, 6, 30),
-        )
-
-
-def test_input_accepts_valid_range_with_mixed_tz_awareness() -> None:
-    """A valid (non-inverted) range does not raise when tz-awareness is mixed."""
-    GetCinemaShowtimesUseCase.InputData(
-        cinema_id="cin-1",
-        start_date=datetime(2026, 6, 30, tzinfo=UTC),
-        end_date=datetime(2026, 7, 1),
+    use_case = GetCinemaMoviesUseCase(
+        cinema_repository=cinema_repo,
+        screening_repository=screening_repo,
     )
+    with pytest.raises(CinemaNotFoundError):
+        await use_case.execute(_input())
+    screening_repo.find_distinct_movies_by_cinema.assert_not_awaited()

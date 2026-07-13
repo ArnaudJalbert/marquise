@@ -57,3 +57,12 @@ CREATE TABLE IF NOT EXISTS "marquise-test".screenings (
     language    TEXT,
     UNIQUE (cinema_id, movie_id, showtime)
 );
+
+CREATE INDEX IF NOT EXISTS idx_screenings_movie_id
+    ON "marquise-test".screenings(movie_id);
+
+CREATE INDEX IF NOT EXISTS idx_screenings_cinema_showtime
+    ON "marquise-test".screenings(cinema_id, showtime);
+
+CREATE INDEX IF NOT EXISTS idx_screenings_movie_showtime
+    ON "marquise-test".screenings(movie_id, showtime);
