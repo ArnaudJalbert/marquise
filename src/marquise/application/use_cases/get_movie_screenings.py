@@ -71,6 +71,8 @@ class GetMovieScreeningsUseCase:
             id: Unique identifier of the screening.
             movie_id: The screened movie's ID.
             movie_title: The screened movie's title.
+            cinema_id: The hosting cinema's ID.
+            cinema_name: The hosting cinema's display name.
             showtime: The screening time in ISO 8601 format.
             ticket_url: Link to purchase tickets (optional).
             room: Room or auditorium name (optional).
@@ -80,6 +82,8 @@ class GetMovieScreeningsUseCase:
         id: str
         movie_id: str
         movie_title: str
+        cinema_id: str
+        cinema_name: str
         showtime: str
         ticket_url: str | None = None
         room: str | None = None
@@ -161,6 +165,8 @@ class GetMovieScreeningsUseCase:
                 id=str(s.id),
                 movie_id=str(s.movie.id),
                 movie_title=s.movie.title,
+                cinema_id=str(s.cinema.id),
+                cinema_name=s.cinema.name,
                 showtime=s.showtime.value.isoformat(),
                 ticket_url=s.ticket_url,
                 room=s.room,

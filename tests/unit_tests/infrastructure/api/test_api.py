@@ -155,6 +155,8 @@ def test_get_cinema_screenings(client: TestClient, container: MagicMock) -> None
                 id="scr-1",
                 movie_id="mov-1",
                 movie_title="The Odyssey",
+                cinema_id="cin-1",
+                cinema_name="Cinema One",
                 showtime="2026-06-27T19:30:00+00:00",
                 ticket_url=None,
                 room=None,
@@ -172,6 +174,7 @@ def test_get_cinema_screenings(client: TestClient, container: MagicMock) -> None
     assert response.status_code == 200
     body = response.json()
     assert body["items"][0]["movie_title"] == "The Odyssey"
+    assert body["items"][0]["cinema_id"] == "cin-1"
     assert body["total"] == 1
     assert body["page"] == 1
     assert body["size"] == 50
@@ -235,6 +238,8 @@ def test_get_cinema_screenings_pagination(
                 id="scr-3",
                 movie_id="mov-1",
                 movie_title="The Odyssey",
+                cinema_id="cin-1",
+                cinema_name="Cinema One",
                 showtime="2026-06-27T19:30:00+00:00",
                 ticket_url=None,
                 room=None,
@@ -244,6 +249,8 @@ def test_get_cinema_screenings_pagination(
                 id="scr-4",
                 movie_id="mov-1",
                 movie_title="The Odyssey",
+                cinema_id="cin-1",
+                cinema_name="Cinema One",
                 showtime="2026-06-27T21:30:00+00:00",
                 ticket_url=None,
                 room=None,
@@ -1020,6 +1027,8 @@ def test_search_screenings(client: TestClient, container: MagicMock) -> None:
                 id="scr-1",
                 movie_id="mov-1",
                 movie_title="The Odyssey",
+                cinema_id="cin-1",
+                cinema_name="Cinema One",
                 showtime="2026-06-27T19:30:00+00:00",
                 ticket_url=None,
                 room=None,
@@ -1035,6 +1044,7 @@ def test_search_screenings(client: TestClient, container: MagicMock) -> None:
     body = response.json()
     assert body["total"] == 1
     assert body["items"][0]["movie_title"] == "The Odyssey"
+    assert body["items"][0]["cinema_id"] == "cin-1"
 
 
 def test_search_screenings_delegates_to_use_case_with_filters(
@@ -1071,6 +1081,8 @@ def test_search_screenings_pagination(client: TestClient, container: MagicMock) 
                 id="scr-1",
                 movie_id="mov-1",
                 movie_title="A",
+                cinema_id="cin-1",
+                cinema_name="Cinema One",
                 showtime="2026-06-27T19:30:00+00:00",
                 ticket_url=None,
                 room=None,
@@ -1080,6 +1092,8 @@ def test_search_screenings_pagination(client: TestClient, container: MagicMock) 
                 id="scr-2",
                 movie_id="mov-2",
                 movie_title="B",
+                cinema_id="cin-2",
+                cinema_name="Cinema Two",
                 showtime="2026-06-27T20:30:00+00:00",
                 ticket_url=None,
                 room=None,
@@ -1146,6 +1160,8 @@ def test_get_screening(client: TestClient, container: MagicMock) -> None:
         id="scr-1",
         movie_id="mov-1",
         movie_title="The Odyssey",
+        cinema_id="cin-1",
+        cinema_name="Cinema One",
         showtime="2026-06-27T19:30:00+00:00",
         ticket_url=None,
         room=None,
@@ -1158,6 +1174,7 @@ def test_get_screening(client: TestClient, container: MagicMock) -> None:
     body = response.json()
     assert body["id"] == "scr-1"
     assert body["movie_title"] == "The Odyssey"
+    assert body["cinema_id"] == "cin-1"
 
 
 def test_get_screening_not_found(client: TestClient, container: MagicMock) -> None:
@@ -1183,6 +1200,8 @@ def test_get_movie_screenings(client: TestClient, container: MagicMock) -> None:
                 id="scr-1",
                 movie_id="mov-1",
                 movie_title="The Odyssey",
+                cinema_id="cin-1",
+                cinema_name="Cinema One",
                 showtime="2026-06-27T19:30:00+00:00",
                 ticket_url=None,
                 room=None,
@@ -1200,6 +1219,7 @@ def test_get_movie_screenings(client: TestClient, container: MagicMock) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["items"][0]["movie_title"] == "The Odyssey"
+    assert body["items"][0]["cinema_id"] == "cin-1"
     assert body["total"] == 1
 
 

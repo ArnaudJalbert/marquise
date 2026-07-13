@@ -5,6 +5,7 @@
 ### New Features
 
 - **Screenings API endpoints epic (#128-#132)**: adds a reusable dynamic-filter `search()` method on `ScreeningRepository`/`ScreeningGateway` (`application/repositories/screening_repository.py`, `infrastructure/supabase/gateways/screening.py`), used by every new/changed endpoint below instead of duplicating WHERE-clause logic per route.
+  - Every screening response (across all four endpoints below, plus the renamed cinema-scoped one) now includes `cinema_id`/`cinema_name` alongside `movie_id`/`movie_title` — needed since `GET /v1/screenings` and `GET /v1/movies/{movie_id}/screenings` span multiple cinemas, so the hosting cinema is no longer implied by the request URL.
   - `GET /v1/screenings`: general search across all cinemas, filterable by `movie`, `movie_id`, `cinema_id`, `from`/`to`, and `language`; paginated. New `SearchScreeningsUseCase`.
   - `GET /v1/screenings/{screening_id}`: fetch a single screening by ID (404 via the existing `ScreeningNotFoundError`). New `GetScreeningUseCase`.
   - `GET /v1/movies/{movie_id}/screenings`: list a movie's screenings, filterable by `from`/`to`, `language`, `cinema_id`; 404s on unknown movie. New `GetMovieScreeningsUseCase`.
