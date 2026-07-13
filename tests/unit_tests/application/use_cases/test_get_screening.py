@@ -34,6 +34,8 @@ async def test_returns_screening_when_found() -> None:
     assert result.id == "scr-1"
     assert result.movie_id == "mov-1"
     assert result.movie_title == "The Odyssey"
+    assert result.cinema_id == "cin-1"
+    assert result.cinema_name == "Cinema One"
     assert result.showtime.startswith("2026-06-27T19:30")
     screening_repo.find_by_id.assert_awaited_once_with(ScreeningId(value="scr-1"))
 

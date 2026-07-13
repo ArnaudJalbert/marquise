@@ -40,6 +40,8 @@ async def test_returns_matching_screenings() -> None:
 
     assert len(result.screenings) == 1
     assert result.screenings[0].movie_title == "The Odyssey"
+    assert result.screenings[0].cinema_id == "cin-1"
+    assert result.screenings[0].cinema_name == "Cinema One"
     assert result.screenings[0].showtime.startswith("2026-06-27T19:30")
     assert result.total == 1
 
