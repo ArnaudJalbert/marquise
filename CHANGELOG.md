@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.23.0 (2026-07-13)
+
+### New Features
+
+- **`GET /cinemas/{cinema_id}` single-cinema endpoint (#63)**: adds a new read-only endpoint returning a single cinema by its ID (`id`, `name`, `address`, `city`, `website`), enabling the admin web app's cinema detail page to show the cinema's own metadata without pulling its showtimes. Backed by a new `GetCinemaUseCase` mirroring the existing `GetMovieUseCase` pattern — validated `InputData`/`OutputData`, uses `CinemaRepository.find_by_id`, raises `CinemaNotFoundError` (404) for unknown IDs. Cached and rate-limited per the existing read-endpoint conventions. Closes #63.
+
 ## 0.22.0 (2026-07-13)
 
 ### New Features
