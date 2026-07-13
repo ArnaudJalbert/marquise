@@ -8,7 +8,10 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from marquise.application.exceptions import ScreeningAlreadyExistsError
+from marquise.application.exceptions import (
+    ScreeningAlreadyExistsError,
+    ScreeningNotFoundError,
+)
 from marquise.application.repositories import Page, ScreeningRepository
 from marquise.domain.entities import Movie, Screening
 from marquise.domain.value_objects import (
@@ -163,17 +166,24 @@ class SupabaseScreeningRepository(ScreeningRepository):
             language=data.get("language"),
         )
 
-    async def find_by_id(self, screening_id: ScreeningId) -> Screening | None:
+    async def find_by_id(self, screening_id: ScreeningId) -> Screening:
         """Retrieve a screening by ID.
 
         Args:
             screening_id: The unique identifier of the screening.
 
         Returns:
-            The matching screening entity, or None if not found.
+            The matching screening entity.
+
+        Raises:
+            ScreeningNotFoundError: If no screening with the given ID exists.
         """
         data = await self._gateway.find_by_id(screening_id=str(screening_id))
-        return self._to_entity(data) if data is not None else None
+        if data is None:
+            raise ScreeningNotFoundError(
+                f"A screening with ID '{screening_id}' was not found"
+            )
+        return self._to_entity(data)
 
     async def search(
         self,

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -32,7 +34,9 @@ class ScreeningResponse(BaseModel):
     movie_title: str
     cinema_id: str
     cinema_name: str
-    showtime: str = Field(description="ISO 8601 timestamp of the screening, in UTC.")
+    showtime: datetime = Field(
+        description="ISO 8601 timestamp of the screening, in UTC."
+    )
     ticket_url: str | None = None
     room: str | None = None
     language: str | None = None

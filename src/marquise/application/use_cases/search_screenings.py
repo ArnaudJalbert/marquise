@@ -5,7 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from marquise.application.repositories import ScreeningRepository
+from marquise.application.exceptions import CinemaNotFoundError, MovieNotFoundError
+from marquise.application.repositories import (
+    CinemaRepository,
+    MovieRepository,
+    ScreeningRepository,
+)
 from marquise.domain.value_objects import CinemaId, MovieId
 
 
@@ -74,7 +79,7 @@ class SearchScreeningsUseCase:
             movie_title: The screened movie's title.
             cinema_id: The hosting cinema's ID.
             cinema_name: The hosting cinema's display name.
-            showtime: The screening time in ISO 8601 format.
+            showtime: The screening time.
             ticket_url: Link to purchase tickets (optional).
             room: Room or auditorium name (optional).
             language: Language or subtitle version (optional).
@@ -85,7 +90,7 @@ class SearchScreeningsUseCase:
         movie_title: str
         cinema_id: str
         cinema_name: str
-        showtime: str
+        showtime: datetime
         ticket_url: str | None = None
         room: str | None = None
         language: str | None = None
@@ -103,13 +108,22 @@ class SearchScreeningsUseCase:
         screenings: tuple[SearchScreeningsUseCase.ScreeningData, ...]
         total: int
 
-    def __init__(self, screening_repository: ScreeningRepository) -> None:
+    def __init__(
+        self,
+        screening_repository: ScreeningRepository,
+        cinema_repository: CinemaRepository,
+        movie_repository: MovieRepository,
+    ) -> None:
         """Initialize the use case.
 
         Args:
             screening_repository: A repository for querying screenings.
+            cinema_repository: A repository for validating cinema_id filters.
+            movie_repository: A repository for validating movie_id filters.
         """
         self.screening_repository = screening_repository
+        self.cinema_repository = cinema_repository
+        self.movie_repository = movie_repository
 
     async def execute(self, request: InputData) -> OutputData:
         """Search screenings by any combination of filters.
@@ -121,7 +135,32 @@ class SearchScreeningsUseCase:
         Returns:
             The output data with the matching page of screenings and the
             total count.
+
+        Raises:
+            MovieNotFoundError: If movie_id is provided but no movie with
+                that ID exists.
+            CinemaNotFoundError: If cinema_id is provided but no cinema with
+                that ID exists.
         """
+        if (
+            request.movie_id is not None
+            and not await self.movie_repository.exists_by_id(
+                MovieId(value=request.movie_id)
+            )
+        ):
+            raise MovieNotFoundError(
+                f"A movie with ID '{request.movie_id}' was not found"
+            )
+        if (
+            request.cinema_id is not None
+            and not await self.cinema_repository.exists_by_id(
+                CinemaId(value=request.cinema_id)
+            )
+        ):
+            raise CinemaNotFoundError(
+                f"A cinema with ID '{request.cinema_id}' was not found"
+            )
+
         if request.size is not None:
             limit = request.size
             offset = (request.page - 1) * request.size
@@ -151,7 +190,7 @@ class SearchScreeningsUseCase:
                 movie_title=s.movie.title,
                 cinema_id=str(s.cinema.id),
                 cinema_name=s.cinema.name,
-                showtime=s.showtime.value.isoformat(),
+                showtime=s.showtime.value,
                 ticket_url=s.ticket_url,
                 room=s.room,
                 language=s.language,

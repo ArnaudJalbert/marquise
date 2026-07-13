@@ -116,7 +116,7 @@ async def test_passes_page_and_size_to_repository_as_limit_offset() -> None:
 async def test_raises_when_movie_missing() -> None:
     """A missing movie raises MovieNotFoundError before querying screenings."""
     movie_repo = create_autospec(MovieRepository, instance=True)
-    movie_repo.find_by_id.return_value = None
+    movie_repo.exists_by_id.return_value = False
     screening_repo = create_autospec(ScreeningRepository, instance=True)
 
     use_case = GetMovieScreeningsUseCase(

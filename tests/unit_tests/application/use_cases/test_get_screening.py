@@ -36,7 +36,7 @@ async def test_returns_screening_when_found() -> None:
     assert result.movie_title == "The Odyssey"
     assert result.cinema_id == "cin-1"
     assert result.cinema_name == "Cinema One"
-    assert result.showtime.startswith("2026-06-27T19:30")
+    assert result.showtime == datetime(2026, 6, 27, 19, 30, tzinfo=UTC)
     screening_repo.find_by_id.assert_awaited_once_with(ScreeningId(value="scr-1"))
 
 
@@ -44,7 +44,9 @@ async def test_returns_screening_when_found() -> None:
 async def test_raises_when_screening_missing() -> None:
     """A missing screening raises ScreeningNotFoundError."""
     screening_repo = create_autospec(ScreeningRepository, instance=True)
-    screening_repo.find_by_id.return_value = None
+    screening_repo.find_by_id.side_effect = ScreeningNotFoundError(
+        "A screening with ID 'missing' was not found"
+    )
 
     use_case = GetScreeningUseCase(screening_repository=screening_repo)
     with pytest.raises(ScreeningNotFoundError):

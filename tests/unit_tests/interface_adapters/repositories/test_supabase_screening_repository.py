@@ -7,7 +7,10 @@ from unittest.mock import create_autospec
 
 import pytest
 
-from marquise.application.exceptions import ScreeningAlreadyExistsError
+from marquise.application.exceptions import (
+    ScreeningAlreadyExistsError,
+    ScreeningNotFoundError,
+)
 from marquise.domain.entities import Cinema, Movie, Screening
 from marquise.domain.value_objects import (
     CinemaId,
@@ -203,14 +206,13 @@ async def test_save_with_timezone_aware_datetime(
 
 @pytest.mark.asyncio
 async def test_find_by_id_missing() -> None:
-    """Test find_by_id returns None when not found."""
+    """Test find_by_id raises ScreeningNotFoundError when not found."""
     mock_gateway = create_autospec(ScreeningGateway, instance=True)
     mock_gateway.find_by_id.return_value = None
 
     repo = SupabaseScreeningRepository(gateway=mock_gateway)
-    result = await repo.find_by_id(ScreeningId(value="scr-999"))
-
-    assert result is None
+    with pytest.raises(ScreeningNotFoundError):
+        await repo.find_by_id(ScreeningId(value="scr-999"))
 
 
 @pytest.mark.asyncio

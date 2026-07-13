@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
-from marquise.application.exceptions import ScreeningNotFoundError
 from marquise.application.repositories import ScreeningRepository
 from marquise.domain.value_objects import ScreeningId
 
@@ -41,7 +41,7 @@ class GetScreeningUseCase:
             movie_title: The screened movie's title.
             cinema_id: The hosting cinema's ID.
             cinema_name: The hosting cinema's display name.
-            showtime: The screening time in ISO 8601 format.
+            showtime: The screening time.
             ticket_url: Link to purchase tickets (optional).
             room: Room or auditorium name (optional).
             language: Language or subtitle version (optional).
@@ -52,7 +52,7 @@ class GetScreeningUseCase:
         movie_title: str
         cinema_id: str
         cinema_name: str
-        showtime: str
+        showtime: datetime
         ticket_url: str | None = None
         room: str | None = None
         language: str | None = None
@@ -80,10 +80,6 @@ class GetScreeningUseCase:
         screening = await self.screening_repository.find_by_id(
             ScreeningId(value=request.screening_id)
         )
-        if screening is None:
-            raise ScreeningNotFoundError(
-                f"A screening with ID '{request.screening_id}' was not found"
-            )
 
         return self.OutputData(
             id=str(screening.id),
@@ -91,7 +87,7 @@ class GetScreeningUseCase:
             movie_title=screening.movie.title,
             cinema_id=str(screening.cinema.id),
             cinema_name=screening.cinema.name,
-            showtime=screening.showtime.value.isoformat(),
+            showtime=screening.showtime.value,
             ticket_url=screening.ticket_url,
             room=screening.room,
             language=screening.language,

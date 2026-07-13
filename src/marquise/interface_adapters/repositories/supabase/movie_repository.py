@@ -78,6 +78,17 @@ class SupabaseMovieRepository(MovieRepository):
         data = await self._gateway.find_by_title(title=title)
         return self._to_entity(data) if data is not None else None
 
+    async def exists_by_id(self, movie_id: MovieId) -> bool:
+        """Check whether a movie exists with the given ID.
+
+        Args:
+            movie_id: The ID to check for.
+
+        Returns:
+            True if a movie with that ID exists, False otherwise.
+        """
+        return await self._gateway.exists_by_id(movie_id=str(movie_id))
+
     async def find_all(
         self,
         title_filter: str | None = None,

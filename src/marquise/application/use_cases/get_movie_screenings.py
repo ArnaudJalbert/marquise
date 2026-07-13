@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from marquise.application.exceptions import MovieNotFoundError
 from marquise.application.repositories import MovieRepository, ScreeningRepository
@@ -56,7 +57,7 @@ class GetMovieScreeningsUseCase:
             movie_title: The screened movie's title.
             cinema_id: The hosting cinema's ID.
             cinema_name: The hosting cinema's display name.
-            showtime: The screening time in ISO 8601 format.
+            showtime: The screening time.
             ticket_url: Link to purchase tickets (optional).
             room: Room or auditorium name (optional).
             language: Language or subtitle version (optional).
@@ -67,7 +68,7 @@ class GetMovieScreeningsUseCase:
         movie_title: str
         cinema_id: str
         cinema_name: str
-        showtime: str
+        showtime: datetime
         ticket_url: str | None = None
         room: str | None = None
         language: str | None = None
@@ -118,11 +119,12 @@ class GetMovieScreeningsUseCase:
             MovieNotFoundError: If no movie with the given ID exists.
         """
         movie_id = MovieId(value=request.movie_id)
-        movie = await self.movie_repository.find_by_id(movie_id)
-        if movie is None:
+        if not await self.movie_repository.exists_by_id(movie_id):
             raise MovieNotFoundError(
                 f"A movie with ID '{request.movie_id}' was not found"
             )
+        movie = await self.movie_repository.find_by_id(movie_id)
+        assert movie is not None  # existence already verified above
 
         if request.size is not None:
             limit = request.size
@@ -144,7 +146,7 @@ class GetMovieScreeningsUseCase:
                 movie_title=s.movie.title,
                 cinema_id=str(s.cinema.id),
                 cinema_name=s.cinema.name,
-                showtime=s.showtime.value.isoformat(),
+                showtime=s.showtime.value,
                 ticket_url=s.ticket_url,
                 room=s.room,
                 language=s.language,

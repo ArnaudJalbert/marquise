@@ -261,6 +261,31 @@ async def test_save_handles_none_fields() -> None:
 
 
 @pytest.mark.asyncio
+async def test_exists_by_id() -> None:
+    """Verify exists_by_id returns True when the gateway returns True."""
+    mock_gateway = create_autospec(MovieGateway, instance=True)
+    mock_gateway.exists_by_id.return_value = True
+
+    repo = SupabaseMovieRepository(gateway=mock_gateway)
+    result = await repo.exists_by_id(MovieId(value="mov-123"))
+
+    assert result is True
+    mock_gateway.exists_by_id.assert_awaited_once_with(movie_id="mov-123")
+
+
+@pytest.mark.asyncio
+async def test_exists_by_id_missing() -> None:
+    """Verify exists_by_id returns False when the gateway returns False."""
+    mock_gateway = create_autospec(MovieGateway, instance=True)
+    mock_gateway.exists_by_id.return_value = False
+
+    repo = SupabaseMovieRepository(gateway=mock_gateway)
+    result = await repo.exists_by_id(MovieId(value="mov-999"))
+
+    assert result is False
+
+
+@pytest.mark.asyncio
 async def test_find_all_without_filter(gateway_dict: dict) -> None:
     """Verify find_all without filter returns all mapped movies."""
     mock_gateway = create_autospec(MovieGateway, instance=True)

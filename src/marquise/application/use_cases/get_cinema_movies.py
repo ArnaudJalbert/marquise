@@ -130,11 +130,12 @@ class GetCinemaMoviesUseCase:
             CinemaNotFoundError: If no cinema with the given ID exists.
         """
         cinema_id = CinemaId(value=request.cinema_id)
-        cinema = await self.cinema_repository.find_by_id(cinema_id)
-        if cinema is None:
+        if not await self.cinema_repository.exists_by_id(cinema_id):
             raise CinemaNotFoundError(
                 f"A cinema with ID '{request.cinema_id}' was not found"
             )
+        cinema = await self.cinema_repository.find_by_id(cinema_id)
+        assert cinema is not None  # existence already verified above
 
         if request.size is not None:
             limit = request.size

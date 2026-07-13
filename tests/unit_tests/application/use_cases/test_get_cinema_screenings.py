@@ -56,7 +56,7 @@ async def test_returns_cinema_and_screenings() -> None:
     assert result.screenings[0].movie_title == "The Odyssey"
     assert result.screenings[0].cinema_id == "cin-1"
     assert result.screenings[0].cinema_name == "Cinema One"
-    assert result.screenings[0].showtime.startswith("2026-06-27T19:30")
+    assert result.screenings[0].showtime == datetime(2026, 6, 27, 19, 30, tzinfo=UTC)
     assert result.total == 1
 
 
@@ -135,7 +135,7 @@ def test_input_rejects_empty_cinema_id() -> None:
 async def test_raises_when_cinema_missing() -> None:
     """A missing cinema raises CinemaNotFoundError before querying screenings."""
     cinema_repo = create_autospec(CinemaRepository, instance=True)
-    cinema_repo.find_by_id.return_value = None
+    cinema_repo.exists_by_id.return_value = False
     screening_repo = create_autospec(ScreeningRepository, instance=True)
 
     use_case = GetCinemaScreeningsUseCase(

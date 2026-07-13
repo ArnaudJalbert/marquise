@@ -49,6 +49,18 @@ class MovieRepository(ABC):
         ...
 
     @abstractmethod
+    async def exists_by_id(self, movie_id: MovieId) -> bool:
+        """Check whether a movie exists with the given ID.
+
+        Args:
+            movie_id: The ID to check for.
+
+        Returns:
+            True if a movie with that ID exists, False otherwise.
+        """
+        ...
+
+    @abstractmethod
     async def find_all(
         self,
         title_filter: str | None = None,

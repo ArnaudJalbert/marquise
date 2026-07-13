@@ -7,7 +7,13 @@ from unittest.mock import create_autospec
 
 import pytest
 
-from marquise.application.repositories import Page, ScreeningRepository
+from marquise.application.exceptions import CinemaNotFoundError, MovieNotFoundError
+from marquise.application.repositories import (
+    CinemaRepository,
+    MovieRepository,
+    Page,
+    ScreeningRepository,
+)
 from marquise.application.use_cases.search_screenings import SearchScreeningsUseCase
 from marquise.domain.entities import Cinema, Movie, Screening
 from marquise.domain.value_objects import (
@@ -34,15 +40,21 @@ async def test_returns_matching_screenings() -> None:
     """The use case returns the screenings from the repository, mapped."""
     screening_repo = create_autospec(ScreeningRepository, instance=True)
     screening_repo.search.return_value = Page(items=[_screening()], total=1)
+    cinema_repo = create_autospec(CinemaRepository, instance=True)
+    movie_repo = create_autospec(MovieRepository, instance=True)
 
-    use_case = SearchScreeningsUseCase(screening_repository=screening_repo)
+    use_case = SearchScreeningsUseCase(
+        screening_repository=screening_repo,
+        cinema_repository=cinema_repo,
+        movie_repository=movie_repo,
+    )
     result = await use_case.execute(SearchScreeningsUseCase.InputData())
 
     assert len(result.screenings) == 1
     assert result.screenings[0].movie_title == "The Odyssey"
     assert result.screenings[0].cinema_id == "cin-1"
     assert result.screenings[0].cinema_name == "Cinema One"
-    assert result.screenings[0].showtime.startswith("2026-06-27T19:30")
+    assert result.screenings[0].showtime == datetime(2026, 6, 27, 19, 30, tzinfo=UTC)
     assert result.total == 1
 
 
@@ -51,8 +63,14 @@ async def test_passes_all_filters_to_repository() -> None:
     """All provided filters are converted to value objects and forwarded."""
     screening_repo = create_autospec(ScreeningRepository, instance=True)
     screening_repo.search.return_value = Page(items=[], total=0)
+    cinema_repo = create_autospec(CinemaRepository, instance=True)
+    movie_repo = create_autospec(MovieRepository, instance=True)
 
-    use_case = SearchScreeningsUseCase(screening_repository=screening_repo)
+    use_case = SearchScreeningsUseCase(
+        screening_repository=screening_repo,
+        cinema_repository=cinema_repo,
+        movie_repository=movie_repo,
+    )
     request = SearchScreeningsUseCase.InputData(
         movie="Odyssey",
         movie_id="mov-1",
@@ -83,8 +101,14 @@ async def test_passes_page_and_size_to_repository_as_limit_offset() -> None:
     """
     screening_repo = create_autospec(ScreeningRepository, instance=True)
     screening_repo.search.return_value = Page(items=[], total=50)
+    cinema_repo = create_autospec(CinemaRepository, instance=True)
+    movie_repo = create_autospec(MovieRepository, instance=True)
 
-    use_case = SearchScreeningsUseCase(screening_repository=screening_repo)
+    use_case = SearchScreeningsUseCase(
+        screening_repository=screening_repo,
+        cinema_repository=cinema_repo,
+        movie_repository=movie_repo,
+    )
     result = await use_case.execute(SearchScreeningsUseCase.InputData(page=2, size=5))
 
     screening_repo.search.assert_awaited_once_with(
@@ -98,6 +122,42 @@ async def test_passes_page_and_size_to_repository_as_limit_offset() -> None:
         offset=5,
     )
     assert result.total == 50
+
+
+@pytest.mark.asyncio
+async def test_raises_when_movie_id_filter_missing() -> None:
+    """A movie_id filter that doesn't exist raises MovieNotFoundError."""
+    screening_repo = create_autospec(ScreeningRepository, instance=True)
+    cinema_repo = create_autospec(CinemaRepository, instance=True)
+    movie_repo = create_autospec(MovieRepository, instance=True)
+    movie_repo.exists_by_id.return_value = False
+
+    use_case = SearchScreeningsUseCase(
+        screening_repository=screening_repo,
+        cinema_repository=cinema_repo,
+        movie_repository=movie_repo,
+    )
+    with pytest.raises(MovieNotFoundError):
+        await use_case.execute(SearchScreeningsUseCase.InputData(movie_id="missing"))
+    screening_repo.search.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_raises_when_cinema_id_filter_missing() -> None:
+    """A cinema_id filter that doesn't exist raises CinemaNotFoundError."""
+    screening_repo = create_autospec(ScreeningRepository, instance=True)
+    cinema_repo = create_autospec(CinemaRepository, instance=True)
+    cinema_repo.exists_by_id.return_value = False
+    movie_repo = create_autospec(MovieRepository, instance=True)
+
+    use_case = SearchScreeningsUseCase(
+        screening_repository=screening_repo,
+        cinema_repository=cinema_repo,
+        movie_repository=movie_repo,
+    )
+    with pytest.raises(CinemaNotFoundError):
+        await use_case.execute(SearchScreeningsUseCase.InputData(cinema_id="missing"))
+    screening_repo.search.assert_not_awaited()
 
 
 def test_input_rejects_page_below_one() -> None:
