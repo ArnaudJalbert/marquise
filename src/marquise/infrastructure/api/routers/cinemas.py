@@ -2,60 +2,30 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi_cache.decorator import cache
 from fastapi_pagination import Page, Params
 
-from marquise.application.use_cases.get_cinema_showtimes import (
-    GetCinemaShowtimesUseCase,
+from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
+from marquise.application.use_cases.get_cinema_screenings import (
+    GetCinemaScreeningsUseCase,
 )
 from marquise.infrastructure.api.dependencies import get_container
 from marquise.infrastructure.api.openapi_responses import error_responses
 from marquise.infrastructure.api.rate_limit import current_rate_limit, limiter
-from marquise.infrastructure.api.schemas import CinemaResponse, ScreeningResponse
+from marquise.infrastructure.api.routers._dependencies import (
+    resolve_showtimes_date_range,
+)
+from marquise.infrastructure.api.schemas import (
+    CinemaResponse,
+    MovieResponse,
+    ScreeningResponse,
+)
 from marquise.infrastructure.di.container import Container
 
 router = APIRouter(tags=["cinemas"])
-
-
-def _start_of_today_utc() -> datetime:
-    """Return the current UTC date at midnight, timezone-aware.
-
-    Returns:
-        A timezone-aware ``datetime`` for today's date at 00:00 UTC.
-    """
-    now = datetime.now(UTC)
-    return datetime(now.year, now.month, now.day, tzinfo=UTC)
-
-
-def resolve_showtimes_date_range(
-    from_: datetime | None = Query(
-        default=None,
-        alias="from",
-        description="Start of range (inclusive). Defaults to the start of today (UTC).",
-    ),
-    to: datetime | None = Query(
-        default=None,
-        description="End of range (inclusive). Defaults to one week from start.",
-    ),
-) -> tuple[datetime, datetime]:
-    """Resolve the effective showtimes date range, applying defaults.
-
-    Defaults are resolved here, as a dependency, rather than inside the
-    cached endpoint body: fastapi-cache2 builds its cache key from the
-    arguments FastAPI already resolved before the endpoint runs, so if
-    ``from``/``to`` stayed ``None`` until the function body ran, every
-    request that omits them would collide on one cache entry frozen at
-    whichever moment first populated it.
-
-    Returns:
-        A ``(start, end)`` tuple, both timezone-aware.
-    """
-    resolved_from = from_ if from_ is not None else _start_of_today_utc()
-    resolved_to = to if to is not None else resolved_from + timedelta(days=7)
-    return resolved_from, resolved_to
 
 
 @router.get(
@@ -86,25 +56,60 @@ async def list_cinemas(
 
 
 @router.get(
-    "/cinemas/{cinema_id}/showtimes",
+    "/cinemas/{cinema_id}/screenings",
     response_model=Page[ScreeningResponse],
     responses=error_responses(404, 422, 429),
 )
 @limiter.limit(current_rate_limit)
 @cache()
-async def get_cinema_showtimes(
+async def get_cinema_screenings(
+    request: Request,
+    response: Response,
+    cinema_id: str,
+    params: Params = Depends(),
+    container: Container = Depends(get_container),
+) -> Page[ScreeningResponse]:
+    """List all of a cinema's screenings.
+
+    No filtering beyond the cinema itself — use ``GET /v1/screenings`` for
+    date range, movie, or language filters.
+    """
+    use_case = container.get_cinema_screenings_use_case
+    output = await use_case.execute(
+        GetCinemaScreeningsUseCase.InputData(
+            cinema_id=cinema_id,
+            page=params.page,
+            size=params.size,
+        )
+    )
+
+    return Page.create(
+        items=[ScreeningResponse.model_validate(s) for s in output.screenings],
+        total=output.total,
+        params=params,
+    )
+
+
+@router.get(
+    "/cinemas/{cinema_id}/movies",
+    response_model=Page[MovieResponse],
+    responses=error_responses(404, 422, 429),
+)
+@limiter.limit(current_rate_limit)
+@cache()
+async def get_cinema_movies(
     request: Request,
     response: Response,
     cinema_id: str,
     date_range: tuple[datetime, datetime] = Depends(resolve_showtimes_date_range),
     params: Params = Depends(),
     container: Container = Depends(get_container),
-) -> Page[ScreeningResponse]:
-    """List a cinema's screenings within a date range."""
+) -> Page[MovieResponse]:
+    """List the distinct movies currently screening at a cinema."""
     from_, to = date_range
-    use_case = container.get_cinema_showtimes_use_case
+    use_case = container.get_cinema_movies_use_case
     output = await use_case.execute(
-        GetCinemaShowtimesUseCase.InputData(
+        GetCinemaMoviesUseCase.InputData(
             cinema_id=cinema_id,
             start_date=from_,
             end_date=to,
@@ -114,7 +119,7 @@ async def get_cinema_showtimes(
     )
 
     return Page.create(
-        items=[ScreeningResponse.model_validate(s) for s in output.screenings],
+        items=[MovieResponse.model_validate(m) for m in output.movies],
         total=output.total,
         params=params,
     )

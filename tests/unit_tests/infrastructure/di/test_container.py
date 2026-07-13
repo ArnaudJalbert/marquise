@@ -130,10 +130,10 @@ async def test_get_movie_use_case_after_initialize() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_cinema_showtimes_use_case_after_initialize() -> None:
-    """Verify get_cinema_showtimes_use_case returns a GetCinemaShowtimesUseCase."""
-    from marquise.application.use_cases.get_cinema_showtimes import (
-        GetCinemaShowtimesUseCase,
+async def test_get_cinema_screenings_use_case_after_initialize() -> None:
+    """Verify get_cinema_screenings_use_case returns a GetCinemaScreeningsUseCase."""
+    from marquise.application.use_cases.get_cinema_screenings import (
+        GetCinemaScreeningsUseCase,
     )
 
     mock_database = AsyncMock()
@@ -144,8 +144,46 @@ async def test_get_cinema_showtimes_use_case_after_initialize() -> None:
     ):
         container = Container()
         await container.initialize()
-        use_case = container.get_cinema_showtimes_use_case
-        assert isinstance(use_case, GetCinemaShowtimesUseCase)
+        use_case = container.get_cinema_screenings_use_case
+        assert isinstance(use_case, GetCinemaScreeningsUseCase)
+        await container.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_search_screenings_use_case_after_initialize() -> None:
+    """Verify search_screenings_use_case returns a SearchScreeningsUseCase."""
+    from marquise.application.use_cases.search_screenings import (
+        SearchScreeningsUseCase,
+    )
+
+    mock_database = AsyncMock()
+    mock_database.pool = AsyncMock()
+
+    with patch(
+        "marquise.infrastructure.di.container.Database", return_value=mock_database
+    ):
+        container = Container()
+        await container.initialize()
+        use_case = container.search_screenings_use_case
+        assert isinstance(use_case, SearchScreeningsUseCase)
+        await container.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_get_screening_use_case_after_initialize() -> None:
+    """Verify get_screening_use_case returns a GetScreeningUseCase."""
+    from marquise.application.use_cases.get_screening import GetScreeningUseCase
+
+    mock_database = AsyncMock()
+    mock_database.pool = AsyncMock()
+
+    with patch(
+        "marquise.infrastructure.di.container.Database", return_value=mock_database
+    ):
+        container = Container()
+        await container.initialize()
+        use_case = container.get_screening_use_case
+        assert isinstance(use_case, GetScreeningUseCase)
         await container.shutdown()
 
 

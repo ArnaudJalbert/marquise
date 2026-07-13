@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.22.0 (2026-07-13)
+
+### New Features
+
+- **Screenings API endpoints epic (#128-#132)**: adds a reusable dynamic-filter `search()` method on `ScreeningRepository`/`ScreeningGateway` (`application/repositories/screening_repository.py`, `infrastructure/supabase/gateways/screening.py`), used by every new/changed endpoint below instead of duplicating WHERE-clause logic per route.
+  - Every screening response (across all four endpoints below, plus the renamed cinema-scoped one) now includes `cinema_id`/`cinema_name` alongside `movie_id`/`movie_title` — needed since `GET /v1/screenings` and `GET /v1/movies/{movie_id}/screenings` span multiple cinemas, so the hosting cinema is no longer implied by the request URL.
+  - `GET /v1/screenings`: general search across all cinemas, filterable by `movie`, `movie_id`, `cinema_id`, `from`/`to`, and `language`; paginated. New `SearchScreeningsUseCase`.
+  - `GET /v1/screenings/{screening_id}`: fetch a single screening by ID (404 via the existing `ScreeningNotFoundError`). New `GetScreeningUseCase`.
+  - `GET /v1/movies/{movie_id}/screenings`: list all of a movie's screenings (no filters beyond pagination — use `GET /v1/screenings?movie_id=...` for date range/cinema/language filters); 404s on unknown movie. New `GetMovieScreeningsUseCase`.
+  - `GET /v1/cinemas/{cinema_id}/movies`: list the distinct movies currently screening at a cinema in a date range; 404s on unknown cinema. New `GetCinemaMoviesUseCase` and `ScreeningRepository.find_distinct_movies_by_cinema`.
+  - Extracted the `resolve_showtimes_date_range` FastAPI dependency out of `cinemas.py` into a shared `infrastructure/api/routers/_dependencies.py` so all of the above endpoints share the same today→+7-days default.
+  - Adds three supporting indexes on `screenings` (`movie_id`; `(cinema_id, showtime)`; `(movie_id, showtime)`) via `scripts/003_screening_search_indexes.sql`, since none of the new query patterns were served well by the existing `(cinema_id, movie_id, showtime)` unique index alone.
+  - `GET /v1/screenings` is no longer cached: its `movie` filter is free-text, giving it an effectively unbounded cache key space on the shared in-memory `@cache()` backend, unlike every other endpoint's bounded filters — every distinct search string would otherwise sit in memory for the full TTL. `GET /v1/screenings/{screening_id}` keeps its cache since its key space (screening IDs) is bounded.
+  - `showtime` is now returned as a native `datetime` internally (`OutputData`/`ScreeningResponse`) instead of a manually-formatted ISO string; the wire format is unchanged. `ScreeningRepository.find_by_id` now raises `ScreeningNotFoundError` itself instead of returning `None`. Added `MovieRepository.exists_by_id`/`MovieGateway.exists_by_id` (mirroring the existing cinema ones) so `GetCinemaMoviesUseCase`, `GetCinemaScreeningsUseCase`, `GetMovieScreeningsUseCase`, and now `SearchScreeningsUseCase` validate a provided `cinema_id`/`movie_id` with a cheap existence check before querying, instead of fetching the full entity just to check it exists — `SearchScreeningsUseCase` (`GET /v1/screenings`) previously returned an empty page for an unknown `movie_id`/`cinema_id` filter and now raises `MovieNotFoundError`/`CinemaNotFoundError` (404) for consistency with the other screening endpoints.
+
+### Breaking Changes
+
+- **`GET /v1/cinemas/{cinema_id}/showtimes` renamed to `GET /v1/cinemas/{cinema_id}/screenings`**: a hard cutover (no alias) for naming consistency with the new screenings endpoints above — the API has no versioning beyond `/v1` today, so a temporary alias wasn't worth the added handler complexity. The renamed endpoint drops the previous `from`/`to` date-range filtering (and the movie/language filters considered during development) in favor of returning all of a cinema's screenings, unfiltered beyond pagination — use `GET /v1/screenings?cinema_id=...` for date range, movie, or language filters. Now shares the `search()` gateway/repository method instead of the removed `find_by_cinema_and_date_range`. `GetCinemaShowtimesUseCase` is renamed to `GetCinemaScreeningsUseCase`.
+
 ## 0.21.2 (2026-07-12)
 
 ### Fixes

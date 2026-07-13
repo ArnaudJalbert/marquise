@@ -1,34 +1,35 @@
-"""Get a cinema's showtimes within a date range use case (read-only)."""
+"""Get all of a cinema's screenings use case (read-only)."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 
 from marquise.application.exceptions import CinemaNotFoundError
 from marquise.application.repositories import CinemaRepository, ScreeningRepository
 from marquise.domain.value_objects import CinemaId
 
 
-class GetCinemaShowtimesUseCase:
-    """Use case for listing a cinema's screenings within a date range."""
+class GetCinemaScreeningsUseCase:
+    """Use case for listing all of a cinema's screenings.
+
+    No filtering beyond the cinema scope is supported here — use
+    ``SearchScreeningsUseCase`` (``GET /v1/screenings``) for date range,
+    movie, or language filters.
+    """
 
     @dataclass(frozen=True, slots=True)
     class InputData:
-        """Input data for fetching a cinema's showtimes.
+        """Input data for fetching a cinema's screenings.
 
         Attributes:
-            cinema_id: The cinema to fetch showtimes for.
-            start_date: Start of the range (inclusive).
-            end_date: End of the range (inclusive).
+            cinema_id: The cinema to fetch screenings for.
             page: Page number (1-based). Ignored when size is None.
             size: Max number of screenings per page. If None, all matching
                 screenings are returned unbounded (page is ignored).
         """
 
         cinema_id: str
-        start_date: datetime
-        end_date: datetime
         page: int = 1
         size: int | None = None
 
@@ -36,19 +37,11 @@ class GetCinemaShowtimesUseCase:
             """Validate input data.
 
             Raises:
-                ValueError: If cinema_id is empty, the range is inverted,
-                    size is provided but not positive, or page is less than 1.
+                ValueError: If cinema_id is empty, size is provided but not
+                    positive, or page is less than 1.
             """
             if not self.cinema_id.strip():
                 raise ValueError("cinema_id must not be empty")
-            # Comparing an aware and a naive datetime raises TypeError, not
-            # ValueError, so normalize local copies for the comparison only
-            # (naive values are assumed UTC, matching the rest of the
-            # persistence layer) rather than letting mixed inputs crash.
-            start = self.start_date.replace(tzinfo=self.start_date.tzinfo or UTC)
-            end = self.end_date.replace(tzinfo=self.end_date.tzinfo or UTC)
-            if start > end:
-                raise ValueError("start_date must not be after end_date")
             if self.size is not None and self.size < 1:
                 raise ValueError("size must be positive when provided")
             if self.page < 1:
@@ -62,7 +55,9 @@ class GetCinemaShowtimesUseCase:
             id: Unique identifier of the screening.
             movie_id: The screened movie's ID.
             movie_title: The screened movie's title.
-            showtime: The screening time in ISO 8601 format.
+            cinema_id: The hosting cinema's ID.
+            cinema_name: The hosting cinema's display name.
+            showtime: The screening time.
             ticket_url: Link to purchase tickets (optional).
             room: Room or auditorium name (optional).
             language: Language or subtitle version (optional).
@@ -71,7 +66,9 @@ class GetCinemaShowtimesUseCase:
         id: str
         movie_id: str
         movie_title: str
-        showtime: str
+        cinema_id: str
+        cinema_name: str
+        showtime: datetime
         ticket_url: str | None = None
         room: str | None = None
         language: str | None = None
@@ -84,13 +81,13 @@ class GetCinemaShowtimesUseCase:
             cinema_id: The cinema's ID.
             cinema_name: The cinema's display name.
             screenings: The matching page of screenings, ordered by showtime.
-            total: Total number of screenings matching the cinema and date
-                range, ignoring limit/offset.
+            total: Total number of screenings for the cinema, ignoring
+                limit/offset.
         """
 
         cinema_id: str
         cinema_name: str
-        screenings: tuple[GetCinemaShowtimesUseCase.ScreeningData, ...]
+        screenings: tuple[GetCinemaScreeningsUseCase.ScreeningData, ...]
         total: int
 
     def __init__(
@@ -108,11 +105,11 @@ class GetCinemaShowtimesUseCase:
         self.screening_repository = screening_repository
 
     async def execute(self, request: InputData) -> OutputData:
-        """List a cinema's screenings within the requested date range.
+        """List all of a cinema's screenings.
 
         Args:
-            request: The input data with cinema ID, date range, and
-                pagination parameters.
+            request: The input data with cinema ID and pagination
+                parameters.
 
         Returns:
             The output data with the cinema, its page of screenings, and the
@@ -122,11 +119,12 @@ class GetCinemaShowtimesUseCase:
             CinemaNotFoundError: If no cinema with the given ID exists.
         """
         cinema_id = CinemaId(value=request.cinema_id)
-        cinema = await self.cinema_repository.find_by_id(cinema_id)
-        if cinema is None:
+        if not await self.cinema_repository.exists_by_id(cinema_id):
             raise CinemaNotFoundError(
                 f"A cinema with ID '{request.cinema_id}' was not found"
             )
+        cinema = await self.cinema_repository.find_by_id(cinema_id)
+        assert cinema is not None  # existence already verified above
 
         if request.size is not None:
             limit = request.size
@@ -135,10 +133,8 @@ class GetCinemaShowtimesUseCase:
             limit = None
             offset = 0
 
-        page = await self.screening_repository.find_by_cinema_and_date_range(
+        page = await self.screening_repository.search(
             cinema_id=cinema_id,
-            start_date=request.start_date,
-            end_date=request.end_date,
             limit=limit,
             offset=offset,
         )
@@ -148,7 +144,9 @@ class GetCinemaShowtimesUseCase:
                 id=str(s.id),
                 movie_id=str(s.movie.id),
                 movie_title=s.movie.title,
-                showtime=s.showtime.value.isoformat(),
+                cinema_id=str(s.cinema.id),
+                cinema_name=s.cinema.name,
+                showtime=s.showtime.value,
                 ticket_url=s.ticket_url,
                 room=s.room,
                 language=s.language,
