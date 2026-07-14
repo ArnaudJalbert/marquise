@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.23.2 (2026-07-14)
+
+### Refactors
+
+- **Drop redundant `OutputData` re-validation (#17)**: removes `__post_init__` checks on use-case `OutputData` fields that were already validated by the value they were copied from (a validated `CinemaId`/`SourceName`, or an entity/`InputData` field validated upstream) — e.g. `cinema_id`, `cinema_name`, `source_name`, `name`, `address`, `city`, `website` across `assign_source`, `create_cinema`, `create_source`, `delete_cinema`, `delete_source`, `get_cinema_source`, `import_screenings`, `list_cinemas`, `list_movies`, `list_registry_sources`, `list_sources`, `unassign_source`, and `update_cinema`. Keeps validation for genuinely computed/derived fields (e.g. `total`, `total_count`, `imported_count`, `updated_count`, `skipped_count`) where a bug in aggregation logic could otherwise produce an invalid value.
+
 ## 0.23.1 (2026-07-13)
 
 ### Fixes

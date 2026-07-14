@@ -45,15 +45,6 @@ class ListRegistrySourcesUseCase:
 
         sources: list[ListRegistrySourcesUseCase.SourceEntry]
 
-        def __post_init__(self) -> None:
-            """Validate output data.
-
-            Raises:
-                ValueError: If sources is None.
-            """
-            if self.sources is None:
-                raise ValueError("sources must not be None")
-
     def __init__(self, registry: SourceRegistryQuery) -> None:
         """Initialize the use case.
 

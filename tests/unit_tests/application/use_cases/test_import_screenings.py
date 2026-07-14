@@ -527,48 +527,6 @@ def test_input_data_allows_valid_input() -> None:
     assert request.end_date == date(2026, 6, 7)
 
 
-def test_output_data_rejects_empty_cinema_id() -> None:
-    """Test OutputData rejects empty cinema_id."""
-    with pytest.raises(ValueError, match="cinema_id must not be empty"):
-        ImportScreeningsUseCase.OutputData(
-            cinema_id="",
-            cinema_name="Cinéma Beaubien",
-            source_name="cinemacinema",
-            screenings=(),
-            total_count=0,
-            imported_count=0,
-            updated_count=0,
-        )
-
-
-def test_output_data_rejects_empty_cinema_name() -> None:
-    """Test OutputData rejects empty cinema_name."""
-    with pytest.raises(ValueError, match="cinema_name must not be empty"):
-        ImportScreeningsUseCase.OutputData(
-            cinema_id="cin-123",
-            cinema_name="",
-            source_name="cinemacinema",
-            screenings=(),
-            total_count=0,
-            imported_count=0,
-            updated_count=0,
-        )
-
-
-def test_output_data_rejects_empty_source_name() -> None:
-    """Test OutputData rejects empty source_name."""
-    with pytest.raises(ValueError, match="source_name must not be empty"):
-        ImportScreeningsUseCase.OutputData(
-            cinema_id="cin-123",
-            cinema_name="Cinéma Beaubien",
-            source_name="",
-            screenings=(),
-            total_count=0,
-            imported_count=0,
-            updated_count=0,
-        )
-
-
 def test_output_data_rejects_negative_total_count() -> None:
     """Test OutputData rejects negative total_count."""
     with pytest.raises(ValueError, match="total_count must not be negative"):
