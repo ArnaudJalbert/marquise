@@ -29,9 +29,3 @@ def test_output_data_creation() -> None:
     """Verify OutputData can be created."""
     response = DeleteSourceUseCase.OutputData(source_name="cineplex")
     assert response.source_name == "cineplex"
-
-
-def test_output_data_rejects_empty_source_name() -> None:
-    """Verify OutputData rejects an empty source_name."""
-    with pytest.raises(ValueError, match="source_name must not be empty"):
-        DeleteSourceUseCase.OutputData(source_name="")

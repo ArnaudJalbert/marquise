@@ -68,24 +68,6 @@ class CreateCinemaUseCase:
         city: str | None = None
         website: str | None = None
 
-        def __post_init__(self) -> None:
-            """Validate output data.
-
-            Raises:
-                ValueError: If id or name is empty, or if address/city/website
-                    are provided but whitespace-only.
-            """
-            if not self.id.strip():
-                raise ValueError("id must not be empty")
-            if not self.name.strip():
-                raise ValueError("name must not be empty")
-            if self.address is not None and not self.address.strip():
-                raise ValueError("address must not be empty when provided")
-            if self.city is not None and not self.city.strip():
-                raise ValueError("city must not be empty when provided")
-            if self.website is not None and not self.website.strip():
-                raise ValueError("website must not be empty when provided")
-
     def __init__(self, cinema_repository: CinemaRepository) -> None:
         """Initialize the use case.
 

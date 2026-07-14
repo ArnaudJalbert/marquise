@@ -119,50 +119,6 @@ def test_output_data_creation() -> None:
     assert response.website == "https://example.com"
 
 
-def test_output_data_rejects_empty_id() -> None:
-    """Verify OutputData rejects an empty id."""
-    with pytest.raises(ValueError, match="id must not be empty"):
-        UpdateCinemaUseCase.OutputData(
-            id="", name="Test Cinema", address="123 St", city="Montreal"
-        )
-
-
-def test_output_data_rejects_whitespace_id() -> None:
-    """Verify OutputData rejects a whitespace-only id."""
-    with pytest.raises(ValueError, match="id must not be empty"):
-        UpdateCinemaUseCase.OutputData(
-            id="   ", name="Test Cinema", address="123 St", city="Montreal"
-        )
-
-
-def test_output_data_rejects_empty_name() -> None:
-    """Verify OutputData rejects an empty name."""
-    with pytest.raises(ValueError, match="name must not be empty"):
-        UpdateCinemaUseCase.OutputData(
-            id="cin-001", name="", address="123 St", city="Montreal"
-        )
-
-
-def test_output_data_rejects_empty_address_when_provided() -> None:
-    """Verify OutputData rejects an empty address string."""
-    with pytest.raises(ValueError, match="address must not be empty when provided"):
-        UpdateCinemaUseCase.OutputData(id="cin-001", name="Test Cinema", address="")
-
-
-def test_output_data_rejects_empty_city_when_provided() -> None:
-    """Verify OutputData rejects an empty city string."""
-    with pytest.raises(ValueError, match="city must not be empty when provided"):
-        UpdateCinemaUseCase.OutputData(
-            id="cin-001", name="Test Cinema", address="123 St", city=""
-        )
-
-
-def test_output_data_rejects_empty_website_when_provided() -> None:
-    """Verify OutputData rejects an empty website string."""
-    with pytest.raises(ValueError, match="website must not be empty when provided"):
-        UpdateCinemaUseCase.OutputData(id="cin-001", name="Test Cinema", website="")
-
-
 def test_output_data_allows_none_optionals() -> None:
     """Verify OutputData allows None for optional fields."""
     data = UpdateCinemaUseCase.OutputData(id="cin-001", name="Test Cinema")

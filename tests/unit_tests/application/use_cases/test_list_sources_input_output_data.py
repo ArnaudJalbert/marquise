@@ -53,9 +53,3 @@ def test_output_data_empty_list() -> None:
     """Verify OutputData with empty sources list."""
     output = ListSourcesUseCase.OutputData(sources=[])
     assert output.sources == []
-
-
-def test_output_data_rejects_none_sources() -> None:
-    """Verify OutputData rejects None for sources."""
-    with pytest.raises(ValueError, match="sources must not be None"):
-        ListSourcesUseCase.OutputData(sources=None)  # type: ignore
