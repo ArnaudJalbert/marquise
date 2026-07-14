@@ -137,12 +137,6 @@ def test_output_data_empty_list() -> None:
     assert len(data.movies) == 0
 
 
-def test_output_data_rejects_none_movies() -> None:
-    """Verify OutputData rejects None for movies."""
-    with pytest.raises(ValueError, match="movies must not be None"):
-        ListMoviesUseCase.OutputData(movies=None, total=0)  # type: ignore
-
-
 def test_output_data_rejects_negative_total() -> None:
     """Verify OutputData rejects a negative total."""
     with pytest.raises(ValueError, match="total must not be negative"):

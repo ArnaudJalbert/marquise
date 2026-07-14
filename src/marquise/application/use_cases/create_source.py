@@ -52,17 +52,6 @@ class CreateSourceUseCase:
         display_name: str
         description: str | None = None
 
-        def __post_init__(self) -> None:
-            """Validate output data.
-
-            Raises:
-                ValueError: If ``name`` or ``display_name`` is empty.
-            """
-            if not self.name.strip():
-                raise ValueError("name must not be empty")
-            if not self.display_name.strip():
-                raise ValueError("display_name must not be empty")
-
     def __init__(self, source_repository: SourceDefinitionRepository) -> None:
         """Initialize the use case.
 

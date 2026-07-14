@@ -47,19 +47,6 @@ class GetCinemaSourceUseCase:
         source_name: str
         source_display_name: str
 
-        def __post_init__(self) -> None:
-            """Validate output data.
-
-            Raises:
-                ValueError: If any field is empty or whitespace-only.
-            """
-            if not self.cinema_id.strip():
-                raise ValueError("cinema_id must not be empty")
-            if not self.source_name.strip():
-                raise ValueError("source_name must not be empty")
-            if not self.source_display_name.strip():
-                raise ValueError("source_display_name must not be empty")
-
     def __init__(
         self,
         assignment_repository: CinemaSourceAssignmentRepository,

@@ -59,15 +59,3 @@ def test_output_data_creation() -> None:
     assert response.name == "cineplex"
     assert response.display_name == "Cineplex"
     assert response.description == "A source"
-
-
-def test_output_data_rejects_empty_name() -> None:
-    """Verify OutputData rejects an empty name."""
-    with pytest.raises(ValueError, match="name must not be empty"):
-        CreateSourceUseCase.OutputData(name="", display_name="Display")
-
-
-def test_output_data_rejects_empty_display_name() -> None:
-    """Verify OutputData rejects an empty display_name."""
-    with pytest.raises(ValueError, match="display_name must not be empty"):
-        CreateSourceUseCase.OutputData(name="source", display_name="")

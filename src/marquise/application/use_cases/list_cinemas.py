@@ -93,10 +93,8 @@ class ListCinemasUseCase:
             """Validate output data.
 
             Raises:
-                ValueError: If cinemas is None, or if total is negative.
+                ValueError: If total is negative.
             """
-            if self.cinemas is None:
-                raise ValueError("cinemas must not be None")
             if self.total < 0:
                 raise ValueError("total must not be negative")
 

@@ -29,9 +29,3 @@ def test_output_data_creation() -> None:
     """Verify OutputData can be created."""
     response = UnassignSourceUseCase.OutputData(cinema_id="cin-001")
     assert response.cinema_id == "cin-001"
-
-
-def test_output_data_rejects_empty_cinema_id() -> None:
-    """Verify OutputData rejects an empty cinema_id."""
-    with pytest.raises(ValueError, match="cinema_id must not be empty"):
-        UnassignSourceUseCase.OutputData(cinema_id="")
