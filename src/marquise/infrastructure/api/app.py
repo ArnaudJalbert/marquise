@@ -19,7 +19,7 @@ import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, Depends, FastAPI
+from fastapi import APIRouter, Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.inmemory import InMemoryBackend
@@ -27,7 +27,7 @@ from fastapi_pagination import add_pagination
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 
 from marquise.application.exceptions import ApplicationError
 from marquise.infrastructure.api.dependencies import get_container
@@ -175,9 +175,13 @@ Server operators can allow specific origins via `MARQUISE_API_CORS_ORIGINS`.
     # the outermost middleware (Starlette applies the last-registered
     # middleware first) — otherwise 429 responses would be returned before
     # CORS headers are attached, breaking browser clients.
+    async def _rate_limit_adapter(request: Request, exc: Exception) -> Response:
+        assert isinstance(exc, RateLimitExceeded)
+        return _rate_limit_exceeded_handler(request, exc)
+
     limiter.reset()
     app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_adapter)
     app.add_middleware(SlowAPIMiddleware)
 
     # Global error-to-response mapping, in one place instead of per-router
