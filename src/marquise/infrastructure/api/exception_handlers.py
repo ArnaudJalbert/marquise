@@ -49,9 +49,7 @@ _DEFAULT_APPLICATION_ERROR_STATUS = 400
 _DEFAULT_APPLICATION_ERROR_CODE = "application_error"
 
 
-async def application_error_handler(
-    request: Request, exc: ApplicationError
-) -> JSONResponse:
+async def application_error_handler(request: Request, exc: Exception) -> JSONResponse:
     """Map a known ApplicationError subclass to a consistent JSON envelope.
 
     Args:
@@ -63,6 +61,7 @@ async def application_error_handler(
         A JSONResponse with ``{"detail": ..., "error_code": ...}`` and the
         status code looked up from ``_APPLICATION_ERROR_MAPPING``.
     """
+    assert isinstance(exc, ApplicationError)
     status_code, error_code = _APPLICATION_ERROR_MAPPING.get(
         type(exc), (_DEFAULT_APPLICATION_ERROR_STATUS, _DEFAULT_APPLICATION_ERROR_CODE)
     )
@@ -79,7 +78,7 @@ async def application_error_handler(
     )
 
 
-async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse:
+async def value_error_handler(request: Request, exc: Exception) -> JSONResponse:
     """Map an unvalidated ValueError raised by a use case to a 422 response.
 
     Args:
@@ -89,6 +88,7 @@ async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse
     Returns:
         A JSONResponse with the standard error envelope and status 422.
     """
+    assert isinstance(exc, ValueError)
     request_id = getattr(request.state, "request_id", None)
     return JSONResponse(
         {

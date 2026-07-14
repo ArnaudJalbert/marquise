@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.23.1 (2026-07-13)
+
+### Fixes
+
+- **Fix all `ty` type errors and promote to blocking CI check**: resolves 8 diagnostics across 5 files — exception handler signature mismatches in `infrastructure/api/app.py` and `exception_handlers.py`, nullable `expires_at` in `infrastructure/auth/supabase_auth_service.py`, missing `urllib.error` import and untyped assignment in `infrastructure/sources/cinemacinema/gateways/source.py`, and list narrowing issue in `infrastructure/sources/cineplex/gateways/source.py`. Promotes `ty check` to a blocking CI step (was `continue-on-error: true`).
+
 ## 0.23.0 (2026-07-13)
 
 ### New Features
