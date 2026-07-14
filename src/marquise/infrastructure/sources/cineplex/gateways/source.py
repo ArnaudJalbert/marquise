@@ -160,7 +160,9 @@ def _extract_movie_detail(html: str) -> dict[str, Any] | None:
         cast_list = [c.strip() for c in str(raw_cast).split(",") if c.strip()]
 
     genres_raw = movie.get("genres")
-    genres: list[str] = list(genres_raw) if isinstance(genres_raw, list) else []
+    genres: list[str] = (
+        [str(g) for g in genres_raw] if isinstance(genres_raw, list) else []
+    )
 
     ratings_raw = movie.get("ratings")
     rating: str | None = None

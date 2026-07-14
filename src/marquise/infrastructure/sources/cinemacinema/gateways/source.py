@@ -11,6 +11,7 @@ import html
 import json
 import re
 import ssl
+import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
@@ -357,7 +358,7 @@ class CinemaCinemaSource:
         # ------------------------------------------------------------------
         results: list[dict[str, Any]] = []
         for film in all_films:
-            cinema_id: int = film.get("cinema_id")
+            cinema_id = film.get("cinema_id")
             if cinema_id != target_id:
                 continue
             film_slug: str = film.get("slug", "")

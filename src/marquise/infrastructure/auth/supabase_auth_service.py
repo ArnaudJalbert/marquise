@@ -53,7 +53,9 @@ class SupabaseAuthService:
         auth_session = AuthSession(
             access_token=session.access_token,
             refresh_token=session.refresh_token,
-            expires_at=session.expires_at,
+            expires_at=(
+                float(session.expires_at) if session.expires_at is not None else 0.0
+            ),
             user_id=user.id,
             email=user.email or email,
             is_admin=is_admin,
@@ -146,7 +148,11 @@ class SupabaseAuthService:
         refreshed = AuthSession(
             access_token=new_session.access_token,
             refresh_token=new_session.refresh_token,
-            expires_at=new_session.expires_at,
+            expires_at=(
+                float(new_session.expires_at)
+                if new_session.expires_at is not None
+                else 0.0
+            ),
             user_id=user.id,
             email=user.email or session.email,
             is_admin=is_admin,
