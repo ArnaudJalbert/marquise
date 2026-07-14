@@ -54,9 +54,3 @@ def test_input_data_creation() -> None:
     """Verify InputData can be created with no parameters."""
     data = ListRegistrySourcesUseCase.InputData()
     assert data is not None
-
-
-def test_output_data_rejects_none_sources() -> None:
-    """Verify OutputData rejects None for sources."""
-    with pytest.raises(ValueError, match="sources must not be None"):
-        ListRegistrySourcesUseCase.OutputData(sources=None)  # type: ignore

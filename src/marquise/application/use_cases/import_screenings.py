@@ -106,12 +106,6 @@ class ImportScreeningsUseCase:
         skipped_count: int = 0
 
         def __post_init__(self) -> None:
-            if not self.cinema_id.strip():
-                raise ValueError("cinema_id must not be empty")
-            if not self.cinema_name.strip():
-                raise ValueError("cinema_name must not be empty")
-            if not self.source_name.strip():
-                raise ValueError("source_name must not be empty")
             if self.total_count < 0:
                 raise ValueError("total_count must not be negative")
             if self.imported_count < 0:

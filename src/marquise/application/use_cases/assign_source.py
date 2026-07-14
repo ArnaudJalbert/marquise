@@ -56,17 +56,6 @@ class AssignSourceUseCase:
         cinema_id: str
         source_name: str
 
-        def __post_init__(self) -> None:
-            """Validate output data.
-
-            Raises:
-                ValueError: If ``cinema_id`` or ``source_name`` is empty.
-            """
-            if not self.cinema_id.strip():
-                raise ValueError("cinema_id must not be empty")
-            if not self.source_name.strip():
-                raise ValueError("source_name must not be empty")
-
     def __init__(
         self,
         cinema_repository: CinemaRepository,

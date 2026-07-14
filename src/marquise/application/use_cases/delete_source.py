@@ -41,15 +41,6 @@ class DeleteSourceUseCase:
 
         source_name: str
 
-        def __post_init__(self) -> None:
-            """Validate output data.
-
-            Raises:
-                ValueError: If ``source_name`` is empty or whitespace-only.
-            """
-            if not self.source_name.strip():
-                raise ValueError("source_name must not be empty")
-
     def __init__(self, source_repository: SourceDefinitionRepository) -> None:
         """Initialize the use case.
 

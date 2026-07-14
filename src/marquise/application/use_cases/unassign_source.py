@@ -41,15 +41,6 @@ class UnassignSourceUseCase:
 
         cinema_id: str
 
-        def __post_init__(self) -> None:
-            """Validate output data.
-
-            Raises:
-                ValueError: If ``cinema_id`` is empty or whitespace-only.
-            """
-            if not self.cinema_id.strip():
-                raise ValueError("cinema_id must not be empty")
-
     def __init__(self, assignment_repository: CinemaSourceAssignmentRepository) -> None:
         """Initialize the use case.
 
