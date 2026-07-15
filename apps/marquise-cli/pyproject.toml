@@ -12,6 +12,7 @@ dependencies = [
 
 [project.scripts]
 marquise = "marquise_cli.app:app"
+marquise-cli = "marquise_cli.app:app"
 
 [build-system]
 requires = ["hatchling"]
