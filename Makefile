@@ -15,7 +15,7 @@ api:
 	uv run --package marquise-api uvicorn marquise_api.app:create_app --factory --reload --host 0.0.0.0 --port 8000
 
 cli:
-	uv run --package marquise-cli marquise-cli
+	uv run --package marquise-cli marquise
 
 lint:
 	uv run ruff check .
