@@ -33,12 +33,12 @@ COPY packages/marquise-core/pyproject.toml packages/marquise-core/README.md ./pa
 COPY apps/marquise-api/pyproject.toml ./apps/marquise-api/
 
 # Install all production dependencies (no dev group) without the project itself.
-RUN uv sync --frozen --no-dev --no-install-project
+RUN uv sync --frozen --no-dev --no-install-project --package marquise-api
 
 # Copy the source tree and install the project into the same venv.
 COPY packages/marquise-core/src/ ./packages/marquise-core/src/
 COPY apps/marquise-api/src/ ./apps/marquise-api/src/
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen --no-dev --package marquise-api
 
 # ---------------------------------------------------------------------------
 # Stage 2 — final
