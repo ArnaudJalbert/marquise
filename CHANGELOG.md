@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.26.0 (2026-07-15)
+
+### Chores
+
+- **uv workspace migration (#98, #99, #100)**: converts the repo root from a single-package Python project into a `uv` workspace, mirroring the `packages/*` + `apps/*` convention already established by the `web/` pnpm+Turborepo monorepo (0.25.0). All source and tests move from `src/marquise/` and `tests/` to `packages/marquise-core/src/marquise/` and `packages/marquise-core/tests/` (import name unchanged: `marquise`); the new `packages/marquise-core/pyproject.toml` owns the full runtime dependency list, the `marquise` console script, and pytest/coverage config. The root `pyproject.toml` becomes a virtual workspace root holding only `[tool.uv.workspace]`, `[tool.uv.sources]`, the shared `dev` dependency group, and shared `ruff`/`ty` config — it is no longer a distributable package. `uv sync` from repo root still produces a single `.venv` and `uv.lock` for the whole workspace, and `uv run marquise`/`uv run pytest`/`uv run ruff`/`uv run ty` all continue to work from root with updated paths. CI (`ci.yml`), the `Dockerfile`, and `mkdocs.yml` are updated for the new paths. `CONTRIBUTING.md`, `AGENTS.md`, and `CLAUDE.md` document the workspace layout and the one-lockfile rule. Closes #98, #99, #100.
+
+### Breaking Changes
+
+- **Repo layout**: any tooling, scripts, or muscle-memory commands referencing `src/marquise/...` or root-level `tests/...` must be updated to `packages/marquise-core/src/marquise/...` and `packages/marquise-core/tests/...` respectively.
+
 ## 0.25.1 (2026-07-15)
 
 ### Chores
