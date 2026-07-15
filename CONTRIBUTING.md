@@ -118,8 +118,8 @@ docs(arch): add ARCHITECTURE.md
 - [ ] Unit tests pass (`pytest packages/marquise-core/tests/unit_tests/`)
 - [ ] Coverage did not drop below 70%
 - [ ] Import boundary not violated (`import-linter` passes)
-- [ ] `CHANGELOG.md` entry added with a new version heading (repo-level; root `pyproject.toml` is virtual and has no version of its own)
-- [ ] `packages/marquise-core/pyproject.toml`'s `version` bumped too if that package's code changed (semver: major/minor/patch)
+- [ ] `CHANGELOG.md` entry added under the current date heading, noting which package(s) were affected
+- [ ] Version bumped only in the affected package's `pyproject.toml` (semver: major/minor/patch)
 - [ ] Issue linked in PR body (`Closes #N`)
 
 ## Reporting issues

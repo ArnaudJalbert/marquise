@@ -10,10 +10,13 @@ A **Source** is the abstraction for "a way to get showtimes from a particular
 cinema chain or independent cinema." Sources are **not baked into the code**
 for each cinema. Instead, the mapping is dynamic:
 
-```
-Cinema ──assigned to──> Source (e.g. "cineplex") ──fetches via──> SourceAdapter ──delegates to──> Infrastructure gateway
-                        ^ stored in DB:                        ^ registered in
-                          cinema_source_assignments               SourceRegistry (DI container)
+```mermaid
+flowchart LR
+    Cinema[Cinema] -->|assigned to| Source[Source<br/>e.g. cineplex]
+    Source -->|fetches via| Adapter[SourceAdapter]
+    Adapter -->|delegates to| Gateway[Infrastructure<br/>Gateway]
+    Source -.-> |stored in| CSA[(cinema_source_assignments)]
+    Adapter -.->|registered in| Registry[SourceRegistry<br/>DI container]
 ```
 
 Each source has two layers:
