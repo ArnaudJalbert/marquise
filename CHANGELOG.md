@@ -1,6 +1,24 @@
 # Changelog
 
-## 0.24.0 (2026-07-14)
+## 0.25.1 (2026-07-15)
+
+### Chores
+
+- **Repo-root cleanup**: removes stale one-off tooling and planning artifacts left over from earlier work.
+  - **`scripts/`**: removes the now-unneeded `inspect_screening_gateway.py` ad-hoc debug tool and the stale `migrate_001_initial_schema.py` runner (predated the columns/indexes added in migrations 002/003). Consolidates `001_initial_schema.sql`, `002_add_movie_screening_fields.sql`, and `003_screening_search_indexes.sql` into a single `scripts/marquise-schema.sql` representing the full, current `marquise` schema — run manually via the Supabase SQL Editor, same as before. Renames `001_test_schema.sql` to `scripts/marquise-test-schema.sql` to match. Updates `docs/sources.md`'s "Database Schema" section accordingly (it previously covered only migrations 001/002, missing 003 entirely).
+  - **`bin/`**: removes `bench_list_cinemas.py`, `scrape_cinema.py`, and `scrape_cinemapublic.py` — one-off benchmarking/debug scripts predating the current source-adapter architecture, superseded by the `marquise source import` CLI command.
+  - **`plan/`**: removes `feature-marquise-admin-scaffold-1.md`, a planning doc for work already merged (the `web/` monorepo scaffold).
+
+## 0.25.0 (2026-07-15)
+
+### New Features
+
+- **`web/` Turborepo monorepo scaffold (#64)**: bootstraps the admin web app toolchain skeleton as a pnpm + Turborepo workspace under `web/`, following the `apps/*` + `packages/*` convention so the repo can host multiple front ends under one CI pipeline. Adds the workspace root (`web/package.json`, `web/pnpm-workspace.yaml`, `web/turbo.json` with a `build`→`^build` pipeline), a bare Vite + React + TS admin app at `web/apps/marquise-admin`, and a shared `@marquise/core` package at `web/packages/core` (consumed via `workspace:*`, React as a peer dependency to avoid a duplicate runtime). The admin app renders a `CoreHello` smoke-test component from `@marquise/core` to prove the workspace wiring; `pnpm turbo run build` builds `core` before the app. No product logic, routing, API client, or UI kit yet — those are separate issues. Root `.gitignore` ignores `web/**/{node_modules,dist,.turbo,.env}`. The scope was broadened from issue #64's original single-app wording (see the issue's scope-update comment). Closes #64.
+
+### Documentation
+
+- **Web docs**: adds `web/README.md` (full monorepo how-to-run guide), per-workspace READMEs for `marquise-admin` and `@marquise/core`, and a `docs/web.md` page wired into the mkdocs nav.
+- **README / docs refresh**: updates the root `README.md` and `docs/index.md` to reflect the current state — the REST API is built and deployed (not "planned"), all six showtime sources are listed (adds Théâtre Outremont), the CLI examples match the current interactive `source`/`import` commands, the env-var table covers the API rate-limit/log-level and CLI auth variables, and the Tech Stack lists the API and web front-end.
 
 ### New Features
 
