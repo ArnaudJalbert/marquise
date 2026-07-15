@@ -4,6 +4,8 @@ requires-python = ">=3.13"
 
 [manifest]
 members = [
+    "marquise-api",
+    "marquise-cli",
     "marquise-core",
 ]
 
@@ -734,40 +736,66 @@ wheels = [
 ]
 
 [[package]]
+name = "marquise-api"
+version = "0.1.0"
+source = { editable = "apps/marquise-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "fastapi-cache2" },
+    { name = "fastapi-pagination" },
+    { name = "marquise-core" },
+    { name = "slowapi" },
+    { name = "uvicorn", extra = ["standard"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.138.1" },
+    { name = "fastapi-cache2", specifier = ">=0.2.2" },
+    { name = "fastapi-pagination", specifier = ">=0.15.15" },
+    { name = "marquise-core", editable = "packages/marquise-core" },
+    { name = "slowapi", specifier = ">=0.1.10" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.49.0" },
+]
+
+[[package]]
+name = "marquise-cli"
+version = "0.1.0"
+source = { editable = "apps/marquise-cli" }
+dependencies = [
+    { name = "marquise-core" },
+    { name = "questionary" },
+    { name = "rich" },
+    { name = "typer" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "marquise-core", editable = "packages/marquise-core" },
+    { name = "questionary", specifier = ">=2.1.1" },
+    { name = "rich", specifier = ">=15.0.0" },
+    { name = "typer", specifier = ">=0.26.7" },
+]
+
+[[package]]
 name = "marquise-core"
 version = "0.1.0"
 source = { editable = "packages/marquise-core" }
 dependencies = [
     { name = "asyncpg" },
     { name = "certifi" },
-    { name = "fastapi" },
-    { name = "fastapi-cache2" },
-    { name = "fastapi-pagination" },
     { name = "jinja2" },
     { name = "python-dotenv" },
-    { name = "questionary" },
-    { name = "rich" },
-    { name = "slowapi" },
     { name = "supabase" },
-    { name = "typer" },
-    { name = "uvicorn", extra = ["standard"] },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "asyncpg", specifier = ">=0.31.0" },
     { name = "certifi", specifier = ">=2024.0.0" },
-    { name = "fastapi", specifier = ">=0.138.1" },
-    { name = "fastapi-cache2", specifier = ">=0.2.2" },
-    { name = "fastapi-pagination", specifier = ">=0.15.15" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
-    { name = "questionary", specifier = ">=2.1.1" },
-    { name = "rich", specifier = ">=15.0.0" },
-    { name = "slowapi", specifier = ">=0.1.10" },
     { name = "supabase", specifier = ">=2.31.0" },
-    { name = "typer", specifier = ">=0.26.7" },
-    { name = "uvicorn", extras = ["standard"], specifier = ">=0.49.0" },
 ]
 
 [[package]]

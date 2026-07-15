@@ -24,7 +24,14 @@ root = ["packages/marquise-core/src"]
 
 [tool.ruff]
 line-length = 88
-src = ["packages/marquise-core/src", "packages/marquise-core/tests"]
+src = [
+    "packages/marquise-core/src",
+    "packages/marquise-core/tests",
+    "apps/marquise-api/src",
+    "apps/marquise-api/tests",
+    "apps/marquise-cli/src",
+    "apps/marquise-cli/tests",
+]
 
 [tool.ruff.lint]
 extend-select = [

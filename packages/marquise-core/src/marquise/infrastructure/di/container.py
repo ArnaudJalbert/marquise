@@ -40,6 +40,8 @@ from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.infrastructure.auth.supabase_auth_service import SupabaseAuthService
 from marquise.infrastructure.controllers.auth_controller import AuthController
 from marquise.infrastructure.controllers.cinema_controller import CinemaController
+from marquise.infrastructure.controllers.movie_controller import MovieController
+from marquise.infrastructure.controllers.screening_controller import ScreeningController
 from marquise.infrastructure.controllers.source_controller import SourceController
 from marquise.infrastructure.sources.cinemacinema.gateways.source import (
     CinemaCinemaSource,
@@ -502,8 +504,26 @@ class Container:
             auth_controller=self.auth_controller,
             create_cinema_use_case=self._create_cinema_use_case,
             delete_cinema_use_case=self._delete_cinema_use_case,
+            get_cinema_use_case=self._get_cinema_use_case,
+            get_cinema_movies_use_case=self._get_cinema_movies_use_case,
+            get_cinema_screenings_use_case=self._get_cinema_screenings_use_case,
             list_cinemas_use_case=self._list_cinemas_use_case,
             update_cinema_use_case=self._update_cinema_use_case,
+        )
+
+    @property
+    def movie_controller(self) -> MovieController:
+        return MovieController(
+            get_movie_use_case=self._get_movie_use_case,
+            get_movie_screenings_use_case=self._get_movie_screenings_use_case,
+            list_movies_use_case=self._list_movies_use_case,
+        )
+
+    @property
+    def screening_controller(self) -> ScreeningController:
+        return ScreeningController(
+            get_screening_use_case=self._get_screening_use_case,
+            search_screenings_use_case=self._search_screenings_use_case,
         )
 
     @property
