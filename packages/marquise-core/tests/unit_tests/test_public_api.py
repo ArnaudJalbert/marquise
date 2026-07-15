@@ -10,12 +10,28 @@ from __future__ import annotations
 import marquise
 
 EXPECTED_PUBLIC_SURFACE: set[str] = {
+    "ApplicationError",
     "AuthController",
+    "CinemaAlreadyExistsError",
     "CinemaController",
-    "MarquiseFactory",
-    "SourceController",
+    "CinemaIdAlreadyExistsError",
+    "CinemaNotFoundError",
+    "CinemaSourceAssignmentAlreadyExistsError",
+    "CinemaSourceAssignmentNotFoundError",
     "create_factory",
     "create_factory_session",
+    "ListCinemasUseCase",
+    "MARQUISE_EMAIL_ENV_VAR",
+    "MARQUISE_PASSWORD_ENV_VAR",
+    "MarquiseFactory",
+    "MovieController",
+    "MovieNotFoundError",
+    "ScreeningAlreadyExistsError",
+    "ScreeningController",
+    "ScreeningNotFoundError",
+    "SourceAlreadyExistsError",
+    "SourceController",
+    "SourceNotFoundError",
 }
 
 

@@ -14,6 +14,8 @@ from contextlib import asynccontextmanager
 
 from marquise.infrastructure.controllers.auth_controller import AuthController
 from marquise.infrastructure.controllers.cinema_controller import CinemaController
+from marquise.infrastructure.controllers.movie_controller import MovieController
+from marquise.infrastructure.controllers.screening_controller import ScreeningController
 from marquise.infrastructure.controllers.source_controller import SourceController
 from marquise.infrastructure.di.container import Container
 
@@ -76,6 +78,16 @@ class MarquiseFactory:
     def cinema(self) -> CinemaController:
         """Cinema management controller."""
         return self._container.cinema_controller
+
+    @property
+    def movie(self) -> MovieController:
+        """Movie read controller."""
+        return self._container.movie_controller
+
+    @property
+    def screening(self) -> ScreeningController:
+        """Screening read controller."""
+        return self._container.screening_controller
 
     @property
     def source(self) -> SourceController:

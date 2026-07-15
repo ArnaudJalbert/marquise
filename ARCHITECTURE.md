@@ -19,26 +19,15 @@
 
 Marquise follows **Clean Architecture**. Dependencies point **inward only** — outer layers depend on inner layers, never the reverse.
 
-```
-┌───────────────────────────────────────────────────────────────────────┐
-│  Public surface: marquise/__init__.py + bootstrap.py                  │
-│  MarquiseFactory, create_factory(), create_factory_session()          │
-├───────────────────────────────────────────────────────────────────────┤
-│  packages/marquise-core/src/marquise/infrastructure/                 │
-│  CLI (Typer), FastAPI, controllers, DI container, auth,              │
-│  source scrapers, Supabase gateways                                   │
-├───────────────────────────────────────────────────────────────────────┤
-│  packages/marquise-core/src/marquise/interface_adapters/             │
-│  Repository implementations (Supabase),                              │
-│  source adapters, gateway protocols                                   │
-├───────────────────────────────────────────────────────────────────────┤
-│  packages/marquise-core/src/marquise/application/                    │
-│  Use cases, repository interfaces, exceptions                         │
-├───────────────────────────────────────────────────────────────────────┤
-│  packages/marquise-core/src/marquise/domain/                         │
-│  Entities (Cinema, Movie, Screening),                                 │
-│  value objects (CinemaId, MovieId, Showtime, …)                       │
-└───────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    PUB["Public Surface<br/>MarquiseFactory, create_factory(), create_factory_session()"]
+    INF["infrastructure/<br/>CLI (Typer), FastAPI, controllers, DI container, auth,<br/>source scrapers, Supabase gateways"]
+    ADAPT["interface_adapters/<br/>Repository implementations (Supabase),<br/>source adapters, gateway protocols"]
+    APP["application/<br/>Use cases, repository interfaces, exceptions"]
+    DOM["domain/<br/>Entities (Cinema, Movie, Screening),<br/>value objects (CinemaId, MovieId, Showtime, …)"]
+
+    PUB --> INF --> ADAPT --> APP --> DOM
 ```
 
 ### Key directories
@@ -96,16 +85,23 @@ Each cinema source has a scraper under `infrastructure/sources/<source>/` and an
 
 ## Data Flow
 
-```
-marquise source import
-  → CLI command (infrastructure/cli/source_commands.py)
-  → CinemaController (infrastructure/controllers/)
-  → ImportScreeningsUseCase (application/use_cases/)
-    → SourceAdapter.fetch_showtimes()      # external HTTP
-    → MovieRepository.find_by_title()      # Supabase
-    → MovieRepository.save()
-    → ScreeningRepository.save()           # upsert
-  → OutputData displayed via Rich
+```mermaid
+sequenceDiagram
+    participant CLI as CLI (source_commands.py)
+    participant Ctrl as CinemaController
+    participant UC as ImportScreeningsUseCase
+    participant Adapter as SourceAdapter
+    participant MovieRepo as MovieRepository
+    participant ScrnRepo as ScreeningRepository
+
+    CLI->>Ctrl: marquise source import
+    Ctrl->>UC: execute(ImportScreeningsInputData)
+    UC->>Adapter: fetch_showtimes() (external HTTP)
+    UC->>MovieRepo: find_by_title() (Supabase)
+    UC->>MovieRepo: save()
+    UC->>ScrnRepo: save() (upsert)
+    UC-->>Ctrl: ImportScreeningsOutputData
+    Ctrl-->>CLI: display via Rich
 ```
 
 ## Public Surface & Import Boundary

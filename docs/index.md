@@ -31,7 +31,7 @@ Marquise ships a read-only FastAPI with pagination, in-memory caching, and confi
 
 ```bash
 # Start the API server
-uv run marquise api
+make api
 # → http://localhost:8000/docs (OpenAPI UI)
 # → http://localhost:8000/health
 ```
