@@ -355,9 +355,9 @@ Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
 ### Pull request process
 
 1. Rebase on main: `git pull origin main --rebase`
-2. Run quality gates: `ruff format --check`, `ruff check`, `pytest packages/marquise-core/tests/unit_tests/`
+2. Run quality gates: `ruff format --check`, `ruff check`, `uv run --package marquise-core pytest packages/marquise-core/tests/unit_tests/`
 3. Ensure coverage did not drop below 70%
-4. Add `CHANGELOG.md` entry and bump version in `pyproject.toml`
+4. Add `CHANGELOG.md` entry under the current date (or create a new date heading), noting which package(s) were affected. Bump version only in the affected package's `pyproject.toml` (`packages/marquise-core/pyproject.toml`, `apps/marquise-api/pyproject.toml`, or `apps/marquise-cli/pyproject.toml`). The root `pyproject.toml` is virtual and has no version of its own.
 5. Reference the issue: `Closes #N`
 6. Self-review the diff before requesting review
 

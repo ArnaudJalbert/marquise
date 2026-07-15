@@ -134,4 +134,4 @@ Optional:
 Branch: `feat/`, `fix/`, `refactor/`, `docs/`, `chore/`  
 Commit: `type(scope): concise description`
 
-Before opening a PR: run `ruff format --check`, `ruff check`, `pytest packages/marquise-core/tests/unit_tests/ --cov=marquise --cov-fail-under=70`, add a `CHANGELOG.md` entry with a version heading (repo-level; the root `pyproject.toml` is virtual and has no version of its own), and bump `packages/marquise-core/pyproject.toml`'s `version` if that package's code changed.
+Before opening a PR: run `ruff format --check`, `ruff check`, `uv run --package marquise-core pytest packages/marquise-core/tests/unit_tests/ --cov=marquise --cov-fail-under=70`, add a `CHANGELOG.md` entry under the current date noting which package(s) were affected, and bump version only in the affected package's `pyproject.toml` (`packages/marquise-core/`, `apps/marquise-api/`, or `apps/marquise-cli/`).
