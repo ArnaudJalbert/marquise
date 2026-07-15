@@ -14,32 +14,38 @@ uv sync
 cp .env.example .env   # fill in SUPABASE_URL, SUPABASE_KEY, DATABASE_URL
 ```
 
+## Workspace layout
+
+Marquise is a `uv` workspace (`[tool.uv.workspace] members = ["packages/*", "apps/*"]`). The root `pyproject.toml` is **virtual** — it has no `[project]`/`[build-system]` table and is not itself a distributable package. It holds only workspace config, the shared `dev` dependency group, and shared `ruff`/`ty` config (lint/type-check run repo-wide from root for one consistent pass). `packages/marquise-core` is the sole workspace member today; it owns its own `pyproject.toml`, runtime dependencies, `[project.scripts]` entry point, and `pytest`/coverage config, since test scope is inherently per-package. Future packages/apps each follow the same pattern: own `pyproject.toml` + own `tests/`, sharing the root's `ruff`/`ty` config and `dev` group.
+
+**One lockfile rule**: only ever run `uv sync` / `uv lock` from the repo root, never from inside `packages/marquise-core/` or any other member directory. This keeps `uv.lock` single-sourced for the whole workspace.
+
 ## Day-to-day commands
 
 ```bash
 # Run unit tests (no DB required)
-uv run pytest tests/unit_tests/ -q
+uv run pytest packages/marquise-core/tests/unit_tests/ -q
 
 # Run all tests including integration (requires Supabase credentials)
-uv run pytest tests/ -q
+uv run pytest packages/marquise-core/tests/ -q
 
 # Run unit tests with coverage
-uv run pytest tests/unit_tests/ --cov=marquise --cov-report=term-missing -q
+uv run pytest packages/marquise-core/tests/unit_tests/ --cov=marquise --cov-report=term-missing -q
 
-# Lint
-uv run ruff check src/ tests/
+# Lint (workspace-wide, shared root config)
+uv run ruff check .
 
 # Auto-fix lint
-uv run ruff check --fix src/ tests/
+uv run ruff check --fix .
 
 # Type check (non-blocking in CI for now)
-uv run ty check src
+uv run ty check packages/marquise-core/src
 
 # Format
-uv run ruff format src/ tests/
+uv run ruff format .
 
 # Check formatting without modifying (what CI runs)
-uv run ruff format --check src/ tests/
+uv run ruff format --check .
 
 # Explore the CLI
 uv run marquise --help
@@ -51,10 +57,10 @@ Every push and PR to `main` runs the `quality` job:
 
 1. `ruff format --check` — fails on unformatted code
 2. `ruff check` — fails on lint errors
-3. `ty check src` — type check; **non-blocking** for now (reports diagnostics without failing the build while the backlog is triaged, see #34)
-4. `pytest tests/unit_tests/ --cov=marquise --cov-fail-under=70` — fails below 70% coverage
+3. `ty check packages/marquise-core/src` — type check; **non-blocking** for now (reports diagnostics without failing the build while the backlog is triaged, see #34)
+4. `pytest packages/marquise-core/tests/unit_tests/ --cov=marquise --cov-fail-under=70` — fails below 70% coverage
 
-The `integration` job (manual trigger only) runs `tests/integration/` using secrets `SUPABASE_URL`, `SUPABASE_KEY`, `DATABASE_URL`.
+The `integration` job (manual trigger only) runs `packages/marquise-core/tests/integration_tests/` using secrets `SUPABASE_URL`, `SUPABASE_KEY`, `DATABASE_URL`.
 
 **Current coverage**: ~72% overall; 100% on domain and most of application.  
 **CI gate**: 70% minimum. **Target**: 80%+ overall, 100% for `domain/` and `application/`.
@@ -82,10 +88,10 @@ docs(arch): add ARCHITECTURE.md
 
 - [ ] `ruff format --check` passes
 - [ ] `ruff check` passes
-- [ ] Unit tests pass (`pytest tests/unit_tests/`)
+- [ ] Unit tests pass (`pytest packages/marquise-core/tests/unit_tests/`)
 - [ ] Coverage did not drop below 70%
-- [ ] `CHANGELOG.md` entry added
-- [ ] Version bumped in `pyproject.toml` (semver: major/minor/patch)
+- [ ] `CHANGELOG.md` entry added with a new version heading (repo-level; root `pyproject.toml` is virtual and has no version of its own)
+- [ ] `packages/marquise-core/pyproject.toml`'s `version` bumped too if that package's code changed (semver: major/minor/patch)
 - [ ] Issue linked in PR body (`Closes #N`)
 
 ## Reporting issues

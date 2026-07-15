@@ -19,28 +19,28 @@
 Marquise follows **Clean Architecture**. Dependencies point **inward only** — outer layers depend on inner layers, never the reverse.
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  src/marquise/infrastructure/                           │
-│  CLI (Typer), DI container, auth, source scrapers,     │
-│  Supabase gateways                                      │
-├─────────────────────────────────────────────────────────┤
-│  src/marquise/interface_adapters/                       │
-│  Repository implementations (Supabase),                │
-│  source adapters, gateway protocols                     │
-├─────────────────────────────────────────────────────────┤
-│  src/marquise/application/                              │
-│  Use cases, repository interfaces, exceptions           │
-├─────────────────────────────────────────────────────────┤
-│  src/marquise/domain/                                   │
-│  Entities (Cinema, Movie, Screening),                   │
-│  value objects (CinemaId, MovieId, Showtime, …)         │
-└─────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────┐
+│  packages/marquise-core/src/marquise/infrastructure/                 │
+│  CLI (Typer), DI container, auth, source scrapers,                   │
+│  Supabase gateways                                                    │
+├───────────────────────────────────────────────────────────────────────┤
+│  packages/marquise-core/src/marquise/interface_adapters/             │
+│  Repository implementations (Supabase),                              │
+│  source adapters, gateway protocols                                   │
+├───────────────────────────────────────────────────────────────────────┤
+│  packages/marquise-core/src/marquise/application/                    │
+│  Use cases, repository interfaces, exceptions                         │
+├───────────────────────────────────────────────────────────────────────┤
+│  packages/marquise-core/src/marquise/domain/                         │
+│  Entities (Cinema, Movie, Screening),                                 │
+│  value objects (CinemaId, MovieId, Showtime, …)                       │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Key directories
 
 ```
-src/marquise/
+packages/marquise-core/src/marquise/
 ├── domain/
 │   ├── entities/          # Cinema, Movie, Screening
 │   └── value_objects/     # CinemaId, MovieId, ScreeningId, Showtime, SourceName

@@ -18,11 +18,11 @@ Cinema ──assigned to──> Source (e.g. "cineplex") ──fetches via──
 
 Each source has two layers:
 
-1. **Infrastructure gateway** (`src/marquise/infrastructure/sources/<name>/gateways/source.py`):
+1. **Infrastructure gateway** (`packages/marquise-core/src/marquise/infrastructure/sources/<name>/gateways/source.py`):
    Raw scraper/API client. Accepts flat params (no domain entities). Returns
    plain dicts. Synchronous or async.
 
-2. **Interface adapter** (`src/marquise/interface_adapters/repositories/source_adapters/<name>.py`):
+2. **Interface adapter** (`packages/marquise-core/src/marquise/interface_adapters/repositories/source_adapters/<name>.py`):
    Wraps a gateway. Translates `Cinema` domain entities into the flat params
    the gateway expects. Implements the `SourceAdapter` protocol.
 
@@ -81,12 +81,12 @@ This means:
 
 ## Layer by layer
 
-### Domain (`src/marquise/domain/`)
+### Domain (`packages/marquise-core/src/marquise/domain/`)
 - `value_objects/source_name.py` — wraps `str`
 - `entities/source_definition.py` — the source catalog entry
 - `entities/cinema_source_assignment.py` — maps cinema → source
 
-### Application (`src/marquise/application/`)
+### Application (`packages/marquise-core/src/marquise/application/`)
 - `repositories/source_definition_repository.py` — ABC for source CRUD
 - `repositories/cinema_source_assignment_repository.py` — ABC for assignments
 - `repositories/source_registry_query.py` — `SourceRegistryQuery` ABC, `ShowtimeRow`, `MovieEnrichmentData`
@@ -98,7 +98,7 @@ This means:
 - `use_cases/get_cinema_source.py` — query assignment + source display name
 - `use_cases/import_screenings.py` — fetch & persist showtimes + enrich movies
 
-### Interface Adapters (`src/marquise/interface_adapters/`)
+### Interface Adapters (`packages/marquise-core/src/marquise/interface_adapters/`)
 - `repositories/protocols/showtime_source.py` — `ShowtimeSource(Protocol)` for scrapers
 - `repositories/protocols/source_definition.py` — gateway protocol for source DB table
 - `repositories/protocols/cinema_source_assignment.py` — gateway protocol for assignment DB table
@@ -110,7 +110,7 @@ This means:
 - `repositories/supabase/source_definition_repository.py` — adapts gateway → entities
 - `repositories/supabase/cinema_source_assignment_repository.py` — adapts gateway → entities
 
-### Infrastructure (`src/marquise/infrastructure/`)
+### Infrastructure (`packages/marquise-core/src/marquise/infrastructure/`)
 - `supabase/gateways/source_definition.py` — SQL CRUD for `source_definitions`
 - `supabase/gateways/cinema_source_assignment.py` — SQL CRUD for `cinema_source_assignments`
 - `supabase/gateways/movie.py` — SQL CRUD for `movies` (upsert on title conflict)
@@ -340,7 +340,7 @@ marquise source show \
 1. **Create the gateway implementation**
 
    ```
-   src/marquise/infrastructure/sources/guzzo/gateways/source.py
+   packages/marquise-core/src/marquise/infrastructure/sources/guzzo/gateways/source.py
    ```
 
    ```python
@@ -372,7 +372,7 @@ marquise source show \
 2. **Create the adapter**
 
    ```
-   src/marquise/interface_adapters/repositories/source_adapters/guzzo.py
+   packages/marquise-core/src/marquise/interface_adapters/repositories/source_adapters/guzzo.py
    ```
 
    ```python
@@ -409,7 +409,7 @@ marquise source show \
 
 3. **Register in the DI container**
 
-   In `src/marquise/infrastructure/di/container.py`:
+   In `packages/marquise-core/src/marquise/infrastructure/di/container.py`:
 
    ```python
    from marquise.infrastructure.sources.guzzo.gateways.source import GuzzoSource
