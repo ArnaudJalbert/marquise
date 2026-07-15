@@ -55,6 +55,7 @@ Configure environment variables:
 
 ```bash
 cp .env.example .env
+make cli --help
 ```
 
 | Variable | Required | Description |
@@ -72,20 +73,33 @@ cp .env.example .env
 
 See the [Supabase setup guide](docs/setup/supabase-cinema-table.md) to initialize the database schema.
 
-## CLI Usage
+## Makefile (Common Tasks)
 
 ```bash
-uv run marquise --help
+make cli         # launch the CLI
+make api         # launch the API server (hot-reload)
+make test        # run all test suites
+make lint        # ruff check
+make format      # ruff format
+make ty          # type check marquise-core
+```
+
+See the full commands reference in [AGENTS.md](AGENTS.md#7-commands-reference) or [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## CLI
+
+```bash
+make cli --help
 ```
 
 ### Import showtimes
 
 ```bash
 # Interactive: pick a cinema, then a date range
-uv run marquise source import
+make cli source import
 
 # Non-interactive: import for every cinema that has a source assignment
-uv run marquise import all
+make cli import all
 ```
 
 ### Manage sources and cinemas
@@ -94,29 +108,31 @@ Most management commands are interactive — they prompt for the cinema/source r
 
 ```bash
 # Register sources from the code registry into the database (admin only)
-uv run marquise source register
+make cli source register
 
 # Assign a registered source to a cinema (interactive selection)
-uv run marquise source assign
+make cli source assign
 
 # List sources registered in the database
-uv run marquise source list-registered
+make cli source list-registered
 
 # List sources available in the code-level registry
-uv run marquise source list-available
+make cli source list-available
 
 # Show which source is assigned to each cinema
-uv run marquise source list-assignments
+make cli source list-assignments
 
 # Create / list cinemas
-uv run marquise cinema create
-uv run marquise cinema list
+make cli cinema create
+make cli cinema list
 ```
 
-### Run the REST API
+## REST API
+
+Start the server locally:
 
 ```bash
-uv run marquise api
+make api
 # → http://localhost:8000/docs   (interactive OpenAPI UI)
 # → http://localhost:8000/health (liveness probe)
 ```

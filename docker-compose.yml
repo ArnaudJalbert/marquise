@@ -14,7 +14,7 @@
 
 services:
   api:
-    build: .
+    build: apps/marquise-api
     ports:
       - "8000:8000"
     env_file:
