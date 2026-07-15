@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.24.0 (2026-07-14)
+
+### New Features
+
+- **Théâtre Outremont (Ciné-Outremont) showtime source**: adds a new `outremont` source with **exact showtimes**. Rather than the public `/cinema/` listing (which shows only a date), it reads the venue's Tuxedo Billet ticketing backend directly over plain HTTP — the same Firebase Realtime Database the site's SPA uses — by replaying its bootstrap: read the public `configuration.json` for the Firebase config, sign in anonymously via the Identity Toolkit REST API, resolve the venue channel, then read the `shows` node. Each show carries an `events` map of `eventId → epoch-millis`, yielding one screening per event at its exact UTC instant (so e.g. Le Gâteau du président surfaces both its 16:00 and 19:30 screenings, not just a date). Shows are filtered to the `Cinéma` report-category. `fetch_movie_detail` reads a single show document and parses its paragraph-delimited description into `original_title`, `directors`, `cast`, `release_year`, `origin_countries`, `genres`, `duration_minutes`, `rating`, `poster_url`, and synopsis. Follows the existing single-venue pattern: `OutremontSource` gateway (`infrastructure/sources/outremont/`), `OutremontAdapter` (`interface_adapters/repositories/source_adapters/outremont.py`), registered as `"outremont"` in the DI container's `SourceRegistry`. Stdlib-only (`urllib` + `json` + `certifi`); no new dependencies.
+
 ## 0.23.2 (2026-07-14)
 
 ### Refactors

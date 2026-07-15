@@ -56,6 +56,9 @@ from marquise.infrastructure.sources.cinematheque.gateways.source import (
 from marquise.infrastructure.sources.cineplex.gateways.source import (
     CineplexSource,
 )
+from marquise.infrastructure.sources.outremont.gateways.source import (
+    OutremontSource,
+)
 from marquise.infrastructure.supabase.config.settings import Settings
 from marquise.infrastructure.supabase.database import Database
 from marquise.infrastructure.supabase.gateways.cinema import SupabaseCinemaGateway
@@ -83,6 +86,9 @@ from marquise.interface_adapters.repositories.source_adapters.cinematheque impor
 )
 from marquise.interface_adapters.repositories.source_adapters.cineplex import (
     CineplexAdapter,
+)
+from marquise.interface_adapters.repositories.source_adapters.outremont import (
+    OutremontAdapter,
 )
 from marquise.interface_adapters.repositories.source_registry import SourceRegistry
 from marquise.interface_adapters.repositories.supabase.cinema_repository import (
@@ -276,6 +282,10 @@ class Container:
                 CineplexAdapter(
                     CineplexSource(api_key=self._settings.cineplex_api_key)
                 ),
+            )
+            registry.register(
+                "outremont",
+                OutremontAdapter(OutremontSource()),
             )
             self._registry = registry
         return self._registry
