@@ -8,6 +8,11 @@ import pytest
 
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
+from marquise.application.use_cases.get_cinema import GetCinemaUseCase
+from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
+from marquise.application.use_cases.get_cinema_screenings import (
+    GetCinemaScreeningsUseCase,
+)
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.infrastructure.controllers.auth_controller import AuthController
@@ -46,10 +51,31 @@ def mock_update_use_case() -> UpdateCinemaUseCase:
 
 
 @pytest.fixture
+def mock_get_use_case() -> GetCinemaUseCase:
+    """Provide a mocked GetCinemaUseCase."""
+    return create_autospec(GetCinemaUseCase, instance=True)
+
+
+@pytest.fixture
+def mock_get_movies_use_case() -> GetCinemaMoviesUseCase:
+    """Provide a mocked GetCinemaMoviesUseCase."""
+    return create_autospec(GetCinemaMoviesUseCase, instance=True)
+
+
+@pytest.fixture
+def mock_get_screenings_use_case() -> GetCinemaScreeningsUseCase:
+    """Provide a mocked GetCinemaScreeningsUseCase."""
+    return create_autospec(GetCinemaScreeningsUseCase, instance=True)
+
+
+@pytest.fixture
 def controller(
     mock_auth_controller: AuthController,
     mock_create_use_case: CreateCinemaUseCase,
     mock_delete_use_case: DeleteCinemaUseCase,
+    mock_get_use_case: GetCinemaUseCase,
+    mock_get_movies_use_case: GetCinemaMoviesUseCase,
+    mock_get_screenings_use_case: GetCinemaScreeningsUseCase,
     mock_list_use_case: ListCinemasUseCase,
     mock_update_use_case: UpdateCinemaUseCase,
 ) -> CinemaController:
@@ -58,6 +84,9 @@ def controller(
         auth_controller=mock_auth_controller,
         create_cinema_use_case=mock_create_use_case,
         delete_cinema_use_case=mock_delete_use_case,
+        get_cinema_use_case=mock_get_use_case,
+        get_cinema_movies_use_case=mock_get_movies_use_case,
+        get_cinema_screenings_use_case=mock_get_screenings_use_case,
         list_cinemas_use_case=mock_list_use_case,
         update_cinema_use_case=mock_update_use_case,
     )
