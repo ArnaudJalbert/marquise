@@ -285,11 +285,29 @@ Target: 100% for `domain/` and `application/`. CI fails below 70%. Do not open a
 ## 7. Commands Reference
 
 ```bash
+# ── All-in-one shortcuts (Makefile) ──────────────────────────────────
+make test       # run all 3 test suites
+make test-core  # core unit tests only
+make test-api   # API tests only
+make test-cli   # CLI tests only
+make api        # launch API with hot reload
+make cli        # launch CLI
+make lint       # ruff check
+make format     # ruff format
+make ty         # type check marquise-core
+
+# ── Manual equivalents ────────────────────────────────────────────────
 # Unit tests (no DB required)
-uv run pytest packages/marquise-core/tests/unit_tests/ -q
+uv run --package marquise-core pytest packages/marquise-core/tests/unit_tests/ -q
 
 # Unit tests with coverage
-uv run pytest packages/marquise-core/tests/unit_tests/ --cov=marquise --cov-report=term-missing -q
+uv run --package marquise-core pytest packages/marquise-core/tests/unit_tests/ --cov=marquise --cov-report=term-missing -q
+
+# API tests
+uv run --package marquise-api pytest apps/marquise-api/tests -q
+
+# CLI tests
+uv run --package marquise-cli pytest apps/marquise-cli/tests -q
 
 # Lint (workspace-wide, shared root config)
 uv run ruff check .
@@ -304,9 +322,9 @@ uv run ruff format .
 uv run ruff format --check .
 
 # CLI
-uv run marquise --help
-uv run marquise cinema --help
-uv run marquise source --help
+uv run --package marquise-cli marquise-cli --help
+uv run --package marquise-cli marquise-cli cinema --help
+uv run --package marquise-cli marquise-cli source --help
 
 # Add a runtime dependency to marquise-core
 uv add --package marquise-core <package>

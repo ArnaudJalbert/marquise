@@ -5,7 +5,7 @@ Marquise ships a read-only FastAPI with pagination, in-memory caching, and confi
 ## Starting the API
 
 ```bash
-uv run marquise api
+make api
 ```
 
 By default the server listens on `http://localhost:8000`. OpenAPI docs are at
@@ -139,7 +139,7 @@ When the env var is set, the API responds with appropriate CORS headers:
 ### How it works
 
 The middleware is registered in `create_app()` in
-`packages/marquise-core/src/marquise/infrastructure/api/app.py`. It reads the env var, parses it via
+`apps/marquise-api/src/marquise_api/app.py`. It reads the env var, parses it via
 the `_parse_cors_origins()` helper, and only adds `CORSMiddleware` when at least
 one origin is configured — so there is zero overhead when CORS is not needed.
 
@@ -151,13 +151,13 @@ are configured. No additional setup is required.
 ## How the code is organized
 
 ```
-packages/marquise-core/src/marquise/infrastructure/api/
+apps/marquise-api/src/marquise_api/
 ├── app.py              # create_app() factory, lifespan, CORS, caching, rate limiting
-├── dependencies.py     # get_container() FastAPI dependency
+├── dependencies.py     # get_cinema_controller() / get_movie_controller() / get_screening_controller()
 ├── rate_limit.py       # Shared slowapi Limiter used by app.py and the routers
-├── schemas.py          # Pydantic response models
+├── schemas/            # Pydantic response models
 └── routers/
-    ├── __init__.py     # Re-exports routers
+    ├── __init__.py     # Re-exports router modules
     ├── _dependencies.py # Shared resolve_showtimes_date_range dependency
     ├── cinemas.py      # GET /cinemas, GET /cinemas/{id}/screenings, GET /cinemas/{id}/movies
     ├── movies.py       # GET /movies, GET /movies/{id}, GET /movies/{id}/screenings
