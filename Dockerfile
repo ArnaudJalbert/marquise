@@ -28,13 +28,14 @@ WORKDIR /app
 
 # Copy dependency manifests first to maximise Docker layer caching.
 # README.md is required by hatchling's metadata validation at build time.
-COPY pyproject.toml uv.lock README.md ./
+COPY pyproject.toml uv.lock ./
+COPY packages/marquise-core/pyproject.toml packages/marquise-core/README.md ./packages/marquise-core/
 
 # Install all production dependencies (no dev group) without the project itself.
 RUN uv sync --frozen --no-dev --no-install-project
 
 # Copy the source tree and install the project into the same venv.
-COPY src/ ./src/
+COPY packages/marquise-core/src/ ./packages/marquise-core/src/
 RUN uv sync --frozen --no-dev
 
 # ---------------------------------------------------------------------------
@@ -50,7 +51,7 @@ WORKDIR /app
 
 # Copy the virtual environment and source from the builder stage.
 COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
-COPY --from=builder --chown=appuser:appuser /app/src /app/src
+COPY --from=builder --chown=appuser:appuser /app/packages/marquise-core/src /app/packages/marquise-core/src
 
 # Make the venv's bin directory available in PATH.
 ENV PATH="/app/.venv/bin:$PATH"

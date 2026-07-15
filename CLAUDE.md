@@ -6,42 +6,46 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # Unit tests (no DB required)
-uv run pytest tests/unit_tests/ -q
+uv run pytest packages/marquise-core/tests/unit_tests/ -q
 
 # Single test file or test
-uv run pytest tests/unit_tests/domain/test_cinema.py -q
-uv run pytest tests/unit_tests/ -k "test_name" -q
+uv run pytest packages/marquise-core/tests/unit_tests/domain/test_cinema.py -q
+uv run pytest packages/marquise-core/tests/unit_tests/ -k "test_name" -q
 
 # Unit tests with coverage
-uv run pytest tests/unit_tests/ --cov=marquise --cov-report=term-missing -q
+uv run pytest packages/marquise-core/tests/unit_tests/ --cov=marquise --cov-report=term-missing -q
 
 # Integration tests (requires real Supabase credentials)
-uv run pytest tests/ -q
+uv run pytest packages/marquise-core/tests/ -q
 
-# Lint
-uv run ruff check src/ tests/
+# Lint (workspace-wide, shared root config)
+uv run ruff check .
 
 # Auto-fix lint
-uv run ruff check --fix src/ tests/
+uv run ruff check --fix .
 
 # Format
-uv run ruff format src/ tests/
+uv run ruff format .
 
 # Check formatting (CI mode)
-uv run ruff format --check src/ tests/
+uv run ruff format --check .
 
 # Type check (non-blocking in CI — see issue #34)
-uv run ty check src
+uv run ty check packages/marquise-core/src
 
 # CLI
 uv run marquise --help
 
 # Add dependency
-uv add <package>           # runtime
-uv add --dev <package>     # dev only
+uv add --package marquise-core <package>   # runtime
+uv add --dev <package>                     # dev only, shared root group
 ```
 
 Never use `pip` directly. All dependencies go through `uv`.
+
+## Workspace layout
+
+Marquise is a `uv` workspace (`[tool.uv.workspace] members = ["packages/*", "apps/*"]`), mirroring the `packages/*` + `apps/*` convention used by the `web/` pnpm monorepo. Root `pyproject.toml` is virtual — no `[project]`/`[build-system]` table, not a distributable package; it holds only workspace config, the shared `dev` dependency group, and shared `ruff`/`ty` config. `packages/marquise-core` is the sole member today, owning its own `pyproject.toml`, runtime dependencies, the `marquise` console script, and `pytest`/coverage config. Only run `uv sync`/`uv lock` from the repo root — never from inside a package directory — so `uv.lock` stays single-sourced for the whole workspace.
 
 ## Architecture
 
@@ -94,15 +98,17 @@ uv run marquise source import
 - All tests are function-style (never class-style), async tests use `@pytest.mark.asyncio`.
 - Mock with `unittest.mock.create_autospec(SomeABC, instance=True)` — enforces correct signatures.
 - Use `assert_awaited_once()` / `assert_not_awaited()` for async methods.
-- `interface_adapters/` tests are unit tests that mock the gateway protocol — there is no `tests/integration/interface_adapters/` directory.
+- `interface_adapters/` tests are unit tests that mock the gateway protocol — there is no `integration_tests/interface_adapters/` directory.
 - Every test function needs a docstring describing the scenario.
+
+Tests live under `packages/marquise-core/tests/`, not root-level `tests/`.
 
 | Layer | Test location | Mock |
 |---|---|---|
-| `domain/` | `tests/unit_tests/domain/` | Nothing |
-| `application/` | `tests/unit_tests/application/` | Repository ABCs |
-| `interface_adapters/` | `tests/unit_tests/interface_adapters/` | Gateway protocols |
-| `infrastructure/gateways/` | `tests/integration/` | Real DB only |
+| `domain/` | `packages/marquise-core/tests/unit_tests/domain/` | Nothing |
+| `application/` | `packages/marquise-core/tests/unit_tests/application/` | Repository ABCs |
+| `interface_adapters/` | `packages/marquise-core/tests/unit_tests/interface_adapters/` | Gateway protocols |
+| `infrastructure/gateways/` | `packages/marquise-core/tests/integration_tests/` | Real DB only |
 
 ## Code standards
 
@@ -128,4 +134,4 @@ Optional:
 Branch: `feat/`, `fix/`, `refactor/`, `docs/`, `chore/`  
 Commit: `type(scope): concise description`
 
-Before opening a PR: run `ruff format --check`, `ruff check`, `pytest tests/unit_tests/ --cov=marquise --cov-fail-under=70`, add a `CHANGELOG.md` entry, and bump the version in `pyproject.toml`.
+Before opening a PR: run `ruff format --check`, `ruff check`, `pytest packages/marquise-core/tests/unit_tests/ --cov=marquise --cov-fail-under=70`, add a `CHANGELOG.md` entry with a version heading (repo-level; the root `pyproject.toml` is virtual and has no version of its own), and bump `packages/marquise-core/pyproject.toml`'s `version` if that package's code changed.

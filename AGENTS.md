@@ -101,8 +101,8 @@ def find(self, name):
 ### 4.2 Ruff — Run Before Every Commit
 
 ```bash
-uv run ruff format src/ tests/
-uv run ruff check --fix src/ tests/
+uv run ruff format .
+uv run ruff check --fix .
 ```
 
 Never manually style code — let Ruff handle it. Never commit code that fails either command.
@@ -165,18 +165,20 @@ def list_cinemas(...) -> None:
 
 ### 5.1 Organisation
 
+Tests live under `packages/marquise-core/tests/`, not root-level `tests/` (see [§9.1 Workspace layout](#91-workspace-layout)):
+
 ```
-tests/
+packages/marquise-core/tests/
 ├── conftest.py          # shared fixtures
 ├── unit_tests/
 │   ├── domain/          # entities, value objects
 │   ├── application/     # use cases (repos mocked)
 │   └── interface_adapters/  # adapter mapping (gateway mocked)
-└── integration/
+└── integration_tests/
     └── infrastructure/  # gateways with real DB
 ```
 
-No `tests/integration/interface_adapters/` — that directory must not exist. Interface adapter tests are unit tests that mock the gateway protocol.
+No `integration_tests/interface_adapters/` — that directory must not exist. Interface adapter tests are unit tests that mock the gateway protocol.
 
 ### 5.2 Test-by-Layer Rules
 
@@ -220,10 +222,10 @@ async def test_use_case_returns_cinema() -> None:
 
 ```bash
 # Check coverage
-uv run pytest tests/unit_tests/ --cov=marquise --cov-report=term-missing -q
+uv run pytest packages/marquise-core/tests/unit_tests/ --cov=marquise --cov-report=term-missing -q
 
 # CI gate
-uv run pytest tests/unit_tests/ --cov=marquise --cov-fail-under=70
+uv run pytest packages/marquise-core/tests/unit_tests/ --cov=marquise --cov-fail-under=70
 ```
 
 Target: 100% for `domain/` and `application/`. CI fails below 70%. Do not open a PR that drops coverage.
@@ -261,35 +263,35 @@ Target: 100% for `domain/` and `application/`. CI fails below 70%. Do not open a
 
 ```bash
 # Unit tests (no DB required)
-uv run pytest tests/unit_tests/ -q
+uv run pytest packages/marquise-core/tests/unit_tests/ -q
 
 # Unit tests with coverage
-uv run pytest tests/unit_tests/ --cov=marquise --cov-report=term-missing -q
+uv run pytest packages/marquise-core/tests/unit_tests/ --cov=marquise --cov-report=term-missing -q
 
-# Lint
-uv run ruff check src/ tests/
+# Lint (workspace-wide, shared root config)
+uv run ruff check .
 
 # Type check (non-blocking in CI for now — see #34)
-uv run ty check src
+uv run ty check packages/marquise-core/src
 
 # Format
-uv run ruff format src/ tests/
+uv run ruff format .
 
 # Check formatting (CI mode)
-uv run ruff format --check src/ tests/
+uv run ruff format --check .
 
 # CLI
 uv run marquise --help
 uv run marquise cinema --help
 uv run marquise source --help
 
-# Add a runtime dependency
-uv add <package>
+# Add a runtime dependency to marquise-core
+uv add --package marquise-core <package>
 
-# Add a dev dependency
+# Add a dev dependency (shared, root-level group)
 uv add --dev <package>
 
-# Sync after pyproject.toml changes
+# Sync after pyproject.toml changes (always from repo root — see §9.1)
 uv sync
 ```
 
@@ -312,7 +314,7 @@ Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
 ### Pull request process
 
 1. Rebase on main: `git pull origin main --rebase`
-2. Run quality gates: `ruff format --check`, `ruff check`, `pytest tests/unit_tests/`
+2. Run quality gates: `ruff format --check`, `ruff check`, `pytest packages/marquise-core/tests/unit_tests/`
 3. Ensure coverage did not drop below 70%
 4. Add `CHANGELOG.md` entry and bump version in `pyproject.toml`
 5. Reference the issue: `Closes #N`
@@ -325,6 +327,14 @@ One focused task per commit. If a change touches >5 files or >2 layers, split it
 ---
 
 ## 9. Frequently Confused Points
+
+### 9.1 Workspace layout
+
+Marquise is a `uv` workspace (`[tool.uv.workspace] members = ["packages/*", "apps/*"]`), mirroring the `packages/*` + `apps/*` convention already used by the `web/` pnpm monorepo. Root `pyproject.toml` is **virtual** — no `[project]`/`[build-system]` table, not a distributable package. It holds workspace config, the shared `dev` dependency group, and shared `ruff`/`ty` config only. `packages/marquise-core` is the sole member today; it owns its own `pyproject.toml`, runtime dependencies, the `marquise` console script, and `pytest`/coverage config.
+
+When running pytest, target `packages/marquise-core/tests`, not a root-level `tests/` (it no longer exists). When running `ruff`/`ty`, invoke from repo root — those tools are shared/workspace-wide.
+
+**One lockfile rule**: only run `uv sync` / `uv lock` from the repo root, never from inside `packages/marquise-core/` or any other member directory.
 
 **InputData vs OutputData validation**: `InputData` validates because it represents external input. `OutputData` validates fields that are computed or transformed — skip re-validating values copied directly from already-validated entities.
 
