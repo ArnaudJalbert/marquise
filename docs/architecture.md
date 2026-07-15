@@ -6,9 +6,12 @@ Marquise follows **Clean Architecture**. Dependencies point **inward only** — 
 
 ```
 ┌───────────────────────────────────────────────────────────────────────┐
+│  Public surface: marquise/__init__.py + bootstrap.py                  │
+│  MarquiseFactory, create_factory(), create_factory_session()          │
+├───────────────────────────────────────────────────────────────────────┤
 │  packages/marquise-core/src/marquise/infrastructure/                 │
-│  CLI (Typer), DI container, auth, source scrapers,                   │
-│  Supabase gateways                                                    │
+│  CLI (Typer), FastAPI, controllers, DI container, auth,              │
+│  source scrapers, Supabase gateways                                   │
 ├───────────────────────────────────────────────────────────────────────┤
 │  packages/marquise-core/src/marquise/interface_adapters/             │
 │  Repository implementations (Supabase),                              │
@@ -27,6 +30,8 @@ Marquise follows **Clean Architecture**. Dependencies point **inward only** — 
 
 ```
 packages/marquise-core/src/marquise/
+├── bootstrap.py           # Public API: MarquiseFactory, create_factory()
+├── __init__.py            # Public surface re-exports (factory + controllers)
 ├── domain/
 │   ├── entities/          # Cinema, Movie, Screening
 │   └── value_objects/     # CinemaId, MovieId, ScreeningId, Showtime, SourceName
@@ -45,7 +50,7 @@ packages/marquise-core/src/marquise/
     │   ├── routers/       # Endpoints (cinemas, movies)
     │   ├── schemas.py     # Pydantic response models
     │   └── dependencies.py # Shared DI dependency
-    ├── controllers/       # CinemaController (thin CLI wiring layer)
+    ├── controllers/       # CinemaController, SourceController, AuthController
     ├── di/                # Dependency injection container
     ├── auth/              # Admin authentication
     ├── supabase/
@@ -98,6 +103,44 @@ HTTP GET /v1/cinemas
   → Pydantic response model
   ← JSON response (cached via fastapi-cache2)
 ```
+
+## Public Surface & Import Boundary
+
+Apps in `apps/` depend only on a defined public surface of `marquise-core` — never on internal modules.
+
+### What is public
+
+The public surface is defined by `marquise/__init__.py` and re-exported through `__all__`:
+
+- `MarquiseFactory` — dependency container with lazy-loaded controllers
+- `create_factory()` — async factory function that returns a configured `MarquiseFactory`
+- `create_factory_session()` — async context manager for request-scoped sessions
+- `CinemaController`, `SourceController`, `AuthController` — thin wiring layer
+
+Domain entities, value objects, use cases, repositories, protocols, and infrastructure are **not** part of the public surface.
+
+### Usage from apps
+
+```python
+from marquise import create_factory, create_factory_session
+
+factory = await create_factory()
+
+# Sync controller access
+cinemas = await factory.cinema.find_all()
+
+# Request-scoped session
+async with create_factory_session() as session:
+    await session.cinema.find_by_id(cinema_id)
+```
+
+### Import boundary rules
+
+- `apps/` may import only from `marquise` (top-level) and `marquise.bootstrap`.
+- `apps/` must **never** import from `marquise.{domain,application,interface_adapters,infrastructure}`.
+- `packages/marquise-core/src/marquise/__init__.py` must not define classes or functions directly — only re-export from submodules.
+- `__all__` must be tested against a frozen snapshot to prevent accidental additions.
+- An AST-based scanner and `import-linter` contract verify these rules automatically.
 
 ## Tech Stack
 

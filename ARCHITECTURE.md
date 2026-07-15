@@ -10,6 +10,7 @@
 | Package manager | uv |
 | Database | Supabase (PostgreSQL via asyncpg) |
 | CLI | Typer + Rich |
+| REST API | FastAPI (read-only public endpoints + admin endpoints) |
 | Testing | pytest + pytest-asyncio |
 | Linting / formatting | Ruff |
 | Coverage gate | 70% CI minimum (target: 80%+; 100% for domain/application) |
@@ -20,9 +21,12 @@ Marquise follows **Clean Architecture**. Dependencies point **inward only** — 
 
 ```
 ┌───────────────────────────────────────────────────────────────────────┐
+│  Public surface: marquise/__init__.py + bootstrap.py                  │
+│  MarquiseFactory, create_factory(), create_factory_session()          │
+├───────────────────────────────────────────────────────────────────────┤
 │  packages/marquise-core/src/marquise/infrastructure/                 │
-│  CLI (Typer), DI container, auth, source scrapers,                   │
-│  Supabase gateways                                                    │
+│  CLI (Typer), FastAPI, controllers, DI container, auth,              │
+│  source scrapers, Supabase gateways                                   │
 ├───────────────────────────────────────────────────────────────────────┤
 │  packages/marquise-core/src/marquise/interface_adapters/             │
 │  Repository implementations (Supabase),                              │
@@ -41,6 +45,8 @@ Marquise follows **Clean Architecture**. Dependencies point **inward only** — 
 
 ```
 packages/marquise-core/src/marquise/
+├── bootstrap.py           # Public API: MarquiseFactory, create_factory()
+├── __init__.py            # Public surface re-exports (factory + controllers)
 ├── domain/
 │   ├── entities/          # Cinema, Movie, Screening
 │   └── value_objects/     # CinemaId, MovieId, ScreeningId, Showtime, SourceName
@@ -55,7 +61,11 @@ packages/marquise-core/src/marquise/
 │       └── source_adapters/  # Cineplex, CinemaCinema, CinemaPublic adapters
 └── infrastructure/
     ├── cli/               # Typer app and command modules
-    ├── controllers/       # CinemaController (thin CLI wiring layer)
+    ├── api/               # FastAPI read-only REST API
+    │   ├── routers/       # Endpoints (cinemas, movies, screenings)
+    │   ├── schemas/       # Pydantic response models
+    │   └── dependencies.py # Shared DI dependency
+    ├── controllers/       # CinemaController, SourceController, AuthController
     ├── di/                # Dependency injection container
     ├── auth/              # Admin authentication
     ├── supabase/
@@ -64,7 +74,10 @@ packages/marquise-core/src/marquise/
     └── sources/
         ├── cineplex/      # Cineplex scraper (API + web)
         ├── cinemacinema/  # CinemaCinema scraper
-        └── cinemapublic/  # Cinema Public scraper
+        ├── cinemapublic/  # Cinema Public scraper
+        ├── cinemamoderne/ # Cinéma Moderne scraper
+        ├── cinematheque/  # Cinémathèque québécoise scraper
+        └── outremont/     # Théâtre Outremont scraper
 ```
 
 ## Key Patterns
@@ -95,12 +108,47 @@ marquise source import
   → OutputData displayed via Rich
 ```
 
+## Public Surface & Import Boundary
+
+Apps in `apps/` depend only on a defined public surface of `marquise-core` — never on internal modules.
+
+### What is public
+
+The public surface is defined by `marquise/__init__.py` and re-exported through `__all__`:
+
+- `MarquiseFactory` — dependency container with lazy-loaded controllers
+- `create_factory()` — async factory function that returns a configured `MarquiseFactory`
+- `create_factory_session()` — async context manager for request-scoped sessions
+- `CinemaController`, `SourceController`, `AuthController` — thin wiring layer
+
+Domain entities, value objects, use cases, repositories, protocols, and infrastructure are **not** part of the public surface.
+
+### Usage from apps
+
+```python
+from marquise import create_factory, create_factory_session
+
+factory = await create_factory()
+
+# Sync controller access
+cinemas = await factory.cinema.find_all()
+
+# Request-scoped session
+async with create_factory_session() as session:
+    await session.cinema.find_by_id(cinema_id)
+```
+
+### Import boundary rules
+
+- `apps/` may import only from `marquise` (top-level) and `marquise.bootstrap`.
+- `apps/` must **never** import from `marquise.{domain,application,interface_adapters,infrastructure}`.
+- `packages/marquise-core/src/marquise/__init__.py` must not define classes or functions directly — only re-export from submodules.
+- `__all__` must be tested against a frozen snapshot to prevent accidental additions.
+- An AST-based scanner and `import-linter` contract verify these rules automatically.
+
 ## Planned Additions
 
-- **FastAPI REST API** — read-only public endpoints planned:
-  - `GET /cinemas`
-  - `GET /cinemas/{id}/showtimes?from=&to=`
-  - `GET /movies/{id}`
+- **Source adapters**: Additional scrapers (Cinema Moderne, Cinémathèque, Outremont, etc.).
 
 ## Further Reading
 
