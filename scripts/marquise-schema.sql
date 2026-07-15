@@ -1,7 +1,8 @@
--- Migration 001: Initial Marquise database schema
--- Run this in the Supabase SQL Editor.
+-- Full schema for the "marquise" database.
+-- Run this in the Supabase SQL Editor to set up the database from scratch.
 --
--- Creates all 5 tables with foreign key constraints and ON DELETE CASCADE.
+-- Idempotent: every statement uses IF NOT EXISTS, so it's also safe to
+-- re-run against an already-provisioned database.
 
 CREATE SCHEMA IF NOT EXISTS marquise;
 
@@ -33,7 +34,13 @@ CREATE TABLE IF NOT EXISTS marquise.movies (
     directors        TEXT,
     cast_members     TEXT,
     duration_minutes INTEGER,
-    description      TEXT
+    description      TEXT,
+    poster_url       TEXT,
+    trailer_url      TEXT,
+    genres           TEXT,
+    original_title   TEXT,
+    rating           TEXT,
+    origin_countries TEXT
 );
 
 CREATE TABLE IF NOT EXISTS marquise.screenings (
@@ -43,5 +50,18 @@ CREATE TABLE IF NOT EXISTS marquise.screenings (
     cinema_id   TEXT NOT NULL
         REFERENCES marquise.cinemas(id) ON DELETE CASCADE,
     showtime    TIMESTAMP NOT NULL,
+    external_id TEXT UNIQUE,
+    ticket_url  TEXT,
+    room        TEXT,
+    language    TEXT,
     UNIQUE (cinema_id, movie_id, showtime)
 );
+
+CREATE INDEX IF NOT EXISTS idx_screenings_movie_id
+    ON marquise.screenings(movie_id);
+
+CREATE INDEX IF NOT EXISTS idx_screenings_cinema_showtime
+    ON marquise.screenings(cinema_id, showtime);
+
+CREATE INDEX IF NOT EXISTS idx_screenings_movie_showtime
+    ON marquise.screenings(movie_id, showtime);

@@ -172,11 +172,9 @@ URLs, cast, directors, genres, description, and more from their detail pages.
 
 ## Database Schema
 
-The database uses two migrations:
-
-### Migration 001 (`scripts/001_initial_schema.sql` / `migrate_001_initial_schema.py`)
-
-Creates the base schema with these tables:
+The full schema lives in a single file, `scripts/marquise-schema.sql`, run
+manually via the Supabase SQL Editor. Every statement uses `IF NOT EXISTS`,
+so it's safe to re-run against an already-provisioned database.
 
 ```sql
 CREATE TABLE marquise.cinemas (
@@ -207,7 +205,13 @@ CREATE TABLE marquise.movies (
     directors        TEXT,
     cast_members     TEXT,
     duration_minutes INTEGER,
-    description      TEXT
+    description      TEXT,
+    poster_url       TEXT,
+    trailer_url      TEXT,
+    genres           TEXT,
+    original_title   TEXT,
+    rating           TEXT,
+    origin_countries TEXT
 );
 
 CREATE TABLE marquise.screenings (
@@ -217,28 +221,16 @@ CREATE TABLE marquise.screenings (
     cinema_id   TEXT NOT NULL
         REFERENCES marquise.cinemas(id) ON DELETE CASCADE,
     showtime    TIMESTAMP NOT NULL,
+    external_id TEXT UNIQUE,
+    ticket_url  TEXT,
+    room        TEXT,
+    language    TEXT,
     UNIQUE (cinema_id, movie_id, showtime)
 );
-```
 
-### Migration 002 (`scripts/002_add_movie_screening_fields.sql`)
-
-Adds enrichment and metadata columns:
-
-```sql
-ALTER TABLE marquise.movies
-    ADD COLUMN poster_url TEXT,
-    ADD COLUMN trailer_url TEXT,
-    ADD COLUMN genres TEXT,
-    ADD COLUMN original_title TEXT,
-    ADD COLUMN rating TEXT,
-    ADD COLUMN origin_countries TEXT;
-
-ALTER TABLE marquise.screenings
-    ADD COLUMN external_id TEXT UNIQUE,
-    ADD COLUMN ticket_url TEXT,
-    ADD COLUMN room TEXT,
-    ADD COLUMN language TEXT;
+CREATE INDEX idx_screenings_movie_id ON marquise.screenings(movie_id);
+CREATE INDEX idx_screenings_cinema_showtime ON marquise.screenings(cinema_id, showtime);
+CREATE INDEX idx_screenings_movie_showtime ON marquise.screenings(movie_id, showtime);
 ```
 
 ## Movie Enrichment
