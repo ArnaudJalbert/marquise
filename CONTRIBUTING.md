@@ -71,7 +71,10 @@ uv run ruff format .
 uv run ruff format --check .
 
 # Explore the CLI
-uv run marquise --help
+uv run --package marquise-cli marquise-cli --help
+
+# Launch the API (hot reload)
+uv run --package marquise-api uvicorn marquise_api.app:create_app --factory --reload --host 0.0.0.0 --port 8000
 ```
 
 ## CI pipeline

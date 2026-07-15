@@ -9,8 +9,11 @@ Marquise follows **Clean Architecture**. Dependencies point **inward only** — 
 │  Public surface: marquise/__init__.py + bootstrap.py                  │
 │  MarquiseFactory, create_factory(), create_factory_session()          │
 ├───────────────────────────────────────────────────────────────────────┤
+│  apps/marquise-api/ and apps/marquise-cli/                           │
+│  FastAPI, Typer apps (separate workspace packages)                    │
+├───────────────────────────────────────────────────────────────────────┤
 │  packages/marquise-core/src/marquise/infrastructure/                 │
-│  CLI (Typer), FastAPI, controllers, DI container, auth,              │
+│  Controllers, DI container, auth,                                    │
 │  source scrapers, Supabase gateways                                   │
 ├───────────────────────────────────────────────────────────────────────┤
 │  packages/marquise-core/src/marquise/interface_adapters/             │
@@ -45,11 +48,8 @@ packages/marquise-core/src/marquise/
 │       ├── supabase/      # Repository implementations (entity mapping)
 │       └── source_adapters/  # Cineplex, CinemaCinema, CinemaPublic adapters
 └── infrastructure/
-    ├── cli/               # Typer app and command modules
-    ├── api/               # FastAPI read-only REST API
-    │   ├── routers/       # Endpoints (cinemas, movies)
-    │   ├── schemas.py     # Pydantic response models
-    │   └── dependencies.py # Shared DI dependency
+    ├── controllers/       # CinemaController, SourceController, AuthController
+    ├── di/                # Dependency injection container
     ├── controllers/       # CinemaController, SourceController, AuthController
     ├── di/                # Dependency injection container
     ├── auth/              # Admin authentication
@@ -82,7 +82,7 @@ Each cinema source has a scraper under `infrastructure/sources/<source>/` and an
 
 ```
 marquise source import
-  → CLI command (infrastructure/cli/source_commands.py)
+  → CLI command (apps/marquise-cli/src/marquise_cli/source_commands.py)
   → CinemaController (infrastructure/controllers/)
   → ImportScreeningsUseCase (application/use_cases/)
     → SourceAdapter.fetch_showtimes()      # external HTTP
@@ -96,7 +96,7 @@ marquise source import
 
 ```
 HTTP GET /v1/cinemas
-  → FastAPI route (infrastructure/api/routers/cinemas.py)
+  → FastAPI route (apps/marquise-api/src/marquise_api/routers/cinemas.py)
   → Container.cinema_controller.list()
   → ListCinemasUseCase (application/use_cases/)
     → CinemaRepository.find_all()      # Supabase
