@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.25.1 (2026-07-15)
+
+### Chores
+
+- **Repo-root cleanup**: removes stale one-off tooling and planning artifacts left over from earlier work.
+  - **`scripts/`**: removes the now-unneeded `inspect_screening_gateway.py` ad-hoc debug tool and the stale `migrate_001_initial_schema.py` runner (predated the columns/indexes added in migrations 002/003). Consolidates `001_initial_schema.sql`, `002_add_movie_screening_fields.sql`, and `003_screening_search_indexes.sql` into a single `scripts/marquise-schema.sql` representing the full, current `marquise` schema — run manually via the Supabase SQL Editor, same as before. Renames `001_test_schema.sql` to `scripts/marquise-test-schema.sql` to match. Updates `docs/sources.md`'s "Database Schema" section accordingly (it previously covered only migrations 001/002, missing 003 entirely).
+  - **`bin/`**: removes `bench_list_cinemas.py`, `scrape_cinema.py`, and `scrape_cinemapublic.py` — one-off benchmarking/debug scripts predating the current source-adapter architecture, superseded by the `marquise source import` CLI command.
+  - **`plan/`**: removes `feature-marquise-admin-scaffold-1.md`, a planning doc for work already merged (the `web/` monorepo scaffold).
+
 ## 0.25.0 (2026-07-15)
 
 ### New Features
