@@ -20,6 +20,29 @@ Marquise is a `uv` workspace (`[tool.uv.workspace] members = ["packages/*", "app
 
 **One lockfile rule**: only ever run `uv sync` / `uv lock` from the repo root, never from inside `packages/marquise-core/` or any other member directory. This keeps `uv.lock` single-sourced for the whole workspace.
 
+### Bootstrap API
+
+Apps in `apps/` access `marquise-core` through a public bootstrap API defined in `packages/marquise-core/src/marquise/bootstrap.py`. This is the **only** way external code should use the core package.
+
+```python
+from marquise import create_factory, create_factory_session
+
+# Create a factory (one per application lifetime)
+factory = await create_factory()
+
+# Use controllers
+cinemas = await factory.cinema.find_all()
+
+# Or use a request-scoped session
+async with create_factory_session() as session:
+    await session.cinema.find_by_id(cinema_id)
+```
+
+**Import boundary**: Apps may **only** import from `marquise` (top-level) — never from `marquise.domain`, `marquise.application`, `marquise.interface_adapters`, or `marquise.infrastructure`. This is enforced by:
+- AST-based scanner: `tests/unit_tests/test_import_boundary.py`
+- `import-linter` contract in root `pyproject.toml`
+- Snapshot test: `tests/unit_tests/test_public_api.py`
+
 ## Day-to-day commands
 
 ```bash
@@ -59,6 +82,7 @@ Every push and PR to `main` runs the `quality` job:
 2. `ruff check` — fails on lint errors
 3. `ty check packages/marquise-core/src` — type check; **non-blocking** for now (reports diagnostics without failing the build while the backlog is triaged, see #34)
 4. `pytest packages/marquise-core/tests/unit_tests/ --cov=marquise --cov-fail-under=70` — fails below 70% coverage
+5. Import boundary check — verifies `apps/` cannot import internal modules (via `import-linter` contract)
 
 The `integration` job (manual trigger only) runs `packages/marquise-core/tests/integration_tests/` using secrets `SUPABASE_URL`, `SUPABASE_KEY`, `DATABASE_URL`.
 
@@ -90,6 +114,7 @@ docs(arch): add ARCHITECTURE.md
 - [ ] `ruff check` passes
 - [ ] Unit tests pass (`pytest packages/marquise-core/tests/unit_tests/`)
 - [ ] Coverage did not drop below 70%
+- [ ] Import boundary not violated (`import-linter` passes)
 - [ ] `CHANGELOG.md` entry added with a new version heading (repo-level; root `pyproject.toml` is virtual and has no version of its own)
 - [ ] `packages/marquise-core/pyproject.toml`'s `version` bumped too if that package's code changed (semver: major/minor/patch)
 - [ ] Issue linked in PR body (`Closes #N`)

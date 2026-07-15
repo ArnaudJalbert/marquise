@@ -13,7 +13,7 @@
 
 ## 1. Project Overview
 
-**Marquise** is a Montreal cinema showtimes aggregator. It fetches screening data from Cineplex, CinemaCinema, and Cinema Public; normalises it; and stores it in a Supabase (PostgreSQL) database. The current interface is a Typer CLI. A FastAPI REST API is planned but not yet implemented.
+**Marquise** is a Montreal cinema showtimes aggregator. It fetches screening data from Cineplex, CinemaCinema, Cinema Public, Cinéma Moderne, Cinémathèque québécoise, and Théâtre Outremont; normalises it; and stores it in a Supabase (PostgreSQL) database. The interface includes a Typer CLI, a read-only FastAPI REST API, and a public bootstrap API (`MarquiseFactory`) for apps in `apps/`.
 
 Known technical debt and TODO items: [`docs/todo.md`](docs/todo.md).
 
@@ -25,6 +25,7 @@ Known technical debt and TODO items: [`docs/todo.md`](docs/todo.md).
 - **Package manager**: `uv` — all commands use `uv run`, all deps via `uv add`
 - **Database**: Supabase (PostgreSQL via `asyncpg`) — abstracted behind repository interfaces
 - **CLI**: Typer + Rich
+- **REST API**: FastAPI (read-only public endpoints + admin endpoints)
 - **Testing**: pytest + pytest-asyncio
 - **Code quality**: Ruff (formatting + linting) — mandatory before every commit
 - **Coverage gate**: 70% CI minimum; target 80%+ overall, 100% for `domain/` and `application/`
@@ -80,6 +81,27 @@ Marquise uses **Clean Architecture**. **Dependencies point inward only.** Outer 
 3. Application never knows about databases or HTTP
 4. Interface adapters and infrastructure implement interfaces defined in application
 5. Use cases catch domain exceptions and re-raise them as `ApplicationError` subclasses — domain exceptions must not escape the application layer
+
+### 3.3 Public Surface & Import Boundary
+
+Apps in `apps/` depend only on a defined public surface of `marquise-core` — never on internal modules.
+
+**What is public** (defined in `marquise/__init__.py`, enforced via `__all__`):
+- `MarquiseFactory` — dependency container with lazy-loaded controllers
+- `create_factory()` — async factory function that returns a configured `MarquiseFactory`
+- `create_factory_session()` — async context manager for request-scoped sessions
+- `CinemaController`, `SourceController`, `AuthController` — thin wiring layer
+
+**What is NOT public**: Domain entities, value objects, use cases, repositories, protocols, infrastructure.
+
+**Import rules for `apps/`**:
+- May import only from `marquise` (top-level) and `marquise.bootstrap`
+- Must **never** import from `marquise.{domain,application,interface_adapters,infrastructure}`
+
+**Enforcement**:
+- AST-based scanner in `tests/unit_tests/test_import_boundary.py`
+- `import-linter` contract in root `pyproject.toml`
+- Snapshot test in `tests/unit_tests/test_public_api.py` prevents accidental `__all__` additions
 
 ---
 
@@ -241,6 +263,7 @@ Target: 100% for `domain/` and `application/`. CI fails below 70%. Do not open a
 - Putting business logic in CLI commands, controllers, or repository implementations
 - Creating circular dependencies between layers
 - Using `Any` without a comment explaining why
+- Importing internal modules from `apps/` (must only use `marquise` public surface)
 
 ### Quality gate violations
 
@@ -344,4 +367,4 @@ When running pytest, target `packages/marquise-core/tests`, not a root-level `te
 
 ---
 
-*Last updated: 2026-06-26 — reflects Python 3.13, Supabase/asyncpg, Typer CLI. FastAPI REST API not yet implemented.*
+*Last updated: 2026-06-26 — reflects Python 3.13, Supabase/asyncpg, Typer CLI, FastAPI REST API, and bootstrap API with import boundary enforcement.*
