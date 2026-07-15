@@ -1,6 +1,10 @@
 # Changelog
 
-## 0.24.0 (2026-07-14)
+## 0.25.0 (2026-07-15)
+
+### New Features
+
+- **`web/` Turborepo monorepo scaffold (#64)**: bootstraps the admin web app toolchain skeleton as a pnpm + Turborepo workspace under `web/`, following the `apps/*` + `packages/*` convention so the repo can host multiple front ends under one CI pipeline. Adds the workspace root (`web/package.json`, `web/pnpm-workspace.yaml`, `web/turbo.json` with a `build`→`^build` pipeline), a bare Vite + React + TS admin app at `web/apps/marquise-admin`, and a shared `@marquise/core` package at `web/packages/core` (consumed via `workspace:*`, React as a peer dependency to avoid a duplicate runtime). The admin app renders a `CoreHello` smoke-test component from `@marquise/core` to prove the workspace wiring; `pnpm turbo run build` builds `core` before the app. No product logic, routing, API client, or UI kit yet — those are separate issues. Root `.gitignore` ignores `web/**/{node_modules,dist,.turbo,.env}`. The scope was broadened from issue #64's original single-app wording (see the issue's scope-update comment). Closes #64.
 
 ### New Features
 

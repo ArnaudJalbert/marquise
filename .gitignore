@@ -20,3 +20,9 @@ wheels/
 
 # Documentation
 site/
+
+# Web (pnpm + Turborepo monorepo)
+web/**/node_modules
+web/**/dist
+web/**/.turbo
+web/**/.env
