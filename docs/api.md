@@ -139,7 +139,7 @@ When the env var is set, the API responds with appropriate CORS headers:
 ### How it works
 
 The middleware is registered in `create_app()` in
-`src/marquise/infrastructure/api/app.py`. It reads the env var, parses it via
+`packages/marquise-core/src/marquise/infrastructure/api/app.py`. It reads the env var, parses it via
 the `_parse_cors_origins()` helper, and only adds `CORSMiddleware` when at least
 one origin is configured — so there is zero overhead when CORS is not needed.
 
@@ -151,7 +151,7 @@ are configured. No additional setup is required.
 ## How the code is organized
 
 ```
-src/marquise/infrastructure/api/
+packages/marquise-core/src/marquise/infrastructure/api/
 ├── app.py              # create_app() factory, lifespan, CORS, caching, rate limiting
 ├── dependencies.py     # get_container() FastAPI dependency
 ├── rate_limit.py       # Shared slowapi Limiter used by app.py and the routers
