@@ -38,36 +38,35 @@ This means:
 
 ### Scraping / Import Pipeline
 
-```
-┌────────────────────────────────────────────────────────────────────┐
-│  ImportScreeningsUseCase (application layer)                       │
-│                                                                    │
-│  1. Resolve cinema + source assignment from DB                     │
-│  2. SourceRegistry.fetch_showtimes()                               │
-│     → adapter.fetch_showtimes(cinema, start, end)                  │
-│       → gateway.fetch_showtimes(flat params)                       │
-│     → returns list[ShowtimeRow] (dataclass)                        │
-│  3. Look up or create Movie entities (by title)                    │
-│  4. Enrich movies in parallel via fetch_movie_detail               │
-│     → SourceRegistry.fetch_movie_detail(source_name, identifier)   │
-│       → adapter.fetch_movie_detail(identifier)                     │
-│         → gateway.fetch_movie_detail(slug/url)                     │
-│  5. Upsert Screening entities to DB                                │
-│                                                                    │
-│  Results are stored permanently in the DB.                         │
-└────────────────────────────────────────────────────────────────────┘
+```mermaid
+sequenceDiagram
+    participant UC as ImportScreeningsUseCase
+    participant Reg as SourceRegistry
+    participant Adapter as SourceAdapter
+    participant GW as Gateway
+    participant DB as Database
+
+    UC->>DB: 1. Resolve cinema + source assignment
+    UC->>Reg: 2. fetch_showtimes(cinema, start, end)
+    Reg->>Adapter: fetch_showtimes(cinema, start, end)
+    Adapter->>GW: fetch_showtimes(flat params)
+    GW-->>Adapter: list[dict]
+    Adapter-->>Reg: list[ShowtimeRow]
+    Reg-->>UC: list[ShowtimeRow]
+    UC->>DB: 3. Look up / create Movie entities
+    UC->>Reg: 4. fetch_movie_detail(source, identifier)
+    Reg->>Adapter: fetch_movie_detail(identifier)
+    Adapter->>GW: fetch_movie_detail(slug/url)
+    GW-->>Adapter: dict
+    Adapter-->>Reg: dict
+    Reg-->>UC: dict
+    UC->>DB: 5. Upsert Screening entities
+    Note over UC,DB: Results are stored permanently in the DB
 ```
 
 ### API
 
-```
-┌────────────────────────────────────────────────────────────────────┐
-│  FastAPI routes read showtimes from DB via repository queries.     │
-│  Never calls external sources directly.                            │
-│  Caching via fastapi-cache2 (configurable TTL).                    │
-│  CORS via MARQUISE_API_CORS_ORIGINS env var.                       │
-└────────────────────────────────────────────────────────────────────┘
-```
+FastAPI routes read showtimes from DB via repository queries. Never calls external sources directly. Caching via `fastapi-cache2` (configurable TTL). CORS via `MARQUISE_API_CORS_ORIGINS` env var.
 
 ## Domain Model
 
