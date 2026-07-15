@@ -10,6 +10,10 @@ Typer CLI lives in `marquise-cli`, each with independent versions.
 
 ## 2026-07-15
 
+### Docs
+
+- **Replace text-based diagrams with Mermaid charts**: Converted ASCII box diagrams and arrow-chain data flows in `docs/architecture.md` and `docs/sources.md` to `flowchart` and `sequenceDiagram` Mermaid blocks. Enabled Mermaid rendering in MkDocs via `pymdownx.superfences` custom fence and CDN-loaded Mermaid JS. Also converted source mapping overview to `flowchart LR` and collapsed the API note ASCII box to plain text.
+
 ### marquise-core v0.26.0
 
 - **Core public bootstrap API (#101, #102)**: adds a public bootstrap API for apps in `apps/` to depend on `marquise-core` without reaching into internal modules. New `MarquiseFactory` class in `packages/marquise-core/src/marquise/bootstrap.py` with lazy-loaded controller properties (`.cinema`, `.source`, `.auth`), `check_database_health()` method, and async context manager support. `create_factory()` async factory function and `create_factory_session()` async context manager for app integration. Public surface re-exported from `marquise/__init__.py` via `__all__`: `MarquiseFactory`, `create_factory`, `create_factory_session`, `CinemaController`, `SourceController`, `AuthController`. Import boundary enforcement: AST-based scanner (`tests/unit_tests/test_import_boundary.py`), `import-linter` contract in root `pyproject.toml`, and snapshot test (`tests/unit_tests/test_public_api.py`) prevents accidental `__all__` additions. Closes #101, #102.

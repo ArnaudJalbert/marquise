@@ -4,29 +4,16 @@ Marquise follows **Clean Architecture**. Dependencies point **inward only** — 
 
 ## Four-Layer Structure
 
-```
-┌───────────────────────────────────────────────────────────────────────┐
-│  Public surface: marquise/__init__.py + bootstrap.py                  │
-│  MarquiseFactory, create_factory(), create_factory_session()          │
-├───────────────────────────────────────────────────────────────────────┤
-│  apps/marquise-api/ and apps/marquise-cli/                           │
-│  FastAPI, Typer apps (separate workspace packages)                    │
-├───────────────────────────────────────────────────────────────────────┤
-│  packages/marquise-core/src/marquise/infrastructure/                 │
-│  Controllers, DI container, auth,                                    │
-│  source scrapers, Supabase gateways                                   │
-├───────────────────────────────────────────────────────────────────────┤
-│  packages/marquise-core/src/marquise/interface_adapters/             │
-│  Repository implementations (Supabase),                              │
-│  source adapters, gateway protocols                                   │
-├───────────────────────────────────────────────────────────────────────┤
-│  packages/marquise-core/src/marquise/application/                    │
-│  Use cases, repository interfaces, exceptions                         │
-├───────────────────────────────────────────────────────────────────────┤
-│  packages/marquise-core/src/marquise/domain/                         │
-│  Entities (Cinema, Movie, Screening),                                 │
-│  value objects (CinemaId, MovieId, Showtime, …)                       │
-└───────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    PUB["Public Surface<br/>MarquiseFactory, create_factory(), create_factory_session()"]
+    APPS["apps/<br/>marquise-api (FastAPI), marquise-cli (Typer)"]
+    INF["infrastructure/<br/>Controllers, DI container, auth,<br/>source scrapers, Supabase gateways"]
+    ADAPT["interface_adapters/<br/>Repository implementations (Supabase),<br/>source adapters, gateway protocols"]
+    APP["application/<br/>Use cases, repository interfaces, exceptions"]
+    DOM["domain/<br/>Entities (Cinema, Movie, Screening),<br/>value objects (CinemaId, MovieId, Showtime, …)"]
+
+    PUB --> APPS --> INF --> ADAPT --> APP --> DOM
 ```
 
 ## Key Directories
@@ -80,28 +67,45 @@ Each cinema source has a scraper under `infrastructure/sources/<source>/` and an
 
 ## Data Flow
 
-```
-marquise source import
-  → CLI command (apps/marquise-cli/src/marquise_cli/source_commands.py)
-  → CinemaController (infrastructure/controllers/)
-  → ImportScreeningsUseCase (application/use_cases/)
-    → SourceAdapter.fetch_showtimes()      # external HTTP
-    → MovieRepository.find_by_title()      # Supabase
-    → MovieRepository.save()
-    → ScreeningRepository.save()           # upsert
-  → OutputData displayed via Rich
+```mermaid
+sequenceDiagram
+    participant CLI as CLI (marquise-cli)
+    participant Ctrl as CinemaController
+    participant UC as ImportScreeningsUseCase
+    participant Adapter as SourceAdapter
+    participant MovieRepo as MovieRepository
+    participant ScrnRepo as ScreeningRepository
+
+    CLI->>Ctrl: marquise source import
+    Ctrl->>UC: execute(ImportScreeningsInputData)
+    UC->>Adapter: fetch_showtimes() (external HTTP)
+    UC->>MovieRepo: find_by_title() (Supabase)
+    UC->>MovieRepo: save()
+    UC->>ScrnRepo: save() (upsert)
+    UC-->>Ctrl: ImportScreeningsOutputData
+    Ctrl-->>CLI: display via Rich
 ```
 
 ### API request flow
 
-```
-HTTP GET /v1/cinemas
-  → FastAPI route (apps/marquise-api/src/marquise_api/routers/cinemas.py)
-  → Container.cinema_controller.list()
-  → ListCinemasUseCase (application/use_cases/)
-    → CinemaRepository.find_all()      # Supabase
-  → Pydantic response model
-  ← JSON response (cached via fastapi-cache2)
+```mermaid
+sequenceDiagram
+    participant Client as HTTP Client
+    participant Route as FastAPI Route
+    participant Container as DI Container
+    participant Ctrl as CinemaController
+    participant UC as ListCinemasUseCase
+    participant Repo as CinemaRepository
+
+    Client->>Route: GET /v1/cinemas
+    Route->>Container: resolve dependencies
+    Container->>Ctrl: cinema_controller.list()
+    Ctrl->>UC: execute(ListCinemasInputData)
+    UC->>Repo: find_all() (Supabase)
+    Repo-->>UC: list[Cinema]
+    UC-->>Ctrl: ListCinemasOutputData
+    Ctrl-->>Route: Pydantic response model
+    Route-->>Client: JSON response (cached)
 ```
 
 ## Public Surface & Import Boundary
