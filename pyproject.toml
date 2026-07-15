@@ -7,6 +7,7 @@ marquise-core = { workspace = true }
 [dependency-groups]
 dev = [
     "httpx>=0.28.1",
+    "import-linter>=2.13",
     "mkdocs>=1.6.1",
     "mkdocs-material>=9.7.6",
     "mkdocstrings-python>=2.0.4",
@@ -33,4 +34,19 @@ extend-select = [
     "R", # pylint refactor rules
     "I", # isort
     "UP", # pyupgrade (enforces str | None over Optional[str])
+]
+
+[tool.importlinter]
+root_package = "marquise"
+source_roots = ["."]
+
+[[tool.importlinter.contracts]]
+name = "apps-use-public-surface-only"
+type = "forbidden"
+source_modules = ["apps"]
+forbidden_modules = [
+    "marquise.domain",
+    "marquise.application",
+    "marquise.interface_adapters",
+    "marquise.infrastructure",
 ]
