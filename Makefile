@@ -1,4 +1,4 @@
-.PHONY: test test-core test-api test-cli api cli lint format ty
+.PHONY: test test-core test-api test-cli api cli lint format ty docs
 
 test: test-core test-api test-cli
 
@@ -25,3 +25,6 @@ format:
 
 ty:
 	uv run ty check packages/marquise-core/src
+
+docs:
+	uv run mkdocs serve
