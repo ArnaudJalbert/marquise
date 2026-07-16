@@ -1,0 +1,121 @@
+.calendar {
+  width: 260px;
+}
+
+.calendar__mode-toggle {
+  display: flex;
+  gap: 2px;
+  background: var(--n-100);
+  border-radius: var(--radius-md);
+  padding: 2px;
+  margin-bottom: var(--space-3);
+}
+
+.calendar__mode-btn {
+  flex: 1;
+  font: var(--text-label);
+  padding: 6px 0;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.calendar__mode-btn--active {
+  background: var(--n-0);
+  color: var(--accent-600);
+}
+
+.calendar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+.calendar__nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--icon-primary);
+  cursor: pointer;
+}
+
+.calendar__nav-btn:hover {
+  background: var(--n-50);
+}
+
+.calendar__nav-icon {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+}
+
+.calendar__month-label {
+  font: 600 12px var(--font-sans);
+  color: var(--text-primary);
+}
+
+.calendar__weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.calendar__weekday {
+  text-align: center;
+  font: var(--text-label-caps);
+  color: var(--text-tertiary);
+}
+
+.calendar__days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.calendar__day {
+  aspect-ratio: 1;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font: var(--text-mono-sm);
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.calendar__day:hover {
+  background: var(--n-50);
+}
+
+.calendar__day--blank {
+  visibility: hidden;
+  cursor: default;
+}
+
+.calendar__day--selected {
+  background: var(--accent-500);
+  color: var(--text-on-accent);
+}
+
+.calendar__footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-2);
+}
+
+.calendar__clear {
+  font: var(--text-body-sm);
+  color: var(--text-link);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}

@@ -19,6 +19,8 @@ from typing import Any
 
 import certifi
 
+from marquise.infrastructure.sources._timezone import montreal_local_to_utc_iso
+
 _SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 
 SCHEDULE_URL = "https://cinemacinema.ca/en/schedule/__data.json"
@@ -371,7 +373,9 @@ class CinemaCinemaSource:
                 if not date_str or not time_str:
                     continue
                 date_obj = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-                showtime = date_obj.strftime(_ISO_DATE_FORMAT) + "T" + time_str
+                showtime = montreal_local_to_utc_iso(
+                    date_obj.strftime(_ISO_DATE_FORMAT), time_str
+                )
 
                 title = film.get("titre", "Untitled")
                 representation_id: int = rep.get("representation_id", 0)

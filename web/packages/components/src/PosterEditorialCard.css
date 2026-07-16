@@ -1,0 +1,59 @@
+.poster-editorial-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+
+.poster-editorial-card__genre {
+  font: var(--text-label-caps);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+
+.poster-editorial-card__title {
+  font: var(--text-display-poster);
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.poster-editorial-card__meta {
+  font: var(--text-mono-sm);
+  color: var(--text-tertiary);
+}
+
+.panel-sage {
+  background: color-mix(in oklch, var(--sage-500) 14%, white);
+}
+.panel-sage .poster-editorial-card__genre {
+  color: var(--sage-700);
+}
+
+.panel-clay {
+  background: color-mix(in oklch, var(--clay-500) 14%, white);
+}
+.panel-clay .poster-editorial-card__genre {
+  color: var(--clay-700);
+}
+
+.panel-seafoam {
+  background: color-mix(in oklch, var(--seafoam-500) 14%, white);
+}
+.panel-seafoam .poster-editorial-card__genre {
+  color: var(--seafoam-700);
+}
+
+.panel-sand {
+  background: color-mix(in oklch, var(--sand-500) 14%, white);
+}
+.panel-sand .poster-editorial-card__genre {
+  color: var(--sand-700);
+}
+
+.panel-sky {
+  background: color-mix(in oklch, var(--sky-500) 14%, white);
+}
+.panel-sky .poster-editorial-card__genre {
+  color: var(--sky-700);
+}
