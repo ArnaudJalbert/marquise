@@ -29,6 +29,8 @@ from urllib.parse import urljoin
 
 import certifi
 
+from marquise.infrastructure.sources._timezone import montreal_local_to_utc_iso
+
 _SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 
 BASE_URL = "https://omniwebticketing6.com/cinematheque/"
@@ -151,7 +153,9 @@ def _parse_movie_data(
                     rows.append(
                         {
                             "movie_title": title,
-                            "showtime": f"{perf_date}T{start_time}",
+                            "showtime": montreal_local_to_utc_iso(
+                                perf_date, start_time
+                            ),
                             "identifier": f"{perf_date}|{code}",
                             "external_id": str(perf_ix) if perf_ix else None,
                             "ticket_url": urljoin(BASE_URL, link_str)

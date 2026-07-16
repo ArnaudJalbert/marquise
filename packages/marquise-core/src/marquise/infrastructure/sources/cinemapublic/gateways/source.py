@@ -21,6 +21,8 @@ from typing import Any
 
 import certifi
 
+from marquise.infrastructure.sources._timezone import montreal_local_to_utc_iso
+
 _SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 
 SCHEDULE_URL = "https://cinemapublic.ca/en/schedule/"
@@ -407,6 +409,11 @@ def fetch_showtimes(
                 ev_dt = datetime.strptime(ev["showtime"], "%Y-%m-%dT%I:%M %p")
             if ev_dt < range_start or ev_dt > range_end:
                 continue
+            # ev["showtime"] is still Montreal-local ("YYYY-MM-DDTHH:MM") at
+            # this point — convert to a real UTC instant for the caller.
+            ev["showtime"] = montreal_local_to_utc_iso(
+                ev["showtime"][:10], ev["showtime"][11:16]
+            )
             results.append(ev)
 
     return results

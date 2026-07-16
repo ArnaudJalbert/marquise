@@ -1,0 +1,27 @@
+.poster-image {
+  display: block;
+  width: 100%;
+  /* height must stay auto (not 100%) so aspect-ratio derives it from width.
+     Grid items stretch to the tallest row-sibling by default (e.g. when a
+     caption wraps to two lines) — if height were a percentage, it would
+     resolve against that taller, unrelated box and distort/crop the poster
+     instead of leaving the extra space below the card's content. */
+  height: auto;
+  aspect-ratio: var(--aspect-poster);
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.poster-image--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--n-100);
+}
+
+.poster-image__glyph {
+  width: 24px;
+  height: 24px;
+  stroke: var(--icon-secondary);
+}

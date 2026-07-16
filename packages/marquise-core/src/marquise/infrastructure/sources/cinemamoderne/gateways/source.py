@@ -30,6 +30,8 @@ from typing import Any
 
 import certifi
 
+from marquise.infrastructure.sources._timezone import montreal_local_to_utc_iso
+
 _SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 
 BASE_URL = "https://www.cinemamoderne.com"
@@ -270,13 +272,19 @@ def fetch_showtimes(
 
     range_start_date = range_start.date()
     range_end_date = range_end.date()
-    results = [
-        row
-        for row in deduped.values()
-        if range_start_date
-        <= datetime.fromisoformat(row["showtime"]).date()
-        <= range_end_date
-    ]
+    results: list[dict[str, Any]] = []
+    for row in deduped.values():
+        # row["showtime"] is still Montreal-local ("YYYY-MM-DDTHH:MM") here.
+        if not (
+            range_start_date
+            <= datetime.fromisoformat(row["showtime"]).date()
+            <= range_end_date
+        ):
+            continue
+        row["showtime"] = montreal_local_to_utc_iso(
+            row["showtime"][:10], row["showtime"][11:16]
+        )
+        results.append(row)
     results.sort(key=lambda row: row["showtime"])
     return results
 
