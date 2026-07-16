@@ -15,6 +15,13 @@ _CINEMA_SLUGS = [
     pytest.param("du-parc", id="du-parc"),
 ]
 
+# The API returns showtimes up to ~10 days ahead.  The test range must be
+# generous enough to cover late Montreal evening shows that become the next
+# UTC day after conversion (e.g. a July 23 21:30 EDT show becomes July 24
+# 01:30 UTC), but also to include whatever default-window the upstream API
+# happens to serve on a given day.
+_RANGE_DAYS = 14
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("cinema_name", _CINEMA_SLUGS)
@@ -22,7 +29,7 @@ async def test_fetch_showtimes_returns_data(cinema_name: str) -> None:
     """Verify the live cinemacinema.ca API returns showtimes for the given cinema."""
     source = CinemaCinemaSource()
     start = datetime.now(UTC)
-    end = start + timedelta(days=7)
+    end = start + timedelta(days=_RANGE_DAYS)
 
     results = await source.fetch_showtimes(
         cinema_name=cinema_name,
@@ -38,7 +45,11 @@ async def test_fetch_showtimes_returns_data(cinema_name: str) -> None:
         assert entry["identifier"]
         assert entry["external_id"]
         showtime = datetime.fromisoformat(entry["showtime"])
-        assert start.date() <= showtime.date() <= end.date()
+        # Showtimes should be no older than the previous UTC day (to allow
+        # for any late-Montreal-evening shows that crossed midnight UTC)
+        # and no further out than the requested end date.
+        assert showtime.date() >= start.date() - timedelta(days=1)
+        assert showtime.date() <= end.date()
 
 
 @pytest.mark.asyncio
@@ -47,7 +58,7 @@ async def test_fetch_movie_detail_for_a_showtime(cinema_name: str) -> None:
     """Verify movie detail enrichment works for a film currently playing there."""
     source = CinemaCinemaSource()
     start = datetime.now(UTC)
-    end = start + timedelta(days=7)
+    end = start + timedelta(days=8)
 
     showtimes = await source.fetch_showtimes(
         cinema_name=cinema_name,

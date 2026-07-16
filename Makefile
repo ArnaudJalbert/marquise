@@ -5,6 +5,9 @@ test: test-core test-api test-cli test-web
 test-core:
 	uv run --package marquise-core pytest packages/marquise-core/tests/unit_tests/ -q
 
+test-core-integrations:
+	uv run --package marquise-core pytest packages/marquise-core/tests/integrations-tests/ -q
+
 test-api:
 	uv run --package marquise-api pytest apps/marquise-api/tests -q
 
