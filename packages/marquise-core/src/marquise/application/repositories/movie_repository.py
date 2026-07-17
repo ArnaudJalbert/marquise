@@ -37,6 +37,19 @@ class MovieRepository(ABC):
         ...
 
     @abstractmethod
+    async def find_by_ids(self, movie_ids: list[MovieId]) -> list[Movie]:
+        """Retrieve movies by a list of unique identifiers.
+
+        Args:
+            movie_ids: The IDs of the movies to find.
+
+        Returns:
+            The matching movies. IDs with no matching movie are silently
+            omitted — the returned list may be shorter than ``movie_ids``.
+        """
+        ...
+
+    @abstractmethod
     async def find_by_title(self, title: str) -> Movie | None:
         """Find a movie by title, case-insensitively.
 

@@ -34,6 +34,7 @@ from marquise.application.exceptions import (
     ScreeningNotFoundError,
     SourceAlreadyExistsError,
     SourceNotFoundError,
+    TooManyMovieIdsError,
 )
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.bootstrap import (
@@ -74,4 +75,5 @@ __all__ = [
     "SourceAlreadyExistsError",
     "SourceController",
     "SourceNotFoundError",
+    "TooManyMovieIdsError",
 ]

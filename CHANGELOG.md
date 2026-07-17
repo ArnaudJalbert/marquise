@@ -10,14 +10,24 @@ Typer CLI lives in `marquise-cli`, each with independent versions.
 
 ## 2026-07-17
 
-### marquise-api
+### marquise-api v0.1.2
 
 - **Move `fly.toml` into `apps/marquise-api/`**: colocated the Fly config with the Dockerfile it deploys instead of leaving it at the repo root, now that a second Fly app (`marquise-interface`) exists. The Dockerfile still requires repo-root build context (it reaches into `packages/marquise-core` and root `pyproject.toml`/`uv.lock`), so `.github/workflows/fly-deploy.yml` now invokes `flyctl deploy --config apps/marquise-api/fly.toml --dockerfile apps/marquise-api/Dockerfile` from the repo root rather than relying on the implicit root `fly.toml`.
+- **Add `GET /v1/movies/by-ids`**: bulk movie lookup by repeated `ids` query param (`?ids=a&ids=b`), capped at 100 ids per call (422 via new `TooManyMovieIdsError` if exceeded). IDs with no matching movie are silently omitted rather than erroring, matching `GET /v1/movies`' list semantics. Registered ahead of `GET /v1/movies/{id}` so `by-ids` isn't swallowed as a path param.
+
+### marquise-core v0.1.2
+
+- **`MovieRepository.find_by_ids` / `GetMoviesByIdsUseCase`**: new Clean Architecture chain backing the bulk movies endpoint — `SupabaseMovieGateway.find_by_ids` (`WHERE id = ANY($1)`, the codebase's first multi-value SQL lookup), `MovieGateway` protocol, `SupabaseMovieRepository`, and `GetMoviesByIdsUseCase`, wired into `MovieController.get_by_ids` and the DI container.
 
 ### marquise-interface
 
 - **Add Fly.io deployment**: new `web/apps/marquise-interface/Dockerfile` (pnpm workspace build → static `nginx:alpine` serve, with SPA fallback via `nginx.conf`) and `fly.toml` (new Fly app `marquise-interface`). The production build runs in `live-remote` mode (`pnpm --filter marquise-interface build:live-remote`, a new package script), baking in `VITE_API_BASE_URL=https://marquise-api.fly.dev` so the deployed site serves real data.
 - **CI**: `.github/workflows/fly-deploy.yml` now uses `dorny/paths-filter` to run independent `deploy-api` and `deploy-interface` jobs, each triggered only when its own app's files change on push to `main`.
+- **Replace per-movie-id N+1 fetch with `getByIds`**: `liveApi.ts`'s poster-wall enrichment step previously issued one `GET /v1/movies/{id}` per distinct movie in the screenings window via `Promise.allSettled`. It now calls the new `client.movies.getByIds()` (chunked to 100 ids per request) instead, collapsing dozens of requests into one or a few.
+
+### @marquise/api-client
+
+- **Add `MoviesResource.getByIds`**: wraps `GET /v1/movies/by-ids`. `buildQuery` now serializes `string[]` values as repeated query params (`ids=a&ids=b`) to support it.
 
 ## 2026-07-15
 

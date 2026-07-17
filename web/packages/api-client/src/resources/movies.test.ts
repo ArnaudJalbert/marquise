@@ -36,3 +36,18 @@ describe("MoviesResource.list", () => {
     expect(url).toBe("https://marquise-api.fly.dev/v1/movies/a%2Fb");
   });
 });
+
+describe("MoviesResource.getByIds", () => {
+  it("assembles the URL with repeated ids params", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));
+    const movies = new MoviesResource({
+      baseUrl: "https://marquise-api.fly.dev",
+      fetchImpl,
+    });
+
+    await movies.getByIds(["mov-1", "mov-2"]);
+
+    const [url] = fetchImpl.mock.calls[0];
+    expect(url).toBe("https://marquise-api.fly.dev/v1/movies/by-ids?ids=mov-1&ids=mov-2");
+  });
+});
