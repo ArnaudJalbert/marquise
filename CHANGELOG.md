@@ -10,6 +10,10 @@ Typer CLI lives in `marquise-cli`, each with independent versions.
 
 ## 2026-07-17
 
+### marquise-api v0.1.3
+
+- **Fix `flyctl deploy` failing on push to `main`**: flyctl resolves `[build].dockerfile` (and the CLI `--dockerfile` flag) relative to the directory containing `fly.toml`, not the repo root. `apps/marquise-api/fly.toml` still had `dockerfile = "apps/marquise-api/Dockerfile"` left over from the pre-move root-`fly.toml` setup, so flyctl looked for `apps/marquise-api/apps/marquise-api/Dockerfile` and failed with "not found". Changed it to `dockerfile = "Dockerfile"` and dropped the now-redundant `--dockerfile` flags from both `deploy-api` and `deploy-interface` jobs in `.github/workflows/fly-deploy.yml` (the interface job's fly.toml already had the correct relative path, but the CLI flag was overriding it with the same broken repo-rooted path).
+
 ### marquise-api v0.1.2
 
 - **Move `fly.toml` into `apps/marquise-api/`**: colocated the Fly config with the Dockerfile it deploys instead of leaving it at the repo root, now that a second Fly app (`marquise-interface`) exists. The Dockerfile still requires repo-root build context (it reaches into `packages/marquise-core` and root `pyproject.toml`/`uv.lock`), so `.github/workflows/fly-deploy.yml` now invokes `flyctl deploy --config apps/marquise-api/fly.toml --dockerfile apps/marquise-api/Dockerfile` from the repo root rather than relying on the implicit root `fly.toml`.
