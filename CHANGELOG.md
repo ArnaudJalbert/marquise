@@ -8,6 +8,17 @@ Before 2026-07-15 the entire codebase shipped as a single package (`marquise`, n
 `marquise-core`). Starting 2026-07-15, the FastAPI application lives in `marquise-api` and the
 Typer CLI lives in `marquise-cli`, each with independent versions.
 
+## 2026-07-17
+
+### marquise-api
+
+- **Move `fly.toml` into `apps/marquise-api/`**: colocated the Fly config with the Dockerfile it deploys instead of leaving it at the repo root, now that a second Fly app (`marquise-interface`) exists. The Dockerfile still requires repo-root build context (it reaches into `packages/marquise-core` and root `pyproject.toml`/`uv.lock`), so `.github/workflows/fly-deploy.yml` now invokes `flyctl deploy --config apps/marquise-api/fly.toml --dockerfile apps/marquise-api/Dockerfile` from the repo root rather than relying on the implicit root `fly.toml`.
+
+### marquise-interface
+
+- **Add Fly.io deployment**: new `web/apps/marquise-interface/Dockerfile` (pnpm workspace build → static `nginx:alpine` serve, with SPA fallback via `nginx.conf`) and `fly.toml` (new Fly app `marquise-interface`). The production build runs in `live-remote` mode (`pnpm --filter marquise-interface build:live-remote`, a new package script), baking in `VITE_API_BASE_URL=https://marquise-api.fly.dev` so the deployed site serves real data.
+- **CI**: `.github/workflows/fly-deploy.yml` now uses `dorny/paths-filter` to run independent `deploy-api` and `deploy-interface` jobs, each triggered only when its own app's files change on push to `main`.
+
 ## 2026-07-15
 
 ### @marquise/components + marquise-interface

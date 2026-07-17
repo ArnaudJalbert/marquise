@@ -8,6 +8,7 @@
     "dev:live": "vite --mode live",
     "dev:live:remote": "vite --mode live-remote",
     "build": "tsc -b && vite build",
+    "build:live-remote": "tsc -b && vite build --mode live-remote",
     "lint": "oxlint",
     "preview": "vite preview"
   },

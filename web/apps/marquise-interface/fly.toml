@@ -1,0 +1,26 @@
+# fly.toml app configuration file for marquise-interface.
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+# This app has no runtime secrets — it's a static build served by nginx.
+# The production API base URL is baked in at build time (see the Dockerfile,
+# which runs `pnpm --filter marquise-interface build:live-remote`).
+
+app = 'marquise-interface'
+primary_region = 'yyz'
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 80
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+[[vm]]
+  memory = '256mb'
+  cpus = 1
+  memory_mb = 256
