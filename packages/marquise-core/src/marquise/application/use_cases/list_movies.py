@@ -20,10 +20,10 @@ class ListMoviesUseCase:
         """Input data for listing movies.
 
         Attributes:
-            title: Optional title filter (substring, case-insensitive).
-                Mutually exclusive with ids.
-            ids: Optional list of movie IDs to fetch in bulk. Mutually
-                exclusive with title. At most MAX_MOVIE_IDS ids, and the
+            title: Optional title filter (substring, case-insensitive). May
+                be combined with ids, in which case both filters apply (AND).
+            ids: Optional list of movie IDs to fetch in bulk. May be
+                combined with title. At most MAX_MOVIE_IDS ids, and the
                 count must not exceed size.
             page: Page number (1-based). Ignored when size is None. Must be
                 1 when ids is provided.
@@ -42,9 +42,8 @@ class ListMoviesUseCase:
             Raises:
                 ValueError: If title is provided but empty or whitespace-only,
                     if size is provided but not positive, if page is less
-                    than 1, if title and ids are both provided, if ids is
-                    provided but empty, if ids' count exceeds size, or if
-                    page is not 1 when ids is provided.
+                    than 1, if ids is provided but empty, if ids' count
+                    exceeds size, or if page is not 1 when ids is provided.
                 TooManyMovieIdsError: If more than MAX_MOVIE_IDS ids are
                     requested.
             """
@@ -55,8 +54,6 @@ class ListMoviesUseCase:
             if self.page < 1:
                 raise ValueError("page must be at least 1")
             if self.ids is not None:
-                if self.title is not None:
-                    raise ValueError("ids and title cannot both be provided")
                 if len(self.ids) == 0:
                     raise ValueError("ids must not be empty when provided")
                 if len(self.ids) > MAX_MOVIE_IDS:
@@ -159,6 +156,9 @@ class ListMoviesUseCase:
             movies = await self.movie_repository.find_by_ids(
                 [MovieId(value=movie_id) for movie_id in request.ids]
             )
+            if request.title is not None:
+                needle = request.title.lower()
+                movies = [m for m in movies if needle in m.title.lower()]
             movie_data = [self._to_movie_data(m) for m in movies]
             return self.OutputData(movies=movie_data, total=len(movie_data))
 

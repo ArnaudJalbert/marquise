@@ -40,11 +40,11 @@ class MovieController:
         This is a public operation — no authentication required.
 
         Args:
-            title: Optional title filter (case-insensitive substring).
-                Mutually exclusive with ids.
-            ids: Optional list of movie IDs to fetch in bulk. Mutually
-                exclusive with title. At most 100 ids, and the count must
-                not exceed size.
+            title: Optional title filter (case-insensitive substring). May
+                be combined with ids to filter within that set.
+            ids: Optional list of movie IDs to fetch in bulk. May be
+                combined with title to filter within that set. At most 100
+                ids, and the count must not exceed size.
             page: Page number (1-based). Ignored when size is None. Must be
                 1 when ids is provided.
             size: Max number of items per page. If None, all matching

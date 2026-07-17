@@ -263,10 +263,23 @@ async def test_list_movies_by_ids_omits_missing_ids() -> None:
     assert response.total == 1
 
 
-def test_list_movies_rejects_ids_and_title_together() -> None:
-    """ids and title are mutually exclusive filter modes."""
-    with pytest.raises(ValueError, match="ids and title cannot both be provided"):
-        ListMoviesUseCase.InputData(ids=("mov-1",), title="Dune", size=1)
+@pytest.mark.asyncio
+async def test_list_movies_by_ids_and_title_applies_and_filter() -> None:
+    """Combining ids and title filters the ids results by title (AND)."""
+    mock_repo = create_autospec(MovieRepository, instance=True)
+    mock_repo.find_by_ids.return_value = [
+        Movie(id=MovieId(value="mov-1"), title="Dune Part Two"),
+        Movie(id=MovieId(value="mov-2"), title="Sunrise"),
+    ]
+
+    use_case = ListMoviesUseCase(movie_repository=mock_repo)
+    request = ListMoviesUseCase.InputData(ids=("mov-1", "mov-2"), title="dune", size=2)
+
+    response = await use_case.execute(request)
+
+    assert [m.id for m in response.movies] == ["mov-1"]
+    assert response.total == 1
+    mock_repo.find_all.assert_not_awaited()
 
 
 def test_list_movies_rejects_empty_ids() -> None:
