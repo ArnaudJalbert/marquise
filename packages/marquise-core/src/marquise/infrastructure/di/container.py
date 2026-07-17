@@ -24,7 +24,6 @@ from marquise.application.use_cases.get_movie import GetMovieUseCase
 from marquise.application.use_cases.get_movie_screenings import (
     GetMovieScreeningsUseCase,
 )
-from marquise.application.use_cases.get_movies_by_ids import GetMoviesByIdsUseCase
 from marquise.application.use_cases.get_screening import GetScreeningUseCase
 from marquise.application.use_cases.import_screenings import (
     ImportScreeningsUseCase,
@@ -410,10 +409,6 @@ class Container:
         return ListMoviesUseCase(movie_repository=self._movie_repository)
 
     @property
-    def _get_movies_by_ids_use_case(self) -> GetMoviesByIdsUseCase:
-        return GetMoviesByIdsUseCase(movie_repository=self._movie_repository)
-
-    @property
     def _get_cinema_screenings_use_case(self) -> GetCinemaScreeningsUseCase:
         return GetCinemaScreeningsUseCase(
             cinema_repository=self._cinema_repository,
@@ -471,11 +466,6 @@ class Container:
         return self._list_movies_use_case
 
     @property
-    def get_movies_by_ids_use_case(self) -> GetMoviesByIdsUseCase:
-        """Public get-movies-by-ids use case (no authentication required)."""
-        return self._get_movies_by_ids_use_case
-
-    @property
     def get_cinema_screenings_use_case(self) -> GetCinemaScreeningsUseCase:
         """Public get-cinema-screenings use case (no authentication required)."""
         return self._get_cinema_screenings_use_case
@@ -526,7 +516,6 @@ class Container:
         return MovieController(
             get_movie_use_case=self._get_movie_use_case,
             get_movie_screenings_use_case=self._get_movie_screenings_use_case,
-            get_movies_by_ids_use_case=self._get_movies_by_ids_use_case,
             list_movies_use_case=self._list_movies_use_case,
         )
 

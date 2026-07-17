@@ -13,11 +13,11 @@ Typer CLI lives in `marquise-cli`, each with independent versions.
 ### marquise-api v0.1.2
 
 - **Move `fly.toml` into `apps/marquise-api/`**: colocated the Fly config with the Dockerfile it deploys instead of leaving it at the repo root, now that a second Fly app (`marquise-interface`) exists. The Dockerfile still requires repo-root build context (it reaches into `packages/marquise-core` and root `pyproject.toml`/`uv.lock`), so `.github/workflows/fly-deploy.yml` now invokes `flyctl deploy --config apps/marquise-api/fly.toml --dockerfile apps/marquise-api/Dockerfile` from the repo root rather than relying on the implicit root `fly.toml`.
-- **Add `GET /v1/movies/by-ids`**: bulk movie lookup by repeated `ids` query param (`?ids=a&ids=b`), capped at 100 ids per call (422 via new `TooManyMovieIdsError` if exceeded). IDs with no matching movie are silently omitted rather than erroring, matching `GET /v1/movies`' list semantics. Registered ahead of `GET /v1/movies/{id}` so `by-ids` isn't swallowed as a path param.
+- **`GET /v1/movies` gains bulk-by-ids lookup**: added a repeated `ids` query param (`?ids=a&ids=b`) as an alternative to `?title=` — mutually exclusive with `title` (422 if both given), capped at 100 ids per call (422 via `TooManyMovieIdsError` if exceeded) and additionally capped at the requested page `size` (`ids` count must not exceed `size`; 422 otherwise), and rejects `page != 1` (everything fits on one page by construction). IDs with no matching movie are silently omitted. No separate `/movies/by-ids` route — this reuses the same paginated `Page[MovieResponse]` response shape as the existing list endpoint.
 
 ### marquise-core v0.1.2
 
-- **`MovieRepository.find_by_ids` / `GetMoviesByIdsUseCase`**: new Clean Architecture chain backing the bulk movies endpoint — `SupabaseMovieGateway.find_by_ids` (`WHERE id = ANY($1)`, the codebase's first multi-value SQL lookup), `MovieGateway` protocol, `SupabaseMovieRepository`, and `GetMoviesByIdsUseCase`, wired into `MovieController.get_by_ids` and the DI container.
+- **`MovieRepository.find_by_ids` reused by `ListMoviesUseCase`**: new Clean Architecture plumbing backing the bulk-by-ids mode of `GET /v1/movies` — `SupabaseMovieGateway.find_by_ids` (`WHERE id = ANY($1)`, the codebase's first multi-value SQL lookup), `MovieGateway` protocol, `SupabaseMovieRepository`. `ListMoviesUseCase.InputData` gained an `ids` field; when set, `execute()` branches to `find_by_ids` instead of the title/pagination `find_all` path. `MovieController.list` gained a matching `ids` parameter.
 
 ### marquise-interface
 
@@ -27,7 +27,7 @@ Typer CLI lives in `marquise-cli`, each with independent versions.
 
 ### @marquise/api-client
 
-- **Add `MoviesResource.getByIds`**: wraps `GET /v1/movies/by-ids`. `buildQuery` now serializes `string[]` values as repeated query params (`ids=a&ids=b`) to support it.
+- **Add `MoviesResource.getByIds`**: goes through `list()` with `ids` set and `size` forced to `ids.length` (satisfying the backend's `ids count <= size` constraint), unwrapping `.items` from the returned `Page`. `buildQuery` now serializes `string[]` values as repeated query params (`ids=a&ids=b`) to support it, and `ListMoviesParams` gained an `ids` field.
 
 ## 2026-07-15
 
