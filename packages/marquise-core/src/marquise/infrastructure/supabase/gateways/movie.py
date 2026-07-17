@@ -133,6 +133,23 @@ class SupabaseMovieGateway:
             )
         return dict(row) if row is not None else None
 
+    async def find_by_ids(self, movie_ids: list[str]) -> list[dict]:
+        """Find movies by a list of IDs.
+
+        Args:
+            movie_ids: The unique identifiers to look up.
+
+        Returns:
+            A dict per matching row. IDs with no matching row are silently
+            omitted — the returned list may be shorter than ``movie_ids``.
+        """
+        async with self._pool.acquire() as conn:
+            rows = await conn.fetch(
+                f"SELECT {_COLUMNS} FROM {self._table} WHERE id = ANY($1)",
+                movie_ids,
+            )
+        return [dict(r) for r in rows]
+
     async def find_by_title(self, title: str) -> dict | None:
         """Find a movie by title, case-insensitively.
 

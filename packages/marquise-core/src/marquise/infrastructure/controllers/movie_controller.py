@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from marquise.application.use_cases.get_movie import GetMovieUseCase
 from marquise.application.use_cases.get_movie_screenings import (
     GetMovieScreeningsUseCase,
@@ -29,24 +31,38 @@ class MovieController:
     async def list(
         self,
         title: str | None = None,
+        ids: Sequence[str] | None = None,
         page: int = 1,
         size: int | None = None,
     ) -> ListMoviesUseCase.OutputData:
-        """List movies, optionally filtered by title and paginated.
+        """List movies, optionally filtered by title, by IDs, and paginated.
 
         This is a public operation — no authentication required.
 
         Args:
-            title: Optional title filter (case-insensitive substring).
-            page: Page number (1-based). Ignored when size is None.
+            title: Optional title filter (case-insensitive substring). May
+                be combined with ids to filter within that set.
+            ids: Optional list of movie IDs to fetch in bulk. May be
+                combined with title to filter within that set. At most 100
+                ids, and the count must not exceed size.
+            page: Page number (1-based). Ignored when size is None. Must be
+                1 when ids is provided.
             size: Max number of items per page. If None, all matching
                 movies are returned unbounded (page is ignored).
 
         Returns:
             The output data containing the matching page of movies and the
             total count.
+
+        Raises:
+            TooManyMovieIdsError: If more ids are requested than allowed.
         """
-        request = ListMoviesUseCase.InputData(title=title, page=page, size=size)
+        request = ListMoviesUseCase.InputData(
+            title=title,
+            ids=tuple(ids) if ids is not None else None,
+            page=page,
+            size=size,
+        )
         return await self._list_use_case.execute(request)
 
     async def get(self, movie_id: str) -> GetMovieUseCase.OutputData:

@@ -79,6 +79,10 @@ apps/marquise-admin, apps/marquise-interface              ──vite──▶ di
 
 Explicitly out of scope so far (tracked as separate issues):
 
-- Wiring `@marquise/api-client` into `marquise-interface`
 - Routing (both apps are single-page)
 - Web CI (the current GitHub Actions pipeline is Python-only)
+
+## Deployment
+
+`marquise-interface` deploys to Fly.io as a static build served by nginx —
+see [`web/apps/marquise-interface/Dockerfile`](https://github.com/ArnaudJalbert/marquise/blob/main/web/apps/marquise-interface/Dockerfile) and [`fly.toml`](https://github.com/ArnaudJalbert/marquise/blob/main/web/apps/marquise-interface/fly.toml). It's built in `live-remote` mode, pointing at the production API (`https://marquise-api.fly.dev`), and is live at [`https://marquise-interface.fly.dev`](https://marquise-interface.fly.dev). CI (`.github/workflows/fly-deploy.yml`) redeploys it on every push to `main` that touches `web/`.

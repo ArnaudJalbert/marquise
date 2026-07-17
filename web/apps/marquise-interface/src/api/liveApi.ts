@@ -9,6 +9,8 @@ const client = new MarquiseApiClient({
 });
 
 const FETCH_PAGE_SIZE = 100;
+// Matches the API's cap on ids per /v1/movies/by-ids call.
+const MAX_MOVIE_IDS_PER_REQUEST = 100;
 // How many days ahead of "today" to pull screenings for when no date filter
 // is selected. The backend has thousands of screenings total (past and
 // future); querying unbounded and taking the first page returns whatever the
@@ -138,14 +140,29 @@ async function fetchAllScreenings(from: Date, to: Date): Promise<ScreeningRespon
 }
 
 /**
+ * Fetch movies for every id in `movieIds` in as few requests as possible,
+ * via `/v1/movies/by-ids` (chunked to the API's per-call id cap). Ids with
+ * no matching movie are simply absent from the result map.
+ */
+async function fetchMoviesByIds(movieIds: string[]): Promise<Map<string, MovieResponse>> {
+  const chunks: string[][] = [];
+  for (let i = 0; i < movieIds.length; i += MAX_MOVIE_IDS_PER_REQUEST) {
+    chunks.push(movieIds.slice(i, i + MAX_MOVIE_IDS_PER_REQUEST));
+  }
+
+  const results = await Promise.all(chunks.map((chunk) => client.movies.getByIds(chunk)));
+  return new Map(results.flat().map((movie) => [movie.id, movie]));
+}
+
+/**
  * Real API data source. Fetches screenings within the resolved date window —
  * `s.movie_title`/`s.cinema_name` on each screening already carry everything
  * a card needs to render (title, cinema, dates, showtimes) — and hands that
- * off to `onCardsReady` immediately, so the wall can paint before a single
- * per-movie request completes. Only *then* does it fetch the specific movies
- * referenced by those screenings (not an arbitrary separate page of movies —
- * that was a join mismatch: page 1 of /v1/movies has no guaranteed overlap
- * with whatever movies happen to be screening in the fetched window) for
+ * off to `onCardsReady` immediately, so the wall can paint before the
+ * enrichment request completes. Only *then* does it fetch the specific
+ * movies referenced by those screenings (not an arbitrary separate page of
+ * movies — that was a join mismatch: page 1 of /v1/movies has no guaranteed
+ * overlap with whatever movies happen to be screening in the fetched window) for
  * genre/poster/director/year/runtime enrichment, which arrives asynchronously
  * and is what the resolved promise carries. Reuses the same client-side
  * filterMovies() the mock source uses — the API doesn't support every filter
@@ -162,11 +179,7 @@ export function fetchMovies(
     onCardsReady?.(filterMovies(groupIntoPosterMovies(screenings, new Map()), filters));
 
     const movieIds = [...new Set(screenings.map((s) => s.movie_id))];
-    const movieResults = await Promise.allSettled(movieIds.map((id) => client.movies.get(id)));
-    const moviesById = new Map<string, MovieResponse>();
-    movieResults.forEach((result, i) => {
-      if (result.status === 'fulfilled') moviesById.set(movieIds[i], result.value);
-    });
+    const moviesById = await fetchMoviesByIds(movieIds);
 
     const movies = groupIntoPosterMovies(screenings, moviesById);
     return filterMovies(movies, filters);

@@ -130,6 +130,34 @@ async def test_find_by_id_missing() -> None:
 
 
 @pytest.mark.asyncio
+async def test_find_by_ids(gateway_dict: dict) -> None:
+    """Test find_by_ids maps gateway rows to entities and passes plain ids."""
+    mock_gateway = create_autospec(MovieGateway, instance=True)
+    mock_gateway.find_by_ids.return_value = [gateway_dict]
+
+    repo = SupabaseMovieRepository(gateway=mock_gateway)
+    result = await repo.find_by_ids(
+        [MovieId(value="mov-123"), MovieId(value="mov-999")]
+    )
+
+    assert len(result) == 1
+    assert result[0].id == MovieId(value="mov-123")
+    mock_gateway.find_by_ids.assert_awaited_once_with(movie_ids=["mov-123", "mov-999"])
+
+
+@pytest.mark.asyncio
+async def test_find_by_ids_omits_missing(gateway_dict: dict) -> None:
+    """Test find_by_ids returns an empty list when no ids match."""
+    mock_gateway = create_autospec(MovieGateway, instance=True)
+    mock_gateway.find_by_ids.return_value = []
+
+    repo = SupabaseMovieRepository(gateway=mock_gateway)
+    result = await repo.find_by_ids([MovieId(value="missing")])
+
+    assert result == []
+
+
+@pytest.mark.asyncio
 async def test_find_by_title(gateway_dict: dict) -> None:
     """Test find_by_title returns entity when found."""
     mock_gateway = create_autospec(MovieGateway, instance=True)

@@ -26,13 +26,28 @@ async def list_movies(
     request: Request,
     response: Response,
     title: str | None = Query(
-        default=None, description="Filter movies by title (case-insensitive)."
+        default=None,
+        description=(
+            "Filter movies by title (case-insensitive substring)."
+            " May be combined with ids to filter within that set."
+        ),
+    ),
+    ids: list[str] | None = Query(
+        default=None,
+        description=(
+            "Fetch specific movies in bulk, repeated per ID (?ids=a&ids=b)."
+            " May be combined with title to filter within that set. At most"
+            " 100 ids, and the count must not exceed size. IDs with no"
+            " matching movie are silently omitted from the response."
+        ),
     ),
     params: Params = Depends(),
     controller: MovieController = Depends(get_movie_controller),
 ) -> Page[MovieResponse]:
-    """List movies, optionally filtered by title."""
-    output = await controller.list(title=title, page=params.page, size=params.size)
+    """List movies, optionally filtered by title and/or fetched in bulk by ids."""
+    output = await controller.list(
+        title=title, ids=ids, page=params.page, size=params.size
+    )
     return Page.create(
         items=[MovieResponse.model_validate(m) for m in output.movies],
         total=output.total,
