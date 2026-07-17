@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from marquise.application.use_cases.get_movie import GetMovieUseCase
 from marquise.application.use_cases.get_movie_screenings import (
     GetMovieScreeningsUseCase,
@@ -70,7 +72,7 @@ class MovieController:
         return await self._get_use_case.execute(request)
 
     async def get_by_ids(
-        self, movie_ids: list[str]
+        self, movie_ids: Sequence[str]
     ) -> GetMoviesByIdsUseCase.OutputData:
         """Retrieve multiple movies by their IDs in one call.
 
