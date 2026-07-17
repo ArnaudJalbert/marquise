@@ -15,6 +15,7 @@ from marquise.interface_adapters.repositories.protocols.showtime_source import (
 )
 
 _CINEMA_NAME_MAPPINGS: dict[str, str] = {
+    "Cinéma Public": "casa-d-italia",
     "Cinema Public — Casa d'Italia": "casa-d-italia",
     "Cinema Public — Livart": "livart",
 }
@@ -52,7 +53,14 @@ class CinemaPublicAdapter:
         Returns:
             A list of raw screening dicts.
         """
-        venue = _CINEMA_NAME_MAPPINGS.get(cinema.name, cinema.name)
+        try:
+            venue = _CINEMA_NAME_MAPPINGS[cinema.name]
+        except KeyError:
+            valid = ", ".join(sorted(_CINEMA_NAME_MAPPINGS))
+            raise ValueError(
+                f"Unknown Cinema Public venue: '{cinema.name}'. "
+                f"Valid cinema names: {valid}"
+            ) from None
         return await self._source.fetch_showtimes(
             cinema_name=venue,
             start_date=start_date,

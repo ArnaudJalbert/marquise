@@ -1,0 +1,16 @@
+.poster-dense-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 10px;
+}
+
+.poster-dense-grid__tile {
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  transition: box-shadow var(--duration-fast) var(--ease-standard);
+  cursor: pointer;
+}
+
+.poster-dense-grid__tile:hover {
+  box-shadow: 0 0 0 2px var(--accent-500) inset;
+}

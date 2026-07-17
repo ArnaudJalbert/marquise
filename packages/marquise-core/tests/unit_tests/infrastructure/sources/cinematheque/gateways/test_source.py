@@ -155,7 +155,7 @@ def test_parse_movie_data_builds_showtime_rows() -> None:
     assert rows == [
         {
             "movie_title": "Romería",
-            "showtime": "2026-07-09T14:00",
+            "showtime": "2026-07-09T18:00:00+00:00",
             "identifier": "2026-07-09|123",
             "external_id": "14093",
             "ticket_url": (
@@ -166,6 +166,22 @@ def test_parse_movie_data_builds_showtime_rows() -> None:
             "language": "VOSTF",
         }
     ]
+
+
+def test_parse_movie_data_converts_montreal_local_to_utc_in_winter() -> None:
+    """Winter showtimes convert using EST (UTC-5), not a fixed offset."""
+    movie_data = {
+        "123": _film(
+            "123",
+            "Romería (VOSTF)",
+            start_time="14:00",
+            sch_date_str="2026-01-09",
+        )
+    }
+
+    rows = _parse_movie_data(movie_data, "2026-01-09")
+
+    assert rows[0]["showtime"] == "2026-01-09T19:00:00+00:00"
 
 
 def test_parse_movie_data_skips_films_without_title() -> None:

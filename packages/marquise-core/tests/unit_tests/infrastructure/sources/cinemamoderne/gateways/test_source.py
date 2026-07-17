@@ -247,7 +247,46 @@ async def test_fetch_showtimes_excludes_out_of_range_dates() -> None:
             end_date=datetime(2026, 7, 31),
         )
 
-    assert [row["showtime"] for row in rows] == ["2026-07-13T17:00"]
+    assert [row["showtime"] for row in rows] == ["2026-07-13T21:00:00+00:00"]
+
+
+@pytest.mark.asyncio
+async def test_fetch_showtimes_converts_montreal_local_to_utc() -> None:
+    """Showtime rows carry a real UTC offset, DST-adjusted for the month."""
+    html = _schedule_page_html(
+        _day_html("2026-07-13", _event_html(time_str="17:00")),
+    )
+
+    with patch(
+        "marquise.infrastructure.sources.cinemamoderne.gateways.source._fetch",
+        return_value=html,
+    ):
+        rows = fetch_showtimes(
+            start_date=datetime(2026, 7, 1),
+            end_date=datetime(2026, 7, 31),
+        )
+
+    # July is EDT (UTC-4): 17:00 Montreal -> 21:00 UTC.
+    assert rows[0]["showtime"] == "2026-07-13T21:00:00+00:00"
+
+
+@pytest.mark.asyncio
+async def test_fetch_showtimes_converts_montreal_local_to_utc_in_winter() -> None:
+    """Winter showtimes convert using EST (UTC-5), not a fixed offset."""
+    html = _schedule_page_html(
+        _day_html("2026-01-13", _event_html(time_str="17:00")),
+    )
+
+    with patch(
+        "marquise.infrastructure.sources.cinemamoderne.gateways.source._fetch",
+        return_value=html,
+    ):
+        rows = fetch_showtimes(
+            start_date=datetime(2026, 1, 1),
+            end_date=datetime(2026, 1, 31),
+        )
+
+    assert rows[0]["showtime"] == "2026-01-13T22:00:00+00:00"
 
 
 @pytest.mark.asyncio

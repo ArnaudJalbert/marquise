@@ -1,0 +1,9 @@
+.poster-wall__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 160px;
+  font: var(--text-body-md);
+  color: var(--text-tertiary);
+  margin: 0;
+}

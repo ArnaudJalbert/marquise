@@ -1,12 +1,20 @@
-import { useState } from 'react'
-import { CoreHello } from '@marquise/core'
+import { useEffect, useState } from 'react'
+import { MarquiseApiClient } from '@marquise/api-client'
 import reactLogo from './assets/react.svg'
 import viteLogo from './assets/vite.svg'
 import heroImg from './assets/hero.png'
 import './App.css'
 
+const apiClient = new MarquiseApiClient({ baseUrl: 'https://marquise-api.fly.dev' })
+
 function App() {
   const [count, setCount] = useState(0)
+  // Wiring smoke test for @marquise/api-client — replace with real admin screens.
+  const [cinemaCount, setCinemaCount] = useState<number | null>(null)
+
+  useEffect(() => {
+    apiClient.cinemas.list({ size: 1 }).then((page) => setCinemaCount(page.total))
+  }, [])
 
   return (
     <>
@@ -21,9 +29,7 @@ function App() {
           <p>
             Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
           </p>
-          <p>
-            <CoreHello />
-          </p>
+          {cinemaCount !== null && <p>{cinemaCount} cinemas tracked</p>}
         </div>
         <button
           type="button"
