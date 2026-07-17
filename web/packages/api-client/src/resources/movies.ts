@@ -9,9 +9,9 @@ import type {
 } from "../types";
 
 export interface ListMoviesParams extends PaginationParams {
-  /** Filter by title (case-insensitive substring). Mutually exclusive with ids. */
+  /** Filter by title (case-insensitive substring). May be combined with ids to filter within that set. */
   title?: string;
-  /** Fetch specific movies in bulk. Mutually exclusive with title. Max 100, and count must not exceed size. */
+  /** Fetch specific movies in bulk. May be combined with title to filter within that set. Max 100, and count must not exceed size. */
   ids?: string[];
 }
 

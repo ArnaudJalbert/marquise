@@ -29,7 +29,7 @@ disrupting existing consumers.
 | `GET` | `/v1/cinemas` | List cinemas, optionally filtered by `?name=` |
 | `GET` | `/v1/cinemas/{id}/screenings` | List all of a cinema's screenings (no filters beyond pagination — see below) |
 | `GET` | `/v1/cinemas/{id}/movies` | List distinct movies currently screening at a cinema (`?from=&to=`) |
-| `GET` | `/v1/movies` | List movies, filtered by `?title=`, or fetched in bulk via `?ids=a&ids=b` (mutually exclusive; ids capped at 100 and at `size`, missing ids omitted) |
+| `GET` | `/v1/movies` | List movies, filtered by `?title=`, fetched in bulk via `?ids=a&ids=b` (capped at 100 and at `size`, missing ids omitted), or both together (AND filter within the id set) |
 | `GET` | `/v1/movies/{id}` | Retrieve a single movie by its ID |
 | `GET` | `/v1/movies/{id}/screenings` | List all of a movie's screenings (no filters beyond pagination — see below) |
 | `GET` | `/v1/screenings` | Search screenings across all cinemas (`?movie=&movie_id=&cinema_id=&from=&to=&language=`) |
