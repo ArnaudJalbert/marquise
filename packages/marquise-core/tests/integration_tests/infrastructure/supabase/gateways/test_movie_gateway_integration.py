@@ -39,6 +39,26 @@ async def test_find_by_id_missing(movie_gateway: SupabaseMovieGateway) -> None:
 
 
 @pytest.mark.asyncio
+async def test_find_by_ids(movie_gateway: SupabaseMovieGateway) -> None:
+    """Verify find_by_ids returns matching rows and omits missing ids."""
+    await movie_gateway.save(movie_id="mov-bulk-1", title="Bulk One")
+    await movie_gateway.save(movie_id="mov-bulk-2", title="Bulk Two")
+
+    found = await movie_gateway.find_by_ids(
+        ["mov-bulk-1", "mov-bulk-2", "mov-bulk-missing"]
+    )
+
+    assert {row["id"] for row in found} == {"mov-bulk-1", "mov-bulk-2"}
+
+
+@pytest.mark.asyncio
+async def test_find_by_ids_empty_list(movie_gateway: SupabaseMovieGateway) -> None:
+    """Verify find_by_ids returns an empty list when no ids match."""
+    found = await movie_gateway.find_by_ids(["mov-nonexistent-id"])
+    assert found == []
+
+
+@pytest.mark.asyncio
 async def test_exists_by_id(movie_gateway: SupabaseMovieGateway) -> None:
     """Verify exists_by_id returns correct results."""
     await movie_gateway.save(movie_id="mov-exists", title="Existing Movie")

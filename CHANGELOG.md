@@ -8,6 +8,27 @@ Before 2026-07-15 the entire codebase shipped as a single package (`marquise`, n
 `marquise-core`). Starting 2026-07-15, the FastAPI application lives in `marquise-api` and the
 Typer CLI lives in `marquise-cli`, each with independent versions.
 
+## 2026-07-17
+
+### marquise-api v0.1.2
+
+- **Move `fly.toml` into `apps/marquise-api/`**: colocated the Fly config with the Dockerfile it deploys instead of leaving it at the repo root, now that a second Fly app (`marquise-interface`) exists. The Dockerfile still requires repo-root build context (it reaches into `packages/marquise-core` and root `pyproject.toml`/`uv.lock`), so `.github/workflows/fly-deploy.yml` now invokes `flyctl deploy --config apps/marquise-api/fly.toml --dockerfile apps/marquise-api/Dockerfile` from the repo root rather than relying on the implicit root `fly.toml`.
+- **`GET /v1/movies` gains bulk-by-ids lookup**: added a repeated `ids` query param (`?ids=a&ids=b`) alongside `?title=` — the two can be combined as an AND filter (movies whose id is in the list *and* whose title matches), or used independently. `ids` is capped at 100 per call (422 via `TooManyMovieIdsError` if exceeded) and additionally capped at the requested page `size` (`ids` count must not exceed `size`; 422 otherwise), and rejects `page != 1` (everything fits on one page by construction). IDs with no matching movie are silently omitted. No separate `/movies/by-ids` route — this reuses the same paginated `Page[MovieResponse]` response shape as the existing list endpoint. When both filters are given, the title match is applied in-memory to the `ids` lookup's results (no second SQL predicate).
+
+### marquise-core v0.1.2
+
+- **`MovieRepository.find_by_ids` reused by `ListMoviesUseCase`**: new Clean Architecture plumbing backing the bulk-by-ids mode of `GET /v1/movies` — `SupabaseMovieGateway.find_by_ids` (`WHERE id = ANY($1)`, the codebase's first multi-value SQL lookup), `MovieGateway` protocol, `SupabaseMovieRepository`. `ListMoviesUseCase.InputData` gained an `ids` field; when set, `execute()` branches to `find_by_ids` instead of the title/pagination `find_all` path. `MovieController.list` gained a matching `ids` parameter.
+
+### marquise-interface
+
+- **Add Fly.io deployment**: new `web/apps/marquise-interface/Dockerfile` (pnpm workspace build → static `nginx:alpine` serve, with SPA fallback via `nginx.conf`) and `fly.toml` (new Fly app `marquise-interface`). The production build runs in `live-remote` mode (`pnpm --filter marquise-interface build:live-remote`, a new package script), baking in `VITE_API_BASE_URL=https://marquise-api.fly.dev` so the deployed site serves real data.
+- **CI**: `.github/workflows/fly-deploy.yml` now uses `dorny/paths-filter` to run independent `deploy-api` and `deploy-interface` jobs, each triggered only when its own app's files change on push to `main`.
+- **Replace per-movie-id N+1 fetch with `getByIds`**: `liveApi.ts`'s poster-wall enrichment step previously issued one `GET /v1/movies/{id}` per distinct movie in the screenings window via `Promise.allSettled`. It now calls the new `client.movies.getByIds()` (chunked to 100 ids per request) instead, collapsing dozens of requests into one or a few.
+
+### @marquise/api-client
+
+- **Add `MoviesResource.getByIds`**: goes through `list()` with `ids` set and `size` forced to `ids.length` (satisfying the backend's `ids count <= size` constraint), unwrapping `.items` from the returned `Page`. `buildQuery` now serializes `string[]` values as repeated query params (`ids=a&ids=b`) to support it, and `ListMoviesParams` gained an `ids` field.
+
 ## 2026-07-15
 
 ### @marquise/components + marquise-interface
