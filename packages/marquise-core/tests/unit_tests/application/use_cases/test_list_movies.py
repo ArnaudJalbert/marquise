@@ -6,6 +6,7 @@ from unittest.mock import create_autospec
 
 import pytest
 
+from marquise.application.exceptions import TooManyMovieIdsError
 from marquise.application.repositories import MovieRepository, Page
 from marquise.application.use_cases.list_movies import ListMoviesUseCase
 from marquise.domain.entities import Movie
@@ -221,3 +222,73 @@ async def test_list_movies_rejects_blank_title() -> None:
     """A whitespace-only title filter is rejected before the repository is called."""
     with pytest.raises(ValueError, match="title must not be empty when provided"):
         ListMoviesUseCase.InputData(title="   ")
+
+
+@pytest.mark.asyncio
+async def test_list_movies_by_ids_returns_matching_movies() -> None:
+    """ids mode delegates to find_by_ids and maps results to output data."""
+    mock_repo = create_autospec(MovieRepository, instance=True)
+    mock_repo.find_by_ids.return_value = [
+        Movie(id=MovieId(value="mov-1"), title="The Odyssey"),
+        Movie(id=MovieId(value="mov-2"), title="Sunrise"),
+    ]
+
+    use_case = ListMoviesUseCase(movie_repository=mock_repo)
+    request = ListMoviesUseCase.InputData(ids=("mov-1", "mov-2"), size=2)
+
+    response = await use_case.execute(request)
+
+    assert [m.id for m in response.movies] == ["mov-1", "mov-2"]
+    assert response.total == 2
+    mock_repo.find_by_ids.assert_awaited_once_with(
+        [MovieId(value="mov-1"), MovieId(value="mov-2")]
+    )
+    mock_repo.find_all.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_list_movies_by_ids_omits_missing_ids() -> None:
+    """IDs with no matching movie are silently omitted, not an error."""
+    mock_repo = create_autospec(MovieRepository, instance=True)
+    mock_repo.find_by_ids.return_value = [
+        Movie(id=MovieId(value="mov-1"), title="The Odyssey"),
+    ]
+
+    use_case = ListMoviesUseCase(movie_repository=mock_repo)
+    request = ListMoviesUseCase.InputData(ids=("mov-1", "missing"), size=2)
+
+    response = await use_case.execute(request)
+
+    assert [m.id for m in response.movies] == ["mov-1"]
+    assert response.total == 1
+
+
+def test_list_movies_rejects_ids_and_title_together() -> None:
+    """ids and title are mutually exclusive filter modes."""
+    with pytest.raises(ValueError, match="ids and title cannot both be provided"):
+        ListMoviesUseCase.InputData(ids=("mov-1",), title="Dune", size=1)
+
+
+def test_list_movies_rejects_empty_ids() -> None:
+    """An empty ids tuple is rejected when explicitly provided."""
+    with pytest.raises(ValueError, match="ids must not be empty when provided"):
+        ListMoviesUseCase.InputData(ids=())
+
+
+def test_list_movies_rejects_too_many_ids() -> None:
+    """More than MAX_MOVIE_IDS ids is rejected."""
+    too_many = tuple(f"mov-{i}" for i in range(101))
+    with pytest.raises(TooManyMovieIdsError):
+        ListMoviesUseCase.InputData(ids=too_many, size=101)
+
+
+def test_list_movies_rejects_ids_count_exceeding_size() -> None:
+    """The number of ids must not exceed the requested page size."""
+    with pytest.raises(ValueError, match="ids count must not exceed size"):
+        ListMoviesUseCase.InputData(ids=("mov-1", "mov-2"), size=1)
+
+
+def test_list_movies_rejects_ids_with_page_other_than_one() -> None:
+    """ids mode only makes sense on page 1, since everything fits in one page."""
+    with pytest.raises(ValueError, match="page must be 1 when ids is provided"):
+        ListMoviesUseCase.InputData(ids=("mov-1",), size=1, page=2)

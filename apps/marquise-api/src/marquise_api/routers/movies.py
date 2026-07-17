@@ -26,43 +26,32 @@ async def list_movies(
     request: Request,
     response: Response,
     title: str | None = Query(
-        default=None, description="Filter movies by title (case-insensitive)."
+        default=None,
+        description=(
+            "Filter movies by title (case-insensitive). Mutually exclusive with ids."
+        ),
+    ),
+    ids: list[str] | None = Query(
+        default=None,
+        description=(
+            "Fetch specific movies in bulk, repeated per ID (?ids=a&ids=b)."
+            " Mutually exclusive with title. At most 100 ids, and the count"
+            " must not exceed size. IDs with no matching movie are silently"
+            " omitted from the response."
+        ),
     ),
     params: Params = Depends(),
     controller: MovieController = Depends(get_movie_controller),
 ) -> Page[MovieResponse]:
-    """List movies, optionally filtered by title."""
-    output = await controller.list(title=title, page=params.page, size=params.size)
+    """List movies, optionally filtered by title, or fetched in bulk by ids."""
+    output = await controller.list(
+        title=title, ids=ids, page=params.page, size=params.size
+    )
     return Page.create(
         items=[MovieResponse.model_validate(m) for m in output.movies],
         total=output.total,
         params=params,
     )
-
-
-@router.get(
-    "/movies/by-ids",
-    response_model=list[MovieResponse],
-    responses=error_responses(422, 429),
-)
-@limiter.limit(current_rate_limit)
-@cache()
-async def get_movies_by_ids(
-    request: Request,
-    response: Response,
-    ids: list[str] = Query(
-        ...,
-        description=(
-            "The movie IDs to fetch, repeated per ID"
-            " (?ids=a&ids=b). At most 100 IDs per call. IDs with no"
-            " matching movie are silently omitted from the response."
-        ),
-    ),
-    controller: MovieController = Depends(get_movie_controller),
-) -> list[MovieResponse]:
-    """Retrieve multiple movies by their IDs in one call."""
-    output = await controller.get_by_ids(movie_ids=ids)
-    return [MovieResponse.model_validate(m) for m in output.movies]
 
 
 @router.get(

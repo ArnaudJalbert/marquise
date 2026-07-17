@@ -4,11 +4,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from marquise.application.exceptions import TooManyMovieIdsError
 from marquise.application.repositories import MovieRepository
+from marquise.domain.entities import Movie
+from marquise.domain.value_objects import MovieId
+
+MAX_MOVIE_IDS = 100
 
 
 class ListMoviesUseCase:
-    """Use case for listing movies with optional title filtering."""
+    """Use case for listing movies, optionally filtered by title or by IDs."""
 
     @dataclass(frozen=True, slots=True)
     class InputData:
@@ -16,12 +21,18 @@ class ListMoviesUseCase:
 
         Attributes:
             title: Optional title filter (substring, case-insensitive).
-            page: Page number (1-based). Ignored when size is None.
+                Mutually exclusive with ids.
+            ids: Optional list of movie IDs to fetch in bulk. Mutually
+                exclusive with title. At most MAX_MOVIE_IDS ids, and the
+                count must not exceed size.
+            page: Page number (1-based). Ignored when size is None. Must be
+                1 when ids is provided.
             size: Max number of items per page. If None, all matching
                 movies are returned unbounded (page is ignored).
         """
 
         title: str | None = None
+        ids: tuple[str, ...] | None = None
         page: int = 1
         size: int | None = None
 
@@ -30,8 +41,12 @@ class ListMoviesUseCase:
 
             Raises:
                 ValueError: If title is provided but empty or whitespace-only,
-                    if size is provided but not positive, or if page is less
-                    than 1.
+                    if size is provided but not positive, if page is less
+                    than 1, if title and ids are both provided, if ids is
+                    provided but empty, if ids' count exceeds size, or if
+                    page is not 1 when ids is provided.
+                TooManyMovieIdsError: If more than MAX_MOVIE_IDS ids are
+                    requested.
             """
             if self.title is not None and not self.title.strip():
                 raise ValueError("title must not be empty when provided")
@@ -39,6 +54,20 @@ class ListMoviesUseCase:
                 raise ValueError("size must be positive when provided")
             if self.page < 1:
                 raise ValueError("page must be at least 1")
+            if self.ids is not None:
+                if self.title is not None:
+                    raise ValueError("ids and title cannot both be provided")
+                if len(self.ids) == 0:
+                    raise ValueError("ids must not be empty when provided")
+                if len(self.ids) > MAX_MOVIE_IDS:
+                    raise TooManyMovieIdsError(
+                        f"At most {MAX_MOVIE_IDS} ids may be requested at"
+                        f" once, got {len(self.ids)}"
+                    )
+                if self.size is not None and len(self.ids) > self.size:
+                    raise ValueError("ids count must not exceed size")
+                if self.page != 1:
+                    raise ValueError("page must be 1 when ids is provided")
 
     @dataclass(frozen=True, slots=True)
     class MovieData:
@@ -116,16 +145,23 @@ class ListMoviesUseCase:
         self.movie_repository = movie_repository
 
     async def execute(self, request: InputData) -> OutputData:
-        """List movies, optionally filtered by title and paginated.
+        """List movies, optionally filtered by title/ids and paginated.
 
         Args:
-            request: The input data containing optional title filter and
-                pagination parameters.
+            request: The input data containing optional title or ids filter
+                and pagination parameters.
 
         Returns:
             The output data containing the matching page of movies and the
             total count.
         """
+        if request.ids is not None:
+            movies = await self.movie_repository.find_by_ids(
+                [MovieId(value=movie_id) for movie_id in request.ids]
+            )
+            movie_data = [self._to_movie_data(m) for m in movies]
+            return self.OutputData(movies=movie_data, total=len(movie_data))
+
         if request.size is not None:
             limit = request.size
             offset = (request.page - 1) * request.size
@@ -139,23 +175,32 @@ class ListMoviesUseCase:
             offset=offset,
         )
 
-        movie_data = [
-            self.MovieData(
-                id=str(m.id),
-                title=m.title,
-                release_year=m.release_year,
-                directors=m.directors,
-                cast=m.cast,
-                duration_minutes=m.duration_minutes,
-                description=m.description,
-                poster_url=m.poster_url,
-                trailer_url=m.trailer_url,
-                genres=m.genres,
-                original_title=m.original_title,
-                rating=m.rating,
-                origin_countries=m.origin_countries,
-            )
-            for m in page.items
-        ]
+        movie_data = [self._to_movie_data(m) for m in page.items]
 
         return self.OutputData(movies=movie_data, total=page.total)
+
+    @staticmethod
+    def _to_movie_data(movie: Movie) -> ListMoviesUseCase.MovieData:
+        """Map a Movie domain entity to this use case's MovieData output.
+
+        Args:
+            movie: The domain entity to map.
+
+        Returns:
+            The mapped MovieData.
+        """
+        return ListMoviesUseCase.MovieData(
+            id=str(movie.id),
+            title=movie.title,
+            release_year=movie.release_year,
+            directors=movie.directors,
+            cast=movie.cast,
+            duration_minutes=movie.duration_minutes,
+            description=movie.description,
+            poster_url=movie.poster_url,
+            trailer_url=movie.trailer_url,
+            genres=movie.genres,
+            original_title=movie.original_title,
+            rating=movie.rating,
+            origin_countries=movie.origin_countries,
+        )
