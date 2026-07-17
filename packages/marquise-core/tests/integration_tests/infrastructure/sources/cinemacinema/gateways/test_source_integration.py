@@ -45,11 +45,11 @@ async def test_fetch_showtimes_returns_data(cinema_name: str) -> None:
         assert entry["identifier"]
         assert entry["external_id"]
         showtime = datetime.fromisoformat(entry["showtime"])
-        # Showtimes should be no older than the previous UTC day (to allow
-        # for any late-Montreal-evening shows that crossed midnight UTC)
-        # and no further out than the requested end date.
+        # Showtimes should be no older than the previous UTC day and no
+        # further out than the day after the requested end date, to allow
+        # for late-Montreal-evening shows that crossed midnight UTC.
         assert showtime.date() >= start.date() - timedelta(days=1)
-        assert showtime.date() <= end.date()
+        assert showtime.date() <= end.date() + timedelta(days=1)
 
 
 @pytest.mark.asyncio
