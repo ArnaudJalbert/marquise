@@ -14,13 +14,15 @@ web/
 ├── pnpm-workspace.yaml   # Workspaces: apps/* and packages/*
 ├── turbo.json            # Task pipeline (build, dev, lint)
 ├── apps/
-│   └── marquise-admin/   # Admin web app — Vite + React 19 + TypeScript
+│   ├── marquise-admin/     # Admin web app — Vite + React 19 + TypeScript
+│   └── marquise-interface/ # Consumer web app (poster wall) — Vite + React 19 + TypeScript
 └── packages/
-    └── core/             # @marquise/core — shared components/utilities
+    ├── api-client/         # @marquise/api-client — typed fetch client for the Marquise API
+    └── components/         # @marquise/components — shared components/utilities
 ```
 
-- **`apps/*`** — runnable applications. Today: the read-only admin app. Later: the public consumer app, as another sibling.
-- **`packages/*`** — shared libraries. `@marquise/core` holds code used by more than one app, consumed via the [`workspace:*`](https://pnpm.io/workspaces#workspace-protocol-workspace) protocol so apps always build against local source.
+- **`apps/*`** — runnable applications. `marquise-admin` (read-only internal admin) and `marquise-interface` (public consumer poster-wall prototype).
+- **`packages/*`** — shared libraries. `@marquise/components` holds code used by more than one app — design tokens, the poster-wall component library, filter bar. `@marquise/api-client` is a dependency-free, hand-typed `fetch` wrapper around the `/v1` REST API. Both are consumed via the [`workspace:*`](https://pnpm.io/workspaces#workspace-protocol-workspace) protocol so apps always build against local source.
 
 ## Prerequisites
 
@@ -40,8 +42,9 @@ corepack enable pnpm
 
 ```bash
 cd web
-pnpm install                        # install + link the whole workspace (run once)
-pnpm --filter marquise-admin dev    # start the admin app (prints http://localhost:5173)
+pnpm install                            # install + link the whole workspace (run once)
+pnpm --filter marquise-admin dev        # start the admin app (prints http://localhost:5173)
+pnpm --filter marquise-interface dev    # start the poster-wall prototype app
 ```
 
 ## Common commands
@@ -52,27 +55,30 @@ Run from `web/`:
 |---|---|
 | `pnpm install` | Install all workspaces, link internal packages. Re-run after any `package.json` change. |
 | `pnpm --filter marquise-admin dev` | Admin app dev server with hot reload. |
-| `pnpm build` | `turbo run build` — builds `@marquise/core`, then the apps (dependency-ordered, cached). |
+| `pnpm --filter marquise-interface dev` | Poster-wall prototype app dev server with hot reload. |
+| `pnpm build` | `turbo run build` — builds `@marquise/components`, then the apps (dependency-ordered, cached). |
 | `pnpm lint` | `turbo run lint` — lints/type-checks every workspace. |
-| `pnpm --filter <name> <script>` | Run one workspace's script (`<name>` = the package's `name`, e.g. `marquise-admin`, `@marquise/core`). |
+| `pnpm --filter <name> <script>` | Run one workspace's script (`<name>` = the package's `name`, e.g. `marquise-admin`, `@marquise/components`). |
 
-Turborepo's [`turbo.json`](https://github.com/ArnaudJalbert/marquise/blob/main/web/turbo.json) declares `build` with `dependsOn: ["^build"]`, so `@marquise/core` is always built before the apps that import it, and unchanged outputs are served from cache.
+Turborepo's [`turbo.json`](https://github.com/ArnaudJalbert/marquise/blob/main/web/turbo.json) declares `build` with `dependsOn: ["^build"]`, so `@marquise/components` is always built before the apps that import it, and unchanged outputs are served from cache.
 
 ## Build graph
 
 ```
-packages/core (@marquise/core)   ──tsc──▶  dist/   (React is a peerDependency)
-        │  consumed via "@marquise/core": "workspace:*"
+packages/components (@marquise/components)   ──tsc──▶  dist/   (React is a peerDependency)
+        │  consumed via "@marquise/components": "workspace:*"
         ▼
-apps/marquise-admin              ──vite──▶ dist/    (static bundle)
+apps/marquise-admin, apps/marquise-interface              ──vite──▶ dist/    (static bundle)
 ```
 
 ## Status & scope
 
-The web workspace is currently a **toolchain skeleton** ([issue #64](https://github.com/ArnaudJalbert/marquise/issues/64)). The admin app renders a `CoreHello` component from `@marquise/core` to prove the wiring; there is no product logic yet.
+`marquise-admin` remains a toolchain skeleton with no product logic ([issue #64](https://github.com/ArnaudJalbert/marquise/issues/64)), beyond a minimal wiring smoke test for `@marquise/api-client`. `marquise-interface` is a new app that renders the poster-wall live prototype — four grid layouts plus a full interactive filter bar (search, cinema/language/genre, date picker, time-range slider) — built entirely on `@marquise/components` against a local mock-data fixture (16 movies). It has no live API connection yet; wiring `@marquise/api-client` into `marquise-interface` is a follow-up.
 
-Explicitly out of scope for the scaffold (tracked as separate issues):
+`@marquise/api-client` is a typed `fetch` client for the public, read-only `/v1` REST API at [`https://marquise-api.fly.dev`](https://marquise-api.fly.dev/docs) (movies, cinemas, screenings) — see [`packages/api-client/README.md`](https://github.com/ArnaudJalbert/marquise/blob/main/web/packages/api-client/README.md).
 
-- API client / data fetching against [`https://marquise-api.fly.dev`](https://marquise-api.fly.dev/docs)
-- Routing and a UI component kit
+Explicitly out of scope so far (tracked as separate issues):
+
+- Wiring `@marquise/api-client` into `marquise-interface`
+- Routing (both apps are single-page)
 - Web CI (the current GitHub Actions pipeline is Python-only)

@@ -16,10 +16,15 @@ import ssl
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import certifi
+
+from marquise.infrastructure.sources._timezone import (
+    MONTREAL_TZ,
+    montreal_local_to_utc_iso,
+)
 
 _SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 
@@ -262,16 +267,26 @@ def _get_date_range(
     Returns:
         ``(start, end)`` tuple.
     """
-    now = datetime.now()
-    if start_date is None:
-        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    else:
-        start = start_date
-    if end_date is None:
-        end = start + timedelta(days=90)
-    else:
-        end = end_date
+    now = datetime.now(tz=UTC)
+    start = (
+        start_date
+        if start_date is not None
+        else now.replace(hour=0, minute=0, second=0, microsecond=0)
+    )
+    end = end_date if end_date is not None else start + timedelta(days=90)
     return start, end
+
+
+def _as_utc(value: datetime) -> datetime:
+    """Return *value* as a timezone-aware UTC datetime.
+
+    Args:
+        value: A naive or aware datetime.
+
+    Returns:
+        The datetime with UTC tzinfo (naive inputs are assumed UTC).
+    """
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
 
 
 def _needed_offsets(
@@ -295,7 +310,9 @@ def _needed_offsets(
     if not first_initial_date:
         return []
 
-    initial_start = datetime.strptime(first_initial_date, "%Y-%m-%d")
+    initial_start = datetime.strptime(first_initial_date, "%Y-%m-%d").replace(
+        tzinfo=range_end.tzinfo
+    )
     days_after_initial = (range_end - initial_start).days
 
     if days_after_initial <= 14:
@@ -336,6 +353,8 @@ def fetch_showtimes(
         )
 
     range_start, range_end = _get_date_range(start_date, end_date)
+    range_start = _as_utc(range_start)
+    range_end = _as_utc(range_end)
 
     # ------------------------------------------------------------------
     # 1.  Fetch the initial page to get the first ~2 weeks with prices.
@@ -393,7 +412,7 @@ def fetch_showtimes(
     # ------------------------------------------------------------------
     results: list[dict[str, Any]] = []
     for date_key in all_dates:
-        dt = datetime.strptime(date_key, "%Y-%m-%d")
+        dt = datetime.strptime(date_key, "%Y-%m-%d").replace(tzinfo=MONTREAL_TZ)
         if dt < range_start or dt > range_end:
             continue
         events = sorted(
@@ -402,11 +421,20 @@ def fetch_showtimes(
         )
         for ev in events:
             try:
-                ev_dt = datetime.fromisoformat(ev["showtime"])
+                ev_dt = datetime.fromisoformat(ev["showtime"]).replace(
+                    tzinfo=MONTREAL_TZ
+                )
             except ValueError:
-                ev_dt = datetime.strptime(ev["showtime"], "%Y-%m-%dT%I:%M %p")
+                ev_dt = datetime.strptime(ev["showtime"], "%Y-%m-%dT%I:%M %p").replace(
+                    tzinfo=MONTREAL_TZ
+                )
             if ev_dt < range_start or ev_dt > range_end:
                 continue
+            # ev["showtime"] is still Montreal-local ("YYYY-MM-DDTHH:MM") at
+            # this point — convert to a real UTC instant for the caller.
+            ev["showtime"] = montreal_local_to_utc_iso(
+                ev["showtime"][:10], ev["showtime"][11:16]
+            )
             results.append(ev)
 
     return results

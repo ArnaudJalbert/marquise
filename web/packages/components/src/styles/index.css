@@ -1,0 +1,7 @@
+@import url('./tokens.css');
+@import url('./typography.css');
+@import url('./base.css');
+
+* {
+  box-sizing: border-box;
+}

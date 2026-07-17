@@ -10,6 +10,30 @@ Typer CLI lives in `marquise-cli`, each with independent versions.
 
 ## 2026-07-15
 
+### @marquise/components + marquise-interface
+
+- **Move `filterMovies` filter/sort/dedup logic into `@marquise/components`**: extracted `filterMovies.ts` from `marquise-interface` into the shared component library so the AND-filter semantics (cinema, genre, date, language, time range, search text) and `mergeByTitle` cross-cinema dedup can be reused — and tested — in one place, not duplicated per app.
+- **Add `addDaysToDateKey` to `@marquise/components/dateKey.ts`**: shared date-key arithmetic replaces an identically implemented private function in `liveApi.ts`.
+- **Fix `PosterImage` render-time side effect**: replaced a `useState` + render-time mutation pattern with a canonical `useEffect` that resets the error state when `src` changes, eliminating a fragile anti-pattern.
+- **Fix `PosterWallSkeleton` view-to-CSS mapping**: extracted the view→CSS-class lookup into a `VIEW_GRID_CLASS` config record instead of a chain of inline ternaries.
+- **Consolidate `liveApi.ts` imports**: merged three separate `@marquise/components` import lines into one.
+- **Add test infrastructure to `@marquise/components`**: added `vitest`, `jsdom`, and `@testing-library/react`; created `vitest.config.ts` and a `setup.ts` with jest-dom matchers and auto-cleanup.
+- **30 unit tests across 5 test files**:
+  - `dateKey.test.ts` — `toDateKey`, `parseDateKey`, `addDaysToDateKey` (round-trip, padding, month/year boundaries).
+  - `genrePalette.test.ts` — every genre mapped to a palette family.
+  - `PosterImage.test.tsx` — img rendering, error placeholder, src-change reset, custom className.
+  - `PosterWall.test.tsx` — empty state, all four view modes render their grid.
+  - `filterMovies.test.ts` — per-dimension filtering, time-range, search query, merge-by-title, screening dedup, partial-screening filtering after filter mismatch.
+
+### marquise-core v0.1.1
+
+- **Fix inconsistent showtime timezone handling across scraper sources**: `cinemapublic`, `cinemamoderne`, `cinemacinema`, and `cinematheque` were emitting naive Montreal-local `showtime` strings with no UTC offset, while `outremont` and `cineplex` already emitted genuinely UTC-aware timestamps — the two conventions were silently incompatible with each other and with any client reading `showtime` as real UTC. Added `marquise.infrastructure.sources._timezone.montreal_local_to_utc_iso()`, a shared `zoneinfo`-based (`America/Toronto`, DST-correct) conversion helper, and switched the four naive sources to call it so every source now emits a real, unambiguous UTC ISO 8601 `showtime`.
+- **marquise-interface**: `formatShowtime`/`showtimeDateKey`/`resolveWindow` in `web/apps/marquise-interface/src/api/liveApi.ts` no longer assume `showtime` is a naive-local value mislabeled as UTC (the old `getUTCHours()` workaround) — they now convert real UTC to Montreal wall-clock time via `Intl.DateTimeFormat` (`America/Toronto`), matching the corrected backend contract. Added `montrealDateKeyToUtcRange()` to `web/apps/marquise-interface/src/timezone.ts` to resolve a Montreal calendar day to its real UTC start/end instants for the `/v1/screenings` date-range query.
+
+### marquise-api v0.1.1
+
+- **Enable CORS for local frontend dev**: sets `MARQUISE_API_CORS_ORIGINS = "http://localhost:5173"` in root `fly.toml`'s `[env]` block so browser requests from the local Vite dev server (both `marquise-admin` and `marquise-interface`, which default to port 5173) are allowed against the deployed API. `apps/marquise-api/src/marquise_api/app.py` already supported the env var; it was simply never set, so `CORSMiddleware` was never registered and all cross-origin requests were rejected.
+
 ### Docs
 
 - **Replace text-based diagrams with Mermaid charts**: Converted ASCII box diagrams and arrow-chain data flows in `docs/architecture.md` and `docs/sources.md` to `flowchart` and `sequenceDiagram` Mermaid blocks. Enabled Mermaid rendering in MkDocs via `pymdownx.superfences` custom fence and CDN-loaded Mermaid JS. Also converted source mapping overview to `flowchart LR` and collapsed the API note ASCII box to plain text.

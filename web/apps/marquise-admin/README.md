@@ -1,8 +1,8 @@
 # marquise-admin
 
-The Marquise **admin web app** (read-only) — a [Vite](https://vite.dev/) + [React](https://react.dev/) + TypeScript single-page app. It lives in the `web/` [monorepo](../../README.md) and shares code with the future consumer app through the [`@marquise/core`](../../packages/core) package.
+The Marquise **admin web app** (read-only) — a [Vite](https://vite.dev/) + [React](https://react.dev/) + TypeScript single-page app. It lives in the `web/` [monorepo](../../README.md) and shares code with [`marquise-interface`](../marquise-interface) through the [`@marquise/components`](../../packages/components) package, and talks to the backend via [`@marquise/api-client`](../../packages/api-client).
 
-> This is currently a bare toolchain skeleton (the default Vite starter page plus a `CoreHello` smoke-test component imported from `@marquise/core`). App logic — API client, routing, UI kit — arrives in follow-up issues.
+> This is still mostly a bare toolchain skeleton (the default Vite starter page), plus a minimal wiring smoke test that fetches the tracked cinema count via `@marquise/api-client`. Real admin screens — routing, UI kit — arrive in follow-up issues.
 
 ## Prerequisites & install
 
@@ -43,7 +43,8 @@ Or, from `web/`, `pnpm dev` / `pnpm build` / `pnpm lint` run the task across the
 | UI library | React 19 |
 | Language | TypeScript |
 | Linter | [oxlint](https://oxc.rs) (config in [`.oxlintrc.json`](.oxlintrc.json)) |
-| Shared code | [`@marquise/core`](../../packages/core) via `workspace:*` |
+| Shared code | [`@marquise/components`](../../packages/components) via `workspace:*` |
+| API client | [`@marquise/api-client`](../../packages/api-client) via `workspace:*` |
 
 ## Structure
 
@@ -52,7 +53,7 @@ apps/marquise-admin/
 ├── index.html          # Vite entry HTML
 ├── src/
 │   ├── main.tsx        # React root
-│   ├── App.tsx         # Renders <CoreHello /> from @marquise/core (wiring smoke test)
+│   ├── App.tsx         # App shell
 │   └── *.css, assets/
 ├── vite.config.ts
 ├── tsconfig*.json      # app / node project references
@@ -64,7 +65,7 @@ apps/marquise-admin/
 Import from the shared package by its scope; the workspace resolves it to local source:
 
 ```tsx
-import { CoreHello } from '@marquise/core'
+import { PosterWall } from '@marquise/components'
 ```
 
-To add a new shared component, put it in [`packages/core`](../../packages/core) and export it from its entry point — do not duplicate shared UI inside this app.
+To add a new shared component, put it in [`packages/components`](../../packages/components) and export it from its entry point — do not duplicate shared UI inside this app.

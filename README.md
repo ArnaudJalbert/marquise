@@ -139,9 +139,9 @@ make api
 
 A production instance is live at [`https://marquise-api.fly.dev`](https://marquise-api.fly.dev/docs). See [docs/api.md](docs/api.md) for the full endpoint reference, pagination, caching, rate limiting, and CORS configuration.
 
-## Web (Admin App)
+## Web (Admin App & Interface)
 
-The front-end lives in [`web/`](web/) as a **pnpm + Turborepo monorepo** — a self-contained subtree that needs only Node.js and pnpm (no Python, `uv`, or database). It hosts the `marquise-admin` app (Vite + React + TypeScript) and a shared `@marquise/core` package.
+The front-end lives in [`web/`](web/) as a **pnpm + Turborepo monorepo** — a self-contained subtree that needs only Node.js and pnpm (no Python, `uv`, or database). It hosts the `marquise-admin` app and the `marquise-interface` app (both Vite + React + TypeScript) and a shared `@marquise/components` package.
 
 ```bash
 cd web
