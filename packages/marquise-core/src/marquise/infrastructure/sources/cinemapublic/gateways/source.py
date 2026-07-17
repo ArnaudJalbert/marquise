@@ -421,9 +421,13 @@ def fetch_showtimes(
         )
         for ev in events:
             try:
-                ev_dt = datetime.fromisoformat(ev["showtime"]).replace(tzinfo=MONTREAL_TZ)
+                ev_dt = datetime.fromisoformat(ev["showtime"]).replace(
+                    tzinfo=MONTREAL_TZ
+                )
             except ValueError:
-                ev_dt = datetime.strptime(ev["showtime"], "%Y-%m-%dT%I:%M %p").replace(tzinfo=MONTREAL_TZ)
+                ev_dt = datetime.strptime(ev["showtime"], "%Y-%m-%dT%I:%M %p").replace(
+                    tzinfo=MONTREAL_TZ
+                )
             if ev_dt < range_start or ev_dt > range_end:
                 continue
             # ev["showtime"] is still Montreal-local ("YYYY-MM-DDTHH:MM") at
