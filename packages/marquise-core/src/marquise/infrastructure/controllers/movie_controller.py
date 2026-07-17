@@ -6,6 +6,7 @@ from marquise.application.use_cases.get_movie import GetMovieUseCase
 from marquise.application.use_cases.get_movie_screenings import (
     GetMovieScreeningsUseCase,
 )
+from marquise.application.use_cases.get_movies_by_ids import GetMoviesByIdsUseCase
 from marquise.application.use_cases.list_movies import ListMoviesUseCase
 
 
@@ -20,10 +21,12 @@ class MovieController:
         self,
         get_movie_use_case: GetMovieUseCase,
         get_movie_screenings_use_case: GetMovieScreeningsUseCase,
+        get_movies_by_ids_use_case: GetMoviesByIdsUseCase,
         list_movies_use_case: ListMoviesUseCase,
     ) -> None:
         self._get_use_case = get_movie_use_case
         self._get_screenings_use_case = get_movie_screenings_use_case
+        self._get_by_ids_use_case = get_movies_by_ids_use_case
         self._list_use_case = list_movies_use_case
 
     async def list(
@@ -65,6 +68,26 @@ class MovieController:
         """
         request = GetMovieUseCase.InputData(movie_id=movie_id)
         return await self._get_use_case.execute(request)
+
+    async def get_by_ids(
+        self, movie_ids: list[str]
+    ) -> GetMoviesByIdsUseCase.OutputData:
+        """Retrieve multiple movies by their IDs in one call.
+
+        This is a public operation — no authentication required.
+
+        Args:
+            movie_ids: The IDs of the movies to retrieve.
+
+        Returns:
+            The output data describing the matching movies. IDs with no
+            matching movie are silently omitted.
+
+        Raises:
+            TooManyMovieIdsError: If more IDs are requested than allowed.
+        """
+        request = GetMoviesByIdsUseCase.InputData(movie_ids=tuple(movie_ids))
+        return await self._get_by_ids_use_case.execute(request)
 
     async def get_screenings(
         self,

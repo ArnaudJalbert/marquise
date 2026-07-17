@@ -30,6 +30,7 @@ disrupting existing consumers.
 | `GET` | `/v1/cinemas/{id}/screenings` | List all of a cinema's screenings (no filters beyond pagination — see below) |
 | `GET` | `/v1/cinemas/{id}/movies` | List distinct movies currently screening at a cinema (`?from=&to=`) |
 | `GET` | `/v1/movies` | List movies, optionally filtered by `?title=` |
+| `GET` | `/v1/movies/by-ids` | Retrieve multiple movies in one call (`?ids=a&ids=b`, max 100, missing ids omitted) |
 | `GET` | `/v1/movies/{id}` | Retrieve a single movie by its ID |
 | `GET` | `/v1/movies/{id}/screenings` | List all of a movie's screenings (no filters beyond pagination — see below) |
 | `GET` | `/v1/screenings` | Search screenings across all cinemas (`?movie=&movie_id=&cinema_id=&from=&to=&language=`) |
@@ -160,7 +161,7 @@ apps/marquise-api/src/marquise_api/
     ├── __init__.py     # Re-exports router modules
     ├── _dependencies.py # Shared resolve_showtimes_date_range dependency
     ├── cinemas.py      # GET /cinemas, GET /cinemas/{id}/screenings, GET /cinemas/{id}/movies
-    ├── movies.py       # GET /movies, GET /movies/{id}, GET /movies/{id}/screenings
+    ├── movies.py       # GET /movies, GET /movies/by-ids, GET /movies/{id}, GET /movies/{id}/screenings
     └── screenings.py   # GET /screenings, GET /screenings/{id}
 ```
 

@@ -25,6 +25,14 @@ export class MoviesResource {
     return request(this.ctx, `/v1/movies/${encodeURIComponent(movieId)}`);
   }
 
+  /**
+   * Fetches multiple movies in one request. Ids with no matching movie are
+   * omitted from the response. The API caps this at 100 ids per call.
+   */
+  getByIds(ids: string[]): Promise<MovieResponse[]> {
+    return request(this.ctx, `/v1/movies/by-ids${buildQuery({ ids })}`);
+  }
+
   screenings(
     movieId: string,
     params: MovieScreeningsParams = {},

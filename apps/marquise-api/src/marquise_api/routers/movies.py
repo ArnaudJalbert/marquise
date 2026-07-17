@@ -41,6 +41,31 @@ async def list_movies(
 
 
 @router.get(
+    "/movies/by-ids",
+    response_model=list[MovieResponse],
+    responses=error_responses(422, 429),
+)
+@limiter.limit(current_rate_limit)
+@cache()
+async def get_movies_by_ids(
+    request: Request,
+    response: Response,
+    ids: list[str] = Query(
+        ...,
+        description=(
+            "The movie IDs to fetch, repeated per ID"
+            " (?ids=a&ids=b). At most 100 IDs per call. IDs with no"
+            " matching movie are silently omitted from the response."
+        ),
+    ),
+    controller: MovieController = Depends(get_movie_controller),
+) -> list[MovieResponse]:
+    """Retrieve multiple movies by their IDs in one call."""
+    output = await controller.get_by_ids(movie_ids=ids)
+    return [MovieResponse.model_validate(m) for m in output.movies]
+
+
+@router.get(
     "/movies/{movie_id}",
     response_model=MovieResponse,
     responses=error_responses(404, 422, 429),

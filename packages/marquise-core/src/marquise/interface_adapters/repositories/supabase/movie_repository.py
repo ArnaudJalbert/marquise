@@ -66,6 +66,21 @@ class SupabaseMovieRepository(MovieRepository):
         data = await self._gateway.find_by_id(movie_id=str(movie_id))
         return self._to_entity(data) if data is not None else None
 
+    async def find_by_ids(self, movie_ids: list[MovieId]) -> list[Movie]:
+        """Retrieve movies by a list of unique identifiers.
+
+        Args:
+            movie_ids: The IDs of the movies to find.
+
+        Returns:
+            The matching movie entities. IDs with no matching movie are
+            silently omitted.
+        """
+        data = await self._gateway.find_by_ids(
+            movie_ids=[str(movie_id) for movie_id in movie_ids]
+        )
+        return [self._to_entity(row) for row in data]
+
     async def find_by_title(self, title: str) -> Movie | None:
         """Find a movie by title, case-insensitively.
 

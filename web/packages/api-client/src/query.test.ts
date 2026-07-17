@@ -17,6 +17,14 @@ describe("buildQuery", () => {
     );
   });
 
+  it("serializes string[] values as repeated keys", () => {
+    expect(buildQuery({ ids: ["a", "b", "c"] })).toBe("?ids=a&ids=b&ids=c");
+  });
+
+  it("omits the key entirely for an empty array", () => {
+    expect(buildQuery({ ids: [] })).toBe("");
+  });
+
   it("serializes multiple params together", () => {
     const qs = buildQuery({ title: "Dune", page: 2, size: 10 });
     const params = new URLSearchParams(qs.slice(1));
