@@ -8,6 +8,18 @@ Before 2026-07-15 the entire codebase shipped as a single package (`marquise`, n
 `marquise-core`). Starting 2026-07-15, the FastAPI application lives in `marquise-api` and the
 Typer CLI lives in `marquise-cli`, each with independent versions.
 
+## 2026-07-20
+
+### marquise-core v0.1.3
+
+- **Standardise test structure across the test suite**: extracted `import_screenings` DTO
+  validation tests into a dedicated file (`test_import_screenings_input_output_data.py`),
+  moved `test_showtime_row.py` into `application/repositories/` to mirror the source layout,
+  removed unused shared fixtures from `tests/conftest.py`, renamed 5 source gateway test
+  files from `test_source.py` to `test_{source}_gateway.py`, and replaced 17 instances of
+  explicit `AsyncMock(...)` wiring in controller tests with the idiomatic
+  `.return_value = ...` pattern. All changes are test-only; no production code was modified.
+
 ## 2026-07-19
 
 ### marquise-api v0.1.4
