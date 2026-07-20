@@ -737,7 +737,7 @@ wheels = [
 
 [[package]]
 name = "marquise-api"
-version = "0.1.3"
+version = "0.1.4"
 source = { editable = "apps/marquise-api" }
 dependencies = [
     { name = "fastapi" },

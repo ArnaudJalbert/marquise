@@ -8,6 +8,16 @@ Before 2026-07-15 the entire codebase shipped as a single package (`marquise`, n
 `marquise-core`). Starting 2026-07-15, the FastAPI application lives in `marquise-api` and the
 Typer CLI lives in `marquise-cli`, each with independent versions.
 
+## 2026-07-19
+
+### marquise-api v0.1.4
+
+- **Enable CORS for the deployed frontend**: sets `MARQUISE_API_CORS_ORIGINS = "https://marquise-interface.fly.dev"` in `apps/marquise-api/fly.toml`'s `[env]` block so browser requests from the deployed `marquise-interface` site are allowed against the production API (previously only `http://localhost:5173` was allowlisted, via the v0.1.1 change).
+
+### marquise-interface
+
+- **Fix Fly build failing to resolve workspace packages**: `web/apps/marquise-interface/fly.toml` had no `[build].context`, so flyctl defaulted it to the directory containing `fly.toml` (`web/apps/marquise-interface`) — too narrow for a Dockerfile that `COPY .`s the whole pnpm workspace and depends on sibling packages via `workspace:*`. Added `context = ".."` (relative to `fly.toml`, matching the config-relative resolution rule flyctl also applies to `dockerfile`) to point the build context at `web/`. The Dockerfile now also explicitly builds `@marquise/components` and `@marquise/api-client` (`pnpm --filter @marquise/components --filter @marquise/api-client build`) before `build:live-remote`, since those workspace packages need their own build output before the interface app can consume them.
+
 ## 2026-07-17
 
 ### marquise-api v0.1.3
