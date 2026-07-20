@@ -31,6 +31,7 @@ RUN pnpm install --frozen-lockfile
 
 # Copy the source tree and build the interface app against the live API.
 COPY . .
+RUN pnpm --filter @marquise/components --filter @marquise/api-client build
 RUN pnpm --filter marquise-interface build:live-remote
 
 # ---------------------------------------------------------------------------
