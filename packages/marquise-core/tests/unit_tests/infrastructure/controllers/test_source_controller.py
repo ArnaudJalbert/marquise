@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, create_autospec
+from unittest.mock import create_autospec
 
 import pytest
 
@@ -127,7 +127,7 @@ async def test_create_source_validates_admin_then_delegates(
         display_name="Cineplex",
         description="Cineplex cinemas",
     )
-    mock_create_use_case.execute = AsyncMock(return_value=expected)
+    mock_create_use_case.execute.return_value = expected
 
     result = await controller.create_source(
         name="cineplex",
@@ -179,7 +179,7 @@ async def test_list_sources_validates_admin_then_delegates(
 
     source_data = ListSourcesUseCase.SourceData(name="s", display_name="S")
     expected = ListSourcesUseCase.OutputData(sources=[source_data])
-    mock_list_use_case.execute = AsyncMock(return_value=expected)
+    mock_list_use_case.execute.return_value = expected
 
     result = await controller.list_sources()
 
@@ -208,7 +208,7 @@ async def test_delete_source_validates_admin_then_delegates(
     )
 
     expected = DeleteSourceUseCase.OutputData(source_name="cineplex")
-    mock_delete_use_case.execute = AsyncMock(return_value=expected)
+    mock_delete_use_case.execute.return_value = expected
 
     result = await controller.delete_source(source_name="cineplex")
 
@@ -242,7 +242,7 @@ async def test_assign_source_validates_admin_then_delegates(
     expected = AssignSourceUseCase.OutputData(
         cinema_id="cin-001", source_name="cineplex"
     )
-    mock_assign_use_case.execute = AsyncMock(return_value=expected)
+    mock_assign_use_case.execute.return_value = expected
 
     result = await controller.assign_source(cinema_id="cin-001", source_name="cineplex")
 
@@ -275,7 +275,7 @@ async def test_unassign_source_validates_admin_then_delegates(
     )
 
     expected = UnassignSourceUseCase.OutputData(cinema_id="cin-001")
-    mock_unassign_use_case.execute = AsyncMock(return_value=expected)
+    mock_unassign_use_case.execute.return_value = expected
 
     result = await controller.unassign_source(cinema_id="cin-001")
 
@@ -302,7 +302,7 @@ async def test_get_cinema_source_delegates_without_auth_check(
         source_name="cineplex",
         source_display_name="Cineplex",
     )
-    mock_get_use_case.execute = AsyncMock(return_value=expected)
+    mock_get_use_case.execute.return_value = expected
 
     result = await controller.get_cinema_source(cinema_id="cin-001")
 
@@ -328,7 +328,7 @@ async def test_list_registry_sources_delegates_without_auth_check(
         name="cinemacinema",
     )
     expected = ListRegistrySourcesUseCase.OutputData(sources=[source_entry])
-    mock_list_registry_use_case.execute = AsyncMock(return_value=expected)
+    mock_list_registry_use_case.execute.return_value = expected
 
     result = await controller.list_registry_sources()
 

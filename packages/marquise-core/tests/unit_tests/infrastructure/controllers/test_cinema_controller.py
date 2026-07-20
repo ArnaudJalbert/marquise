@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, create_autospec
+from unittest.mock import create_autospec
 
 import pytest
 
@@ -115,7 +115,7 @@ async def test_create_validates_admin_then_delegates_to_use_case(
         city="Montreal",
         website="https://example.com",
     )
-    mock_create_use_case.execute = AsyncMock(return_value=expected_output)
+    mock_create_use_case.execute.return_value = expected_output
 
     result = await controller.create(
         name="Test Cinema",
@@ -169,7 +169,7 @@ async def test_delete_validates_admin_then_delegates_to_use_case(
     )
 
     expected_output = DeleteCinemaUseCase.OutputData(cinema_id="cin-001")
-    mock_delete_use_case.execute = AsyncMock(return_value=expected_output)
+    mock_delete_use_case.execute.return_value = expected_output
 
     result = await controller.delete(cinema_id="cin-001")
 
@@ -227,7 +227,7 @@ async def test_list_returns_cinemas(
         ),
     ]
     expected = ListCinemasUseCase.OutputData(cinemas=cinema_data, total=2)
-    mock_list_use_case.execute = AsyncMock(return_value=expected)
+    mock_list_use_case.execute.return_value = expected
 
     result = await controller.list()
 
@@ -242,9 +242,8 @@ async def test_list_passes_name_filter(
     mock_list_use_case: ListCinemasUseCase,
 ) -> None:
     """Verify list passes the name filter to the use case."""
-    mock_list_use_case.execute = AsyncMock(
-        return_value=ListCinemasUseCase.OutputData(cinemas=[], total=0)
-    )
+    output = ListCinemasUseCase.OutputData(cinemas=[], total=0)
+    mock_list_use_case.execute.return_value = output
 
     await controller.list(name="Parc")
 
@@ -260,9 +259,8 @@ async def test_list_passes_page_and_size(
     mock_list_use_case: ListCinemasUseCase,
 ) -> None:
     """Verify list passes page/size through to the use case."""
-    mock_list_use_case.execute = AsyncMock(
-        return_value=ListCinemasUseCase.OutputData(cinemas=[], total=0)
-    )
+    output = ListCinemasUseCase.OutputData(cinemas=[], total=0)
+    mock_list_use_case.execute.return_value = output
 
     await controller.list(page=2, size=5)
 
@@ -279,9 +277,8 @@ async def test_list_does_not_check_auth(
     mock_list_use_case: ListCinemasUseCase,
 ) -> None:
     """Verify list does not call validate_admin (public operation)."""
-    mock_list_use_case.execute = AsyncMock(
-        return_value=ListCinemasUseCase.OutputData(cinemas=[], total=0)
-    )
+    output = ListCinemasUseCase.OutputData(cinemas=[], total=0)
+    mock_list_use_case.execute.return_value = output
 
     await controller.list()
 
@@ -316,7 +313,7 @@ async def test_list_cinemas_validates_admin_then_delegates_to_use_case(
         ),
     ]
     expected = ListCinemasUseCase.OutputData(cinemas=cinema_data, total=1)
-    mock_list_use_case.execute = AsyncMock(return_value=expected)
+    mock_list_use_case.execute.return_value = expected
 
     result = await controller.list_cinemas(name_filter="Parc")
 
@@ -375,7 +372,7 @@ async def test_update_validates_admin_then_delegates_to_use_case(
         city="Quebec",
         website="https://updated.example.com",
     )
-    mock_update_use_case.execute = AsyncMock(return_value=expected_output)
+    mock_update_use_case.execute.return_value = expected_output
 
     result = await controller.update(
         cinema_id="cin-001",
