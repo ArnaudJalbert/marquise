@@ -365,6 +365,15 @@ Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
 
 One focused task per commit. If a change touches >5 files or >2 layers, split it.
 
+### Releasing
+
+1. **Bump version** in the affected package's `pyproject.toml`.
+2. **Add CHANGELOG entry** under the current date (or create a new date heading).
+3. **Commit**: `chore(<pkg>): bump to vX.Y.Z`
+4. **Tag**: `git tag marquise-core-vX.Y.Z` (or `marquise-api`, `marquise-cli`)
+5. **Push**: `git push origin main --tags`
+6. **CI** builds, publishes to PyPI, and creates a GitHub Release.
+
 ---
 
 ## 9. Frequently Confused Points

@@ -1,8 +1,6 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
 
@@ -88,3 +86,116 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
         run: uv run pytest packages/marquise-core/tests/integration_tests/ -v
+
+  release-checks:
+    name: Version bump + CHANGELOG
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch base branch
+        run: git fetch origin ${{ github.base_ref }}
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            core:
+              - 'packages/marquise-core/src/**'
+            api:
+              - 'apps/marquise-api/src/**'
+            cli:
+              - 'apps/marquise-cli/src/**'
+
+      - name: Check marquise-core version bump
+        if: steps.filter.outputs.core == 'true'
+        run: |
+          MAIN_VER=$(git show origin/${{ github.base_ref }}:packages/marquise-core/pyproject.toml \
+            | python3 -c "import sys,tomllib; print(tomllib.load(sys.stdin.buffer)['project']['version'])")
+          PR_VER=$(python3 -c "
+            import tomllib
+            print(tomllib.load(open('packages/marquise-core/pyproject.toml','rb'))['project']['version'])
+          ")
+          python3 -c "
+            v1=[int(x) for x in '$MAIN_VER'.split('.')]
+            v2=[int(x) for x in '$PR_VER'.split('.')]
+            assert v2>v1, f'Version must increase: $MAIN_VER → $PR_VER'
+            print(f'✓ $MAIN_VER → $PR_VER')
+          "
+          echo "new_ver=$PR_VER" >> $GITHUB_ENV
+
+      - name: Check marquise-core CHANGELOG
+        if: steps.filter.outputs.core == 'true'
+        env:
+          NEW_VER: ${{ env.new_ver }}
+        run: |
+          grep -qF "marquise-core v$NEW_VER" CHANGELOG.md || {
+            echo "::error::Missing CHANGELOG entry for marquise-core v$NEW_VER"
+            exit 1
+          }
+          echo '✓ CHANGELOG entry found'
+
+      - name: Check marquise-api version bump
+        if: steps.filter.outputs.api == 'true'
+        run: |
+          MAIN_VER=$(git show origin/${{ github.base_ref }}:apps/marquise-api/pyproject.toml \
+            | python3 -c "import sys,tomllib; print(tomllib.load(sys.stdin.buffer)['project']['version'])")
+          PR_VER=$(python3 -c "
+            import tomllib
+            print(tomllib.load(open('apps/marquise-api/pyproject.toml','rb'))['project']['version'])
+          ")
+          python3 -c "
+            v1=[int(x) for x in '$MAIN_VER'.split('.')]
+            v2=[int(x) for x in '$PR_VER'.split('.')]
+            assert v2>v1, f'Version must increase: $MAIN_VER → $PR_VER'
+            print(f'✓ $MAIN_VER → $PR_VER')
+          "
+          echo "new_ver=$PR_VER" >> $GITHUB_ENV
+
+      - name: Check marquise-api CHANGELOG
+        if: steps.filter.outputs.api == 'true'
+        env:
+          NEW_VER: ${{ env.new_ver }}
+        run: |
+          grep -qF "marquise-api v$NEW_VER" CHANGELOG.md || {
+            echo "::error::Missing CHANGELOG entry for marquise-api v$NEW_VER"
+            exit 1
+          }
+          echo '✓ CHANGELOG entry found'
+
+      - name: Check marquise-cli version bump
+        if: steps.filter.outputs.cli == 'true'
+        run: |
+          MAIN_VER=$(git show origin/${{ github.base_ref }}:apps/marquise-cli/pyproject.toml \
+            | python3 -c "import sys,tomllib; print(tomllib.load(sys.stdin.buffer)['project']['version'])")
+          PR_VER=$(python3 -c "
+            import tomllib
+            print(tomllib.load(open('apps/marquise-cli/pyproject.toml','rb'))['project']['version'])
+          ")
+          python3 -c "
+            v1=[int(x) for x in '$MAIN_VER'.split('.')]
+            v2=[int(x) for x in '$PR_VER'.split('.')]
+            assert v2>v1, f'Version must increase: $MAIN_VER → $PR_VER'
+            print(f'✓ $MAIN_VER → $PR_VER')
+          "
+          echo "new_ver=$PR_VER" >> $GITHUB_ENV
+
+      - name: Check marquise-cli CHANGELOG
+        if: steps.filter.outputs.cli == 'true'
+        env:
+          NEW_VER: ${{ env.new_ver }}
+        run: |
+          grep -qF "marquise-cli v$NEW_VER" CHANGELOG.md || {
+            echo "::error::Missing CHANGELOG entry for marquise-cli v$NEW_VER"
+            exit 1
+          }
+          echo '✓ CHANGELOG entry found'
+
+      - name: Nothing to check
+        if: >
+          steps.filter.outputs.core != 'true' &&
+          steps.filter.outputs.api != 'true' &&
+          steps.filter.outputs.cli != 'true'
+        run: echo 'No src/ changes detected — no release checks needed'
