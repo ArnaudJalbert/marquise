@@ -7,15 +7,18 @@ from datetime import date
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
-from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
-from marquise.application.use_cases.import_screenings import (
-    ImportScreeningsUseCase,
+from marquise.application.use_cases.ensure_movies_exist import EnsureMoviesExistCommand
+from marquise.application.use_cases.fetch_showtimes_from_source import (
+    FetchShowtimesFromSourceQuery,
 )
+from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
+from marquise.application.use_cases.import_screenings import ImportScreeningsSummary
 from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
+from marquise.application.use_cases.upsert_screenings import UpsertScreeningsCommand
 from marquise.infrastructure.controllers.auth_controller import AuthController
 
 
@@ -36,7 +39,9 @@ class SourceController:
         unassign_source_use_case: UnassignSourceUseCase,
         get_cinema_source_use_case: GetCinemaSourceUseCase,
         list_registry_sources_use_case: ListRegistrySourcesUseCase,
-        import_screenings_use_case: ImportScreeningsUseCase,
+        fetch_showtimes_use_case: FetchShowtimesFromSourceQuery,
+        ensure_movies_use_case: EnsureMoviesExistCommand,
+        upsert_screenings_use_case: UpsertScreeningsCommand,
     ) -> None:
         self._auth = auth_controller
         self._create_use_case = create_source_use_case
@@ -46,7 +51,9 @@ class SourceController:
         self._unassign_use_case = unassign_source_use_case
         self._get_source_use_case = get_cinema_source_use_case
         self._list_registry_use_case = list_registry_sources_use_case
-        self._import_use_case = import_screenings_use_case
+        self._fetch_use_case = fetch_showtimes_use_case
+        self._ensure_movies_use_case = ensure_movies_use_case
+        self._upsert_use_case = upsert_screenings_use_case
 
     async def create_source(
         self,
@@ -202,8 +209,15 @@ class SourceController:
         cinema_id: str,
         start_date: date,
         end_date: date,
-    ) -> ImportScreeningsUseCase.OutputData:
+    ) -> ImportScreeningsSummary:
         """Import screenings from a cinema's showtime source.
+
+        Sequences the three focused use cases that make up the import
+        workflow: fetch the cinema's raw showtimes, ensure every movie
+        exists (creating and enriching as needed), then upsert the
+        screenings. The counts and skip-on-collision handling live inside
+        ``UpsertScreeningsCommand``; this method only wires their outputs
+        into the response summary.
 
         Args:
             cinema_id: The ID of the cinema.
@@ -211,7 +225,7 @@ class SourceController:
             end_date: End of date range (inclusive).
 
         Returns:
-            The output data with import summary.
+            The import summary.
 
         Raises:
             ValueError: If the caller is not authenticated as admin.
@@ -220,9 +234,37 @@ class SourceController:
         """
         self._auth.validate_admin()
 
-        request = ImportScreeningsUseCase.InputData(
-            cinema_id=cinema_id,
-            start_date=start_date,
-            end_date=end_date,
+        fetched = await self._fetch_use_case.execute(
+            FetchShowtimesFromSourceQuery.InputData(
+                cinema_id=cinema_id,
+                start_date=start_date,
+                end_date=end_date,
+            )
         )
-        return await self._import_use_case.execute(request)
+        source_name = str(fetched.source_definition.name)
+
+        movies = await self._ensure_movies_use_case.execute(
+            EnsureMoviesExistCommand.InputData(
+                rows=fetched.rows,
+                source_name=source_name,
+            )
+        )
+
+        upserted = await self._upsert_use_case.execute(
+            UpsertScreeningsCommand.InputData(
+                rows=fetched.rows,
+                cinema=fetched.cinema,
+                movie_lookup=movies.movie_lookup,
+            )
+        )
+
+        return ImportScreeningsSummary(
+            cinema_id=str(fetched.cinema.id),
+            cinema_name=fetched.cinema.name,
+            source_name=source_name,
+            screenings=upserted.screenings,
+            total_count=upserted.total_count,
+            imported_count=upserted.imported_count,
+            updated_count=upserted.updated_count,
+            skipped_count=upserted.skipped_count,
+        )

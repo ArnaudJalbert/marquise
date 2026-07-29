@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from unittest.mock import create_autospec
 
 import pytest
@@ -9,15 +10,19 @@ import pytest
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
-from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
-from marquise.application.use_cases.import_screenings import (
-    ImportScreeningsUseCase,
+from marquise.application.use_cases.ensure_movies_exist import EnsureMoviesExistCommand
+from marquise.application.use_cases.fetch_showtimes_from_source import (
+    FetchShowtimesFromSourceQuery,
 )
+from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
 from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
+from marquise.application.use_cases.upsert_screenings import UpsertScreeningsCommand
+from marquise.domain.entities import Cinema, SourceDefinition
+from marquise.domain.value_objects import CinemaId, SourceName
 from marquise.infrastructure.controllers.auth_controller import AuthController
 from marquise.infrastructure.controllers.source_controller import SourceController
 from marquise.interface_adapters.repositories.protocols.auth import AuthSession
@@ -72,9 +77,21 @@ def mock_list_registry_use_case() -> ListRegistrySourcesUseCase:
 
 
 @pytest.fixture
-def mock_import_use_case() -> ImportScreeningsUseCase:
-    """Provide a mocked ImportScreeningsUseCase."""
-    return create_autospec(ImportScreeningsUseCase, instance=True)
+def mock_fetch_use_case() -> FetchShowtimesFromSourceQuery:
+    """Provide a mocked FetchShowtimesFromSourceQuery."""
+    return create_autospec(FetchShowtimesFromSourceQuery, instance=True)
+
+
+@pytest.fixture
+def mock_ensure_movies_use_case() -> EnsureMoviesExistCommand:
+    """Provide a mocked EnsureMoviesExistCommand."""
+    return create_autospec(EnsureMoviesExistCommand, instance=True)
+
+
+@pytest.fixture
+def mock_upsert_use_case() -> UpsertScreeningsCommand:
+    """Provide a mocked UpsertScreeningsCommand."""
+    return create_autospec(UpsertScreeningsCommand, instance=True)
 
 
 @pytest.fixture
@@ -87,7 +104,9 @@ def controller(
     mock_unassign_use_case: UnassignSourceUseCase,
     mock_get_use_case: GetCinemaSourceUseCase,
     mock_list_registry_use_case: ListRegistrySourcesUseCase,
-    mock_import_use_case: ImportScreeningsUseCase,
+    mock_fetch_use_case: FetchShowtimesFromSourceQuery,
+    mock_ensure_movies_use_case: EnsureMoviesExistCommand,
+    mock_upsert_use_case: UpsertScreeningsCommand,
 ) -> SourceController:
     """Provide a SourceController wired to mocks."""
     return SourceController(
@@ -99,7 +118,9 @@ def controller(
         unassign_source_use_case=mock_unassign_use_case,
         get_cinema_source_use_case=mock_get_use_case,
         list_registry_sources_use_case=mock_list_registry_use_case,
-        import_screenings_use_case=mock_import_use_case,
+        fetch_showtimes_use_case=mock_fetch_use_case,
+        ensure_movies_use_case=mock_ensure_movies_use_case,
+        upsert_screenings_use_case=mock_upsert_use_case,
     )
 
 
@@ -337,3 +358,95 @@ async def test_list_registry_sources_delegates_without_auth_check(
     mock_list_registry_use_case.execute.assert_awaited_once()
     input_data = mock_list_registry_use_case.execute.call_args[0][0]
     assert isinstance(input_data, ListRegistrySourcesUseCase.InputData)
+
+
+# ── import_screenings ────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_import_screenings_sequences_the_three_use_cases(
+    controller: SourceController,
+    mock_auth_controller: AuthController,
+    mock_fetch_use_case: FetchShowtimesFromSourceQuery,
+    mock_ensure_movies_use_case: EnsureMoviesExistCommand,
+    mock_upsert_use_case: UpsertScreeningsCommand,
+) -> None:
+    """Verify import_screenings validates admin, then chains fetch→ensure→upsert."""
+    mock_auth_controller.validate_admin.return_value = AuthSession(
+        access_token="tok",
+        refresh_token="ref",
+        expires_at=9_999_999.0,
+        user_id="usr",
+        email="admin@example.com",
+        is_admin=True,
+    )
+
+    cinema = Cinema(
+        id=CinemaId(value="cin-123"), name="Cinéma Beaubien", city="Montreal"
+    )
+    source_definition = SourceDefinition(
+        name=SourceName(value="cinemacinema"),
+        display_name="Cinema Cinema",
+    )
+    mock_fetch_use_case.execute.return_value = FetchShowtimesFromSourceQuery.OutputData(
+        cinema=cinema,
+        source_definition=source_definition,
+        rows=(),
+    )
+    mock_ensure_movies_use_case.execute.return_value = (
+        EnsureMoviesExistCommand.OutputData(movie_lookup={})
+    )
+    mock_upsert_use_case.execute.return_value = UpsertScreeningsCommand.OutputData(
+        screenings=(),
+        total_count=3,
+        imported_count=2,
+        updated_count=1,
+        skipped_count=0,
+    )
+
+    result = await controller.import_screenings(
+        cinema_id="cin-123",
+        start_date=date(2026, 6, 7),
+        end_date=date(2026, 6, 8),
+    )
+
+    assert result.cinema_id == "cin-123"
+    assert result.cinema_name == "Cinéma Beaubien"
+    assert result.source_name == "cinemacinema"
+    assert result.total_count == 3
+    assert result.imported_count == 2
+    assert result.updated_count == 1
+    assert result.skipped_count == 0
+
+    mock_auth_controller.validate_admin.assert_called_once_with()
+
+    fetch_input = mock_fetch_use_case.execute.call_args[0][0]
+    assert isinstance(fetch_input, FetchShowtimesFromSourceQuery.InputData)
+    assert fetch_input.cinema_id == "cin-123"
+
+    ensure_input = mock_ensure_movies_use_case.execute.call_args[0][0]
+    assert isinstance(ensure_input, EnsureMoviesExistCommand.InputData)
+    assert ensure_input.source_name == "cinemacinema"
+
+    upsert_input = mock_upsert_use_case.execute.call_args[0][0]
+    assert isinstance(upsert_input, UpsertScreeningsCommand.InputData)
+    assert upsert_input.cinema is cinema
+
+
+@pytest.mark.asyncio
+async def test_import_screenings_raises_when_not_admin(
+    controller: SourceController,
+    mock_auth_controller: AuthController,
+    mock_fetch_use_case: FetchShowtimesFromSourceQuery,
+) -> None:
+    """Verify import_screenings propagates ValueError when admin check fails."""
+    mock_auth_controller.validate_admin.side_effect = ValueError("Access denied")
+
+    with pytest.raises(ValueError, match="Access denied"):
+        await controller.import_screenings(
+            cinema_id="cin-123",
+            start_date=date(2026, 6, 7),
+            end_date=date(2026, 6, 8),
+        )
+
+    mock_fetch_use_case.execute.assert_not_awaited()
