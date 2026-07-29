@@ -12,6 +12,11 @@ dependencies = [
     "supabase>=2.31.0",
 ]
 
+[project.urls]
+Homepage = "https://marquise.ca"
+Repository = "https://github.com/ArnaudJalbert/marquise"
+Changelog = "https://github.com/ArnaudJalbert/marquise/blob/main/CHANGELOG.md"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
