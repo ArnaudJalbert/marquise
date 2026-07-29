@@ -105,6 +105,12 @@
   color: var(--text-on-accent);
 }
 
+.calendar__day--disabled {
+  color: var(--text-tertiary);
+  cursor: default;
+  pointer-events: none;
+}
+
 .calendar__footer {
   display: flex;
   justify-content: flex-end;

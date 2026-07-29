@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { toDateKey, parseDateKey } from './dateKey';
+import { montrealTodayKey } from './timezone';
 import './Calendar.css';
 
 export interface CalendarProps {
-  mode: 'multiple' | 'range';
-  onModeChange: (mode: 'multiple' | 'range') => void;
+  mode: 'single' | 'range';
+  onModeChange: (mode: 'single' | 'range') => void;
   /** "YYYY-MM-DD" date strings. */
   selected: string[];
   onChange: (dates: string[]) => void;
@@ -18,11 +19,12 @@ const MONTH_LABELS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-/** Date-picker calendar with Multiple/Range selection modes and month navigation. */
+/** Date-picker calendar with Single/Range selection modes and month navigation. */
 export function Calendar({ mode, onModeChange, selected, onChange, initialMonth }: CalendarProps) {
   const [displayMonth, setDisplayMonth] = useState(() => initialMonth ?? new Date());
   const [rangeStart, setRangeStart] = useState<string | null>(null);
 
+  const todayKey = montrealTodayKey();
   const year = displayMonth.getFullYear();
   const monthIndex = displayMonth.getMonth();
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
@@ -35,31 +37,32 @@ export function Calendar({ mode, onModeChange, selected, onChange, initialMonth 
 
   function toggleDay(day: number) {
     const key = toDateKey(new Date(year, monthIndex, day));
+    if (key < todayKey) return;
 
-    if (mode === 'range') {
-      if (rangeStart == null) {
-        setRangeStart(key);
-        onChange([key]);
-        return;
-      }
-      const startDate = parseDateKey(rangeStart);
-      const endDate = new Date(year, monthIndex, day);
-      const [lo, hi] = startDate <= endDate ? [startDate, endDate] : [endDate, startDate];
-      const range: string[] = [];
-      const cursor = new Date(lo);
-      while (cursor <= hi) {
-        range.push(toDateKey(cursor));
-        cursor.setDate(cursor.getDate() + 1);
-      }
-      onChange(range);
-      setRangeStart(null);
+    if (mode === 'single') {
+      onChange([key]);
       return;
     }
 
-    onChange(selected.includes(key) ? selected.filter((d) => d !== key) : [...selected, key]);
+    if (rangeStart == null) {
+      setRangeStart(key);
+      onChange([key]);
+      return;
+    }
+    const startDate = parseDateKey(rangeStart);
+    const endDate = new Date(year, monthIndex, day);
+    const [lo, hi] = startDate <= endDate ? [startDate, endDate] : [endDate, startDate];
+    const range: string[] = [];
+    const cursor = new Date(lo);
+    while (cursor <= hi) {
+      range.push(toDateKey(cursor));
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    onChange(range);
+    setRangeStart(null);
   }
 
-  function handleModeChange(next: 'multiple' | 'range') {
+  function handleModeChange(next: 'single' | 'range') {
     onModeChange(next);
     setRangeStart(null);
   }
@@ -73,10 +76,10 @@ export function Calendar({ mode, onModeChange, selected, onChange, initialMonth 
       <div className="calendar__mode-toggle">
         <button
           type="button"
-          className={`calendar__mode-btn ${mode === 'multiple' ? 'calendar__mode-btn--active' : ''}`}
-          onClick={() => handleModeChange('multiple')}
+          className={`calendar__mode-btn ${mode === 'single' ? 'calendar__mode-btn--active' : ''}`}
+          onClick={() => handleModeChange('single')}
         >
-          Multiple
+          Single
         </button>
         <button
           type="button"
@@ -109,11 +112,13 @@ export function Calendar({ mode, onModeChange, selected, onChange, initialMonth 
           if (day == null) return <div key={key} className="calendar__day calendar__day--blank" />;
           const dateKey = toDateKey(new Date(year, monthIndex, day));
           const isSelected = selected.includes(dateKey);
+          const isPast = dateKey < todayKey;
           return (
             <button
               key={key}
               type="button"
-              className={`calendar__day ${isSelected ? 'calendar__day--selected' : ''}`}
+              disabled={isPast}
+              className={`calendar__day ${isSelected ? 'calendar__day--selected' : ''} ${isPast ? 'calendar__day--disabled' : ''}`}
               onClick={() => toggleDay(day)}
             >
               {day}
