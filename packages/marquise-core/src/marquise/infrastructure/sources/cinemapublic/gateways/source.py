@@ -225,6 +225,8 @@ def _parse_jsonld_showtimes(
             dt = datetime.fromisoformat(start_date_str)
         except ValueError:
             continue
+        if dt.tzinfo is not None:
+            dt = dt.astimezone(MONTREAL_TZ)
 
         date_key = dt.strftime("%Y-%m-%d")
         showtime = dt.strftime("%Y-%m-%dT%H:%M")

@@ -98,8 +98,7 @@ class CreateCinemaUseCase:
         )
         if existing is not None:
             raise CinemaAlreadyExistsError(
-                f"A cinema with name '{request.name}' "
-                f"and address '{request.address}' already exists"
+                f"A cinema with name '{request.name} already exists."
             )
 
         cinema_id = CinemaId(value=str(uuid4()))

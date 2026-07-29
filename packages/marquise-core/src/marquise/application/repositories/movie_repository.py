@@ -62,6 +62,19 @@ class MovieRepository(ABC):
         ...
 
     @abstractmethod
+    async def find_by_titles(self, titles: list[str]) -> list[Movie]:
+        """Find movies by a list of titles, case-insensitively.
+
+        Args:
+            titles: The movie titles to look up.
+
+        Returns:
+            A list of matching Movie entities.  Titles with no match are
+            silently omitted.
+        """
+        ...
+
+    @abstractmethod
     async def exists_by_id(self, movie_id: MovieId) -> bool:
         """Check whether a movie exists with the given ID.
 

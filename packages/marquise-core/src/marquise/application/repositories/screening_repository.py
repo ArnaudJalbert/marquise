@@ -14,20 +14,18 @@ class ScreeningRepository(ABC):
     """Abstract interface for screening data persistence."""
 
     @abstractmethod
-    async def save(self, screening: Screening) -> tuple[Screening, bool]:
-        """Persist a new screening entity.
+    async def save(self, screening: Screening) -> Screening:
+        """Persist a screening entity.
 
         Args:
             screening: The screening to save.
 
         Returns:
-            A tuple of (saved_screening, was_inserted) where ``was_inserted``
-            is True if a new row was created, False if an existing row was
-            found.
+            The saved screening entity.
 
         Raises:
-            ScreeningAlreadyExistsError: If the screening's ``external_id``
-                collides with a different existing screening.
+            ScreeningAlreadyExistsError: If a screening with the same
+                (cinema_id, movie_id, showtime) already exists.
         """
         ...
 

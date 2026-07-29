@@ -5,12 +5,19 @@ from __future__ import annotations
 from datetime import date
 
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
+from marquise.application.use_cases.create_missing_movies import (
+    CreateMissingMoviesCommand,
+)
+from marquise.application.use_cases.create_screenings import (
+    CreateScreeningsCommand,
+    ImportScreeningsSummary,
+)
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
-from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
-from marquise.application.use_cases.import_screenings import (
-    ImportScreeningsUseCase,
+from marquise.application.use_cases.fetch_screenings_from_source import (
+    FetchScreeningsFromSourceQuery,
 )
+from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
 from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
@@ -36,7 +43,9 @@ class SourceController:
         unassign_source_use_case: UnassignSourceUseCase,
         get_cinema_source_use_case: GetCinemaSourceUseCase,
         list_registry_sources_use_case: ListRegistrySourcesUseCase,
-        import_screenings_use_case: ImportScreeningsUseCase,
+        fetch_screenings_use_case: FetchScreeningsFromSourceQuery,
+        create_movies_use_case: CreateMissingMoviesCommand,
+        create_screenings_use_case: CreateScreeningsCommand,
     ) -> None:
         self._auth = auth_controller
         self._create_use_case = create_source_use_case
@@ -46,7 +55,9 @@ class SourceController:
         self._unassign_use_case = unassign_source_use_case
         self._get_source_use_case = get_cinema_source_use_case
         self._list_registry_use_case = list_registry_sources_use_case
-        self._import_use_case = import_screenings_use_case
+        self._fetch_screenings_use_case = fetch_screenings_use_case
+        self._create_movies_use_case = create_movies_use_case
+        self._create_screenings_use_case = create_screenings_use_case
 
     async def create_source(
         self,
@@ -202,8 +213,15 @@ class SourceController:
         cinema_id: str,
         start_date: date,
         end_date: date,
-    ) -> ImportScreeningsUseCase.OutputData:
+    ) -> ImportScreeningsSummary:
         """Import screenings from a cinema's showtime source.
+
+        Sequences the three focused use cases that make up the import
+        workflow: fetch the cinema's raw showtimes, ensure every movie
+        exists (creating and enriching as needed), then upsert the
+        screenings. The counts and skip-on-collision handling live inside
+        ``UpsertScreeningsCommand``; this method only wires their outputs
+        into the response summary.
 
         Args:
             cinema_id: The ID of the cinema.
@@ -211,7 +229,7 @@ class SourceController:
             end_date: End of date range (inclusive).
 
         Returns:
-            The output data with import summary.
+            The import summary.
 
         Raises:
             ValueError: If the caller is not authenticated as admin.
@@ -220,9 +238,70 @@ class SourceController:
         """
         self._auth.validate_admin()
 
-        request = ImportScreeningsUseCase.InputData(
-            cinema_id=cinema_id,
-            start_date=start_date,
-            end_date=end_date,
+        fetched = await self._fetch_screenings_use_case.execute(
+            FetchScreeningsFromSourceQuery.InputData(
+                cinema_id=cinema_id,
+                start_date=start_date,
+                end_date=end_date,
+            )
         )
-        return await self._import_use_case.execute(request)
+
+        movies = await self._create_movies_use_case.execute(
+            CreateMissingMoviesCommand.InputData(
+                movies=tuple(
+                    CreateMissingMoviesCommand.MovieInput(
+                        title=m.title,
+                        description=m.description,
+                        directors=m.directors,
+                        cast=m.cast,
+                        duration_minutes=m.duration_minutes,
+                        release_year=m.release_year,
+                        poster_url=m.poster_url,
+                        trailer_url=m.trailer_url,
+                        genres=m.genres,
+                        original_title=m.original_title,
+                        rating=m.rating,
+                        origin_countries=m.origin_countries,
+                    )
+                    for m in fetched.movies
+                )
+            )
+        )
+
+        title_to_id = {m.title: m.id for m in movies.movies}
+        screening_inputs = [
+            CreateScreeningsCommand.ScreeningInput(
+                movie_id=title_to_id[_normalize_title(s.movie_title)],
+                movie_title=s.movie_title,
+                cinema_id=fetched.cinema_id,
+                cinema_name=fetched.cinema_name,
+                showtime=s.showtime,
+                external_id=s.external_id,
+                ticket_url=s.ticket_url,
+                room=s.room,
+                language=s.language,
+            )
+            for s in fetched.screenings
+        ]
+
+        screenings = await self._create_screenings_use_case.execute(
+            CreateScreeningsCommand.InputData(
+                screenings=tuple(screening_inputs),
+            )
+        )
+
+        return ImportScreeningsSummary(
+            cinema_id=fetched.cinema_id,
+            cinema_name=fetched.cinema_name,
+            source_name=fetched.source_name,
+            screenings=screenings.screenings,
+            total_count=screenings.total_count,
+            imported_count=screenings.imported_count,
+            updated_count=screenings.updated_count,
+            skipped_count=screenings.skipped_count,
+        )
+
+
+def _normalize_title(title: str) -> str:
+    """Strip and collapse internal whitespace in a scraped movie title."""
+    return " ".join(title.strip().split())

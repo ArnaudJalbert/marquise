@@ -120,7 +120,7 @@ async def test_save(
     )
 
     repo = SupabaseScreeningRepository(gateway=mock_gateway)
-    result, was_inserted = await repo.save(sample_screening)
+    result = await repo.save(sample_screening)
 
     assert result.id == ScreeningId(value="scr-123")
     assert result.movie == sample_movie
@@ -157,6 +157,32 @@ async def test_save_raises_screening_already_exists_on_gateway_error(
     repo = SupabaseScreeningRepository(gateway=mock_gateway)
 
     with pytest.raises(ScreeningAlreadyExistsError, match="external_id='486899'"):
+        await repo.save(sample_screening)
+
+
+@pytest.mark.asyncio
+async def test_save_raises_when_row_already_exists(
+    sample_screening: Screening,
+) -> None:
+    """Test save raises error when gateway returns not-inserted."""
+    mock_gateway = create_autospec(ScreeningGateway, instance=True)
+    mock_gateway.save.return_value = SaveOutcome(
+        row={
+            "id": "scr-123",
+            "movie_id": "mov-456",
+            "cinema_id": "cin-789",
+            "showtime": datetime(2026, 6, 7, 19, 30, 0),
+            "external_id": None,
+            "ticket_url": None,
+            "room": None,
+            "language": None,
+        },
+        inserted=False,
+    )
+
+    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+
+    with pytest.raises(ScreeningAlreadyExistsError):
         await repo.save(sample_screening)
 
 
@@ -198,10 +224,9 @@ async def test_save_with_timezone_aware_datetime(
     )
 
     repo = SupabaseScreeningRepository(gateway=mock_gateway)
-    result, was_inserted = await repo.save(sample_screening)
+    result = await repo.save(sample_screening)
 
     assert result.showtime.value.tzinfo == UTC
-    assert was_inserted
 
 
 @pytest.mark.asyncio

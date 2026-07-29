@@ -95,18 +95,18 @@ class SupabaseScreeningRepository(ScreeningRepository):
     def __init__(self, gateway: ScreeningGateway) -> None:
         self._gateway = gateway
 
-    async def save(self, screening: Screening) -> tuple[Screening, bool]:
+    async def save(self, screening: Screening) -> Screening:
         """Persist a screening via the gateway and return the mapped entity.
 
         Args:
             screening: The screening domain entity to save.
 
         Returns:
-            A tuple of (saved_screening, was_inserted).
+            The saved screening entity.
 
         Raises:
-            ScreeningAlreadyExistsError: If ``external_id`` collides with a
-                row that has a different (cinema_id, movie_id, showtime).
+            ScreeningAlreadyExistsError: If a screening with the same
+                (cinema_id, movie_id, showtime) already exists.
         """
         try:
             outcome = await self._gateway.save(
@@ -121,19 +121,21 @@ class SupabaseScreeningRepository(ScreeningRepository):
             )
         except GatewayError as exc:
             raise ScreeningAlreadyExistsError(str(exc)) from exc
-        data = outcome.row
-        was_inserted = outcome.inserted
-        saved = Screening(
-            id=ScreeningId(value=data["id"]),
+        if not outcome.inserted:
+            raise ScreeningAlreadyExistsError(
+                f"A screening already exists for cinema '{screening.cinema.id}'"
+                f", movie '{screening.movie.id}' at {screening.showtime.value}"
+            )
+        return Screening(
+            id=ScreeningId(value=outcome.row["id"]),
             movie=screening.movie,
             cinema=screening.cinema,
-            showtime=Showtime(value=_parse_datetime(data["showtime"])),
-            external_id=data.get("external_id"),
-            ticket_url=data.get("ticket_url"),
-            room=data.get("room"),
-            language=data.get("language"),
+            showtime=Showtime(value=_parse_datetime(outcome.row["showtime"])),
+            external_id=outcome.row.get("external_id"),
+            ticket_url=outcome.row.get("ticket_url"),
+            room=outcome.row.get("room"),
+            language=outcome.row.get("language"),
         )
-        return saved, was_inserted
 
     async def update(self, screening: Screening) -> Screening | None:
         """Update optional fields on an existing screening.
