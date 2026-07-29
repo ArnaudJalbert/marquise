@@ -25,6 +25,18 @@ Typer CLI lives in `marquise-cli`, each with independent versions.
 - `deriveFilterOptions` memoized via `useMemo` in `PosterWallPage`.
 - **Date pills replace prev/next arrows in detail views**: `MovieDetailDrawer` and `MovieDetailPage` now show horizontally scrolling date pills instead of prev/next arrow buttons. Dates are initially seeded from the wall's date-picker selection. A "More dates" button (`fetchMovieDates`) fetches the full list of available screening dates for the movie. Added `fetchMovieDates` to mock and live API layers.
 
+### @marquise/components v0.2.0 + marquise-interface
+
+- **Move detail views to `@marquise/components`**: `MovieDetailDrawer`, `MovieDetailPage`, `detailTypes`, `detailUtils`, and `timezone` moved from `marquise-interface` into `@marquise/components` for reusability. Components accept API functions as props with no dependency on `react-router-dom`. Wrappers in `marquise-interface` wire the app-specific API and routing.
+- **Date picker arrows**: `<` and `>` buttons next to the calendar icon for quick day-to-day navigation.
+- **Past-showtime strikethrough**: showtimes in the past (`showtime` ISO datetime) are rendered with `line-through` and reduced opacity in detail views.
+- **Default time range to current hour**: the time-range slider starts at the current hour (`new Date().getHours()`) for today, and resets to `0–24` (full day) when navigating to a future or past date.
+- **Disable past dates in calendar**: calendar cells for dates before today are visually muted and unclickable.
+- **Midnight–midnight range**: time range slider spans `0–24` instead of `8–24` to cover late-night screenings.
+- **Replace "Multiple" with "Single" mode**: the date picker now offers Single / Range instead of Multiple / Range. Single mode replaces the selection on click (no toggle).
+- **Remove "Live API" badge**: the `dataSource` indicator removed from the poster wall header.
+- **"What's playing in Montréal"**: title updated with green-accented city name.
+
 ### marquise-core v0.2.1
 
 - **`CreateScreeningsCommand` updates on conflict instead of skipping**: when a `ScreeningAlreadyExistsError` is raised by `save()`, the command now calls `screening_repository.update()` to refresh the existing row. If the row disappears concurrently (`update` returns `None`), a new `ScreeningUpdateNotFoundError` is raised and the entry is counted as a skip.
