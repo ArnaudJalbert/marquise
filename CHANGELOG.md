@@ -10,6 +10,19 @@ Typer CLI lives in `marquise-cli`, each with independent versions.
 
 ## 2026-07-20
 
+### marquise-core v0.2.0
+
+- **Decompose `ImportScreeningsUseCase` into a controller-orchestrated workflow** (#13): the
+  ~400-line use case that fetched showtimes, deduped/enriched movies, upserted screenings, and
+  tallied counts is split into three focused, independently-tested use cases —
+  `FetchShowtimesFromSourceQuery`, `EnsureMoviesExistCommand`, and `UpsertScreeningsCommand`.
+  `SourceController.import_screenings` now sequences the three (a use case no longer orchestrates
+  other use cases); all business rules, including the import counts and external_id
+  skip-on-collision handling, stay inside the use cases. `import_screenings.py` is reduced to the
+  shared response DTOs (`ImportedScreeningData`, `ImportScreeningsSummary`). The
+  `SourceController.import_screenings` signature and returned fields are unchanged, so the CLI and
+  API are unaffected.
+
 ### marquise-core v0.1.3
 
 - **Standardise test structure across the test suite**: extracted `import_screenings` DTO

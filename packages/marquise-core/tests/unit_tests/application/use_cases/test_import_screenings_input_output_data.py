@@ -1,4 +1,4 @@
-"""Tests for ImportScreeningsUseCase InputData, OutputData, ImportedScreeningData."""
+"""Tests for the import workflow's response DTOs and InputData validators."""
 
 from __future__ import annotations
 
@@ -6,16 +6,19 @@ from datetime import date
 
 import pytest
 
+from marquise.application.use_cases.fetch_showtimes_from_source import (
+    FetchShowtimesFromSourceQuery,
+)
 from marquise.application.use_cases.import_screenings import (
     ImportedScreeningData,
-    ImportScreeningsUseCase,
+    ImportScreeningsSummary,
 )
 
 
 def test_input_data_rejects_empty_cinema_id() -> None:
-    """Verify InputData rejects empty cinema_id."""
+    """Verify FetchShowtimesFromSourceQuery.InputData rejects empty cinema_id."""
     with pytest.raises(ValueError, match="cinema_id must not be empty"):
-        ImportScreeningsUseCase.InputData(
+        FetchShowtimesFromSourceQuery.InputData(
             cinema_id="",
             start_date=date(2026, 6, 7),
             end_date=date(2026, 6, 7),
@@ -23,9 +26,9 @@ def test_input_data_rejects_empty_cinema_id() -> None:
 
 
 def test_input_data_rejects_whitespace_cinema_id() -> None:
-    """Verify InputData rejects whitespace-only cinema_id."""
+    """Verify FetchShowtimesFromSourceQuery.InputData rejects whitespace cinema_id."""
     with pytest.raises(ValueError, match="cinema_id must not be empty"):
-        ImportScreeningsUseCase.InputData(
+        FetchShowtimesFromSourceQuery.InputData(
             cinema_id="   ",
             start_date=date(2026, 6, 7),
             end_date=date(2026, 6, 7),
@@ -33,9 +36,9 @@ def test_input_data_rejects_whitespace_cinema_id() -> None:
 
 
 def test_input_data_rejects_start_date_after_end_date() -> None:
-    """Verify InputData rejects start_date after end_date."""
+    """Verify FetchShowtimesFromSourceQuery.InputData rejects start after end."""
     with pytest.raises(ValueError, match="start_date must not be after end_date"):
-        ImportScreeningsUseCase.InputData(
+        FetchShowtimesFromSourceQuery.InputData(
             cinema_id="cin-123",
             start_date=date(2026, 6, 8),
             end_date=date(2026, 6, 7),
@@ -43,8 +46,8 @@ def test_input_data_rejects_start_date_after_end_date() -> None:
 
 
 def test_input_data_allows_valid_input() -> None:
-    """Verify InputData accepts valid data."""
-    request = ImportScreeningsUseCase.InputData(
+    """Verify FetchShowtimesFromSourceQuery.InputData accepts valid data."""
+    request = FetchShowtimesFromSourceQuery.InputData(
         cinema_id="cin-123",
         start_date=date(2026, 6, 7),
         end_date=date(2026, 6, 7),
@@ -54,10 +57,10 @@ def test_input_data_allows_valid_input() -> None:
     assert request.end_date == date(2026, 6, 7)
 
 
-def test_output_data_rejects_negative_total_count() -> None:
-    """Verify OutputData rejects negative total_count."""
+def test_summary_rejects_negative_total_count() -> None:
+    """Verify ImportScreeningsSummary rejects negative total_count."""
     with pytest.raises(ValueError, match="total_count must not be negative"):
-        ImportScreeningsUseCase.OutputData(
+        ImportScreeningsSummary(
             cinema_id="cin-123",
             cinema_name="Cinéma Beaubien",
             source_name="cinemacinema",
@@ -68,10 +71,10 @@ def test_output_data_rejects_negative_total_count() -> None:
         )
 
 
-def test_output_data_rejects_negative_imported_count() -> None:
-    """Verify OutputData rejects negative imported_count."""
+def test_summary_rejects_negative_imported_count() -> None:
+    """Verify ImportScreeningsSummary rejects negative imported_count."""
     with pytest.raises(ValueError, match="imported_count must not be negative"):
-        ImportScreeningsUseCase.OutputData(
+        ImportScreeningsSummary(
             cinema_id="cin-123",
             cinema_name="Cinéma Beaubien",
             source_name="cinemacinema",
@@ -82,10 +85,10 @@ def test_output_data_rejects_negative_imported_count() -> None:
         )
 
 
-def test_output_data_rejects_negative_updated_count() -> None:
-    """Verify OutputData rejects negative updated_count."""
+def test_summary_rejects_negative_updated_count() -> None:
+    """Verify ImportScreeningsSummary rejects negative updated_count."""
     with pytest.raises(ValueError, match="updated_count must not be negative"):
-        ImportScreeningsUseCase.OutputData(
+        ImportScreeningsSummary(
             cinema_id="cin-123",
             cinema_name="Cinéma Beaubien",
             source_name="cinemacinema",
@@ -96,10 +99,10 @@ def test_output_data_rejects_negative_updated_count() -> None:
         )
 
 
-def test_output_data_rejects_negative_skipped_count() -> None:
-    """Verify OutputData rejects negative skipped_count."""
+def test_summary_rejects_negative_skipped_count() -> None:
+    """Verify ImportScreeningsSummary rejects negative skipped_count."""
     with pytest.raises(ValueError, match="skipped_count must not be negative"):
-        ImportScreeningsUseCase.OutputData(
+        ImportScreeningsSummary(
             cinema_id="cin-123",
             cinema_name="Cinéma Beaubien",
             source_name="cinemacinema",
@@ -111,14 +114,14 @@ def test_output_data_rejects_negative_skipped_count() -> None:
         )
 
 
-def test_output_data_allows_valid() -> None:
-    """Verify OutputData accepts valid data."""
+def test_summary_allows_valid() -> None:
+    """Verify ImportScreeningsSummary accepts valid data."""
     screening = ImportedScreeningData(
         movie_title="Movie A",
         showtime="2026-06-07T19:30:00+00:00",
         imported=True,
     )
-    result = ImportScreeningsUseCase.OutputData(
+    result = ImportScreeningsSummary(
         cinema_id="cin-123",
         cinema_name="Cinéma Beaubien",
         source_name="cinemacinema",

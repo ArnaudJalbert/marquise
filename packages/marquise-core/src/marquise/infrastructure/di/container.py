@@ -14,6 +14,10 @@ from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
+from marquise.application.use_cases.ensure_movies_exist import EnsureMoviesExistCommand
+from marquise.application.use_cases.fetch_showtimes_from_source import (
+    FetchShowtimesFromSourceQuery,
+)
 from marquise.application.use_cases.get_cinema import GetCinemaUseCase
 from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
 from marquise.application.use_cases.get_cinema_screenings import (
@@ -25,9 +29,6 @@ from marquise.application.use_cases.get_movie_screenings import (
     GetMovieScreeningsUseCase,
 )
 from marquise.application.use_cases.get_screening import GetScreeningUseCase
-from marquise.application.use_cases.import_screenings import (
-    ImportScreeningsUseCase,
-)
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.application.use_cases.list_movies import ListMoviesUseCase
 from marquise.application.use_cases.list_registry_sources import (
@@ -37,6 +38,7 @@ from marquise.application.use_cases.list_sources import ListSourcesUseCase
 from marquise.application.use_cases.search_screenings import SearchScreeningsUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
+from marquise.application.use_cases.upsert_screenings import UpsertScreeningsCommand
 from marquise.infrastructure.auth.supabase_auth_service import SupabaseAuthService
 from marquise.infrastructure.controllers.auth_controller import AuthController
 from marquise.infrastructure.controllers.cinema_controller import CinemaController
@@ -383,12 +385,23 @@ class Container:
         )
 
     @property
-    def _import_screenings_use_case(self) -> ImportScreeningsUseCase:
-        return ImportScreeningsUseCase(
+    def _fetch_showtimes_use_case(self) -> FetchShowtimesFromSourceQuery:
+        return FetchShowtimesFromSourceQuery(
             cinema_repository=self._cinema_repository,
             assignment_repository=self._cinema_source_assignment_repository,
             source_registry=self._source_registry,
+        )
+
+    @property
+    def _ensure_movies_use_case(self) -> EnsureMoviesExistCommand:
+        return EnsureMoviesExistCommand(
             movie_repository=self._movie_repository,
+            source_registry=self._source_registry,
+        )
+
+    @property
+    def _upsert_screenings_use_case(self) -> UpsertScreeningsCommand:
+        return UpsertScreeningsCommand(
             screening_repository=self._screening_repository,
         )
 
@@ -537,5 +550,7 @@ class Container:
             unassign_source_use_case=self._unassign_source_use_case,
             get_cinema_source_use_case=self._get_cinema_source_use_case,
             list_registry_sources_use_case=self._list_registry_sources_use_case,
-            import_screenings_use_case=self._import_screenings_use_case,
+            fetch_showtimes_use_case=self._fetch_showtimes_use_case,
+            ensure_movies_use_case=self._ensure_movies_use_case,
+            upsert_screenings_use_case=self._upsert_screenings_use_case,
         )
