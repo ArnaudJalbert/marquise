@@ -2,17 +2,24 @@
 
 from __future__ import annotations
 
+from datetime import date
 from unittest.mock import create_autospec
 
 import pytest
 
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
+from marquise.application.use_cases.create_missing_movies import (
+    CreateMissingMoviesCommand,
+)
+from marquise.application.use_cases.create_screenings import (
+    CreateScreeningsCommand,
+)
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
-from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
-from marquise.application.use_cases.import_screenings import (
-    ImportScreeningsUseCase,
+from marquise.application.use_cases.fetch_screenings_from_source import (
+    FetchScreeningsFromSourceQuery,
 )
+from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
 from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
@@ -72,9 +79,21 @@ def mock_list_registry_use_case() -> ListRegistrySourcesUseCase:
 
 
 @pytest.fixture
-def mock_import_use_case() -> ImportScreeningsUseCase:
-    """Provide a mocked ImportScreeningsUseCase."""
-    return create_autospec(ImportScreeningsUseCase, instance=True)
+def mock_fetch_screenings_use_case() -> FetchScreeningsFromSourceQuery:
+    """Provide a mocked FetchScreeningsFromSourceQuery."""
+    return create_autospec(FetchScreeningsFromSourceQuery, instance=True)
+
+
+@pytest.fixture
+def mock_create_movies_use_case() -> CreateMissingMoviesCommand:
+    """Provide a mocked CreateMissingMoviesCommand."""
+    return create_autospec(CreateMissingMoviesCommand, instance=True)
+
+
+@pytest.fixture
+def mock_create_screenings_use_case() -> CreateScreeningsCommand:
+    """Provide a mocked CreateScreeningsCommand."""
+    return create_autospec(CreateScreeningsCommand, instance=True)
 
 
 @pytest.fixture
@@ -87,7 +106,9 @@ def controller(
     mock_unassign_use_case: UnassignSourceUseCase,
     mock_get_use_case: GetCinemaSourceUseCase,
     mock_list_registry_use_case: ListRegistrySourcesUseCase,
-    mock_import_use_case: ImportScreeningsUseCase,
+    mock_fetch_screenings_use_case: FetchScreeningsFromSourceQuery,
+    mock_create_movies_use_case: CreateMissingMoviesCommand,
+    mock_create_screenings_use_case: CreateScreeningsCommand,
 ) -> SourceController:
     """Provide a SourceController wired to mocks."""
     return SourceController(
@@ -99,7 +120,9 @@ def controller(
         unassign_source_use_case=mock_unassign_use_case,
         get_cinema_source_use_case=mock_get_use_case,
         list_registry_sources_use_case=mock_list_registry_use_case,
-        import_screenings_use_case=mock_import_use_case,
+        fetch_screenings_use_case=mock_fetch_screenings_use_case,
+        create_movies_use_case=mock_create_movies_use_case,
+        create_screenings_use_case=mock_create_screenings_use_case,
     )
 
 
@@ -337,3 +360,92 @@ async def test_list_registry_sources_delegates_without_auth_check(
     mock_list_registry_use_case.execute.assert_awaited_once()
     input_data = mock_list_registry_use_case.execute.call_args[0][0]
     assert isinstance(input_data, ListRegistrySourcesUseCase.InputData)
+
+
+# ── import_screenings ────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_import_screenings_sequences_the_three_use_cases(
+    controller: SourceController,
+    mock_auth_controller: AuthController,
+    mock_fetch_screenings_use_case: FetchScreeningsFromSourceQuery,
+    mock_create_movies_use_case: CreateMissingMoviesCommand,
+    mock_create_screenings_use_case: CreateScreeningsCommand,
+) -> None:
+    """Verify import_screenings admin check then fetch → movies → screenings chain."""
+    mock_auth_controller.validate_admin.return_value = AuthSession(
+        access_token="tok",
+        refresh_token="ref",
+        expires_at=9_999_999.0,
+        user_id="usr",
+        email="admin@example.com",
+        is_admin=True,
+    )
+
+    mock_fetch_screenings_use_case.execute.return_value = (
+        FetchScreeningsFromSourceQuery.OutputData(
+            cinema_id="cin-123",
+            cinema_name="Cinéma Beaubien",
+            source_name="cinemacinema",
+            movies=(),
+            screenings=(),
+        )
+    )
+    mock_create_movies_use_case.execute.return_value = (
+        CreateMissingMoviesCommand.OutputData(movies=())
+    )
+    mock_create_screenings_use_case.execute.return_value = (
+        CreateScreeningsCommand.OutputData(
+            screenings=(),
+            total_count=3,
+            imported_count=2,
+            updated_count=1,
+            skipped_count=0,
+        )
+    )
+
+    result = await controller.import_screenings(
+        cinema_id="cin-123",
+        start_date=date(2026, 6, 7),
+        end_date=date(2026, 6, 8),
+    )
+
+    assert result.cinema_id == "cin-123"
+    assert result.cinema_name == "Cinéma Beaubien"
+    assert result.source_name == "cinemacinema"
+    assert result.total_count == 3
+    assert result.imported_count == 2
+    assert result.updated_count == 1
+    assert result.skipped_count == 0
+
+    mock_auth_controller.validate_admin.assert_called_once_with()
+
+    fetch_input = mock_fetch_screenings_use_case.execute.call_args[0][0]
+    assert isinstance(fetch_input, FetchScreeningsFromSourceQuery.InputData)
+    assert fetch_input.cinema_id == "cin-123"
+
+    movies_input = mock_create_movies_use_case.execute.call_args[0][0]
+    assert isinstance(movies_input, CreateMissingMoviesCommand.InputData)
+
+    screenings_input = mock_create_screenings_use_case.execute.call_args[0][0]
+    assert isinstance(screenings_input, CreateScreeningsCommand.InputData)
+
+
+@pytest.mark.asyncio
+async def test_import_screenings_raises_when_not_admin(
+    controller: SourceController,
+    mock_auth_controller: AuthController,
+    mock_fetch_screenings_use_case: FetchScreeningsFromSourceQuery,
+) -> None:
+    """Verify import_screenings propagates ValueError when admin check fails."""
+    mock_auth_controller.validate_admin.side_effect = ValueError("Access denied")
+
+    with pytest.raises(ValueError, match="Access denied"):
+        await controller.import_screenings(
+            cinema_id="cin-123",
+            start_date=date(2026, 6, 7),
+            end_date=date(2026, 6, 8),
+        )
+
+    mock_fetch_screenings_use_case.execute.assert_not_awaited()

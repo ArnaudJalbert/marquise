@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
+import logging
+
 import typer
 
 from marquise_cli.auth_commands import auth_app
 from marquise_cli.cinema_commands import cinema_app
 from marquise_cli.import_commands import import_app
 from marquise_cli.source_commands import source_app
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%H:%M:%S",
+)
 
 app = typer.Typer(
     name="marquise",

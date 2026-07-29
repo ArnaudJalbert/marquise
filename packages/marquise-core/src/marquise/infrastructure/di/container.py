@@ -11,9 +11,16 @@ from dotenv import load_dotenv
 
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
+from marquise.application.use_cases.create_missing_movies import (
+    CreateMissingMoviesCommand,
+)
+from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
+from marquise.application.use_cases.fetch_screenings_from_source import (
+    FetchScreeningsFromSourceQuery,
+)
 from marquise.application.use_cases.get_cinema import GetCinemaUseCase
 from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
 from marquise.application.use_cases.get_cinema_screenings import (
@@ -25,9 +32,6 @@ from marquise.application.use_cases.get_movie_screenings import (
     GetMovieScreeningsUseCase,
 )
 from marquise.application.use_cases.get_screening import GetScreeningUseCase
-from marquise.application.use_cases.import_screenings import (
-    ImportScreeningsUseCase,
-)
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.application.use_cases.list_movies import ListMoviesUseCase
 from marquise.application.use_cases.list_registry_sources import (
@@ -383,12 +387,22 @@ class Container:
         )
 
     @property
-    def _import_screenings_use_case(self) -> ImportScreeningsUseCase:
-        return ImportScreeningsUseCase(
+    def _fetch_screenings_use_case(self) -> FetchScreeningsFromSourceQuery:
+        return FetchScreeningsFromSourceQuery(
             cinema_repository=self._cinema_repository,
             assignment_repository=self._cinema_source_assignment_repository,
             source_registry=self._source_registry,
+        )
+
+    @property
+    def _create_movies_use_case(self) -> CreateMissingMoviesCommand:
+        return CreateMissingMoviesCommand(
             movie_repository=self._movie_repository,
+        )
+
+    @property
+    def _create_screenings_use_case(self) -> CreateScreeningsCommand:
+        return CreateScreeningsCommand(
             screening_repository=self._screening_repository,
         )
 
@@ -537,5 +551,7 @@ class Container:
             unassign_source_use_case=self._unassign_source_use_case,
             get_cinema_source_use_case=self._get_cinema_source_use_case,
             list_registry_sources_use_case=self._list_registry_sources_use_case,
-            import_screenings_use_case=self._import_screenings_use_case,
+            fetch_screenings_use_case=self._fetch_screenings_use_case,
+            create_movies_use_case=self._create_movies_use_case,
+            create_screenings_use_case=self._create_screenings_use_case,
         )
