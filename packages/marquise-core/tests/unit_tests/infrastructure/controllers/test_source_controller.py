@@ -393,7 +393,7 @@ async def test_import_screenings_sequences_the_three_use_cases(
         )
     )
     mock_create_movies_use_case.execute.return_value = (
-        CreateMissingMoviesCommand.OutputData(movie_lookup={})
+        CreateMissingMoviesCommand.OutputData(movies=())
     )
     mock_create_screenings_use_case.execute.return_value = (
         CreateScreeningsCommand.OutputData(

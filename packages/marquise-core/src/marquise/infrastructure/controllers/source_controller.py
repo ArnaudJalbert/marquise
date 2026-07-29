@@ -268,7 +268,7 @@ class SourceController:
             )
         )
 
-        title_to_id = movies.movie_lookup
+        title_to_id = {m.title: m.id for m in movies.movies}
         screening_inputs = [
             CreateScreeningsCommand.ScreeningInput(
                 movie_id=title_to_id[_normalize_title(s.movie_title)],

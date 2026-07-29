@@ -19,8 +19,8 @@ class CreateMissingMoviesCommand:
 
     Takes movie metadata (already fetched by the caller), looks up each
     title, and persists only the missing ones.  Never updates existing
-    movies.  Returns a title-to-ID lookup so callers can link screenings
-    to their movie.
+    movies.  Returns a flat list of MovieData so callers can link
+    screenings to their movie.
     """
 
     @dataclass(frozen=True, slots=True)
@@ -43,36 +43,50 @@ class CreateMissingMoviesCommand:
                 raise ValueError("title must not be empty")
 
     @dataclass(frozen=True, slots=True)
+    class MovieData:
+        title: str
+        id: str
+
+        def __post_init__(self) -> None:
+            if not self.title.strip():
+                raise ValueError("title must not be empty")
+            if not self.id.strip():
+                raise ValueError("id must not be empty")
+
+    @dataclass(frozen=True, slots=True)
     class InputData:
         movies: tuple[CreateMissingMoviesCommand.MovieInput, ...]
 
     @dataclass(frozen=True, slots=True)
     class OutputData:
-        movie_lookup: dict[str, str]
+        movies: tuple[CreateMissingMoviesCommand.MovieData, ...]
 
     def __init__(self, movie_repository: MovieRepository) -> None:
         self.movie_repository = movie_repository
 
     async def execute(self, request: InputData) -> OutputData:
         titles = [_normalize_title(m.title) for m in request.movies]
-        found_map = await self.movie_repository.find_by_titles(titles)
+        found_movies = await self.movie_repository.find_by_titles(titles)
 
-        movie_lookup: dict[str, str] = {}
+        found_map: dict[str, Movie] = {}
+        for movie in found_movies:
+            found_map[_normalize_title(movie.title).lower()] = movie
+
+        movies_data: list[CreateMissingMoviesCommand.MovieData] = []
         to_create: list[Movie] = []
 
-        existing_count = sum(1 for v in found_map.values() if v is not None)
         logger.info(
             "Processing %d movie inputs, %d already exist",
             len(request.movies),
-            existing_count,
+            len(found_movies),
         )
 
         created_titles: set[str] = set()
         for movie_input in request.movies:
             title = _normalize_title(movie_input.title)
-            existing = found_map.get(title)
+            existing = found_map.get(title.lower())
             if existing is not None:
-                movie_lookup[title] = existing.id.value
+                movies_data.append(self.MovieData(title=title, id=existing.id.value))
             elif title not in created_titles:
                 movie = Movie(
                     id=MovieId(value=uuid4().hex),
@@ -96,16 +110,17 @@ class CreateMissingMoviesCommand:
             saved = await asyncio.gather(
                 *[self.movie_repository.save(m) for m in to_create]
             )
-            for movie, saved_movie in zip(to_create, saved):
-                movie_lookup[_normalize_title(movie.title)] = saved_movie.id.value
+            for movie in saved:
+                title = _normalize_title(movie.title)
+                movies_data.append(self.MovieData(title=title, id=movie.id.value))
 
         logger.info(
             "Created %d new movies, found %d existing",
             len(to_create),
-            existing_count,
+            len(found_movies),
         )
 
-        return self.OutputData(movie_lookup=movie_lookup)
+        return self.OutputData(movies=tuple(movies_data))
 
 
 def _normalize_title(title: str) -> str:
