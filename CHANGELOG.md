@@ -8,6 +8,45 @@ Before 2026-07-15 the entire codebase shipped as a single package (`marquise`, n
 `marquise-core`). Starting 2026-07-15, the FastAPI application lives in `marquise-api` and the
 Typer CLI lives in `marquise-cli`, each with independent versions.
 
+## 2026-07-29
+
+### @marquise/components v0.1.0 + marquise-interface
+
+- **Remove hardcoded filter options**: `filterOptions.ts` deleted. `FilterBar` now receives `cinemas`, `genres`, `languages` as props derived from the full dataset, so every option stays visible regardless of active client-side filters.
+- **Widen `Genre` type from closed union to `string`**: genres come from free-text API data and cannot be enumerated statically. Added `paletteFamily(genre)` helper that falls back to `"sage"` for unknown genres.
+- **`fetchMoviesByDate` per-date API fetching**: `PosterWallPage` only calls the API on date changes (`datesKey` stable dependency). All non-date filters (search, cinema, genre, lang, time range) are applied client-side via `useMemo`-wrapped `filterMovies` on the full cached dataset (`allMovies`), so toggling a filter is instant with no network round-trip.
+- **Movie detail drawer**: receives the full `PosterMovie` object for instant header rendering from wall data. Screenings are lazy-fetched per-date via `fetchMovieScreenings(movieId, dateKey?)` — the API call only fires when the user switches dates.
+- **Movie detail page (`/movie/:movieId`)**: standalone route that fetches movie metadata once (`fetchMovieInfo`) then per-date screenings on date change. Properly resets stale info on movie-to-movie navigation.
+- **Remove dead API functions**: `fetchMovies` and `fetchMovieDetail` — superseded by `fetchMoviesByDate`, `fetchMovieInfo`, and `fetchMovieScreenings`. The old `MovieDetail` combined type removed accordingly.
+- **Remove hardcoded `format` field**: `format: 'DCP'` was hardcoded across live API, mock API, mock data, and the `PosterMovie`/`MovieInfo` types — and never actually rendered, since the API does not yet expose a media-format field. Removed the field entirely from types, sources, and the two detail views.
+- **Replace `PosterWallSkeleton` with loading spinner**: CSS-animated spinner replaces the skeleton placeholder (which did not correctly reflect grid layouts per view mode).
+- `format` tag removed from `MovieDetailDrawer` and `MovieDetailPage` (the only two places it was rendered).
+- `fetchMovieScreenings` and `fetchRawMovieScreenings` accept optional `dateKey` for per-day UTC-bounded queries.
+- `deriveFilterOptions` memoized via `useMemo` in `PosterWallPage`.
+- **Date pills replace prev/next arrows in detail views**: `MovieDetailDrawer` and `MovieDetailPage` now show horizontally scrolling date pills instead of prev/next arrow buttons. Dates are initially seeded from the wall's date-picker selection. A "More dates" button (`fetchMovieDates`) fetches the full list of available screening dates for the movie. Added `fetchMovieDates` to mock and live API layers.
+
+### @marquise/components v0.2.0 + marquise-interface
+
+- **Move detail views to `@marquise/components`**: `MovieDetailDrawer`, `MovieDetailPage`, `detailTypes`, `detailUtils`, and `timezone` moved from `marquise-interface` into `@marquise/components` for reusability. Components accept API functions as props with no dependency on `react-router-dom`. Wrappers in `marquise-interface` wire the app-specific API and routing.
+- **Date picker arrows**: `<` and `>` buttons next to the calendar icon for quick day-to-day navigation.
+- **Past-showtime strikethrough**: showtimes in the past (`showtime` ISO datetime) are rendered with `line-through` and reduced opacity in detail views.
+- **Default time range to current hour**: the time-range slider starts at the current hour (`new Date().getHours()`) for today, and resets to `0–24` (full day) when navigating to a future or past date.
+- **Disable past dates in calendar**: calendar cells for dates before today are visually muted and unclickable.
+- **Midnight–midnight range**: time range slider spans `0–24` instead of `8–24` to cover late-night screenings.
+- **Replace "Multiple" with "Single" mode**: the date picker now offers Single / Range instead of Multiple / Range. Single mode replaces the selection on click (no toggle).
+- **Remove "Live API" badge**: the `dataSource` indicator removed from the poster wall header.
+- **"What's playing in Montréal"**: title updated with green-accented city name.
+
+### marquise-core v0.2.1
+
+- **`CreateScreeningsCommand` updates on conflict instead of skipping**: when a `ScreeningAlreadyExistsError` is raised by `save()`, the command now calls `screening_repository.update()` to refresh the existing row. If the row disappears concurrently (`update` returns `None`), a new `ScreeningUpdateNotFoundError` is raised and the entry is counted as a skip.
+- **Fix Cineplex ticket URL generation**: the gateway now prefers `session.ticketingRedesignUrl` and `session.ticketingUrl` from the API before falling back to the legacy deeplink construction. Removed the now-unused `film_url` parameter from `_build_ticket_url`.
+- **Export `ScreeningUpdateNotFoundError`** from `marquise.application.exceptions`.
+
+### marquise-api v0.1.5
+
+- **Raise default rate limit from 60/min to 3000/min**: accommodates the frontend poster wall fetching many screenings per page load without hitting per-IP throttling.
+
 ## 2026-07-20
 
 ### marquise-core v0.2.0

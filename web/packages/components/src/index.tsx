@@ -1,7 +1,7 @@
 export * from "./types";
 export * from "./dateKey";
 export * from "./genrePalette";
-export * from "./fixtures/filterOptions";
+
 export * from "./PosterImage";
 export * from "./PosterCaptionCard";
 export * from "./PosterCaptionGrid";
@@ -20,3 +20,8 @@ export * from "./DatePickerPopover";
 export * from "./DualRangeSlider";
 export * from "./FilterBar";
 export * from "./filterMovies";
+export * from "./detailTypes";
+export * from "./detailUtils";
+export * from "./timezone";
+export * from "./MovieDetailDrawer";
+export * from "./MovieDetailPage";

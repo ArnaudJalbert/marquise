@@ -1,20 +1,34 @@
 import type { PosterMovie, PosterWallFilters } from '@marquise/components';
-import { fetchMovies as fetchMoviesMock } from './mockApi';
-import { fetchMovies as fetchMoviesLive } from './liveApi';
+import type { CinemaGroup, MovieInfo } from '@marquise/components';
+import {
+  fetchMoviesByDate as fetchMoviesByDateMock,
+  fetchMovieDates as fetchMovieDatesMock,
+  fetchMovieInfo as fetchMovieInfoMock,
+  fetchMovieScreenings as fetchMovieScreeningsMock,
+} from './mockApi';
+import {
+  fetchMoviesByDate as fetchMoviesByDateLive,
+  fetchMovieDates as fetchMovieDatesLive,
+  fetchMovieInfo as fetchMovieInfoLive,
+  fetchMovieScreenings as fetchMovieScreeningsLive,
+} from './liveApi';
+
+export type { MovieInfo, CinemaGroup } from '@marquise/components';
 
 export const dataSource: 'mock' | 'live' = import.meta.env.VITE_DATA_SOURCE === 'live' ? 'live' : 'mock';
 
-/**
- * Picks the mock or live data source per VITE_DATA_SOURCE — see .env / .env.live.
- * `onCardsReady`, when given, is called with card-only data (title/cinema/dates/
- * screenings) as soon as it's available, ahead of the returned promise, which
- * resolves once poster/genre/director/year/runtime enrichment lands too. Only
- * the live source has a meaningful gap between the two; mock data is already
- * fully enriched in one shot.
- */
-export function fetchMovies(
-  filters: PosterWallFilters,
-  onCardsReady?: (movies: PosterMovie[]) => void,
-): Promise<PosterMovie[]> {
-  return dataSource === 'live' ? fetchMoviesLive(filters, onCardsReady) : fetchMoviesMock(filters);
+export function fetchMoviesByDate(filters: PosterWallFilters): Promise<PosterMovie[]> {
+  return dataSource === 'live' ? fetchMoviesByDateLive(filters) : fetchMoviesByDateMock(filters);
+}
+
+export function fetchMovieDates(movieId: string, afterDate?: string, limit?: number): Promise<string[]> {
+  return dataSource === 'live' ? fetchMovieDatesLive(movieId, afterDate, limit) : fetchMovieDatesMock(movieId, afterDate, limit);
+}
+
+export function fetchMovieInfo(movieId: string): Promise<MovieInfo> {
+  return dataSource === 'live' ? fetchMovieInfoLive(movieId) : fetchMovieInfoMock(movieId);
+}
+
+export function fetchMovieScreenings(movieId: string, dateKey?: string): Promise<CinemaGroup[]> {
+  return dataSource === 'live' ? fetchMovieScreeningsLive(movieId, dateKey) : fetchMovieScreeningsMock(movieId, dateKey);
 }

@@ -8,7 +8,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from uuid import uuid4
 
-from marquise.application.exceptions import ScreeningAlreadyExistsError
+from marquise.application.exceptions import (
+    ScreeningAlreadyExistsError,
+    ScreeningUpdateNotFoundError,
+)
 from marquise.application.repositories import ScreeningRepository
 from marquise.domain.entities import Cinema, Movie, Screening
 from marquise.domain.value_objects import CinemaId, MovieId, ScreeningId, Showtime
@@ -146,7 +149,10 @@ class CreateScreeningsCommand:
         results: list[ImportedScreeningData] = []
         skipped_count = 0
         for outcome in raw_results:
-            if isinstance(outcome, ScreeningAlreadyExistsError):
+            if isinstance(
+                outcome,
+                (ScreeningAlreadyExistsError, ScreeningUpdateNotFoundError),
+            ):
                 skipped_count += 1
                 continue
             if isinstance(outcome, BaseException):
@@ -183,7 +189,23 @@ class CreateScreeningsCommand:
             room=row.room,
             language=row.language,
         )
-        await self.screening_repository.save(screening)
+        try:
+            await self.screening_repository.save(screening)
+        except ScreeningAlreadyExistsError:
+            updated = await self.screening_repository.update(screening)
+            if updated is None:
+                raise ScreeningUpdateNotFoundError(
+                    f"Screening for cinema '{row.cinema_id}', movie "
+                    f"'{row.movie_id}' at {row.showtime.isoformat()} "
+                    f"was confirmed to exist on save but disappeared "
+                    f"before update — or the conflict was on a different "
+                    f"constraint (external_id={row.external_id!r})."
+                )
+            return ImportedScreeningData(
+                movie_title=row.movie_title,
+                showtime=row.showtime.isoformat(),
+                imported=False,
+            )
         return ImportedScreeningData(
             movie_title=row.movie_title,
             showtime=row.showtime.isoformat(),

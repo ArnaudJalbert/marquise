@@ -1,10 +1,12 @@
 import type { PosterMovie, PosterWallFilters, Screening } from './types';
 
 function parseShowtimeHour(time: string): number {
-  const match = time.match(/(\d+):(\d+)\s*(AM|PM)/i);
-  if (!match) return 0;
-  let hour = Number(match[1]) % 12;
-  if (/PM/i.test(match[3])) hour += 12;
+  const match24 = time.match(/^(\d{1,2}):\d{2}$/);
+  if (match24) return Number(match24[1]);
+  const match12 = time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!match12) return 0;
+  let hour = Number(match12[1]) % 12;
+  if (/PM/i.test(match12[3])) hour += 12;
   return hour;
 }
 

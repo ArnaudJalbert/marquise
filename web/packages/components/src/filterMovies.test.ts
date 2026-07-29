@@ -4,15 +4,15 @@ import type { PosterMovie, PosterWallFilters } from './types';
 
 const baseMovie = (overrides: Partial<PosterMovie> = {}): PosterMovie => ({
   id: 'm1',
+  movieId: 'test-movie',
   title: 'Test Movie',
   director: 'Test Director',
   year: 2026,
   runtimeMin: 120,
-  format: 'DCP',
   genre: 'Drama',
   cinema: 'Cinéma A',
   dates: ['2026-07-15'],
-  screenings: [{ time: '7:00 PM', lang: 'VO' }],
+  screenings: [{ time: '19:00', lang: 'VO' }],
   poster: 'https://example.com/poster.jpg',
   ...overrides,
 });
@@ -23,7 +23,7 @@ const defaultFilters: PosterWallFilters = {
   langs: [],
   genres: [],
   dates: [],
-  dateMode: 'multiple',
+  dateMode: 'single',
   timeRange: [8, 24],
 };
 
@@ -65,8 +65,8 @@ describe('filterMovies', () => {
 
   it('filters by language', () => {
     const movies = [
-      baseMovie({ id: 'm1', screenings: [{ time: '7:00 PM', lang: 'VO' }] }),
-      baseMovie({ id: 'm2', screenings: [{ time: '7:00 PM', lang: 'VF' }] }),
+      baseMovie({ id: 'm1', screenings: [{ time: '19:00', lang: 'VO' }] }),
+      baseMovie({ id: 'm2', screenings: [{ time: '19:00', lang: 'VF' }] }),
     ];
     const result = filterMovies(movies, { ...defaultFilters, langs: ['VF'] });
     expect(result).toHaveLength(1);
@@ -75,8 +75,8 @@ describe('filterMovies', () => {
 
   it('filters by time range', () => {
     const movies = [
-      baseMovie({ id: 'm1', screenings: [{ time: '7:00 PM', lang: 'VO' }] }),
-      baseMovie({ id: 'm2', screenings: [{ time: '10:00 AM', lang: 'VO' }] }),
+      baseMovie({ id: 'm1', screenings: [{ time: '19:00', lang: 'VO' }] }),
+      baseMovie({ id: 'm2', screenings: [{ time: '10:00', lang: 'VO' }] }),
     ];
     const result = filterMovies(movies, { ...defaultFilters, timeRange: [12, 24] });
     expect(result).toHaveLength(1);
@@ -97,20 +97,20 @@ describe('filterMovies', () => {
 
   it('merges same-title movies from different cinemas into one entry', () => {
     const movies = [
-      baseMovie({ id: 'm1', title: 'Dune', cinema: 'Cinéma A', dates: ['2026-07-15'], screenings: [{ time: '7:00 PM', lang: 'VO' }] }),
-      baseMovie({ id: 'm2', title: 'Dune', cinema: 'Cinéma B', dates: ['2026-07-16'], screenings: [{ time: '9:00 PM', lang: 'VO' }] }),
+      baseMovie({ id: 'm1', title: 'Dune', cinema: 'Cinéma A', dates: ['2026-07-15'], screenings: [{ time: '19:00', lang: 'VO' }] }),
+      baseMovie({ id: 'm2', title: 'Dune', cinema: 'Cinéma B', dates: ['2026-07-16'], screenings: [{ time: '21:00', lang: 'VO' }] }),
     ];
     const result = filterMovies(movies, defaultFilters);
     expect(result).toHaveLength(1);
     expect(result[0].screenings).toHaveLength(2);
     // Screenings sorted by hour
-    expect(result[0].screenings[0].time).toBe('7:00 PM');
-    expect(result[0].screenings[1].time).toBe('9:00 PM');
+    expect(result[0].screenings[0].time).toBe('19:00');
+    expect(result[0].screenings[1].time).toBe('21:00');
   });
 
   it('deduplicates screenings after merge', () => {
     const movies = [
-      baseMovie({ id: 'm1', title: 'Dune', cinema: 'Cinéma A', screenings: [{ time: '7:00 PM', lang: 'VO' }, { time: '7:00 PM', lang: 'VO' }] }),
+      baseMovie({ id: 'm1', title: 'Dune', cinema: 'Cinéma A', screenings: [{ time: '19:00', lang: 'VO' }, { time: '19:00', lang: 'VO' }] }),
     ];
     const result = filterMovies(movies, defaultFilters);
     expect(result).toHaveLength(1);
@@ -122,8 +122,8 @@ describe('filterMovies', () => {
       baseMovie({
         id: 'm1',
         screenings: [
-          { time: '7:00 PM', lang: 'VO' },
-          { time: '9:00 PM', lang: 'VF' },
+          { time: '19:00', lang: 'VO' },
+          { time: '21:00', lang: 'VF' },
         ],
       }),
     ];
