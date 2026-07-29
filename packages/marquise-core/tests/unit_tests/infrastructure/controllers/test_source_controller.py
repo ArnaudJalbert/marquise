@@ -21,8 +21,6 @@ from marquise.application.use_cases.list_registry_sources import (
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.upsert_screenings import UpsertScreeningsCommand
-from marquise.domain.entities import Cinema, SourceDefinition
-from marquise.domain.value_objects import CinemaId, SourceName
 from marquise.infrastructure.controllers.auth_controller import AuthController
 from marquise.infrastructure.controllers.source_controller import SourceController
 from marquise.interface_adapters.repositories.protocols.auth import AuthSession
@@ -381,16 +379,10 @@ async def test_import_screenings_sequences_the_three_use_cases(
         is_admin=True,
     )
 
-    cinema = Cinema(
-        id=CinemaId(value="cin-123"), name="Cinéma Beaubien", city="Montreal"
-    )
-    source_definition = SourceDefinition(
-        name=SourceName(value="cinemacinema"),
-        display_name="Cinema Cinema",
-    )
     mock_fetch_use_case.execute.return_value = FetchShowtimesFromSourceQuery.OutputData(
-        cinema=cinema,
-        source_definition=source_definition,
+        cinema_id="cin-123",
+        cinema_name="Cinéma Beaubien",
+        source_name="cinemacinema",
         rows=(),
     )
     mock_ensure_movies_use_case.execute.return_value = (
@@ -430,7 +422,7 @@ async def test_import_screenings_sequences_the_three_use_cases(
 
     upsert_input = mock_upsert_use_case.execute.call_args[0][0]
     assert isinstance(upsert_input, UpsertScreeningsCommand.InputData)
-    assert upsert_input.cinema is cinema
+    assert upsert_input.cinema_id == "cin-123"
 
 
 @pytest.mark.asyncio

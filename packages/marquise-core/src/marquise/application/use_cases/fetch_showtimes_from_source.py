@@ -14,20 +14,11 @@ from marquise.application.repositories import (
     CinemaSourceAssignmentRepository,
     SourceRegistryQuery,
 )
-from marquise.application.repositories.source_registry_query import ShowtimeRow
-from marquise.domain.entities import Cinema, SourceDefinition
 from marquise.domain.value_objects import CinemaId
 
 
 class FetchShowtimesFromSourceQuery:
-    """Resolve a cinema and its assigned source, then fetch raw showtimes.
-
-    Encapsulates the external I/O needed to obtain showtimes: it validates the
-    cinema exists, loads its source assignment, and delegates to the source
-    registry. It returns the resolved ``Cinema`` and ``SourceDefinition``
-    entities alongside the rows so the caller can reuse them without a second
-    round-trip.
-    """
+    """Resolve a cinema and its assigned source, then fetch raw showtimes."""
 
     @dataclass(frozen=True, slots=True)
     class InputData:
@@ -50,18 +41,48 @@ class FetchShowtimesFromSourceQuery:
                 raise ValueError("start_date must not be after end_date")
 
     @dataclass(frozen=True, slots=True)
+    class ShowtimeDto:
+        """A single showtime row returned by a source.
+
+        Attributes:
+            movie_title: The title of the movie.
+            showtime: The showtime as a timezone-aware datetime.
+            identifier: Source-specific identifier for fetching movie details.
+            external_id: Source-native deduplication key.
+            ticket_url: Direct link to purchase tickets.
+            room: Room or auditorium name.
+            language: Language or subtitle version.
+        """
+
+        movie_title: str
+        showtime: datetime
+        identifier: str | None = None
+        external_id: str | None = None
+        ticket_url: str | None = None
+        room: str | None = None
+        language: str | None = None
+
+        def __post_init__(self) -> None:
+            if not self.movie_title.strip():
+                raise ValueError("movie_title must not be empty")
+            if self.showtime.tzinfo is None:
+                raise ValueError("showtime must be timezone-aware")
+
+    @dataclass(frozen=True, slots=True)
     class OutputData:
         """Output data returned by this query.
 
         Attributes:
-            cinema: The resolved cinema entity.
-            source_definition: The source assigned to the cinema.
+            cinema_id: The ID of the resolved cinema.
+            cinema_name: The display name of the resolved cinema.
+            source_name: The name of the source assigned to the cinema.
             rows: The raw showtime rows fetched from the source.
         """
 
-        cinema: Cinema
-        source_definition: SourceDefinition
-        rows: tuple[ShowtimeRow, ...]
+        cinema_id: str
+        cinema_name: str
+        source_name: str
+        rows: tuple[FetchShowtimesFromSourceQuery.ShowtimeDto, ...]
 
     def __init__(
         self,
@@ -114,7 +135,19 @@ class FetchShowtimesFromSourceQuery:
         )
 
         return self.OutputData(
-            cinema=cinema,
-            source_definition=assignment.source,
-            rows=tuple(rows),
+            cinema_id=str(cinema.id),
+            cinema_name=cinema.name,
+            source_name=str(assignment.source.name),
+            rows=tuple(
+                self.ShowtimeDto(
+                    movie_title=r.movie_title,
+                    showtime=r.showtime,
+                    identifier=r.identifier,
+                    external_id=r.external_id,
+                    ticket_url=r.ticket_url,
+                    room=r.room,
+                    language=r.language,
+                )
+                for r in rows
+            ),
         )

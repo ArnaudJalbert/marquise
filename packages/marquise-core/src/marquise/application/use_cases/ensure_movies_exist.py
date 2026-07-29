@@ -12,7 +12,6 @@ from marquise.application.repositories import (
     MovieRepository,
     SourceRegistryQuery,
 )
-from marquise.application.repositories.source_registry_query import ShowtimeRow
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
 
@@ -22,9 +21,25 @@ class EnsureMoviesExistCommand:
 
     Looks up movies by title in parallel, creates the missing ones, enriches
     movies that have null optional fields from the source, and saves the new or
-    modified entities. Returns a mapping of normalized title to ``Movie`` so
+    modified entities. Returns a mapping of normalized title to movie ID so
     callers can link screenings to their movie.
     """
+
+    @dataclass(frozen=True, slots=True)
+    class InputRow:
+        """A single showtime row used for movie lookups.
+
+        Attributes:
+            movie_title: The title of the movie.
+            identifier: Source-specific identifier for fetching movie details.
+        """
+
+        movie_title: str
+        identifier: str | None = None
+
+        def __post_init__(self) -> None:
+            if not self.movie_title.strip():
+                raise ValueError("movie_title must not be empty")
 
     @dataclass(frozen=True, slots=True)
     class InputData:
@@ -35,7 +50,7 @@ class EnsureMoviesExistCommand:
             source_name: The source name used for enrichment queries.
         """
 
-        rows: tuple[ShowtimeRow, ...]
+        rows: tuple[EnsureMoviesExistCommand.InputRow, ...]
         source_name: str
 
         def __post_init__(self) -> None:
@@ -47,10 +62,10 @@ class EnsureMoviesExistCommand:
         """Output data returned by this command.
 
         Attributes:
-            movie_lookup: Mapping of normalized movie title to Movie entity.
+            movie_lookup: Mapping of normalized movie title to movie ID (hex).
         """
 
-        movie_lookup: dict[str, Movie]
+        movie_lookup: dict[str, str]
 
     def __init__(
         self,
@@ -72,21 +87,22 @@ class EnsureMoviesExistCommand:
             request: The showtime rows and source name.
 
         Returns:
-            Output data with a mapping of normalized movie title to Movie entity.
+            Output data with a mapping of normalized movie title to movie ID.
         """
         rows = request.rows
         source_name = request.source_name
 
         titles = [_normalize_title(row.movie_title) for row in rows]
-        found_movies = await asyncio.gather(
-            *[self.movie_repository.find_by_title(t) for t in titles]
-        )
+        found_map = await self.movie_repository.find_by_titles(titles)
 
-        movie_lookup: dict[str, Movie] = {}
+        movie_id_lookup: dict[str, str] = {}
+        existing: dict[str, Movie] = {}
         missing_titles: list[str] = []
-        for title, movie in zip(titles, found_movies):
+        for title in titles:
+            movie = found_map[title]
             if movie is not None:
-                movie_lookup[title] = movie
+                movie_id_lookup[title] = movie.id.value
+                existing[title] = movie
             else:
                 missing_titles.append(title)
 
@@ -112,7 +128,7 @@ class EnsureMoviesExistCommand:
             if identifier:
                 enrich_pairs.append((title, identifier))
 
-        for title, movie in movie_lookup.items():
+        for title, movie in existing.items():
             identifier = title_to_identifier.get(title)
             if identifier is not None and _needs_enrichment(movie):
                 enrich_pairs.append((title, identifier))
@@ -135,9 +151,7 @@ class EnsureMoviesExistCommand:
                         new_movies_by_title[title], enrichment
                     )
                 else:
-                    movie_lookup[title] = _apply_enrichment(
-                        movie_lookup[title], enrichment
-                    )
+                    existing[title] = _apply_enrichment(existing[title], enrichment)
                     enriched_existing.add(title)
 
         movies_to_save_keys: list[str] = [
@@ -146,7 +160,7 @@ class EnsureMoviesExistCommand:
         ]
         movies_to_save: list[Movie] = [
             *new_movies_by_title.values(),
-            *[movie_lookup[t] for t in enriched_existing],
+            *[existing[t] for t in enriched_existing],
         ]
 
         # -- Save all enriched movies in parallel --
@@ -154,14 +168,11 @@ class EnsureMoviesExistCommand:
             saved_movies = await asyncio.gather(
                 *[self.movie_repository.save(m) for m in movies_to_save]
             )
-            # Re-key by the lookup key used above (not the saved entity's own
-            # title) since find_by_title matches case-insensitively: the
-            # returned title may differ in case from the key rows in this
-            # batch are indexed under, and re-keying by it would orphan them.
             for key, movie in zip(movies_to_save_keys, saved_movies):
-                movie_lookup[key] = movie
+                movie_id_lookup[key] = movie.id.value
+                existing[key] = movie
 
-        return self.OutputData(movie_lookup=movie_lookup)
+        return self.OutputData(movie_lookup=movie_id_lookup)
 
 
 def _normalize_title(title: str) -> str:

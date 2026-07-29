@@ -241,27 +241,42 @@ class SourceController:
                 end_date=end_date,
             )
         )
-        source_name = str(fetched.source_definition.name)
 
         movies = await self._ensure_movies_use_case.execute(
             EnsureMoviesExistCommand.InputData(
-                rows=fetched.rows,
-                source_name=source_name,
+                rows=tuple(
+                    EnsureMoviesExistCommand.InputRow(
+                        movie_title=r.movie_title,
+                        identifier=r.identifier,
+                    )
+                    for r in fetched.rows
+                ),
+                source_name=fetched.source_name,
             )
         )
 
         upserted = await self._upsert_use_case.execute(
             UpsertScreeningsCommand.InputData(
-                rows=fetched.rows,
-                cinema=fetched.cinema,
+                rows=tuple(
+                    UpsertScreeningsCommand.ScreeningRow(
+                        movie_title=r.movie_title,
+                        showtime=r.showtime,
+                        external_id=r.external_id,
+                        ticket_url=r.ticket_url,
+                        room=r.room,
+                        language=r.language,
+                    )
+                    for r in fetched.rows
+                ),
+                cinema_id=fetched.cinema_id,
                 movie_lookup=movies.movie_lookup,
             )
         )
 
         return ImportScreeningsSummary(
-            cinema_id=str(fetched.cinema.id),
-            cinema_name=fetched.cinema.name,
-            source_name=source_name,
+            cinema_id=fetched.cinema_id,
+            cinema_name=fetched.cinema_name,
+            source_name=fetched.source_name,
             screenings=upserted.screenings,
             total_count=upserted.total_count,
             imported_count=upserted.imported_count,
