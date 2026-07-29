@@ -9,7 +9,6 @@ import pytest
 
 from marquise.application.exceptions import (
     ScreeningAlreadyExistsError,
-    ScreeningUpdateNotFoundError,
 )
 from marquise.application.repositories import ScreeningRepository
 from marquise.application.use_cases.create_screenings import (

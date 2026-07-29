@@ -114,16 +114,8 @@ jobs:
         run: |
           MAIN_VER=$(git show origin/${{ github.base_ref }}:packages/marquise-core/pyproject.toml \
             | python3 -c "import sys,tomllib; print(tomllib.load(sys.stdin.buffer)['project']['version'])")
-          PR_VER=$(python3 -c "
-            import tomllib
-            print(tomllib.load(open('packages/marquise-core/pyproject.toml','rb'))['project']['version'])
-          ")
-          python3 -c "
-            v1=[int(x) for x in '$MAIN_VER'.split('.')]
-            v2=[int(x) for x in '$PR_VER'.split('.')]
-            assert v2>v1, f'Version must increase: $MAIN_VER → $PR_VER'
-            print(f'✓ $MAIN_VER → $PR_VER')
-          "
+          PR_VER=$(python3 -c "import tomllib; print(tomllib.load(open('packages/marquise-core/pyproject.toml','rb'))['project']['version'])")
+          python3 -c "import sys;v1=[int(x) for x in sys.argv[1].split('.')];v2=[int(x) for x in sys.argv[2].split('.')];assert v2>v1, f'Version must increase: {sys.argv[1]} → {sys.argv[2]}';print(f'✓ {sys.argv[1]} → {sys.argv[2]}')" "$MAIN_VER" "$PR_VER"
           echo "new_ver=$PR_VER" >> $GITHUB_ENV
 
       - name: Check marquise-core CHANGELOG
@@ -142,16 +134,8 @@ jobs:
         run: |
           MAIN_VER=$(git show origin/${{ github.base_ref }}:apps/marquise-api/pyproject.toml \
             | python3 -c "import sys,tomllib; print(tomllib.load(sys.stdin.buffer)['project']['version'])")
-          PR_VER=$(python3 -c "
-            import tomllib
-            print(tomllib.load(open('apps/marquise-api/pyproject.toml','rb'))['project']['version'])
-          ")
-          python3 -c "
-            v1=[int(x) for x in '$MAIN_VER'.split('.')]
-            v2=[int(x) for x in '$PR_VER'.split('.')]
-            assert v2>v1, f'Version must increase: $MAIN_VER → $PR_VER'
-            print(f'✓ $MAIN_VER → $PR_VER')
-          "
+          PR_VER=$(python3 -c "import tomllib; print(tomllib.load(open('apps/marquise-api/pyproject.toml','rb'))['project']['version'])")
+          python3 -c "import sys;v1=[int(x) for x in sys.argv[1].split('.')];v2=[int(x) for x in sys.argv[2].split('.')];assert v2>v1, f'Version must increase: {sys.argv[1]} → {sys.argv[2]}';print(f'✓ {sys.argv[1]} → {sys.argv[2]}')" "$MAIN_VER" "$PR_VER"
           echo "new_ver=$PR_VER" >> $GITHUB_ENV
 
       - name: Check marquise-api CHANGELOG
@@ -170,16 +154,8 @@ jobs:
         run: |
           MAIN_VER=$(git show origin/${{ github.base_ref }}:apps/marquise-cli/pyproject.toml \
             | python3 -c "import sys,tomllib; print(tomllib.load(sys.stdin.buffer)['project']['version'])")
-          PR_VER=$(python3 -c "
-            import tomllib
-            print(tomllib.load(open('apps/marquise-cli/pyproject.toml','rb'))['project']['version'])
-          ")
-          python3 -c "
-            v1=[int(x) for x in '$MAIN_VER'.split('.')]
-            v2=[int(x) for x in '$PR_VER'.split('.')]
-            assert v2>v1, f'Version must increase: $MAIN_VER → $PR_VER'
-            print(f'✓ $MAIN_VER → $PR_VER')
-          "
+          PR_VER=$(python3 -c "import tomllib; print(tomllib.load(open('apps/marquise-cli/pyproject.toml','rb'))['project']['version'])")
+          python3 -c "import sys;v1=[int(x) for x in sys.argv[1].split('.')];v2=[int(x) for x in sys.argv[2].split('.')];assert v2>v1, f'Version must increase: {sys.argv[1]} → {sys.argv[2]}';print(f'✓ {sys.argv[1]} → {sys.argv[2]}')" "$MAIN_VER" "$PR_VER"
           echo "new_ver=$PR_VER" >> $GITHUB_ENV
 
       - name: Check marquise-cli CHANGELOG
