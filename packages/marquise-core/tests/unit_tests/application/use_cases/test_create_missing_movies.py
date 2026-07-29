@@ -43,14 +43,14 @@ async def _run(
     movies: tuple[CreateMissingMoviesCommand.MovieInput, ...],
 ) -> dict[str, str]:
     result = await command.execute(CreateMissingMoviesCommand.InputData(movies=movies))
-    return result.movie_lookup
+    return {m.title: m.id for m in result.movies}
 
 
 @pytest.mark.asyncio
 async def test_creates_missing_movies_with_all_metadata() -> None:
     """Test that a missing movie is created with all provided metadata."""
     mock_movie_repo = create_autospec(MovieRepository, instance=True)
-    mock_movie_repo.find_by_titles.return_value = {"New Movie": None}
+    mock_movie_repo.find_by_titles.return_value = []
     saved_movie = Movie(
         id=MovieId(value="mov-new"),
         title="New Movie",
@@ -87,7 +87,7 @@ async def test_creates_missing_movies_with_all_metadata() -> None:
 async def test_creates_bare_movie_when_no_metadata() -> None:
     """Test that a missing movie is created with just a title."""
     mock_movie_repo = create_autospec(MovieRepository, instance=True)
-    mock_movie_repo.find_by_titles.return_value = {"Bare Movie": None}
+    mock_movie_repo.find_by_titles.return_value = []
     saved_movie = Movie(id=MovieId(value="mov-bare"), title="Bare Movie")
     mock_movie_repo.save.return_value = saved_movie
 
@@ -105,7 +105,7 @@ async def test_skips_existing_movies() -> None:
     """Test that existing movies are not created again."""
     mock_movie_repo = create_autospec(MovieRepository, instance=True)
     existing_movie = Movie(id=MovieId(value="mov-existing"), title="Existing Movie")
-    mock_movie_repo.find_by_titles.return_value = {"Existing Movie": existing_movie}
+    mock_movie_repo.find_by_titles.return_value = [existing_movie]
 
     lookup = await _run(
         _make_command(mock_movie_repo),
@@ -121,10 +121,7 @@ async def test_returns_lookup_for_all_inputs() -> None:
     """Test that both existing and new movies appear in the lookup."""
     mock_movie_repo = create_autospec(MovieRepository, instance=True)
     existing_movie = Movie(id=MovieId(value="mov-existing"), title="Existing Movie")
-    mock_movie_repo.find_by_titles.return_value = {
-        "Existing Movie": existing_movie,
-        "New Movie": None,
-    }
+    mock_movie_repo.find_by_titles.return_value = [existing_movie]
     saved_movie = Movie(id=MovieId(value="mov-new"), title="New Movie")
     mock_movie_repo.save.return_value = saved_movie
 
@@ -145,7 +142,7 @@ async def test_returns_lookup_for_all_inputs() -> None:
 async def test_dedupes_titles_differing_by_whitespace() -> None:
     """Test that titles differing only by whitespace are treated as the same."""
     mock_movie_repo = create_autospec(MovieRepository, instance=True)
-    mock_movie_repo.find_by_titles.return_value = {"Beau Is Afraid": None}
+    mock_movie_repo.find_by_titles.return_value = []
     saved_movie = Movie(id=MovieId(value="mov-a"), title="Beau Is Afraid")
     mock_movie_repo.save.return_value = saved_movie
 
@@ -166,7 +163,7 @@ async def test_reuses_movie_found_with_different_case() -> None:
     """Test that a case-insensitive match still returns the correct lookup."""
     mock_movie_repo = create_autospec(MovieRepository, instance=True)
     existing_movie = Movie(id=MovieId(value="mov-batman"), title="the batman")
-    mock_movie_repo.find_by_titles.return_value = {"The Batman": existing_movie}
+    mock_movie_repo.find_by_titles.return_value = [existing_movie]
 
     lookup = await _run(
         _make_command(mock_movie_repo),

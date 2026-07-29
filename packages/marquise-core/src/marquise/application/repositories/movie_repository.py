@@ -62,15 +62,15 @@ class MovieRepository(ABC):
         ...
 
     @abstractmethod
-    async def find_by_titles(self, titles: list[str]) -> dict[str, Movie | None]:
+    async def find_by_titles(self, titles: list[str]) -> list[Movie]:
         """Find movies by a list of titles, case-insensitively.
 
         Args:
             titles: The movie titles to look up.
 
         Returns:
-            A dict mapping each input title to either its Movie entity or None
-            if no match was found.
+            A list of matching Movie entities.  Titles with no match are
+            silently omitted.
         """
         ...
 
