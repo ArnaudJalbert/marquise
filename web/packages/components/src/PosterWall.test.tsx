@@ -5,15 +5,15 @@ import type { PosterMovie } from './types';
 
 const sampleMovie: PosterMovie = {
   id: 'test-1',
+  movieId: 'test-movie',
   title: 'Test Movie',
   director: 'Test Director',
   year: 2026,
   runtimeMin: 120,
-  format: 'DCP',
   genre: 'Drama',
   cinema: 'Test Cinema',
   dates: ['2026-07-15'],
-  screenings: [{ time: '7:00 PM', lang: 'VO' }],
+  screenings: [{ time: '19:00', lang: 'VO' }],
   poster: 'https://example.com/poster.jpg',
 };
 

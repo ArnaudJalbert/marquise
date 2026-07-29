@@ -217,8 +217,12 @@ def _is_in_range(
     return True
 
 
+TICKETING_REDIRECT_URL = (
+    "https://apis.cineplex.com/prod/ticketing/api/v1/routing/redirect-to-ticketing"
+)
+
+
 def _build_ticket_url(
-    film_url: str,
     location_id: int,
     vista_session_id: int,
     area_code: str,
@@ -226,7 +230,6 @@ def _build_ticket_url(
     """Build a Cineplex ticket/deeplink URL.
 
     Args:
-        film_url: The film slug (e.g. ``"the-odyssey"``).
         location_id: The theatre ID.
         vista_session_id: The Vista session ID.
         area_code: The Vista HO area category code.
@@ -235,12 +238,11 @@ def _build_ticket_url(
         A deeplink URL for ticket purchase.
     """
     return (
-        f"https://apis.cineplex.com/prod/cpx/theatrical/"
-        f"deeplink?s={vista_session_id}"
-        f"&a={area_code}"
-        f"&l={location_id}"
-        f"&m={film_url}"
-        f"&ss=False"
+        f"{TICKETING_REDIRECT_URL}"
+        f"?VistaSessionId={vista_session_id}"
+        f"&VISTAHOCategoryCode={area_code}"
+        f"&LocationId={location_id}"
+        f"&IsSeriesShowtime=False"
     )
 
 
@@ -299,11 +301,14 @@ def _flatten_showtimes(
                         vista_session_id: int = session.get("vistaSessionId", 0)
                         area_code: str = session.get("areaCode", "0000000001")
 
-                        ticket_url = _build_ticket_url(
-                            film_url=film_url,
-                            location_id=location_id,
-                            vista_session_id=vista_session_id,
-                            area_code=area_code,
+                        ticket_url = (
+                            session.get("ticketingRedesignUrl")
+                            or session.get("ticketingUrl")
+                            or _build_ticket_url(
+                                location_id=location_id,
+                                vista_session_id=vista_session_id,
+                                area_code=area_code,
+                            )
                         )
 
                         auditorium: str | None = session.get("auditorium")

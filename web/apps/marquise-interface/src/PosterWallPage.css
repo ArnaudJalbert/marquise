@@ -61,3 +61,24 @@
   padding: var(--space-8);
   min-height: 200px;
 }
+
+.poster-wall-page__spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.poster-wall-page__spinner::after {
+  content: '';
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--n-200);
+  border-top-color: var(--accent-600);
+  border-radius: 50%;
+  animation: poster-wall-spin 0.7s linear infinite;
+}
+
+@keyframes poster-wall-spin {
+  to { transform: rotate(360deg); }
+}

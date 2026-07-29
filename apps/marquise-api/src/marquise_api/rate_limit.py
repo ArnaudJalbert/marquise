@@ -22,7 +22,7 @@ from slowapi.util import get_remote_address
 
 #: Default per-IP rate limit, in slowapi's ``<count>/<period>`` string
 #: syntax. Override via the ``MARQUISE_API_RATE_LIMIT`` env var.
-DEFAULT_RATE_LIMIT: str = "60/minute"
+DEFAULT_RATE_LIMIT: str = "3000/minute"
 
 
 def current_rate_limit() -> str:

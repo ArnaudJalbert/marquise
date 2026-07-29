@@ -4,6 +4,7 @@
   gap: var(--space-3);
   border-radius: var(--radius-md);
   padding: var(--space-3);
+  cursor: pointer;
 }
 
 .poster-editorial-card__genre {

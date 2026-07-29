@@ -1,7 +1,8 @@
 import { MarquiseApiClient } from '@marquise/api-client';
 import type { MovieResponse, ScreeningResponse } from '@marquise/api-client';
-import type { Genre, PosterMovie, PosterWallFilters, Screening } from '@marquise/components';
-import { GENRES, addDaysToDateKey, filterMovies } from '@marquise/components';
+import type { PosterMovie, PosterWallFilters, Screening } from '@marquise/components';
+import { addDaysToDateKey } from '@marquise/components';
+import type { MovieInfo, CinemaGroup } from './detailTypes';
 import { montrealDateKeyToUtcRange, montrealTodayKey } from '../timezone';
 
 const client = new MarquiseApiClient({
@@ -20,9 +21,9 @@ const DEFAULT_WINDOW_DAYS_AHEAD = 21;
 
 const SHOWTIME_FORMATTER = new Intl.DateTimeFormat('en-US', {
   timeZone: 'America/Toronto',
-  hour: 'numeric',
+  hour: '2-digit',
   minute: '2-digit',
-  hour12: true,
+  hour12: false,
 });
 
 const SHOWTIME_DATE_KEY_FORMATTER = new Intl.DateTimeFormat('en-CA', {
@@ -51,10 +52,12 @@ function mapLanguage(language: string | null): 'VO' | 'VF' {
   return 'VO';
 }
 
-/** Backend genres are free text; fall back to a stable default when nothing in our closed enum matches. */
-function mapGenre(genres: string[] | null | undefined): Genre {
-  const match = genres?.find((g): g is Genre => (GENRES as readonly string[]).includes(g));
-  return match ?? 'Drama';
+/** Backend genres are free text; take the first one or fall back to a default. */
+function mapGenre(genres: string[] | null | undefined): string {
+  if (genres && genres.length > 0) {
+    return genres[0];
+  }
+  return 'Drama';
 }
 
 function groupIntoPosterMovies(screenings: ScreeningResponse[], moviesById: Map<string, MovieResponse>): PosterMovie[] {
@@ -64,7 +67,7 @@ function groupIntoPosterMovies(screenings: ScreeningResponse[], moviesById: Map<
     const movie = moviesById.get(s.movie_id);
     const key = `${s.movie_id}::${s.cinema_id}`;
     const day = showtimeDateKey(s.showtime);
-    const screening: Screening = { time: formatShowtime(s.showtime), lang: mapLanguage(s.language) };
+    const screening: Screening = { time: formatShowtime(s.showtime), lang: mapLanguage(s.language), ticketUrl: s.ticket_url ?? undefined, showtime: s.showtime };
 
     const existing = groups.get(key);
     if (existing) {
@@ -75,11 +78,11 @@ function groupIntoPosterMovies(screenings: ScreeningResponse[], moviesById: Map<
 
     groups.set(key, {
       id: key,
+      movieId: s.movie_id,
       title: s.movie_title,
       director: movie?.directors?.[0] ?? 'Unknown',
       year: movie?.release_year ?? 0,
       runtimeMin: movie?.duration_minutes ?? 0,
-      format: 'DCP',
       genre: mapGenre(movie?.genres),
       cinema: s.cinema_name,
       dates: [day],
@@ -155,33 +158,90 @@ async function fetchMoviesByIds(movieIds: string[]): Promise<Map<string, MovieRe
 }
 
 /**
- * Real API data source. Fetches screenings within the resolved date window —
- * `s.movie_title`/`s.cinema_name` on each screening already carry everything
- * a card needs to render (title, cinema, dates, showtimes) — and hands that
- * off to `onCardsReady` immediately, so the wall can paint before the
- * enrichment request completes. Only *then* does it fetch the specific
- * movies referenced by those screenings (not an arbitrary separate page of
- * movies — that was a join mismatch: page 1 of /v1/movies has no guaranteed
- * overlap with whatever movies happen to be screening in the fetched window) for
- * genre/poster/director/year/runtime enrichment, which arrives asynchronously
- * and is what the resolved promise carries. Reuses the same client-side
- * filterMovies() the mock source uses — the API doesn't support every filter
- * dimension (genre, hour range) server-side, so filtering stays client-side
- * either way.
+ * Fetch the full enriched dataset for the selected dates only — no non-date
+ * filters applied. Used by PosterWallPage as the cached data source;
+ * client-side filtering handles search, cinema, genre, lang, and time range.
  */
-export function fetchMovies(
-  filters: PosterWallFilters,
-  onCardsReady?: (movies: PosterMovie[]) => void,
-): Promise<PosterMovie[]> {
+export function fetchMoviesByDate(filters: PosterWallFilters): Promise<PosterMovie[]> {
   const { from, to } = resolveWindow(filters);
 
   return fetchAllScreenings(from, to).then(async (screenings) => {
-    onCardsReady?.(filterMovies(groupIntoPosterMovies(screenings, new Map()), filters));
-
     const movieIds = [...new Set(screenings.map((s) => s.movie_id))];
     const moviesById = await fetchMoviesByIds(movieIds);
-
-    const movies = groupIntoPosterMovies(screenings, moviesById);
-    return filterMovies(movies, filters);
+    return groupIntoPosterMovies(screenings, moviesById);
   });
 }
+
+async function fetchRawMovieScreenings(movieId: string, dateKey?: string): Promise<ScreeningResponse[]> {
+  const params: Parameters<typeof client.screenings.search>[0] = { movie_id: movieId, size: FETCH_PAGE_SIZE, page: 1 };
+  if (dateKey) {
+    const range = montrealDateKeyToUtcRange(dateKey);
+    params.from = range.from;
+    params.to = range.to;
+  }
+  const first = await client.screenings.search(params);
+  const items = [...first.items];
+  for (let page = 2; page <= first.pages; page++) {
+    const next = await client.screenings.search({ ...params, page });
+    items.push(...next.items);
+  }
+  return items;
+}
+
+function groupScreeningsIntoCinemas(screenings: ScreeningResponse[]): CinemaGroup[] {
+  const cinemaMap = new Map<string, Screening[]>();
+  for (const s of screenings) {
+    const group = cinemaMap.get(s.cinema_name) ?? [];
+    group.push({ time: formatShowtime(s.showtime), lang: mapLanguage(s.language), ticketUrl: s.ticket_url ?? undefined, showtime: s.showtime });
+    cinemaMap.set(s.cinema_name, group);
+  }
+
+  const cinemaGroups: CinemaGroup[] = [];
+  for (const [cinemaName, group] of cinemaMap) {
+    group.sort((a, b) => {
+      const hA = Number(a.time.match(/(\d+)/)?.[1] ?? 0);
+      const hB = Number(b.time.match(/(\d+)/)?.[1] ?? 0);
+      return hA - hB;
+    });
+    cinemaGroups.push({ cinemaName, screenings: group });
+  }
+  return cinemaGroups;
+}
+
+/** Fetch screenings for a movie grouped by cinema. When `dateKey` is provided, scoped to that day. */
+export async function fetchMovieScreenings(movieId: string, dateKey?: string): Promise<CinemaGroup[]> {
+  const raw = await fetchRawMovieScreenings(movieId, dateKey);
+  return groupScreeningsIntoCinemas(raw);
+}
+
+/** Fetch dates a movie has screenings on. When `afterDate` is set, returns
+ * only dates strictly greater than `afterDate`. When `limit` is set, returns
+ * at most that many results.
+ */
+export async function fetchMovieDates(movieId: string, afterDate?: string, limit?: number): Promise<string[]> {
+  const screenings = await fetchRawMovieScreenings(movieId);
+  const dateSet = new Set<string>();
+  for (const s of screenings) {
+    dateSet.add(showtimeDateKey(s.showtime));
+  }
+  let sorted = [...dateSet].sort();
+  if (afterDate) sorted = sorted.filter((d) => d > afterDate);
+  if (limit) sorted = sorted.slice(0, limit);
+  return sorted;
+}
+
+/** Fetch movie basic info (metadata only, no screenings). */
+export async function fetchMovieInfo(movieId: string): Promise<MovieInfo> {
+  const movieRes = await client.movies.get(movieId);
+  return {
+    id: movieRes.id,
+    title: movieRes.title,
+    director: movieRes.directors?.[0] ?? 'Unknown',
+    year: movieRes.release_year ?? 0,
+    runtimeMin: movieRes.duration_minutes ?? 0,
+    genre: mapGenre(movieRes.genres),
+    poster: movieRes.poster_url || 'posters/unknown.webp',
+  };
+}
+
+

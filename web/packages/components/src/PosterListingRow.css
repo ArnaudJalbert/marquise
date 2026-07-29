@@ -4,6 +4,7 @@
   align-items: center;
   padding-block: var(--space-3);
   border-bottom: 1px dashed var(--border-default);
+  cursor: pointer;
 }
 
 .poster-listing-row__thumb {

@@ -1,4 +1,4 @@
-export type Genre = 'Drama' | 'Comedy' | 'Documentary' | 'Sci-Fi' | 'Musical' | 'Family';
+export type Genre = string;
 
 export type Language = 'VO' | 'VF';
 
@@ -7,15 +7,20 @@ export interface Screening {
   time: string;
   /** Language is a per-showtime attribute — the same movie/cinema can run both VO and VF tracks. */
   lang: Language;
+  /** Link to purchase tickets for this screening. */
+  ticketUrl?: string;
+  /** Full ISO datetime string for date-based filtering. */
+  showtime?: string;
 }
 
 export interface PosterMovie {
   id: string;
+  /** Canonical movie identifier (UUID for live API, slug for mock). */
+  movieId: string;
   title: string;
   director: string;
   year: number;
   runtimeMin: number;
-  format: string;
   genre: Genre;
   cinema: string;
   /** "YYYY-MM-DD" date strings this movie is screening on. */
