@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import questionary
 import typer
@@ -23,6 +24,7 @@ source_app = typer.Typer(
 )
 
 _console = Console()
+MONTREAL_TZ = ZoneInfo("America/Toronto")
 
 
 @source_app.command(name="list-registered", rich_help_panel="Information")
@@ -557,7 +559,9 @@ def import_screenings() -> None:
                     if s.imported
                     else typer.style("updated", fg=typer.colors.YELLOW)
                 )
-                table.add_row(s.movie_title, s.showtime, status)
+                dt = datetime.fromisoformat(s.showtime).astimezone(MONTREAL_TZ)
+                local_time = dt.strftime("%Y-%m-%d %H:%M")
+                table.add_row(s.movie_title, local_time, status)
 
             _console.print(table)
             summary = Text(f"{result.total_count} total  |  ")
