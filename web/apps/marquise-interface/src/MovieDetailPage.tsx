@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { PosterImage } from '@marquise/components';
 import { ArrowLeft, ChevronDown, ExternalLink } from 'lucide-react';
@@ -10,81 +10,71 @@ import './MovieDetailPage.css';
 
 const BATCH_SIZE = 3;
 
+interface DateGroup {
+  dateKey: string;
+  cinemaGroups: CinemaGroup[];
+}
+
 export function MovieDetailPage() {
   const { movieId } = useParams<{ movieId: string }>();
   const [searchParams] = useSearchParams();
-  const initialDate = searchParams.get('date') ?? montrealTodayKey();
+  const queryDate = searchParams.get('date') ?? '';
   const today = montrealTodayKey();
-
-  const wallDates = useMemo(() => {
-    const dates = [initialDate];
-    return dates.filter((d) => d >= today);
-  }, [initialDate, today]);
+  const initialDate = queryDate && queryDate >= today ? queryDate : today;
 
   const [info, setInfo] = useState<MovieInfo | null>(null);
-  const [cinemaGroups, setCinemaGroups] = useState<CinemaGroup[] | null>(null);
+  const [dateGroups, setDateGroups] = useState<DateGroup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingScreenings, setLoadingScreenings] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState(initialDate);
-  const [extraDates, setExtraDates] = useState<string[]>([]);
   const [loadingMore, setLoadingMore] = useState(false);
   const [allExtraLoaded, setAllExtraLoaded] = useState(false);
-  const fetchedInfoRef = useRef(false);
-
-  useEffect(() => {
-    fetchedInfoRef.current = false;
-  }, [movieId]);
 
   useEffect(() => {
     if (!movieId) return;
-    const isInitial = !fetchedInfoRef.current;
-    if (isInitial) {
-      setLoading(true);
-    } else {
-      setLoadingScreenings(true);
-    }
+    setLoading(true);
     setError(null);
-
-    const chain = isInitial
-      ? fetchMovieInfo(movieId).then((movieInfo) => {
+    fetchMovieInfo(movieId)
+      .then((movieInfo) => {
         setInfo(movieInfo);
-        fetchedInfoRef.current = true;
+        return fetchMovieScreenings(movieId, initialDate);
       })
-      : Promise.resolve();
-
-    chain
-      .then(() => fetchMovieScreenings(movieId, selectedDate))
       .then((groups) => {
-        setCinemaGroups(groups);
+        setDateGroups([{ dateKey: initialDate, cinemaGroups: groups }]);
         setLoading(false);
-        setLoadingScreenings(false);
       })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : 'Failed to load movie details');
         setLoading(false);
-        setLoadingScreenings(false);
       });
-  }, [movieId, selectedDate]);
+  }, [movieId, initialDate]);
 
   const handleLoadMore = useCallback(() => {
     if (!movieId || loadingMore) return;
-    const last = extraDates.length > 0
-      ? extraDates[extraDates.length - 1]
-      : wallDates.length > 0
-        ? wallDates[wallDates.length - 1]
-        : undefined;
-    if (!last && wallDates.length === 0) return;
+    const lastDate = dateGroups[dateGroups.length - 1]?.dateKey;
+    if (!lastDate) return;
     setLoadingMore(true);
-    fetchMovieDates(movieId, last, BATCH_SIZE).then((batch) => {
-      const filtered = batch.filter((d) => d >= today);
-      setExtraDates((prev) => [...prev, ...filtered]);
-      if (filtered.length < BATCH_SIZE) setAllExtraLoaded(true);
-      setLoadingMore(false);
-    }).catch(() => {
-      setLoadingMore(false);
-    });
-  }, [movieId, wallDates, extraDates, loadingMore, today]);
+    fetchMovieDates(movieId, lastDate, BATCH_SIZE)
+      .then(async (dates) => {
+        const futureDates = dates.filter((d) => d >= today);
+        if (futureDates.length === 0) {
+          setAllExtraLoaded(true);
+          setLoadingMore(false);
+          return;
+        }
+        const results = await Promise.all(
+          futureDates.map((d) => fetchMovieScreenings(movieId, d)),
+        );
+        setDateGroups((prev) => [
+          ...prev,
+          ...futureDates.map((d, i) => ({ dateKey: d, cinemaGroups: results[i] })),
+        ]);
+        if (futureDates.length < BATCH_SIZE) setAllExtraLoaded(true);
+        setLoadingMore(false);
+      })
+      .catch(() => {
+        setLoadingMore(false);
+      });
+  }, [movieId, dateGroups, loadingMore, today]);
 
   if (loading) {
     return (
@@ -126,85 +116,62 @@ export function MovieDetailPage() {
         </div>
       </div>
 
-      <div className="movie-detail-page__dates">
-        <div className="movie-detail-page__dates-scroll">
-          {wallDates.map((d) => (
-            <button
-              key={d}
-              className={`movie-detail-page__date-pill ${d === selectedDate ? 'movie-detail-page__date-pill--active' : ''}`}
-              onClick={() => setSelectedDate(d)}
-            >
-              {formatDateLabel(d)}
-            </button>
-          ))}
-        </div>
-
-        {extraDates.length > 0 && (
-          <div className="movie-detail-page__extra-dates">
-            {extraDates.map((d) => (
-              <button
-                key={d}
-                className={`movie-detail-page__extra-date ${d === selectedDate ? 'movie-detail-page__extra-date--active' : ''}`}
-                onClick={() => setSelectedDate(d)}
-              >
-                {formatDateLabel(d)}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {allExtraLoaded && extraDates.length > 0 ? (
-          <p className="movie-detail-page__dates-end">All future dates loaded</p>
-        ) : allExtraLoaded ? (
-          <p className="movie-detail-page__dates-end">No more upcoming screenings</p>
-        ) : (
-          <button
-            className="movie-detail-page__load-more"
-            onClick={handleLoadMore}
-            disabled={loadingMore}
-          >
-            {loadingMore ? 'Loading…' : <>More dates <ChevronDown size={14} /></>}
-          </button>
-        )}
-      </div>
-
-      {loadingScreenings && (
-        <div className="movie-detail-page__loading">
-          <div className="movie-detail-page__spinner" />
-        </div>
-      )}
-
-      <div className="movie-detail-page__screenings">
-        {cinemaGroups?.length === 0 ? (
-          <p className="movie-detail-page__empty">No screenings on this date.</p>
-        ) : (
-          cinemaGroups?.map((group) => (
-            <div key={group.cinemaName} className="movie-detail-page__cinema-group">
-              <h2 className="movie-detail-page__cinema-name">{group.cinemaName}</h2>
-              <div className="movie-detail-page__showtimes">
-                {group.screenings.map((s, i) => (
-                  <span key={`${s.time}-${s.lang}-${i}`} className="movie-detail-page__showtime">
-                    {s.ticketUrl ? (
-                      <a
-                        href={s.ticketUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="movie-detail-page__ticket-link"
-                      >
-                        {s.time}
-                        <ExternalLink size={12} className="movie-detail-page__external-icon" />
-                      </a>
-                    ) : (
-                      <span className="movie-detail-page__showtime-time">{s.time}</span>
-                    )}
-                    <span className="movie-detail-page__showtime-lang">{s.lang}</span>
-                  </span>
+      <div className="movie-detail-page__date-groups">
+        {dateGroups.map((dg) => (
+          <div key={dg.dateKey} className="movie-detail-page__date-group">
+            <h2 className="movie-detail-page__date-group-label">{formatDateLabel(dg.dateKey)}</h2>
+            {dg.cinemaGroups.length === 0 ? (
+              <p className="movie-detail-page__empty">No screenings on this date.</p>
+            ) : (
+              <div className="movie-detail-page__screenings">
+                {dg.cinemaGroups.map((group) => (
+                  <div key={group.cinemaName} className="movie-detail-page__cinema-group">
+                    <h3 className="movie-detail-page__cinema-name">{group.cinemaName}</h3>
+                    <div className="movie-detail-page__showtimes">
+                      {group.screenings.map((s, i) => (
+                        <span key={`${s.time}-${s.lang}-${i}`} className="movie-detail-page__showtime">
+                          {s.ticketUrl ? (
+                            <a
+                              href={s.ticketUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="movie-detail-page__ticket-link"
+                            >
+                              {s.time}
+                              <ExternalLink size={12} className="movie-detail-page__external-icon" />
+                            </a>
+                          ) : (
+                            <span className="movie-detail-page__showtime-time">{s.time}</span>
+                          )}
+                          <span className="movie-detail-page__showtime-lang">{s.lang}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
-            </div>
-          ))
-        )}
+            )}
+          </div>
+        ))}
       </div>
+
+      {!loading && dateGroups.length > 0 && (
+        <div className="movie-detail-page__load-area">
+          {allExtraLoaded ? (
+            <p className="movie-detail-page__dates-end">
+              {dateGroups.length > 1 ? 'All future dates loaded' : 'No more upcoming screenings'}
+            </p>
+          ) : loadingMore ? (
+            <div className="movie-detail-page__loading">
+              <div className="movie-detail-page__spinner" />
+            </div>
+          ) : (
+            <button className="movie-detail-page__load-more" onClick={handleLoadMore}>
+              More dates <ChevronDown size={14} />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
