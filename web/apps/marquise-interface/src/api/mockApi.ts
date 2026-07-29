@@ -1,5 +1,5 @@
 import type { PosterMovie, PosterWallFilters, Screening } from '@marquise/components';
-import type { MovieInfo, CinemaGroup } from './detailTypes';
+import type { MovieInfo, CinemaGroup } from '@marquise/components';
 import { MOVIES } from '../data/movies';
 
 const MIN_LATENCY_MS = 350;

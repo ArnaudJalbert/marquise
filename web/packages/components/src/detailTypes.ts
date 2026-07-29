@@ -1,4 +1,4 @@
-import type { Screening } from '@marquise/components';
+import type { Screening } from './types';
 
 export interface CinemaGroup {
   cinemaName: string;
@@ -14,4 +14,3 @@ export interface MovieInfo {
   genre: string;
   poster: string;
 }
-

@@ -24,24 +24,6 @@
   color: var(--accent-600);
 }
 
-.poster-wall-page__source-badge {
-  font: var(--text-label-caps);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
-  padding: 2px 7px;
-  border-radius: var(--radius-md);
-}
-
-.poster-wall-page__source-badge--mock {
-  color: var(--text-tertiary);
-  background: var(--n-100);
-}
-
-.poster-wall-page__source-badge--live {
-  color: var(--sage-700);
-  background: color-mix(in oklch, var(--sage-500) 14%, white);
-}
-
 .poster-wall-page__title {
   font: var(--text-display-lg);
   color: var(--text-primary);
@@ -52,6 +34,10 @@
   font: var(--text-mono-sm);
   color: var(--text-tertiary);
   margin: var(--space-4) 0;
+}
+
+.poster-wall-page__city {
+  color: var(--accent-500);
 }
 
 .poster-wall-page__card {

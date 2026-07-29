@@ -39,6 +39,6 @@ export interface PosterWallFilters {
   genres: Genre[];
   /** "YYYY-MM-DD" date strings. */
   dates: string[];
-  dateMode: 'multiple' | 'range';
+  dateMode: 'single' | 'range';
   timeRange: [number, number];
 }

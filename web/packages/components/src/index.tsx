@@ -20,3 +20,8 @@ export * from "./DatePickerPopover";
 export * from "./DualRangeSlider";
 export * from "./FilterBar";
 export * from "./filterMovies";
+export * from "./detailTypes";
+export * from "./detailUtils";
+export * from "./timezone";
+export * from "./MovieDetailDrawer";
+export * from "./MovieDetailPage";
