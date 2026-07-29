@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FilterBar, PosterWall, filterMovies } from '@marquise/components';
+import { useNavigate } from 'react-router-dom';
+import { FilterBar, PosterWall, filterMovies, montrealTodayKey } from '@marquise/components';
 import type { PosterMovie, PosterWallFilters, PosterWallView } from '@marquise/components';
 import { MovieDetailDrawer } from './MovieDetailDrawer';
-import { fetchMoviesByDate, dataSource } from './api';
-import { montrealTodayKey } from './timezone';
+import { fetchMoviesByDate } from './api';
 import './PosterWallPage.css';
 
 function createDefaultFilters(): PosterWallFilters {
@@ -13,8 +13,8 @@ function createDefaultFilters(): PosterWallFilters {
     langs: [],
     genres: [],
     dates: [montrealTodayKey()],
-    dateMode: 'multiple',
-    timeRange: [8, 24],
+    dateMode: 'single',
+    timeRange: [new Date().getHours(), 24],
   };
 }
 
@@ -45,6 +45,7 @@ function deriveFilterOptions(movies: PosterMovie[]): { cinemas: string[]; genres
 
 /** Composition root for the poster-wall live prototype: filter bar + wall, wired together. */
 export function PosterWallPage() {
+  const navigate = useNavigate();
   const [filters, setFilters] = useState<PosterWallFilters>(createDefaultFilters);
   const [view, setView] = useState<PosterWallView>('PW-01');
   const [allMovies, setAllMovies] = useState<PosterMovie[]>([]);
@@ -52,7 +53,16 @@ export function PosterWallPage() {
   const [selectedMovie, setSelectedMovie] = useState<PosterMovie | null>(null);
   const requestId = useRef(0);
 
-  const datesKey = useMemo(() => [...filters.dates].sort().join(','), [filters.dates]);
+  const sortedDates = useMemo(() => [...filters.dates].sort(), [filters.dates]);
+  const datesKey = useMemo(() => sortedDates.join(','), [sortedDates]);
+
+  useEffect(() => {
+    if (filters.dates.length === 0) return;
+    const today = montrealTodayKey();
+    const earliest = sortedDates[0];
+    const startHour = earliest > today || earliest < today ? 0 : new Date().getHours();
+    setFilters((prev) => ({ ...prev, timeRange: [startHour, 24] }));
+  }, [sortedDates]);
 
   useEffect(() => {
     if (!datesKey) return;
@@ -73,11 +83,8 @@ export function PosterWallPage() {
       <header className="poster-wall-page__header">
         <div className="poster-wall-page__eyebrow-row">
           <span className="poster-wall-page__eyebrow">Marquise</span>
-          <span className={`poster-wall-page__source-badge poster-wall-page__source-badge--${dataSource}`}>
-            {dataSource === 'live' ? 'Live API' : 'Mock data'}
-          </span>
         </div>
-        <h1 className="poster-wall-page__title">What's playing</h1>
+        <h1 className="poster-wall-page__title">What's playing in <span className="poster-wall-page__city">Montréal</span></h1>
       </header>
 
       <FilterBar filters={filters} onFiltersChange={setFilters} view={view} onViewChange={setView} cinemas={filterOptions.cinemas} genres={filterOptions.genres} languages={filterOptions.languages} />
@@ -100,6 +107,7 @@ export function PosterWallPage() {
           movie={selectedMovie}
           initialDate={filters.dates.find((d) => selectedMovie.dates.includes(d)) ?? selectedMovie.dates[0] ?? filters.dates[0]}
           onClose={() => setSelectedMovie(null)}
+          onViewFullPage={(movieId, date) => navigate(`/movie/${movieId}${date ? `?date=${date}` : ''}`)}
         />
       )}
     </div>

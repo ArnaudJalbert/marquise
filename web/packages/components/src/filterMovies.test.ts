@@ -23,7 +23,7 @@ const defaultFilters: PosterWallFilters = {
   langs: [],
   genres: [],
   dates: [],
-  dateMode: 'multiple',
+  dateMode: 'single',
   timeRange: [8, 24],
 };
 

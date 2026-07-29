@@ -2,8 +2,8 @@ import { MarquiseApiClient } from '@marquise/api-client';
 import type { MovieResponse, ScreeningResponse } from '@marquise/api-client';
 import type { PosterMovie, PosterWallFilters, Screening } from '@marquise/components';
 import { addDaysToDateKey } from '@marquise/components';
-import type { MovieInfo, CinemaGroup } from './detailTypes';
-import { montrealDateKeyToUtcRange, montrealTodayKey } from '../timezone';
+import type { MovieInfo, CinemaGroup } from '@marquise/components';
+import { montrealDateKeyToUtcRange, montrealTodayKey } from '@marquise/components';
 
 const client = new MarquiseApiClient({
   baseUrl: import.meta.env.VITE_API_BASE_URL ?? 'https://marquise-api.fly.dev',

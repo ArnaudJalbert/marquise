@@ -87,7 +87,7 @@ export function FilterBar({ filters, onFiltersChange, view, onViewChange, cinema
         <div className="filter-bar__divider" />
         <Clock className="filter-bar__clock-icon" aria-hidden="true" />
         <DualRangeSlider
-          min={8}
+          min={0}
           max={24}
           value={filters.timeRange}
           onChange={(timeRange) => patch({ timeRange })}

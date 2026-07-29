@@ -1,4 +1,4 @@
-import type { Screening } from '@marquise/components';
+import type { Screening } from './types';
 
 export function formatDateLabel(dateKey: string): string {
   const [y, m, d] = dateKey.split('-').map(Number);
@@ -22,4 +22,8 @@ export function showtimeDateKey(showtime: string): string {
 
 export function screeningMatchesDate(s: Screening, dateKey: string): boolean {
   return s.showtime ? showtimeDateKey(s.showtime) === dateKey : true;
+}
+
+export function isPastShowtime(s: Screening): boolean {
+  return s.showtime ? new Date(s.showtime) < new Date() : false;
 }

@@ -1,6 +1,6 @@
 import type { PosterMovie } from '@marquise/components';
 import { toDateKey, parseDateKey } from '@marquise/components';
-import { montrealTodayKey } from '../timezone';
+import { montrealTodayKey } from '@marquise/components';
 
 /**
  * Poster URLs are hotlinked from Wikipedia/Wikimedia Commons (verified

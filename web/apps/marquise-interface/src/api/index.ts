@@ -1,5 +1,5 @@
 import type { PosterMovie, PosterWallFilters } from '@marquise/components';
-import type { CinemaGroup, MovieInfo } from './detailTypes';
+import type { CinemaGroup, MovieInfo } from '@marquise/components';
 import {
   fetchMoviesByDate as fetchMoviesByDateMock,
   fetchMovieDates as fetchMovieDatesMock,
@@ -13,7 +13,7 @@ import {
   fetchMovieScreenings as fetchMovieScreeningsLive,
 } from './liveApi';
 
-export type { MovieInfo, CinemaGroup } from './detailTypes';
+export type { MovieInfo, CinemaGroup } from '@marquise/components';
 
 export const dataSource: 'mock' | 'live' = import.meta.env.VITE_DATA_SOURCE === 'live' ? 'live' : 'mock';
 
