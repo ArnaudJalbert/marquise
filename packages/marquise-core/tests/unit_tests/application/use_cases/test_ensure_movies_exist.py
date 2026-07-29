@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from unittest.mock import create_autospec
 
 import pytest
@@ -13,26 +12,19 @@ from marquise.application.repositories import (
 )
 from marquise.application.repositories.source_registry_query import (
     MovieEnrichmentData,
-    ShowtimeRow,
 )
 from marquise.application.use_cases.ensure_movies_exist import EnsureMoviesExistCommand
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
 
 
-def _make_showtime_row(
+def _make_input_row(
     movie_title: str = "Test Movie",
-    showtime: datetime | None = None,
     identifier: str | None = None,
-) -> ShowtimeRow:
-    return ShowtimeRow(
+) -> EnsureMoviesExistCommand.InputRow:
+    return EnsureMoviesExistCommand.InputRow(
         movie_title=movie_title,
-        showtime=showtime or datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC),
         identifier=identifier,
-        external_id=None,
-        ticket_url=None,
-        room=None,
-        language=None,
     )
 
 
@@ -48,9 +40,9 @@ def _make_command(
 
 async def _run(
     command: EnsureMoviesExistCommand,
-    rows: tuple[ShowtimeRow, ...],
+    rows: tuple[EnsureMoviesExistCommand.InputRow, ...],
     source_name: str = "cinemacinema",
-) -> dict[str, Movie]:
+) -> dict[str, str]:
     result = await command.execute(
         EnsureMoviesExistCommand.InputData(rows=rows, source_name=source_name)
     )
@@ -64,18 +56,21 @@ async def test_creates_missing_movies() -> None:
     mock_registry = create_autospec(SourceRegistryQuery, instance=True)
 
     rows = (
-        _make_showtime_row("Movie A"),
-        _make_showtime_row("Movie B"),
+        _make_input_row("Movie A"),
+        _make_input_row("Movie B"),
     )
-    mock_movie_repo.find_by_title.side_effect = [None, None]
+    mock_movie_repo.find_by_titles.return_value = {
+        "Movie A": None,
+        "Movie B": None,
+    }
     movie_a = Movie(id=MovieId(value="mov-a"), title="Movie A")
     movie_b = Movie(id=MovieId(value="mov-b"), title="Movie B")
     mock_movie_repo.save.side_effect = [movie_a, movie_b]
 
     lookup = await _run(_make_command(mock_movie_repo, mock_registry), rows)
 
-    assert lookup["Movie A"] is movie_a
-    assert lookup["Movie B"] is movie_b
+    assert lookup["Movie A"] == "mov-a"
+    assert lookup["Movie B"] == "mov-b"
     assert mock_movie_repo.save.await_count == 2
 
 
@@ -86,15 +81,15 @@ async def test_reuses_existing_movie() -> None:
     mock_registry = create_autospec(SourceRegistryQuery, instance=True)
 
     movie_a = Movie(id=MovieId(value="mov-a"), title="Movie A")
-    mock_movie_repo.find_by_title.return_value = movie_a
+    mock_movie_repo.find_by_titles.return_value = {"Movie A": movie_a}
 
     lookup = await _run(
         _make_command(mock_movie_repo, mock_registry),
-        (_make_showtime_row("Movie A"),),
+        (_make_input_row("Movie A"),),
     )
 
-    assert lookup["Movie A"] is movie_a
-    mock_movie_repo.find_by_title.assert_awaited()
+    assert lookup["Movie A"] == "mov-a"
+    mock_movie_repo.find_by_titles.assert_awaited()
     mock_movie_repo.save.assert_not_awaited()
 
 
@@ -105,22 +100,20 @@ async def test_dedupes_titles_differing_by_whitespace() -> None:
     mock_registry = create_autospec(SourceRegistryQuery, instance=True)
 
     rows = (
-        _make_showtime_row("Beau Is Afraid"),
-        _make_showtime_row("  Beau  Is  Afraid "),
+        _make_input_row("Beau Is Afraid"),
+        _make_input_row("  Beau  Is  Afraid "),
     )
-    mock_movie_repo.find_by_title.side_effect = [None, None]
+    mock_movie_repo.find_by_titles.return_value = {"Beau Is Afraid": None}
     saved_movie = Movie(id=MovieId(value="mov-a"), title="Beau Is Afraid")
     mock_movie_repo.save.return_value = saved_movie
 
     lookup = await _run(_make_command(mock_movie_repo, mock_registry), rows)
 
-    # Both rows normalize to the same title, so only one movie gets created
-    # even though find_by_title is still queried once per row.
-    mock_movie_repo.find_by_title.assert_any_await("Beau Is Afraid")
+    # Both rows normalize to the same title, so only one movie gets created.
     mock_movie_repo.save.assert_awaited_once()
     created_movie = mock_movie_repo.save.call_args[0][0]
     assert created_movie.title == "Beau Is Afraid"
-    assert lookup["Beau Is Afraid"] is saved_movie
+    assert lookup["Beau Is Afraid"] == "mov-a"
 
 
 @pytest.mark.asyncio
@@ -137,7 +130,7 @@ async def test_reuses_movie_found_with_different_case() -> None:
     # Stored under a different case than today's scrape, and missing
     # optional fields so it qualifies for enrichment.
     existing_movie = Movie(id=MovieId(value="mov-batman"), title="the batman")
-    mock_movie_repo.find_by_title.return_value = existing_movie
+    mock_movie_repo.find_by_titles.return_value = {"The Batman": existing_movie}
 
     enrichment = MovieEnrichmentData(description="The Dark Knight returns")
     mock_registry.fetch_movie_detail.return_value = enrichment
@@ -151,12 +144,11 @@ async def test_reuses_movie_found_with_different_case() -> None:
 
     lookup = await _run(
         _make_command(mock_movie_repo, mock_registry),
-        (_make_showtime_row("The Batman", identifier="the-batman-slug"),),
+        (_make_input_row("The Batman", identifier="the-batman-slug"),),
     )
 
-    # The row's normalized key must map to the enriched movie, not be lost
-    # because the lookup key and the saved entity's title differ in case.
-    assert lookup["The Batman"].description == "The Dark Knight returns"
+    # The row's normalized key must map to the enriched movie ID.
+    assert lookup["The Batman"] == "mov-batman"
 
 
 @pytest.mark.asyncio
@@ -165,7 +157,7 @@ async def test_enriches_new_movie_with_all_fields() -> None:
     mock_movie_repo = create_autospec(MovieRepository, instance=True)
     mock_registry = create_autospec(SourceRegistryQuery, instance=True)
 
-    mock_movie_repo.find_by_title.return_value = None
+    mock_movie_repo.find_by_titles.return_value = {"Rich Movie": None}
 
     enrichment = MovieEnrichmentData(
         description="A rich movie",
@@ -201,7 +193,7 @@ async def test_enriches_new_movie_with_all_fields() -> None:
 
     await _run(
         _make_command(mock_movie_repo, mock_registry),
-        (_make_showtime_row("Rich Movie", identifier="rich-slug"),),
+        (_make_input_row("Rich Movie", identifier="rich-slug"),),
     )
 
     saved = mock_movie_repo.save.call_args[0][0]
@@ -224,7 +216,7 @@ async def test_enriches_new_movie_with_identifier() -> None:
     mock_movie_repo = create_autospec(MovieRepository, instance=True)
     mock_registry = create_autospec(SourceRegistryQuery, instance=True)
 
-    mock_movie_repo.find_by_title.return_value = None
+    mock_movie_repo.find_by_titles.return_value = {"New Movie": None}
 
     enrichment = MovieEnrichmentData(
         description="A great new movie",
@@ -246,7 +238,7 @@ async def test_enriches_new_movie_with_identifier() -> None:
 
     await _run(
         _make_command(mock_movie_repo, mock_registry),
-        (_make_showtime_row("New Movie", identifier="new-movie-slug"),),
+        (_make_input_row("New Movie", identifier="new-movie-slug"),),
     )
 
     mock_registry.fetch_movie_detail.assert_awaited_once_with(
@@ -268,7 +260,7 @@ async def test_enriches_existing_movie_with_null_fields() -> None:
         description=None,
         duration_minutes=None,
     )
-    mock_movie_repo.find_by_title.return_value = existing_movie
+    mock_movie_repo.find_by_titles.return_value = {"Existing Movie": existing_movie}
 
     enrichment = MovieEnrichmentData(
         description="An existing movie with new details",
@@ -285,7 +277,7 @@ async def test_enriches_existing_movie_with_null_fields() -> None:
 
     await _run(
         _make_command(mock_movie_repo, mock_registry),
-        (_make_showtime_row("Existing Movie", identifier="existing-slug"),),
+        (_make_input_row("Existing Movie", identifier="existing-slug"),),
     )
 
     mock_registry.fetch_movie_detail.assert_awaited_once_with(
@@ -315,11 +307,11 @@ async def test_does_not_refetch_already_enriched_movie() -> None:
         rating="PG",
         origin_countries=("US",),
     )
-    mock_movie_repo.find_by_title.return_value = enriched_movie
+    mock_movie_repo.find_by_titles.return_value = {"Full Movie": enriched_movie}
 
     await _run(
         _make_command(mock_movie_repo, mock_registry),
-        (_make_showtime_row("Full Movie", identifier="full-slug"),),
+        (_make_input_row("Full Movie", identifier="full-slug"),),
     )
 
     mock_registry.fetch_movie_detail.assert_not_awaited()
@@ -338,10 +330,13 @@ async def test_handles_mixed_identifiers_for_enrichment() -> None:
     mock_registry = create_autospec(SourceRegistryQuery, instance=True)
 
     rows = (
-        _make_showtime_row("Movie With ID", identifier="has-id"),
-        _make_showtime_row("Movie Without ID", identifier=None),
+        _make_input_row("Movie With ID", identifier="has-id"),
+        _make_input_row("Movie Without ID", identifier=None),
     )
-    mock_movie_repo.find_by_title.side_effect = [None, None]
+    mock_movie_repo.find_by_titles.return_value = {
+        "Movie With ID": None,
+        "Movie Without ID": None,
+    }
 
     enrichment = MovieEnrichmentData(
         description="Only movie with ID gets enriched",

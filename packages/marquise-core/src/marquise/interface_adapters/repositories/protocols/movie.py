@@ -92,6 +92,18 @@ class MovieGateway(Protocol):
         """
         ...
 
+    async def find_by_titles(self, titles: list[str]) -> list[dict]:
+        """Find movies by a list of titles, case-insensitively.
+
+        Args:
+            titles: The movie titles to look up.
+
+        Returns:
+            A dict per matching row. Titles with no match are silently
+            omitted — the returned list may be shorter than ``titles``.
+        """
+        ...
+
     async def exists_by_id(self, movie_id: str) -> bool:
         """Check whether a movie exists with the given ID.
 

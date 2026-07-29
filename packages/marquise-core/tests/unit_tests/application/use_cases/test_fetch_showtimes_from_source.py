@@ -16,7 +16,6 @@ from marquise.application.repositories import (
     CinemaSourceAssignmentRepository,
     SourceRegistryQuery,
 )
-from marquise.application.repositories.source_registry_query import ShowtimeRow
 from marquise.application.use_cases.fetch_showtimes_from_source import (
     FetchShowtimesFromSourceQuery,
 )
@@ -28,8 +27,10 @@ from marquise.domain.entities import (
 from marquise.domain.value_objects import CinemaId, SourceName
 
 
-def _make_row(movie_title: str, showtime: datetime) -> ShowtimeRow:
-    return ShowtimeRow(
+def _make_row(
+    movie_title: str, showtime: datetime
+) -> FetchShowtimesFromSourceQuery.ShowtimeDto:
+    return FetchShowtimesFromSourceQuery.ShowtimeDto(
         movie_title=movie_title,
         showtime=showtime,
         identifier=None,
@@ -42,11 +43,7 @@ def _make_row(movie_title: str, showtime: datetime) -> ShowtimeRow:
 
 @pytest.mark.asyncio
 async def test_fetch_resolves_entities_and_returns_rows() -> None:
-    """Test that the query resolves the cinema/source and returns raw rows.
-
-    The real gateway needs the ``Cinema`` and ``SourceDefinition`` entities, so
-    the query must forward those entities (not identifiers) to fetch_showtimes.
-    """
+    """Test that the query resolves the cinema/source and returns raw rows."""
     mock_cinema_repo = create_autospec(CinemaRepository, instance=True)
     mock_assignment_repo = create_autospec(
         CinemaSourceAssignmentRepository, instance=True
@@ -65,11 +62,11 @@ async def test_fetch_resolves_entities_and_returns_rows() -> None:
     assignment = CinemaSourceAssignment(cinema=cinema, source=source_definition)
     mock_assignment_repo.find_by_cinema_id.return_value = assignment
 
-    rows = [
+    raw_rows = [
         _make_row("Movie A", datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC)),
         _make_row("Movie B", datetime(2026, 6, 7, 21, 0, 0, tzinfo=UTC)),
     ]
-    mock_registry.fetch_showtimes.return_value = rows
+    mock_registry.fetch_showtimes.return_value = raw_rows
 
     query = FetchShowtimesFromSourceQuery(
         cinema_repository=mock_cinema_repo,
@@ -85,9 +82,12 @@ async def test_fetch_resolves_entities_and_returns_rows() -> None:
         )
     )
 
-    assert result.cinema is cinema
-    assert result.source_definition is source_definition
-    assert result.rows == tuple(rows)
+    assert result.cinema_id == "cin-123"
+    assert result.cinema_name == "Cinéma Beaubien"
+    assert result.source_name == "cinemacinema"
+    assert len(result.rows) == 2
+    assert result.rows[0].movie_title == "Movie A"
+    assert result.rows[1].movie_title == "Movie B"
 
     mock_cinema_repo.find_by_id.assert_awaited_once_with(CinemaId(value="cin-123"))
     mock_assignment_repo.find_by_cinema_id.assert_awaited_once_with(

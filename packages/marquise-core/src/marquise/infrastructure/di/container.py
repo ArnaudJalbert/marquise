@@ -403,6 +403,8 @@ class Container:
     def _upsert_screenings_use_case(self) -> UpsertScreeningsCommand:
         return UpsertScreeningsCommand(
             screening_repository=self._screening_repository,
+            cinema_repository=self._cinema_repository,
+            movie_repository=self._movie_repository,
         )
 
     # ------------------------------------------------------------------
