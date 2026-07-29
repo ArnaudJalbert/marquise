@@ -3,16 +3,17 @@ import { MultiSelectPopover } from './MultiSelectPopover';
 import { ViewSwitcherPopover } from './ViewSwitcherPopover';
 import { DatePickerPopover } from './DatePickerPopover';
 import { DualRangeSlider } from './DualRangeSlider';
-import { CINEMAS, LANGUAGES, GENRES } from './fixtures/filterOptions';
-import type { PosterMovie, PosterWallFilters, PosterWallView } from './types';
+import type { PosterWallFilters, PosterWallView } from './types';
 import './FilterBar.css';
 
 export interface FilterBarProps {
-  movies: PosterMovie[];
   filters: PosterWallFilters;
   onFiltersChange: (next: PosterWallFilters) => void;
   view: PosterWallView;
   onViewChange: (view: PosterWallView) => void;
+  cinemas: string[];
+  genres: string[];
+  languages: string[];
 }
 
 function formatHour(hour: number): string {
@@ -23,11 +24,11 @@ function formatHour(hour: number): string {
 }
 
 /** Pure summary of the currently active filters, shown as the status line. */
-export function describeActiveFilters(filters: PosterWallFilters): string {
+export function describeActiveFilters(filters: PosterWallFilters, cinemas: string[], languages: string[], genres: string[]): string {
   const parts = [
-    `${filters.cinemas.length === 0 ? CINEMAS.length : filters.cinemas.length}/${CINEMAS.length} cinemas`,
-    `${filters.langs.length === 0 ? LANGUAGES.length : filters.langs.length}/${LANGUAGES.length} languages`,
-    `${filters.genres.length === 0 ? GENRES.length : filters.genres.length}/${GENRES.length} genres`,
+    `${filters.cinemas.length === 0 ? cinemas.length : filters.cinemas.length}/${cinemas.length} cinemas`,
+    `${filters.langs.length === 0 ? languages.length : filters.langs.length}/${languages.length} languages`,
+    `${filters.genres.length === 0 ? genres.length : filters.genres.length}/${genres.length} genres`,
     `${filters.dates.length} date${filters.dates.length === 1 ? '' : 's'} selected`,
     `${formatHour(filters.timeRange[0])}–${formatHour(filters.timeRange[1])}`,
   ];
@@ -36,7 +37,7 @@ export function describeActiveFilters(filters: PosterWallFilters): string {
 }
 
 /** Full poster-wall toolbar: search, cinema/language/genre filters, view switcher, date picker, time-range slider. */
-export function FilterBar({ filters, onFiltersChange, view, onViewChange }: FilterBarProps) {
+export function FilterBar({ filters, onFiltersChange, view, onViewChange, cinemas, genres, languages }: FilterBarProps) {
   function patch(next: Partial<PosterWallFilters>) {
     onFiltersChange({ ...filters, ...next });
   }
@@ -54,7 +55,7 @@ export function FilterBar({ filters, onFiltersChange, view, onViewChange }: Filt
         <MultiSelectPopover
           label="Cinemas"
           icon={Clapperboard}
-          options={CINEMAS}
+          options={cinemas}
           selected={filters.cinemas}
           onChange={(cinemas) => patch({ cinemas })}
           searchable
@@ -62,16 +63,16 @@ export function FilterBar({ filters, onFiltersChange, view, onViewChange }: Filt
         <MultiSelectPopover
           label="Language"
           icon={Languages}
-          options={LANGUAGES}
+          options={languages}
           selected={filters.langs}
           onChange={(langs) => patch({ langs: langs as PosterWallFilters['langs'] })}
         />
         <MultiSelectPopover
           label="Genre"
           icon={Drama}
-          options={GENRES}
+          options={genres}
           selected={filters.genres}
-          onChange={(genres) => patch({ genres: genres as PosterWallFilters['genres'] })}
+          onChange={(genres) => patch({ genres })}
         />
         <div className="filter-bar__divider" />
         <ViewSwitcherPopover value={view} onChange={onViewChange} />
@@ -93,7 +94,7 @@ export function FilterBar({ filters, onFiltersChange, view, onViewChange }: Filt
           formatLabel={([start, end]) => `${formatHour(start)} – ${formatHour(end)}`}
         />
       </div>
-      <div className="filter-bar__status">{describeActiveFilters(filters)}</div>
+      <div className="filter-bar__status">{describeActiveFilters(filters, cinemas, languages, genres)}</div>
     </div>
   );
 }

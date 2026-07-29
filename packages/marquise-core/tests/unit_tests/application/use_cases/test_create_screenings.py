@@ -7,7 +7,10 @@ from unittest.mock import create_autospec
 
 import pytest
 
-from marquise.application.exceptions import ScreeningAlreadyExistsError
+from marquise.application.exceptions import (
+    ScreeningAlreadyExistsError,
+    ScreeningUpdateNotFoundError,
+)
 from marquise.application.repositories import ScreeningRepository
 from marquise.application.use_cases.create_screenings import (
     CreateScreeningsCommand,
@@ -79,11 +82,16 @@ async def test_creates_new_screenings() -> None:
 
 
 @pytest.mark.asyncio
-async def test_skips_duplicate_screening() -> None:
-    """Test that an existing screening is skipped, not updated."""
+async def test_updates_existing_screening() -> None:
+    """Test that an existing screening is updated instead of skipped."""
+    from marquise.domain.entities import Screening as ScreeningEntity
+
     mock_screening_repo = create_autospec(ScreeningRepository, instance=True)
     mock_screening_repo.save.side_effect = ScreeningAlreadyExistsError(
         "Screening already exists"
+    )
+    mock_screening_repo.update.return_value = create_autospec(
+        ScreeningEntity, instance=True
     )
 
     rows = (_make_screening_input(cinema_id="cin-123"),)
@@ -93,11 +101,12 @@ async def test_skips_duplicate_screening() -> None:
         rows,
     )
 
-    assert result.total_count == 0
+    assert result.total_count == 1
     assert result.imported_count == 0
-    assert result.updated_count == 0
-    assert result.skipped_count == 1
+    assert result.updated_count == 1
+    assert result.skipped_count == 0
     mock_screening_repo.save.assert_awaited_once()
+    mock_screening_repo.update.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -110,6 +119,7 @@ async def test_skips_external_id_conflict() -> None:
         ),
         None,
     ]
+    mock_screening_repo.update.return_value = None
 
     rows = (
         _make_screening_input(
@@ -134,6 +144,7 @@ async def test_skips_external_id_conflict() -> None:
     assert result.updated_count == 0
     assert result.skipped_count == 1
     assert result.screenings[0].movie_title == "Movie B"
+    mock_screening_repo.update.assert_awaited_once()
 
 
 @pytest.mark.asyncio

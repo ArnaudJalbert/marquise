@@ -1,7 +1,7 @@
 export * from "./types";
 export * from "./dateKey";
 export * from "./genrePalette";
-export * from "./fixtures/filterOptions";
+
 export * from "./PosterImage";
 export * from "./PosterCaptionCard";
 export * from "./PosterCaptionGrid";
