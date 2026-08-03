@@ -18,7 +18,6 @@ nav:
   - Home: index.md
   - Architecture: architecture.md
   - API: api.md
-  - Web Front-End: web.md
   - Sources: sources.md
   - Setup:
     - Supabase Database: setup/supabase-cinema-table.md

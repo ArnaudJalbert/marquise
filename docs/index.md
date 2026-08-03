@@ -9,7 +9,6 @@ Marquise scrapes showtime data from multiple theater chains and independent cine
 | Section | What you'll find |
 |---|---|
 | [Architecture](architecture.md) | Layer diagram, key patterns, data flow |
-| [Web Front-End](web.md) | `web/` monorepo — admin app, shared packages, how to run |
 | [API](api.md) | REST API — endpoints, CORS, caching, rate limiting |
 | [Sources](sources.md) | How scrapers and adapters work, adding a new source |
 | [Setup → Supabase](setup/supabase-cinema-table.md) | Database setup guide |
@@ -55,7 +54,6 @@ See the [API docs](api.md) for details, including how to configure CORS origins,
 
 ## Roadmap
 
-- Admin web app ([`web/`](https://github.com/ArnaudJalbert/marquise/tree/main/web)) — read-only UI over the REST API, in progress
 - Admin CRUD API endpoints (write operations)
 - Additional Montreal cinema sources
 
