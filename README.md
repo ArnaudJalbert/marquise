@@ -4,7 +4,7 @@
 
 Montreal cinema showtimes — aggregated, normalized, and queryable.
 
-Marquise fetches showtime data from multiple theater chains and independent cinemas across Montreal, normalizes it into a unified PostgreSQL schema, and exposes it through a CLI and a read-only REST API (live at [`https://marquise-api.fly.dev`](https://marquise-api.fly.dev/docs)). An admin web app is in progress under [`web/`](web/).
+Marquise fetches showtime data from multiple theater chains and independent cinemas across Montreal, normalizes it into a unified PostgreSQL schema, and exposes it through a CLI and a read-only REST API (live at [`https://marquise-api.fly.dev`](https://marquise-api.fly.dev/docs)).
 
 ---
 
@@ -14,7 +14,6 @@ Marquise fetches showtime data from multiple theater chains and independent cine
 - Enriches movie records with metadata (poster, cast, directors, genres, runtime) fetched from each source's detail pages
 - Source-to-cinema assignments are stored in the database — adding a new cinema is a DB write, not a code change
 - Read-only REST API (FastAPI) with pagination, in-memory caching, rate limiting, and configurable CORS — deployed on Fly.io
-- Admin web app in progress: a pnpm + Turborepo front-end monorepo under [`web/`](web/)
 - Clean Architecture: strict inward-only dependency rule across domain → application → interface adapters → infrastructure
 - Async throughout (asyncpg + asyncio), single CLI entrypoint via Typer + Rich
 
@@ -27,7 +26,6 @@ Marquise fetches showtime data from multiple theater chains and independent cine
 | Database | Supabase (PostgreSQL via asyncpg) |
 | CLI | Typer + Rich |
 | REST API | FastAPI (deployed on Fly.io) |
-| Web (admin) | Vite + React + TypeScript, pnpm + Turborepo monorepo ([`web/`](web/)) |
 | Testing | pytest + pytest-asyncio |
 | Linting / formatting | Ruff |
 | Type checking | ty |
@@ -139,25 +137,11 @@ make api
 
 A production instance is live at [`https://marquise-api.fly.dev`](https://marquise-api.fly.dev/docs). See [docs/api.md](docs/api.md) for the full endpoint reference, pagination, caching, rate limiting, and CORS configuration.
 
-## Web (Admin App & Interface)
-
-The front-end lives in [`web/`](web/) as a **pnpm + Turborepo monorepo** — a self-contained subtree that needs only Node.js and pnpm (no Python, `uv`, or database). It hosts the `marquise-admin` app and the `marquise-interface` app (both Vite + React + TypeScript) and a shared `@marquise/components` package.
-
-```bash
-cd web
-corepack enable pnpm             # provision the pinned pnpm version
-pnpm install                     # install + link the whole workspace
-pnpm --filter marquise-admin dev # run the admin app → http://localhost:5173
-```
-
-Full guide (all commands, workspace layout, troubleshooting): **[`web/README.md`](web/README.md)**. Higher-level overview: [docs/web.md](docs/web.md).
-
 ## Documentation
 
 | | |
 |---|---|
 | [Architecture](docs/architecture.md) | Layer diagram, key patterns, data flow |
-| [Web Front-End](docs/web.md) | `web/` monorepo overview — apps, packages, how to run |
 | [Sources](docs/sources.md) | Scraper internals, adding a new source |
 | [Setup](docs/setup/supabase-cinema-table.md) | Database initialization |
 | [Contributing](CONTRIBUTING.md) | Dev setup, commands, CI, conventions |

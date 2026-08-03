@@ -11,7 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       api: ${{ steps.filter.outputs.api }}
-      interface: ${{ steps.filter.outputs.interface }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -23,8 +22,6 @@ jobs:
               - 'packages/marquise-core/**'
               - 'pyproject.toml'
               - 'uv.lock'
-            interface:
-              - 'web/**'
 
   deploy-api:
     name: Deploy marquise-api
@@ -59,25 +56,3 @@ jobs:
           check "/health"
           check "/ready"
           check "/v1/cinemas?size=1"
-
-  deploy-interface:
-    name: Deploy marquise-interface
-    needs: changes
-    if: needs.changes.outputs.interface == 'true'
-    runs-on: ubuntu-latest
-    concurrency: deploy-interface-group    # optional: ensure only one action runs at a time
-    defaults:
-      run:
-        working-directory: web
-    steps:
-      - uses: actions/checkout@v4
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --config apps/marquise-interface/fly.toml --remote-only
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-      - name: Smoke test production interface
-        run: |
-          set -euo pipefail
-          curl --fail --silent --show-error --retry 5 --retry-delay 5 --retry-connrefused \
-            -o /dev/null -w 'https://marquise-interface.fly.dev -> %{http_code}\n' \
-            https://marquise-interface.fly.dev

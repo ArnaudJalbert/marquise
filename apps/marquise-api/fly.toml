@@ -38,8 +38,6 @@ primary_region = 'yyz'
 [env]
   # Optional — overrides the default "marquise" database schema.
   DATABASE_SCHEMA = "marquise"
-  # Allow the deployed web frontend to call this API from the browser.
-  MARQUISE_API_CORS_ORIGINS = "https://marquise-interface.fly.dev"
 
 [[vm]]
   memory = '256mb'

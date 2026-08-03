@@ -23,9 +23,3 @@ site/
 
 # Planning documents
 plan/
-
-# Web (pnpm + Turborepo monorepo)
-web/**/node_modules
-web/**/dist
-web/**/.turbo
-web/**/.env
