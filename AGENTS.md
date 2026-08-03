@@ -380,7 +380,7 @@ One focused task per commit. If a change touches >5 files or >2 layers, split it
 
 ### 9.1 Workspace layout
 
-Marquise is a `uv` workspace (`[tool.uv.workspace] members = ["packages/*", "apps/*"]`), mirroring the `packages/*` + `apps/*` convention already used by the `web/` pnpm monorepo. Root `pyproject.toml` is **virtual** — no `[project]`/`[build-system]` table, not a distributable package. It holds workspace config, the shared `dev` dependency group, and shared `ruff`/`ty` config only. `packages/marquise-core` is the sole member today; it owns its own `pyproject.toml`, runtime dependencies, the `marquise` console script, and `pytest`/coverage config.
+Marquise is a `uv` workspace (`[tool.uv.workspace] members = ["packages/*", "apps/*"]`), with runnable applications under `apps/*` and shared libraries under `packages/*`. Root `pyproject.toml` is **virtual** — no `[project]`/`[build-system]` table, not a distributable package. It holds workspace config, the shared `dev` dependency group, and shared `ruff`/`ty` config only. `packages/marquise-core` is the sole member today; it owns its own `pyproject.toml`, runtime dependencies, the `marquise` console script, and `pytest`/coverage config.
 
 When running pytest, target `packages/marquise-core/tests`, not a root-level `tests/` (it no longer exists). When running `ruff`/`ty`, invoke from repo root — those tools are shared/workspace-wide.
 

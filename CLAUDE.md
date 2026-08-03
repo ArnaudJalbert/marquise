@@ -63,8 +63,6 @@ Marquise is a `uv` workspace (`[tool.uv.workspace] members = ["packages/*", "app
 
 Root `pyproject.toml` is virtual — no `[project]`/`[build-system]` table, not a distributable package; it holds only workspace config, the shared `dev` dependency group, shared `ruff`/`ty` config, and the import-linter contracts. Each member owns its own `pyproject.toml`, runtime dependencies, console scripts, and `pytest` config. Only run `uv sync`/`uv lock` from the repo root — never from inside a package directory — so `uv.lock` stays single-sourced for the whole workspace.
 
-The `web/` directory is a separate pnpm + Turborepo monorepo (Node/TypeScript, no Python) that mirrors the same `apps/*` + `packages/*` convention — see [Web monorepo](#web-monorepo) below.
-
 ## Architecture
 
 Marquise is a Montreal cinema showtimes aggregator. `marquise-core` follows **Clean Architecture** with strict inward-only dependencies across four layers:
@@ -142,23 +140,6 @@ Core tests live under `packages/marquise-core/tests/`; each app owns its tests u
 - Returning `dict` from repositories is forbidden — return domain entities or value objects.
 - Using `Any` requires a comment explaining why.
 
-## Web monorepo
-
-`web/` is a self-contained pnpm workspace orchestrated by Turborepo — it needs Node.js ≥ 20 and pnpm (pinned via `packageManager`), never Python or `uv`. See `web/README.md` for full setup.
-
-- `web/apps/marquise-interface` — consumer app (Vite + React + TS)
-- `web/apps/marquise-admin` — admin app (Vite + React + TS)
-- `web/packages/api-client` — `@marquise/api-client`, typed fetch client for the API
-- `web/packages/components` — `@marquise/components`, shared component library
-
-Internal packages use the `@marquise/*` scope and are consumed via `workspace:*`. All commands run from `web/`:
-
-```bash
-pnpm install
-pnpm turbo run build lint     # workspace-wide
-pnpm --filter @marquise/components test   # vitest (no turbo `test` task yet)
-```
-
 ## Environment variables
 
 Required in `.env`:
@@ -179,6 +160,5 @@ Before opening a PR:
 - Run `uv run ruff format --check .` and `uv run ruff check .`
 - Run `uv run pytest packages/marquise-core/tests/unit_tests/ --cov=marquise --cov-fail-under=70`
 - If an app was touched, run its test suite (`uv run pytest apps/<app>/tests/ -q`)
-- If `web/` was touched, run `pnpm turbo run build lint` (and the affected package's `test` script) from `web/`
 - Add a `CHANGELOG.md` entry under the current date noting which package(s) were affected
 - Bump version only in the affected package's `pyproject.toml` (`packages/marquise-core/`, `apps/marquise-api/`, or `apps/marquise-cli/`)

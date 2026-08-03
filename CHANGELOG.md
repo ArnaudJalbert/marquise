@@ -8,6 +8,12 @@ Before 2026-07-15 the entire codebase shipped as a single package (`marquise`, n
 `marquise-core`). Starting 2026-07-15, the FastAPI application lives in `marquise-api` and the
 Typer CLI lives in `marquise-cli`, each with independent versions.
 
+## 2026-08-03
+
+### marquise (repository)
+
+- **Remove the `web/` front-end monorepo**: deletes the entire `web/` subtree (pnpm + Turborepo workspace with the `marquise-admin` and `marquise-interface` apps and the `@marquise/components` / `@marquise/api-client` packages) to start the UI fresh. Also removes the `marquise-interface` Fly.io deploy job from `.github/workflows/fly-deploy.yml`, drops the `https://marquise-interface.fly.dev` CORS origin from `apps/marquise-api/fly.toml`, and cleans up `web/` references across the Makefile, docs, mkdocs nav, and git/docker ignores.
+
 ## 2026-07-29
 
 ### @marquise/components v0.1.0 + marquise-interface
