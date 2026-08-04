@@ -41,8 +41,6 @@ from marquise.application.use_cases.list_sources import ListSourcesUseCase
 from marquise.application.use_cases.search_screenings import SearchScreeningsUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
-from marquise.infrastructure.auth.supabase_auth_service import SupabaseAuthService
-from marquise.infrastructure.controllers.auth_controller import AuthController
 from marquise.infrastructure.controllers.cinema_controller import CinemaController
 from marquise.infrastructure.controllers.movie_controller import MovieController
 from marquise.infrastructure.controllers.screening_controller import ScreeningController
@@ -124,8 +122,6 @@ class SettingsProvider:
 
         self._settings = Settings(
             database_url=os.environ["DATABASE_URL"],
-            supabase_url=os.environ["SUPABASE_URL"],
-            supabase_publishable_key=os.environ["SUPABASE_PUBLISHABLE_KEY"],
             cineplex_api_key=os.environ.get("CINEPLEX_API_KEY", ""),
             schema=os.environ.get("DATABASE_SCHEMA", "marquise"),
         )
@@ -205,17 +201,6 @@ class Container:
     @property
     def _schema(self) -> str:
         return self._settings.schema
-
-    # ------------------------------------------------------------------
-    # Auth
-    # ------------------------------------------------------------------
-
-    @property
-    def _auth_service(self) -> SupabaseAuthService:
-        return SupabaseAuthService(
-            supabase_url=self._settings.supabase_url,
-            publishable_key=self._settings.supabase_publishable_key,
-        )
 
     # ------------------------------------------------------------------
     # Database
@@ -509,13 +494,8 @@ class Container:
     # ------------------------------------------------------------------
 
     @property
-    def auth_controller(self) -> AuthController:
-        return AuthController(auth_service=self._auth_service)
-
-    @property
     def cinema_controller(self) -> CinemaController:
         return CinemaController(
-            auth_controller=self.auth_controller,
             create_cinema_use_case=self._create_cinema_use_case,
             delete_cinema_use_case=self._delete_cinema_use_case,
             get_cinema_use_case=self._get_cinema_use_case,
@@ -543,7 +523,6 @@ class Container:
     @property
     def source_controller(self) -> SourceController:
         return SourceController(
-            auth_controller=self.auth_controller,
             create_source_use_case=self._create_source_use_case,
             list_sources_use_case=self._list_sources_use_case,
             delete_source_use_case=self._delete_source_use_case,

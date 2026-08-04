@@ -25,6 +25,14 @@ Typer CLI lives in `marquise-cli`, each with independent versions.
 
 - **Remove the `web/` front-end monorepo**: deletes the entire `web/` subtree (pnpm + Turborepo workspace with the `marquise-admin` and `marquise-interface` apps and the `@marquise/components` / `@marquise/api-client` packages) to start the UI fresh. Also removes the `marquise-interface` Fly.io deploy job from `.github/workflows/fly-deploy.yml`, drops the `https://marquise-interface.fly.dev` CORS origin from `apps/marquise-api/fly.toml`, and cleans up `web/` references across the Makefile, docs, mkdocs nav, and git/docker ignores.
 
+### marquise-core v0.2.2
+
+- **Remove CLI/controller authentication**: deletes the `AuthController`, `SupabaseAuthService`, and the `AuthService`/`AuthSession` protocols. `CinemaController` and `SourceController` no longer take an `auth_controller` or call `validate_admin()`. The `marquise.auth` property, `AuthController` and `MARQUISE_EMAIL`/`MARQUISE_PASSWORD` exports are removed from the public surface, and `supabase_url` / `supabase_publishable_key` are dropped from `Settings`. The `supabase` runtime dependency is removed. Authorization is left to the API, which may add admin checks in the future; for the CLI, possession of the SQL credentials is the security boundary.
+
+### marquise-cli v0.1.1
+
+- **Remove the `auth` command group**: `marquise auth login|logout|status` is gone (`auth_commands.py` deleted, unwired from `app.py`). "(admin only)" docstrings and the `_select_cinema_admin` helper were cleaned up accordingly.
+
 ## 2026-07-29
 
 ### @marquise/components v0.1.0 + marquise-interface

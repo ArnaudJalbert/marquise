@@ -14,8 +14,6 @@ from marquise.infrastructure.supabase.database import Database, sanitize_dsn
 
 _TEST_SETTINGS = Settings(
     database_url="postgresql://user:pass@localhost:5432/test",
-    supabase_url="https://test.supabase.co",
-    supabase_publishable_key="sb_publishable_test",
 )
 
 
@@ -101,8 +99,6 @@ def test_constructor_sanitizes_dsn() -> None:
     db = Database(
         Settings(
             database_url=dsn,
-            supabase_url="https://test.supabase.co",
-            supabase_publishable_key="sb_publishable_test",
         )
     )
     assert db._dsn != dsn

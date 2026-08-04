@@ -13,7 +13,6 @@ from marquise.application.use_cases.get_cinema_screenings import (
 )
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
-from marquise.infrastructure.controllers.auth_controller import AuthController
 
 
 class CinemaController:
@@ -26,7 +25,6 @@ class CinemaController:
 
     def __init__(
         self,
-        auth_controller: AuthController,
         create_cinema_use_case: CreateCinemaUseCase,
         delete_cinema_use_case: DeleteCinemaUseCase,
         get_cinema_use_case: GetCinemaUseCase,
@@ -35,7 +33,6 @@ class CinemaController:
         list_cinemas_use_case: ListCinemasUseCase,
         update_cinema_use_case: UpdateCinemaUseCase,
     ) -> None:
-        self._auth = auth_controller
         self._create_use_case = create_cinema_use_case
         self._delete_use_case = delete_cinema_use_case
         self._get_use_case = get_cinema_use_case
@@ -53,8 +50,7 @@ class CinemaController:
     ) -> CreateCinemaUseCase.OutputData:
         """Create a new cinema.
 
-        Validates the caller is an admin and delegates to the create-cinema
-        use case.
+        Delegates to the create-cinema use case.
 
         Args:
             name: Cinema name.
@@ -66,13 +62,10 @@ class CinemaController:
             The output data from the use case.
 
         Raises:
-            ValueError: If the caller is not authenticated as admin.
             CinemaAlreadyExistsError: If a cinema with the same name+address
                 exists.
             CinemaIdAlreadyExistsError: On UUID collision.
         """
-        self._auth.validate_admin()
-
         request = CreateCinemaUseCase.InputData(
             name=name,
             address=address,
@@ -87,28 +80,21 @@ class CinemaController:
     ) -> ListCinemasUseCase.OutputData:
         """List cinemas with optional name filter.
 
-        Validates the caller is an admin and delegates to the list-cinemas
-        use case.
+        Delegates to the list-cinemas use case.
 
         Args:
             name_filter: Optional name substring filter (case-insensitive).
 
         Returns:
             The output data from the use case.
-
-        Raises:
-            ValueError: If the caller is not authenticated as admin.
         """
-        self._auth.validate_admin()
-
         request = ListCinemasUseCase.InputData(name=name_filter)
         return await self._list_use_case.execute(request)
 
     async def delete(self, cinema_id: str) -> DeleteCinemaUseCase.OutputData:
         """Delete a cinema by its ID.
 
-        Validates the caller is an admin and delegates to the delete-cinema
-        use case.
+        Delegates to the delete-cinema use case.
 
         Args:
             cinema_id: The ID of the cinema to delete.
@@ -117,11 +103,8 @@ class CinemaController:
             The output data from the use case.
 
         Raises:
-            ValueError: If the caller is not authenticated as admin.
             CinemaNotFoundError: If no cinema with the given ID exists.
         """
-        self._auth.validate_admin()
-
         request = DeleteCinemaUseCase.InputData(cinema_id=cinema_id)
         return await self._delete_use_case.execute(request)
 
@@ -135,8 +118,7 @@ class CinemaController:
     ) -> UpdateCinemaUseCase.OutputData:
         """Update an existing cinema.
 
-        Validates the caller is an admin and delegates to the update-cinema
-        use case.
+        Delegates to the update-cinema use case.
 
         Args:
             cinema_id: The ID of the cinema to update.
@@ -149,11 +131,8 @@ class CinemaController:
             The output data from the use case.
 
         Raises:
-            ValueError: If the caller is not authenticated as admin.
             CinemaNotFoundError: If no cinema with the given ID exists.
         """
-        self._auth.validate_admin()
-
         request = UpdateCinemaUseCase.InputData(
             cinema_id=cinema_id,
             name=name,
