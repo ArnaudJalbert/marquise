@@ -29,7 +29,7 @@ MONTREAL_TZ = ZoneInfo("America/Toronto")
 
 @source_app.command(name="list-registered", rich_help_panel="Information")
 def list_registered_sources() -> None:
-    """List registered showtime sources in the database (admin only)."""
+    """List registered showtime sources in the database."""
 
     factory = MarquiseFactory()
 
@@ -67,13 +67,13 @@ def list_registered_sources() -> None:
 
 @source_app.command(rich_help_panel="Management")
 def assign() -> None:
-    """Assign a showtime source to a cinema after interactive selection (admin only)."""
+    """Assign a showtime source to a cinema after interactive selection."""
     factory = MarquiseFactory()
 
     async def _run() -> None:
         await run_spinner(factory.initialize(), description="Connecting...")
         try:
-            selected = await _select_cinema_admin(
+            selected = await _select_cinema(
                 factory, "Select a cinema to assign a source to:"
             )
             if selected is None:
@@ -107,13 +107,13 @@ def assign() -> None:
 
 @source_app.command(rich_help_panel="Management")
 def unassign() -> None:
-    """Remove the showtime source assignment from a cinema (admin only)."""
+    """Remove the showtime source assignment from a cinema."""
     factory = MarquiseFactory()
 
     async def _run() -> None:
         await run_spinner(factory.initialize(), description="Connecting...")
         try:
-            selected = await _select_cinema_admin(
+            selected = await _select_cinema(
                 factory, "Select a cinema to unassign a source from:"
             )
             if selected is None:
@@ -200,8 +200,7 @@ def list_available_sources() -> None:
 
     Shows which sources are available and whether they are already
     registered in the database.  No database connection required for the
-    registry list, but authentication is needed to check registration
-    status.
+    registry list, but one is needed to check registration status.
     """
     factory = MarquiseFactory()
 
@@ -253,7 +252,7 @@ def list_available_sources() -> None:
 
 @source_app.command("register", rich_help_panel="Management")
 def register_sources() -> None:
-    """Register new showtime sources from the registry into the database (admin only).
+    """Register new showtime sources from the registry into the database.
 
     Shows which sources are available in the code-level registry and
     which are already registered in the database.  For new sources,
@@ -359,7 +358,7 @@ def register_sources() -> None:
 
 @source_app.command("unregister", rich_help_panel="Management")
 def unregister_sources() -> None:
-    """Remove showtime sources from the database (admin only).
+    """Remove showtime sources from the database.
 
     Shows which sources are in the database and whether they correspond
     to a code-level source.  Lets you pick which ones to remove.
@@ -470,7 +469,7 @@ def import_screenings() -> None:
     async def _run() -> None:
         await run_spinner(factory.initialize(), description="Connecting...")
         try:
-            selected = await _select_cinema_admin(
+            selected = await _select_cinema(
                 factory, "Select a cinema to import showtimes for:"
             )
             if selected is None:
@@ -593,11 +592,11 @@ def import_screenings() -> None:
 # ---------------------------------------------------------------------------
 
 
-async def _select_cinema_admin(
+async def _select_cinema(
     factory: MarquiseFactory,
     prompt: str,
 ) -> ListCinemasUseCase.CinemaData | None:
-    """Let the admin pick a cinema interactively from a list.
+    """Let the user pick a cinema interactively from a list.
 
     Args:
         factory: The factory providing controllers.
@@ -637,7 +636,7 @@ async def _select_source(
     factory: MarquiseFactory,
     prompt: str,
 ) -> str | None:
-    """Let the admin pick a source interactively from a list.
+    """Let the user pick a source interactively from a list.
 
     Args:
         factory: The factory providing controllers.
