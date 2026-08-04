@@ -144,8 +144,6 @@ Core tests live under `packages/marquise-core/tests/`; each app owns its tests u
 
 Required in `.env`:
 - `DATABASE_URL` — PostgreSQL connection string
-- `SUPABASE_URL` — Supabase project URL
-- `SUPABASE_PUBLISHABLE_KEY` — Supabase anon key
 
 Optional:
 - `CINEPLEX_API_KEY` — `Ocp-Apim-Subscription-Key` header value

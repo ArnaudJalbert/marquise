@@ -8,7 +8,7 @@ Marquise follows **Clean Architecture**. Dependencies point **inward only** — 
 flowchart TD
     PUB["Public Surface<br/>MarquiseFactory, create_factory(), create_factory_session()"]
     APPS["apps/<br/>marquise-api (FastAPI), marquise-cli (Typer)"]
-    INF["infrastructure/<br/>Controllers, DI container, auth,<br/>source scrapers, Supabase gateways"]
+    INF["infrastructure/<br/>Controllers, DI container,<br/>source scrapers, Supabase gateways"]
     ADAPT["interface_adapters/<br/>Repository implementations (Supabase),<br/>source adapters, gateway protocols"]
     APP["application/<br/>Use cases, repository interfaces, exceptions"]
     DOM["domain/<br/>Entities (Cinema, Movie, Screening),<br/>value objects (CinemaId, MovieId, Showtime, …)"]
@@ -35,11 +35,8 @@ packages/marquise-core/src/marquise/
 │       ├── supabase/      # Repository implementations (entity mapping)
 │       └── source_adapters/  # Cineplex, CinemaCinema, CinemaPublic adapters
 └── infrastructure/
-    ├── controllers/       # CinemaController, SourceController, AuthController
+    ├── controllers/       # CinemaController, SourceController
     ├── di/                # Dependency injection container
-    ├── controllers/       # CinemaController, SourceController, AuthController
-    ├── di/                # Dependency injection container
-    ├── auth/              # Admin authentication
     ├── supabase/
     │   ├── config/        # Connection configuration
     │   └── gateways/      # Raw SQL operations (cinema, movie, screening, …)
@@ -119,7 +116,7 @@ The public surface is defined by `marquise/__init__.py` and re-exported through 
 - `MarquiseFactory` — dependency container with lazy-loaded controllers
 - `create_factory()` — async factory function that returns a configured `MarquiseFactory`
 - `create_factory_session()` — async context manager for request-scoped sessions
-- `CinemaController`, `SourceController`, `AuthController` — thin wiring layer
+- `CinemaController`, `SourceController` — thin wiring layer
 
 Domain entities, value objects, use cases, repositories, protocols, and infrastructure are **not** part of the public surface.
 

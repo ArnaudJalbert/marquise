@@ -9,14 +9,10 @@
 #
 # Secrets that MUST be set:
 #   fly secrets set DATABASE_URL="postgresql://..."
-#   fly secrets set SUPABASE_URL="https://xxxxxxxxxxxxxxxxxxxx.supabase.co"
-#   fly secrets set SUPABASE_PUBLISHABLE_KEY="sb_publishable_..."
 #
 # Optional secrets:
 #   fly secrets set CINEPLEX_API_KEY="..."
 #   fly secrets set OMDB_API_KEY="..."
-#   fly secrets set MARQUISE_EMAIL="user@example.com"
-#   fly secrets set MARQUISE_PASSWORD="hunter2"
 #
 # To list currently set secrets:
 #   fly secrets list

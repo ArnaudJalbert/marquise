@@ -15,15 +15,7 @@ from marquise.application.use_cases.get_cinema_screenings import (
 )
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
-from marquise.infrastructure.controllers.auth_controller import AuthController
 from marquise.infrastructure.controllers.cinema_controller import CinemaController
-from marquise.interface_adapters.repositories.protocols.auth import AuthSession
-
-
-@pytest.fixture
-def mock_auth_controller() -> AuthController:
-    """Provide a mocked AuthController."""
-    return create_autospec(AuthController, instance=True)
 
 
 @pytest.fixture
@@ -70,7 +62,6 @@ def mock_get_screenings_use_case() -> GetCinemaScreeningsUseCase:
 
 @pytest.fixture
 def controller(
-    mock_auth_controller: AuthController,
     mock_create_use_case: CreateCinemaUseCase,
     mock_delete_use_case: DeleteCinemaUseCase,
     mock_get_use_case: GetCinemaUseCase,
@@ -81,7 +72,6 @@ def controller(
 ) -> CinemaController:
     """Provide a CinemaController wired to mocks."""
     return CinemaController(
-        auth_controller=mock_auth_controller,
         create_cinema_use_case=mock_create_use_case,
         delete_cinema_use_case=mock_delete_use_case,
         get_cinema_use_case=mock_get_use_case,
@@ -93,21 +83,11 @@ def controller(
 
 
 @pytest.mark.asyncio
-async def test_create_validates_admin_then_delegates_to_use_case(
+async def test_create_delegates_to_use_case(
     controller: CinemaController,
-    mock_auth_controller: AuthController,
     mock_create_use_case: CreateCinemaUseCase,
 ) -> None:
-    """Verify create validates admin, then delegates to the use case."""
-    mock_auth_controller.validate_admin.return_value = AuthSession(
-        access_token="tok",
-        refresh_token="ref",
-        expires_at=9_999_999.0,
-        user_id="usr",
-        email="admin@example.com",
-        is_admin=True,
-    )
-
+    """Verify create delegates to the use case."""
     expected_output = CreateCinemaUseCase.OutputData(
         id="cin-001",
         name="Test Cinema",
@@ -125,8 +105,6 @@ async def test_create_validates_admin_then_delegates_to_use_case(
     )
 
     assert result == expected_output
-    mock_auth_controller.validate_admin.assert_called_once_with()
-
     mock_create_use_case.execute.assert_awaited_once()
     input_data = mock_create_use_case.execute.call_args[0][0]
     assert isinstance(input_data, CreateCinemaUseCase.InputData)
@@ -135,69 +113,21 @@ async def test_create_validates_admin_then_delegates_to_use_case(
 
 
 @pytest.mark.asyncio
-async def test_create_raises_when_not_admin(
+async def test_delete_delegates_to_use_case(
     controller: CinemaController,
-    mock_auth_controller: AuthController,
-    mock_create_use_case: CreateCinemaUseCase,
-) -> None:
-    """Verify create propagates ValueError when admin validation fails."""
-    mock_auth_controller.validate_admin.side_effect = ValueError(
-        "Access denied: admin role required."
-    )
-
-    with pytest.raises(ValueError, match="Access denied"):
-        await controller.create(name="Test Cinema")
-
-    mock_auth_controller.validate_admin.assert_called_once_with()
-    mock_create_use_case.execute.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_delete_validates_admin_then_delegates_to_use_case(
-    controller: CinemaController,
-    mock_auth_controller: AuthController,
     mock_delete_use_case: DeleteCinemaUseCase,
 ) -> None:
-    """Verify delete validates admin, then delegates to the use case."""
-    mock_auth_controller.validate_admin.return_value = AuthSession(
-        access_token="tok",
-        refresh_token="ref",
-        expires_at=9_999_999.0,
-        user_id="usr",
-        email="admin@example.com",
-        is_admin=True,
-    )
-
+    """Verify delete delegates to the use case."""
     expected_output = DeleteCinemaUseCase.OutputData(cinema_id="cin-001")
     mock_delete_use_case.execute.return_value = expected_output
 
     result = await controller.delete(cinema_id="cin-001")
 
     assert result == expected_output
-    mock_auth_controller.validate_admin.assert_called_once_with()
-
     mock_delete_use_case.execute.assert_awaited_once()
     input_data = mock_delete_use_case.execute.call_args[0][0]
     assert isinstance(input_data, DeleteCinemaUseCase.InputData)
     assert input_data.cinema_id == "cin-001"
-
-
-@pytest.mark.asyncio
-async def test_delete_raises_when_not_admin(
-    controller: CinemaController,
-    mock_auth_controller: AuthController,
-    mock_delete_use_case: DeleteCinemaUseCase,
-) -> None:
-    """Verify delete propagates ValueError when admin validation fails."""
-    mock_auth_controller.validate_admin.side_effect = ValueError(
-        "Access denied: admin role required."
-    )
-
-    with pytest.raises(ValueError, match="Access denied"):
-        await controller.delete(cinema_id="cin-001")
-
-    mock_auth_controller.validate_admin.assert_called_once_with()
-    mock_delete_use_case.execute.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -270,42 +200,17 @@ async def test_list_passes_page_and_size(
     assert input_data.size == 5
 
 
-@pytest.mark.asyncio
-async def test_list_does_not_check_auth(
-    controller: CinemaController,
-    mock_auth_controller: AuthController,
-    mock_list_use_case: ListCinemasUseCase,
-) -> None:
-    """Verify list does not call validate_admin (public operation)."""
-    output = ListCinemasUseCase.OutputData(cinemas=[], total=0)
-    mock_list_use_case.execute.return_value = output
-
-    await controller.list()
-
-    mock_auth_controller.validate_admin.assert_not_called()
-
-
 # ---------------------------------------------------------------------------
-# list_cinemas (admin-gated variant)
+# list_cinemas
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_list_cinemas_validates_admin_then_delegates_to_use_case(
+async def test_list_cinemas_delegates_to_use_case(
     controller: CinemaController,
-    mock_auth_controller: AuthController,
     mock_list_use_case: ListCinemasUseCase,
 ) -> None:
-    """Verify list_cinemas validates admin, then delegates to the use case."""
-    mock_auth_controller.validate_admin.return_value = AuthSession(
-        access_token="tok",
-        refresh_token="ref",
-        expires_at=9_999_999.0,
-        user_id="usr",
-        email="admin@example.com",
-        is_admin=True,
-    )
-
+    """Verify list_cinemas delegates to the use case."""
     cinema_data = [
         ListCinemasUseCase.CinemaData(
             id="cin-001",
@@ -318,30 +223,11 @@ async def test_list_cinemas_validates_admin_then_delegates_to_use_case(
     result = await controller.list_cinemas(name_filter="Parc")
 
     assert result == expected
-    mock_auth_controller.validate_admin.assert_called_once_with()
     mock_list_use_case.execute.assert_awaited_once()
     input_data = mock_list_use_case.execute.call_args[0][0]
     assert input_data.name == "Parc"
     assert input_data.page == 1
     assert input_data.size is None
-
-
-@pytest.mark.asyncio
-async def test_list_cinemas_raises_when_not_admin(
-    controller: CinemaController,
-    mock_auth_controller: AuthController,
-    mock_list_use_case: ListCinemasUseCase,
-) -> None:
-    """Verify list_cinemas propagates ValueError when admin validation fails."""
-    mock_auth_controller.validate_admin.side_effect = ValueError(
-        "Access denied: admin role required."
-    )
-
-    with pytest.raises(ValueError, match="Access denied"):
-        await controller.list_cinemas()
-
-    mock_auth_controller.validate_admin.assert_called_once_with()
-    mock_list_use_case.execute.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -350,21 +236,11 @@ async def test_list_cinemas_raises_when_not_admin(
 
 
 @pytest.mark.asyncio
-async def test_update_validates_admin_then_delegates_to_use_case(
+async def test_update_delegates_to_use_case(
     controller: CinemaController,
-    mock_auth_controller: AuthController,
     mock_update_use_case: UpdateCinemaUseCase,
 ) -> None:
-    """Verify update validates admin, then delegates to the use case."""
-    mock_auth_controller.validate_admin.return_value = AuthSession(
-        access_token="tok",
-        refresh_token="ref",
-        expires_at=9_999_999.0,
-        user_id="usr",
-        email="admin@example.com",
-        is_admin=True,
-    )
-
+    """Verify update delegates to the use case."""
     expected_output = UpdateCinemaUseCase.OutputData(
         id="cin-001",
         name="Updated Name",
@@ -383,8 +259,6 @@ async def test_update_validates_admin_then_delegates_to_use_case(
     )
 
     assert result == expected_output
-    mock_auth_controller.validate_admin.assert_called_once_with()
-
     mock_update_use_case.execute.assert_awaited_once()
     input_data = mock_update_use_case.execute.call_args[0][0]
     assert isinstance(input_data, UpdateCinemaUseCase.InputData)
@@ -393,21 +267,3 @@ async def test_update_validates_admin_then_delegates_to_use_case(
     assert input_data.address == "456 New Ave"
     assert input_data.city == "Quebec"
     assert input_data.website == "https://updated.example.com"
-
-
-@pytest.mark.asyncio
-async def test_update_raises_when_not_admin(
-    controller: CinemaController,
-    mock_auth_controller: AuthController,
-    mock_update_use_case: UpdateCinemaUseCase,
-) -> None:
-    """Verify update propagates ValueError when admin validation fails."""
-    mock_auth_controller.validate_admin.side_effect = ValueError(
-        "Access denied: admin role required."
-    )
-
-    with pytest.raises(ValueError, match="Access denied"):
-        await controller.update(cinema_id="cin-001", name="Updated Name")
-
-    mock_auth_controller.validate_admin.assert_called_once_with()
-    mock_update_use_case.execute.assert_not_called()
