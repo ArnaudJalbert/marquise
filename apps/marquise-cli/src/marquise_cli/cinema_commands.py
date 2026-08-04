@@ -24,7 +24,7 @@ def create(
     ),
     website: str | None = typer.Option(None, prompt=True, help="Cinema website URL"),
 ) -> None:
-    """Create a new cinema (admin only)."""
+    """Create a new cinema."""
     address_val = address if address and address.strip() else None
     city_val = city if city and city.strip() else None
     website_val = website if website and website.strip() else None
@@ -61,7 +61,7 @@ def create(
 
 @cinema_app.command()
 def delete() -> None:
-    """Delete a cinema after interactive selection and confirmation (admin only)."""
+    """Delete a cinema after interactive selection and confirmation."""
     factory = MarquiseFactory()
 
     async def _run() -> None:
@@ -134,7 +134,7 @@ def delete() -> None:
 
 @cinema_app.command()
 def update() -> None:
-    """Update an existing cinema after interactive field selection (admin only)."""
+    """Update an existing cinema after interactive field selection."""
     factory = MarquiseFactory()
 
     async def _run() -> None:

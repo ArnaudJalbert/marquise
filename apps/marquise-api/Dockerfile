@@ -8,8 +8,6 @@
 #     docker build -t marquise-api -f apps/marquise-api/Dockerfile .
 #     docker run --rm -p 8000:8000 \
 #         -e DATABASE_URL=... \
-#         -e SUPABASE_URL=... \
-#         -e SUPABASE_PUBLISHABLE_KEY=... \
 #         marquise-api
 
 # ---------------------------------------------------------------------------

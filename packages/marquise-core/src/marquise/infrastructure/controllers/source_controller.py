@@ -23,7 +23,6 @@ from marquise.application.use_cases.list_registry_sources import (
 )
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
-from marquise.infrastructure.controllers.auth_controller import AuthController
 
 
 class SourceController:
@@ -35,7 +34,6 @@ class SourceController:
 
     def __init__(
         self,
-        auth_controller: AuthController,
         create_source_use_case: CreateSourceUseCase,
         list_sources_use_case: ListSourcesUseCase,
         delete_source_use_case: DeleteSourceUseCase,
@@ -47,7 +45,6 @@ class SourceController:
         create_movies_use_case: CreateMissingMoviesCommand,
         create_screenings_use_case: CreateScreeningsCommand,
     ) -> None:
-        self._auth = auth_controller
         self._create_use_case = create_source_use_case
         self._list_use_case = list_sources_use_case
         self._delete_use_case = delete_source_use_case
@@ -76,11 +73,8 @@ class SourceController:
             The output data from the use case.
 
         Raises:
-            ValueError: If the caller is not authenticated as admin.
             SourceAlreadyExistsError: If a source with that name already exists.
         """
-        self._auth.validate_admin()
-
         request = CreateSourceUseCase.InputData(
             name=name,
             display_name=display_name,
@@ -93,12 +87,7 @@ class SourceController:
 
         Returns:
             The output data from the use case.
-
-        Raises:
-            ValueError: If the caller is not authenticated as admin.
         """
-        self._auth.validate_admin()
-
         request = ListSourcesUseCase.InputData()
         return await self._list_use_case.execute(request)
 
@@ -112,11 +101,8 @@ class SourceController:
             The output data from the use case.
 
         Raises:
-            ValueError: If the caller is not authenticated as admin.
             SourceNotFoundError: If no source with the given name exists.
         """
-        self._auth.validate_admin()
-
         request = DeleteSourceUseCase.InputData(source_name=source_name)
         return await self._delete_use_case.execute(request)
 
@@ -135,13 +121,10 @@ class SourceController:
             The output data from the use case.
 
         Raises:
-            ValueError: If the caller is not authenticated as admin.
             CinemaNotFoundError: If the cinema does not exist.
             SourceNotFoundError: If the source does not exist.
             CinemaSourceAssignmentAlreadyExistsError: If already assigned.
         """
-        self._auth.validate_admin()
-
         request = AssignSourceUseCase.InputData(
             cinema_id=cinema_id,
             source_name=source_name,
@@ -161,11 +144,8 @@ class SourceController:
             The output data from the use case.
 
         Raises:
-            ValueError: If the caller is not authenticated as admin.
             CinemaSourceAssignmentNotFoundError: If no assignment exists.
         """
-        self._auth.validate_admin()
-
         request = UnassignSourceUseCase.InputData(cinema_id=cinema_id)
         return await self._unassign_use_case.execute(request)
 
@@ -188,11 +168,6 @@ class SourceController:
         """
         request = GetCinemaSourceUseCase.InputData(cinema_id=cinema_id)
         return await self._get_source_use_case.execute(request)
-
-    @property
-    def auth_controller(self) -> AuthController:
-        """Expose the auth controller for use by callers (e.g. CLI)."""
-        return self._auth
 
     async def list_registry_sources(
         self,
@@ -232,12 +207,9 @@ class SourceController:
             The import summary.
 
         Raises:
-            ValueError: If the caller is not authenticated as admin.
             CinemaNotFoundError: If the cinema does not exist.
             CinemaSourceAssignmentNotFoundError: If no source assigned.
         """
-        self._auth.validate_admin()
-
         fetched = await self._fetch_screenings_use_case.execute(
             FetchScreeningsFromSourceQuery.InputData(
                 cinema_id=cinema_id,

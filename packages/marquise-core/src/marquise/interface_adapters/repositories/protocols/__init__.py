@@ -5,10 +5,6 @@ interface_adapters and infrastructure.  Implementations reside in
 ``infrastructure/<tech>/gateways/`` and return plain dicts.
 """
 
-from marquise.interface_adapters.repositories.protocols.auth import (
-    AuthService,
-    AuthSession,
-)
 from marquise.interface_adapters.repositories.protocols.base import (
     GatewayError,
     GatewayPage,
@@ -31,8 +27,6 @@ from marquise.interface_adapters.repositories.protocols.source_definition import
 )
 
 __all__ = [
-    "AuthService",
-    "AuthSession",
     "CinemaGateway",
     "CinemaSourceAssignmentGateway",
     "GatewayError",

@@ -42,11 +42,6 @@ from marquise.bootstrap import (
     create_factory,
     create_factory_session,
 )
-from marquise.infrastructure.controllers.auth_controller import (
-    MARQUISE_EMAIL_ENV_VAR,
-    MARQUISE_PASSWORD_ENV_VAR,
-    AuthController,
-)
 from marquise.infrastructure.controllers.cinema_controller import CinemaController
 from marquise.infrastructure.controllers.movie_controller import MovieController
 from marquise.infrastructure.controllers.screening_controller import ScreeningController
@@ -54,7 +49,6 @@ from marquise.infrastructure.controllers.source_controller import SourceControll
 
 __all__ = [
     "ApplicationError",
-    "AuthController",
     "CinemaAlreadyExistsError",
     "CinemaController",
     "CinemaIdAlreadyExistsError",
@@ -64,8 +58,6 @@ __all__ = [
     "create_factory",
     "create_factory_session",
     "ListCinemasUseCase",
-    "MARQUISE_EMAIL_ENV_VAR",
-    "MARQUISE_PASSWORD_ENV_VAR",
     "MarquiseFactory",
     "MovieController",
     "MovieNotFoundError",

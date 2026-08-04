@@ -120,8 +120,8 @@ FastAPI routes read showtimes from DB via repository queries. Never calls extern
 - `sources/cineplex/gateways/source.py` — Cineplex API + HTML scraper
 - `sources/cinemacinema/gateways/source.py` — CinemaCinema.ca SvelteKit scraper
 - `sources/cinemapublic/gateways/source.py` — Cinema Public HTML scraper
-- `controllers/source_controller.py` — validates admin, calls use cases
-- `cli/source_commands.py` — CLI commands for admin
+- `controllers/source_controller.py` — calls source use cases
+- `cli/source_commands.py` — CLI commands for source management
 - `di/container.py` — wires all dependencies
 
 ## Implemented Sources
@@ -257,8 +257,6 @@ The `MovieEnrichmentData` dataclass carries optional fields:
 | Env var | Required | Default | Purpose |
 |---|---|---|---|
 | `DATABASE_URL` | Yes | — | PostgreSQL connection string |
-| `SUPABASE_URL` | Yes | — | Supabase project URL |
-| `SUPABASE_PUBLISHABLE_KEY` | Yes | — | Supabase auth key |
 | `CINEPLEX_API_KEY` | No | `""` | Cineplex API subscription key |
 | `DATABASE_SCHEMA` | No | `marquise` | Database schema name |
 | `MARQUISE_API_CACHE_TTL_SECONDS` | No | `3600` | Read-only API in-memory response cache TTL, in seconds |

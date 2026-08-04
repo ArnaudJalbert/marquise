@@ -11,7 +11,7 @@
 git clone https://github.com/arnaudjalbert/marquise.git
 cd marquise
 uv sync
-cp .env.example .env   # fill in SUPABASE_URL, SUPABASE_KEY, DATABASE_URL
+cp .env.example .env   # fill in DATABASE_URL
 ```
 
 ## Workspace layout
@@ -87,7 +87,7 @@ Every push and PR to `main` runs the `quality` job:
 4. `pytest packages/marquise-core/tests/unit_tests/ --cov=marquise --cov-fail-under=70` — fails below 70% coverage
 5. Import boundary check — verifies `apps/` cannot import internal modules (via `import-linter` contract)
 
-The `integration` job (manual trigger only) runs `packages/marquise-core/tests/integration_tests/` using secrets `SUPABASE_URL`, `SUPABASE_KEY`, `DATABASE_URL`.
+The `integration` job (manual trigger only) runs `packages/marquise-core/tests/integration_tests/` using secret `DATABASE_URL`.
 
 **Current coverage**: ~72% overall; 100% on domain and most of application.  
 **CI gate**: 70% minimum. **Target**: 80%+ overall, 100% for `domain/` and `application/`.
