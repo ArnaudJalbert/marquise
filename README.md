@@ -59,15 +59,12 @@ make cli --help
 | Variable | Required | Description |
 |---|---|---|
 | `DATABASE_URL` | Yes | PostgreSQL connection string (`postgresql://...`) |
-| `SUPABASE_URL` | Yes | Supabase project URL |
-| `SUPABASE_PUBLISHABLE_KEY` | Yes | Supabase anon/publishable key |
 | `CINEPLEX_API_KEY` | No | Cineplex API subscription key (`Ocp-Apim-Subscription-Key`) |
 | `DATABASE_SCHEMA` | No | Schema name (default: `marquise`) |
 | `MARQUISE_API_CACHE_TTL_SECONDS` | No | Read-only API in-memory response cache TTL, in seconds (default: `3600`) |
 | `MARQUISE_API_CORS_ORIGINS` | No | Comma-separated list of allowed CORS origins for the read-only API (default: empty — no cross-origin requests permitted) |
 | `MARQUISE_API_RATE_LIMIT` | No | Per-client rate limit for the read-only API (see [docs/api.md](docs/api.md#rate-limiting)) |
 | `MARQUISE_API_LOG_LEVEL` | No | Log level for the API server |
-| `MARQUISE_EMAIL` / `MARQUISE_PASSWORD` | No | Credentials used by `marquise auth` to authenticate against Supabase |
 
 See the [Supabase setup guide](docs/setup/supabase-cinema-table.md) to initialize the database schema.
 
@@ -105,7 +102,7 @@ make cli import all
 Most management commands are interactive — they prompt for the cinema/source rather than taking flags.
 
 ```bash
-# Register sources from the code registry into the database (admin only)
+# Register sources from the code registry into the database
 make cli source register
 
 # Assign a registered source to a cinema (interactive selection)

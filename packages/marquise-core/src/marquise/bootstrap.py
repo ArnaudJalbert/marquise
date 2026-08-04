@@ -12,7 +12,6 @@ import types
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from marquise.infrastructure.controllers.auth_controller import AuthController
 from marquise.infrastructure.controllers.cinema_controller import CinemaController
 from marquise.infrastructure.controllers.movie_controller import MovieController
 from marquise.infrastructure.controllers.screening_controller import ScreeningController
@@ -93,11 +92,6 @@ class MarquiseFactory:
     def source(self) -> SourceController:
         """Source management controller."""
         return self._container.source_controller
-
-    @property
-    def auth(self) -> AuthController:
-        """Authentication controller."""
-        return self._container.auth_controller
 
     # ------------------------------------------------------------------
     # Async context manager

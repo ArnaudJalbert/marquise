@@ -33,8 +33,6 @@ def settings() -> Settings:
     load_dotenv()
     return Settings(
         database_url=os.environ["DATABASE_URL"],
-        supabase_url=os.environ.get("SUPABASE_URL", ""),
-        supabase_publishable_key=os.environ.get("SUPABASE_PUBLISHABLE_KEY", ""),
     )
 
 

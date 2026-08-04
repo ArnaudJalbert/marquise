@@ -90,7 +90,7 @@ Apps in `apps/` depend only on a defined public surface of `marquise-core` — n
 - `MarquiseFactory` — dependency container with lazy-loaded controllers
 - `create_factory()` — async factory function that returns a configured `MarquiseFactory`
 - `create_factory_session()` — async context manager for request-scoped sessions
-- `CinemaController`, `SourceController`, `AuthController` — thin wiring layer
+- `CinemaController`, `SourceController` — thin wiring layer
 
 **What is NOT public**: Domain entities, value objects, use cases, repositories, protocols, infrastructure.
 

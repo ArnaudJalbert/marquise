@@ -54,9 +54,8 @@ packages/marquise-core/src/marquise/
     │   ├── routers/       # Endpoints (cinemas, movies, screenings)
     │   ├── schemas/       # Pydantic response models
     │   └── dependencies.py # Shared DI dependency
-    ├── controllers/       # CinemaController, SourceController, AuthController
+    ├── controllers/       # CinemaController, SourceController
     ├── di/                # Dependency injection container
-    ├── auth/              # Admin authentication
     ├── supabase/
     │   ├── config/        # Connection configuration
     │   └── gateways/      # Raw SQL operations (cinema, movie, screening, …)
@@ -115,7 +114,7 @@ The public surface is defined by `marquise/__init__.py` and re-exported through 
 - `MarquiseFactory` — dependency container with lazy-loaded controllers
 - `create_factory()` — async factory function that returns a configured `MarquiseFactory`
 - `create_factory_session()` — async context manager for request-scoped sessions
-- `CinemaController`, `SourceController`, `AuthController` — thin wiring layer
+- `CinemaController`, `SourceController` — thin wiring layer
 
 Domain entities, value objects, use cases, repositories, protocols, and infrastructure are **not** part of the public surface.
 
