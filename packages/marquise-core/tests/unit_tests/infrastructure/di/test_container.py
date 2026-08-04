@@ -6,7 +6,6 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from marquise.infrastructure.controllers.auth_controller import AuthController
 from marquise.infrastructure.di.container import Container
 
 
@@ -14,24 +13,6 @@ from marquise.infrastructure.di.container import Container
 def _mock_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Set required environment variables before each test."""
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:5432/db")
-    monkeypatch.setenv("SUPABASE_URL", "https://test.supabase.co")
-    monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
-
-
-def test_auth_controller_property() -> None:
-    """Verify auth_controller returns an AuthController."""
-    container = Container()
-    controller = container.auth_controller
-    assert isinstance(controller, AuthController)
-
-
-def test_auth_controller_returns_instance_each_time() -> None:
-    """Verify auth_controller returns a valid AuthController (not cached)."""
-    container = Container()
-    c1 = container.auth_controller
-    c2 = container.auth_controller
-    assert isinstance(c1, AuthController)
-    assert isinstance(c2, AuthController)
 
 
 def test_pool_property_raises_before_initialize() -> None:

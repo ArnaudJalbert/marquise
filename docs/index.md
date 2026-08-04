@@ -20,7 +20,7 @@ Marquise scrapes showtime data from multiple theater chains and independent cine
 git clone https://github.com/ArnaudJalbert/marquise.git
 cd marquise
 uv sync
-cp .env.example .env   # fill in SUPABASE_URL, SUPABASE_KEY, DATABASE_URL
+cp .env.example .env   # fill in DATABASE_URL
 uv run marquise --help
 ```
 
@@ -56,5 +56,3 @@ See the [API docs](api.md) for details, including how to configure CORS origins,
 
 - Admin CRUD API endpoints (write operations)
 - Additional Montreal cinema sources
-
-The CLI already authenticates against Supabase (`marquise auth`); write-side API endpoints are the remaining piece.

@@ -11,7 +11,6 @@ import marquise
 
 EXPECTED_PUBLIC_SURFACE: set[str] = {
     "ApplicationError",
-    "AuthController",
     "CinemaAlreadyExistsError",
     "CinemaController",
     "CinemaIdAlreadyExistsError",
@@ -21,8 +20,6 @@ EXPECTED_PUBLIC_SURFACE: set[str] = {
     "create_factory",
     "create_factory_session",
     "ListCinemasUseCase",
-    "MARQUISE_EMAIL_ENV_VAR",
-    "MARQUISE_PASSWORD_ENV_VAR",
     "MarquiseFactory",
     "MovieController",
     "MovieNotFoundError",

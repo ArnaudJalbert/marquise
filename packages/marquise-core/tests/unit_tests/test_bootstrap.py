@@ -7,7 +7,6 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from marquise.bootstrap import MarquiseFactory, create_factory, create_factory_session
-from marquise.infrastructure.controllers.auth_controller import AuthController
 from marquise.infrastructure.controllers.cinema_controller import CinemaController
 from marquise.infrastructure.controllers.source_controller import SourceController
 
@@ -16,8 +15,6 @@ from marquise.infrastructure.controllers.source_controller import SourceControll
 def _mock_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Set required environment variables before each test."""
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:5432/db")
-    monkeypatch.setenv("SUPABASE_URL", "https://test.supabase.co")
-    monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
 
 
 # ------------------------------------------------------------------
@@ -101,13 +98,6 @@ async def test_source_property_returns_source_controller() -> None:
         await factory.initialize()
         assert isinstance(factory.source, SourceController)
         await factory.shutdown()
-
-
-@pytest.mark.asyncio
-async def test_auth_property_returns_auth_controller() -> None:
-    """Verify auth property returns an AuthController."""
-    factory = MarquiseFactory()
-    assert isinstance(factory.auth, AuthController)
 
 
 # ------------------------------------------------------------------
