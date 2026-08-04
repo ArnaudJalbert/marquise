@@ -8,6 +8,17 @@ Before 2026-07-15 the entire codebase shipped as a single package (`marquise`, n
 `marquise-core`). Starting 2026-07-15, the FastAPI application lives in `marquise-api` and the
 Typer CLI lives in `marquise-cli`, each with independent versions.
 
+## 2026-08-04
+
+### marquise-components v0.1.0 (new) + marquise (repository)
+
+- **Reintroduce the `web/` workspace with a fresh, self-contained component library**: a pnpm + Turborepo workspace (`web/`) hosting `packages/components` (`marquise-components`). It is presentational and prop-driven — no Python backend or database required — and ships a prebuilt CSS bundle (`dist/index.css`) so consumers do not need their own Tailwind install.
+- **`MovieCard`**: poster, title, meta, flat showtime chips and a cinema-grouped all-showtimes view shared between a hover popover and an inline widget (single HoverCard root, no DOM duplication or hover flicker). `MoviePoster` lazy-loads images at low priority with a loading bar and graceful error fallback.
+- **`MovieCardGrid`**: responsive grid with numeric or `"auto"` pagination; auto mode measures its container (ResizeObserver) and row height (max across the first row), re-measuring on any resize, and pages so nothing overflows a bounded-height parent.
+- **`CinemaShowtimeGroups` + `groupByCinema`**: single-pass, O(n) grouping reused across the popover, the inline widget, and the grid.
+- **Accessibility**: `aria-expanded`/`aria-controls`, `aria-live` page indicator, keyboard paging on a focusable grid, crossed-out started showtimes, hover-card enter/exit animations.
+- **Tooling**: Vite 8 library build with all runtime deps externalized, TypeScript strict (`noUncheckedIndexedAccess`), oxlint, Vitest 4 + Testing Library (43 tests), and a dev-only demo page (`make web-demo`).
+
 ## 2026-08-03
 
 ### marquise (repository)

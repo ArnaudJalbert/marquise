@@ -1,4 +1,4 @@
-.PHONY: test test-core test-api test-cli api cli lint format ty docs
+.PHONY: test test-core test-api test-cli api cli lint format ty docs web-demo
 
 test: test-core test-api test-cli
 
@@ -31,3 +31,7 @@ ty:
 
 docs:
 	uv run mkdocs serve
+
+# Start the marquise-components demo page (dev-only) → http://localhost:5173
+web-demo:
+	cd web && pnpm --filter marquise-components dev
