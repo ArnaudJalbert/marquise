@@ -5,17 +5,28 @@ import { cn } from "../../lib/utils";
 type MoviePosterProps = {
   title: string;
   posterUrl?: string | null;
-  href: string;
-} & Omit<React.ComponentPropsWithRef<"a">, "href" | "aria-label">;
+  /** When set, the poster links to this URL in a new tab. */
+  href?: string;
+  /** When set (and no href), the poster becomes a button calling this on click. */
+  onClick?: () => void;
+  className?: string;
+  ref?: React.Ref<HTMLElement>;
+} & Omit<React.HTMLAttributes<HTMLElement>, "onClick" | "className">;
 
-/** Poster area: title placeholder behind a lazy, low-priority image, with a loading bar while it fetches. The whole poster links to the movie page. */
+/**
+ * Poster area: title placeholder behind a lazy, low-priority image, with a
+ * loading bar while it fetches. Renders as a link when `href` is given, as a
+ * button when only `onClick` is given, and as a plain block otherwise. Extra
+ * HTML props (e.g. pointer handlers from a hover-card trigger) are forwarded.
+ */
 export function MoviePoster({
   title,
   posterUrl,
   href,
+  onClick,
   ref,
   className,
-  ...props
+  ...rest
 }: MoviePosterProps) {
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -27,16 +38,8 @@ export function MoviePoster({
 
   const isLoading = Boolean(posterUrl) && !loaded && !failed;
 
-  return (
-    <a
-      ref={ref}
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      aria-label={`Poster for ${title}`}
-      className={cn("relative block aspect-[2/3] w-full bg-muted", className)}
-      {...props}
-    >
+  const content = (
+    <>
       <div className="flex h-full w-full items-center justify-center p-4 text-muted-foreground">
         <p className="text-center text-sm">{title}</p>
       </div>
@@ -65,6 +68,46 @@ export function MoviePoster({
           <div className="h-full w-1/3 animate-loading-bar bg-foreground" />
         </div>
       ) : null}
-    </a>
+    </>
+  );
+
+  const baseClass = "relative block aspect-[2/3] w-full bg-muted";
+
+  if (href !== undefined) {
+    return (
+      <a
+        {...rest}
+        ref={ref as React.Ref<HTMLAnchorElement>}
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        aria-label={`Poster for ${title}`}
+        onClick={onClick}
+        className={cn(baseClass, className)}
+      >
+        {content}
+      </a>
+    );
+  }
+
+  if (onClick !== undefined) {
+    return (
+      <button
+        {...rest}
+        ref={ref as React.Ref<HTMLButtonElement>}
+        type="button"
+        aria-label={`Poster for ${title}`}
+        onClick={onClick}
+        className={cn(baseClass, "cursor-pointer text-left", className)}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div {...rest} ref={ref as React.Ref<HTMLDivElement>} className={cn(baseClass, className)}>
+      {content}
+    </div>
   );
 }

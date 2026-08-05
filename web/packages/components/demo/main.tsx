@@ -6,9 +6,15 @@ import {
   groupByCinema,
   MovieCard,
   MovieCardGrid,
+  MovieDetailPage,
+  MovieFilterPanel,
+  MovieGridController,
   type Cinema,
   type CinemaShowtime,
+  type MovieCardData,
   type MovieCardGridItem,
+  type MovieDetailClient,
+  type MovieGridClient,
 } from "../src/index";
 import "../src/index.css";
 
@@ -42,6 +48,263 @@ const cinemaBeaubien: Cinema = {
   id: "cinema-beaubien",
   name: "Cinéma Beaubien",
   link: "https://example.com/cinemas/cinema-beaubien",
+};
+
+const demoDates: string[] = ["2026-08-03", "2026-08-04", "2026-08-05"];
+
+const demoCinemas = [cinemaModerne, cinemaCq, cinemaMusee, cinemaBeaubien];
+
+const demoCinemaNames = demoCinemas.map((cinema) => cinema.name);
+
+const demoGenres = [
+  "Sci-Fi",
+  "Drama",
+  "Comedy",
+  "Horror",
+  "Action",
+  "Romance",
+  "Musical",
+  "History",
+];
+
+const demoLanguages = ["VOSTF", "VF", "VO"];
+
+interface DemoMovie {
+  key: string;
+  title: string;
+  releaseYear: number;
+  durationMinutes: number;
+  directors: string[];
+  genres: string[];
+  posterUrl?: string;
+}
+
+const demoMovieByKey: Record<string, DemoMovie> = {
+  dune: {
+    key: "dune",
+    title: "Dune: Part Two",
+    releaseYear: 2024,
+    durationMinutes: 166,
+    directors: ["Denis Villeneuve"],
+    genres: ["Sci-Fi", "Drama"],
+    posterUrl: "/slow-poster.jpg",
+  },
+  anora: {
+    key: "anora",
+    title: "Anora",
+    releaseYear: 2024,
+    durationMinutes: 139,
+    directors: ["Sean Baker"],
+    genres: ["Drama", "Comedy"],
+    posterUrl: "https://image.tmdb.org/t/p/original/cgXk2tNYhJZLXdBDO5DidAVzQ82.jpg",
+  },
+  brutalist: {
+    key: "brutalist",
+    title: "The Brutalist",
+    releaseYear: 2024,
+    durationMinutes: 215,
+    directors: ["Brady Corbet"],
+    genres: ["Drama"],
+  },
+  nosferatu: {
+    key: "nosferatu",
+    title: "Nosferatu",
+    releaseYear: 2024,
+    durationMinutes: 132,
+    directors: ["Robert Eggers"],
+    genres: ["Horror", "Drama"],
+  },
+  substance: {
+    key: "substance",
+    title: "The Substance",
+    releaseYear: 2024,
+    durationMinutes: 141,
+    directors: ["Coralie Fargeat"],
+    genres: ["Horror", "Comedy"],
+  },
+  "a-real-pain": {
+    key: "a-real-pain",
+    title: "A Real Pain",
+    releaseYear: 2024,
+    durationMinutes: 90,
+    directors: ["Jesse Eisenberg"],
+    genres: ["Comedy", "Drama"],
+  },
+  challengers: {
+    key: "challengers",
+    title: "Challengers",
+    releaseYear: 2024,
+    durationMinutes: 131,
+    directors: ["Luca Guadagnino"],
+    genres: ["Drama", "Romance"],
+  },
+  "kinds-of-kindness": {
+    key: "kinds-of-kindness",
+    title: "Kinds of Kindness",
+    releaseYear: 2024,
+    durationMinutes: 164,
+    directors: ["Yorgos Lanthimos"],
+    genres: ["Comedy", "Drama"],
+  },
+  "zone-of-interest": {
+    key: "zone-of-interest",
+    title: "The Zone of Interest",
+    releaseYear: 2023,
+    durationMinutes: 105,
+    directors: ["Jonathan Glazer"],
+    genres: ["Drama", "History"],
+  },
+  "perfect-days": {
+    key: "perfect-days",
+    title: "Perfect Days",
+    releaseYear: 2023,
+    durationMinutes: 123,
+    directors: ["Wim Wenders"],
+    genres: ["Drama"],
+  },
+  "emilia-perez": {
+    key: "emilia-perez",
+    title: "Emilia Pérez",
+    releaseYear: 2024,
+    durationMinutes: 132,
+    directors: ["Jacques Audiard"],
+    genres: ["Musical", "Drama"],
+  },
+  furiosa: {
+    key: "furiosa",
+    title: "Furiosa: A Mad Max Saga",
+    releaseYear: 2024,
+    durationMinutes: 148,
+    directors: ["George Miller"],
+    genres: ["Action", "Sci-Fi"],
+  },
+};
+
+const dayMovieKeys: Record<string, string[]> = {
+  "2026-08-03": [
+    "dune",
+    "anora",
+    "brutalist",
+    "nosferatu",
+    "substance",
+    "a-real-pain",
+    "challengers",
+    "kinds-of-kindness",
+    "zone-of-interest",
+    "perfect-days",
+    "emilia-perez",
+    "furiosa",
+  ],
+  "2026-08-04": [
+    "dune",
+    "anora",
+    "brutalist",
+    "nosferatu",
+    "substance",
+    "challengers",
+    "perfect-days",
+    "furiosa",
+  ],
+  "2026-08-05": [
+    "dune",
+    "anora",
+    "a-real-pain",
+    "kinds-of-kindness",
+    "emilia-perez",
+    "zone-of-interest",
+    "perfect-days",
+    "challengers",
+    "brutalist",
+  ],
+};
+
+function showtimeFor(
+  date: string,
+  time: string,
+  cinema: Cinema,
+  language: string,
+): CinemaShowtime {
+  return {
+    startsAt: `${date}T${time}:00-04:00`,
+    language,
+    ticketUrl: `https://example.com/tickets/${date}-${time}`,
+    cinema,
+  };
+}
+
+function buildDay(date: string, dayIndex: number): MovieCardGridItem[] {
+  const keys = dayMovieKeys[date] ?? [];
+  return keys.map((key, index) => {
+    const movie = demoMovieByKey[key];
+    if (movie === undefined) {
+      throw new Error(`No demo movie for key ${key}`);
+    }
+    const cinema =
+      demoCinemas[(index + dayIndex) % demoCinemas.length] ?? cinemaModerne;
+    const language =
+      demoLanguages[(index + dayIndex) % demoLanguages.length] ?? "VOSTF";
+    const screenings = [{ time: `${16 + ((index * 2) % 8)}:00`, cinema, language }];
+    if (index % 3 !== 1) {
+      const secondCinema =
+        demoCinemas[(index + dayIndex + 1) % demoCinemas.length] ?? cinemaCq;
+      const secondLanguage =
+        demoLanguages[(index + dayIndex + 1) % demoLanguages.length] ?? "VF";
+      screenings.push({
+        time: `${Math.min(16 + ((index * 2) % 8) + 3, 23)}:00`,
+        cinema: secondCinema,
+        language: secondLanguage,
+      });
+    }
+    return {
+      key,
+      movie: {
+        title: movie.title,
+        releaseYear: movie.releaseYear,
+        durationMinutes: movie.durationMinutes,
+        directors: movie.directors,
+        genres: movie.genres,
+        posterUrl: movie.posterUrl,
+      },
+      showtimesUrl: `https://example.com/movies/${key}`,
+      showtimes: screenings.map((screening) =>
+        showtimeFor(date, screening.time, screening.cinema, screening.language),
+      ),
+    };
+  });
+}
+
+const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+const mockClient: MovieGridClient = {
+  async listDates() {
+    await delay(150);
+    return demoDates;
+  },
+  async fetchForDate(date) {
+    await delay(600);
+    const dayIndex = demoDates.indexOf(date);
+    return buildDay(date, dayIndex === -1 ? 0 : dayIndex);
+  },
+};
+
+const detailClient: MovieDetailClient = {
+  async listDates(movie) {
+    await delay(150);
+    return demoDates.filter((date) => {
+      const dayIndex = demoDates.indexOf(date);
+      return buildDay(date, dayIndex === -1 ? 0 : dayIndex).some(
+        (item) => item.movie.title === movie.title,
+      );
+    });
+  },
+  async fetchShowtimes(movie, date) {
+    await delay(400);
+    const dayIndex = demoDates.indexOf(date);
+    const item = buildDay(date, dayIndex === -1 ? 0 : dayIndex).find(
+      (entry) => entry.movie.title === movie.title,
+    );
+    return item?.showtimes ?? [];
+  },
 };
 
 function showtime(
@@ -326,6 +589,94 @@ function MovieCardGridDemo() {
   );
 }
 
+function MovieFilterPanelDemo() {
+  const [selectedDate, setSelectedDate] = useState("2026-08-03");
+  const [selectedCinemas, setSelectedCinemas] = useState<string[]>([]);
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
+  const [timeRange, setTimeRange] = useState<[number, number]>([0, 24]);
+
+  return (
+    <div className="flex w-full max-w-4xl gap-8">
+      <MovieFilterPanel
+        className="w-full max-w-xs"
+        dates={demoDates}
+        selectedDate={selectedDate}
+        onDateChange={setSelectedDate}
+        cinemas={demoCinemaNames}
+        selectedCinemas={selectedCinemas}
+        onCinemasChange={(next) => setSelectedCinemas([...next])}
+        genres={demoGenres}
+        selectedGenres={selectedGenres}
+        onGenresChange={(next) => setSelectedGenres([...next])}
+        languages={demoLanguages}
+        selectedLanguages={selectedLanguages}
+        onLanguagesChange={(next) => setSelectedLanguages([...next])}
+        timeRange={timeRange}
+        onTimeRangeChange={(next) => setTimeRange([next[0], next[1]])}
+      />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm text-muted-foreground">
+          The panel is fully controlled — the demo owns the state. Used on its
+          own it renders no data; wire it to a grid with{" "}
+          <code className="font-mono text-xs">MovieGridController</code> or{" "}
+          <code className="font-mono text-xs">useMovieFilters</code>.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function MovieGridControllerDemo() {
+  const [selectedMovie, setSelectedMovie] = useState<MovieCardData | null>(null);
+
+  if (selectedMovie !== null) {
+    return (
+      <MovieDetailPage
+        className="h-full w-full overflow-y-auto"
+        movie={selectedMovie}
+        client={detailClient}
+        currentTime={currentTime}
+        onBack={() => setSelectedMovie(null)}
+      />
+    );
+  }
+
+  return (
+    <MovieGridController
+      className="h-full w-full"
+      client={mockClient}
+      side="right"
+      currentTime={currentTime}
+      backgroundColor="#f2efe9"
+      pageSize="auto"
+      onMovieClick={setSelectedMovie}
+    />
+  );
+}
+
+function MovieDetailPageDemo() {
+  const dune = demoMovieByKey["dune"];
+  if (dune === undefined) {
+    throw new Error("Demo movie not found");
+  }
+  return (
+    <MovieDetailPage
+      className="h-full w-full max-w-3xl overflow-y-auto"
+      movie={{
+        title: dune.title,
+        releaseYear: dune.releaseYear,
+        durationMinutes: dune.durationMinutes,
+        directors: dune.directors,
+        genres: dune.genres,
+        posterUrl: dune.posterUrl,
+      }}
+      client={detailClient}
+      currentTime={currentTime}
+    />
+  );
+}
+
 const demoEntries: DemoEntry[] = [
   { id: "movie-card", label: "MovieCard", Component: MovieCardDemo },
   {
@@ -337,6 +688,21 @@ const demoEntries: DemoEntry[] = [
     id: "movie-card-grid",
     label: "MovieCardGrid",
     Component: MovieCardGridDemo,
+  },
+  {
+    id: "movie-filter-panel",
+    label: "MovieFilterPanel",
+    Component: MovieFilterPanelDemo,
+  },
+  {
+    id: "movie-grid-controller",
+    label: "MovieGridController",
+    Component: MovieGridControllerDemo,
+  },
+  {
+    id: "movie-detail-page",
+    label: "MovieDetailPage",
+    Component: MovieDetailPageDemo,
   },
 ];
 
