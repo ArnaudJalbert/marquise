@@ -16,6 +16,7 @@ const externalLibraries = [
   "class-variance-authority",
   "clsx",
   "lucide-react",
+  "marquise-client",
   "tailwind-merge",
 ];
 
