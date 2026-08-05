@@ -191,6 +191,21 @@ describe("MovieCardGrid", () => {
     expect(link).toHaveAttribute("href", "https://tickets.example.com/anora");
   });
 
+  it("forwards onMovieClick to every card", () => {
+    const onMovieClick = vi.fn();
+    const movie = { title: "Anora" };
+    render(
+      <MovieCardGrid
+        onMovieClick={onMovieClick}
+        items={[{ movie, showtimesUrl: "https://example.com/movies/anora" }]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Anora" }));
+
+    expect(onMovieClick).toHaveBeenCalledWith(movie);
+  });
+
   it("forwards currentTime so started showtimes are crossed out", () => {
     render(
       <MovieCardGrid
@@ -368,6 +383,127 @@ describe("MovieCardGrid", () => {
     expect(screen.getByRole("heading", { name: "Movie 8" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Movie 9" })).not.toBeInTheDocument();
     expect(screen.getByText("1 / 2")).toBeInTheDocument();
+  });
+
+  it("spreads to more columns on wide containers so several rows fit the height", () => {
+    class WideResizeObserver implements ResizeObserver {
+      private readonly callback: ResizeObserverCallback;
+
+      constructor(callback: ResizeObserverCallback) {
+        this.callback = callback;
+      }
+
+      observe(_target: Element): void {
+        this.callback(
+          [{ contentRect: { width: 1430, height: 1200 } } as ResizeObserverEntry],
+          this,
+        );
+      }
+
+      unobserve(): void {}
+      disconnect(): void {}
+    }
+
+    vi.restoreAllMocks();
+    vi.stubGlobal("ResizeObserver", WideResizeObserver);
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(200);
+
+    const { container } = render(
+      <MovieCardGrid pageSize="auto" items={movieItems(12)} />,
+    );
+
+    const list = container.querySelector("ul");
+    expect(list?.getAttribute("style")).toContain("repeat(6");
+    expect(screen.getByRole("heading", { name: "Movie 12" })).toBeInTheDocument();
+    expect(screen.queryByText(/^\d+ \/ \d+$/)).not.toBeInTheDocument();
+  });
+
+  it("uses a larger cardSize to shrink the column count", () => {
+    class WideResizeObserver implements ResizeObserver {
+      private readonly callback: ResizeObserverCallback;
+
+      constructor(callback: ResizeObserverCallback) {
+        this.callback = callback;
+      }
+
+      observe(_target: Element): void {
+        this.callback(
+          [{ contentRect: { width: 1430, height: 1200 } } as ResizeObserverEntry],
+          this,
+        );
+      }
+
+      unobserve(): void {}
+      disconnect(): void {}
+    }
+
+    vi.restoreAllMocks();
+    vi.stubGlobal("ResizeObserver", WideResizeObserver);
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(570);
+
+    const { container } = render(
+      <MovieCardGrid pageSize="auto" cardSize={320} items={movieItems(12)} />,
+    );
+
+    const list = container.querySelector("ul");
+    expect(list?.getAttribute("style")).toContain("repeat(4");
+    expect(screen.getByText("1 / 2")).toBeInTheDocument();
+  });
+
+  it("uses a smaller cardSize to grow the column count", () => {
+    class WideResizeObserver implements ResizeObserver {
+      private readonly callback: ResizeObserverCallback;
+
+      constructor(callback: ResizeObserverCallback) {
+        this.callback = callback;
+      }
+
+      observe(_target: Element): void {
+        this.callback(
+          [{ contentRect: { width: 1430, height: 1200 } } as ResizeObserverEntry],
+          this,
+        );
+      }
+
+      unobserve(): void {}
+      disconnect(): void {}
+    }
+
+    vi.restoreAllMocks();
+    vi.stubGlobal("ResizeObserver", WideResizeObserver);
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(200);
+
+    const { container } = render(
+      <MovieCardGrid pageSize="auto" cardSize={150} items={movieItems(12)} />,
+    );
+
+    const list = container.querySelector("ul");
+    expect(list?.getAttribute("style")).toContain("repeat(8");
+    expect(screen.getByRole("heading", { name: "Movie 12" })).toBeInTheDocument();
+    expect(screen.queryByText(/^\d+ \/ \d+$/)).not.toBeInTheDocument();
+  });
+
+  it("ignores cardSize when the page size is numeric", () => {
+    const { container } = render(
+      <MovieCardGrid pageSize={4} cardSize={320} items={movieItems(12)} />,
+    );
+
+    const list = container.querySelector("ul");
+    expect(list?.getAttribute("style")).toBeNull();
+  });
+
+  it("hides card details for every card when hideDetails is set", () => {
+    render(<MovieCardGrid pageSize={4} hideDetails items={movieItems(4)} />);
+
+    expect(
+      screen.queryByRole("heading", { name: "Movie 1" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Poster for Movie 1" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Movie 4" }),
+    ).not.toBeInTheDocument();
   });
 
   it("renders only the measurement subset until the row height is known", () => {

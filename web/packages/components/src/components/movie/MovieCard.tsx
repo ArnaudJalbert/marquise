@@ -27,8 +27,10 @@ export function MovieCard({
   hoverOpenDelay = 200,
   renderShowtime,
   onShowtimeClick,
+  onMovieClick,
   currentTime,
   backgroundColor,
+  hideDetails,
   className,
 }: MovieCardProps) {
   const [allShowtimesOpen, setAllShowtimesOpen] = useState(false);
@@ -59,7 +61,15 @@ export function MovieCard({
     movie.directors && movie.directors.length > 0 ? movie.directors.join(", ") : null,
   ].filter((part): part is string => part !== null);
 
-  const titleElement = (
+  const titleElement = onMovieClick ? (
+    <button
+      type="button"
+      onClick={() => onMovieClick(movie)}
+      className="cursor-pointer hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      {movie.title}
+    </button>
+  ) : (
     <a
       href={showtimesUrl}
       target="_blank"
@@ -70,7 +80,13 @@ export function MovieCard({
     </a>
   );
 
-  const posterElement = (
+  const posterElement = onMovieClick ? (
+    <MoviePoster
+      title={movie.title}
+      posterUrl={movie.posterUrl}
+      onClick={() => onMovieClick(movie)}
+    />
+  ) : (
     <MoviePoster title={movie.title} posterUrl={movie.posterUrl} href={showtimesUrl} />
   );
 
@@ -85,87 +101,89 @@ export function MovieCard({
         ) : (
           posterElement
         )}
-        <CardContent className="flex flex-col gap-2 border-t border-border px-0 pt-3">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="line-clamp-2 font-serif text-lg leading-snug font-medium">
-              {showHoverPopover ? (
-                <HoverCardTrigger asChild>{titleElement}</HoverCardTrigger>
-              ) : (
-                titleElement
-              )}
-            </h3>
-            {hasShowtimes ? (
-              <button
-                type="button"
-                onClick={() => setAllShowtimesOpen((open) => !open)}
-                aria-expanded={allShowtimesOpen}
-                aria-controls={allShowtimesOpen ? allShowtimesPanelId : undefined}
-                aria-label={`All showtimes for ${movie.title}`}
-                className="mt-1 shrink-0 cursor-pointer text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <ChevronDown
-                  aria-hidden
-                  className={cn(
-                    "size-4 transition-transform",
-                    allShowtimesOpen && "rotate-180",
-                  )}
-                />
-              </button>
-            ) : null}
-          </div>
-          {meta.length > 0 ? (
-            <p className="text-muted-foreground text-xs">{meta.join(" · ")}</p>
-          ) : null}
-          {visibleShowtimes.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {visibleShowtimes.map((showtime, index) => {
-                const key = `${showtime.startsAt}-${index}`;
-                if (renderShowtime) {
-                  return <Fragment key={key}>{renderShowtime(showtime)}</Fragment>;
-                }
-                return (
-                  <a
-                    key={key}
-                    href={showtime.ticketUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={onShowtimeClick ? () => onShowtimeClick(showtime) : undefined}
-                    className={showtimeLinkClasses}
-                  >
-                    <span
-                      className={cn(
-                        "font-mono text-sm tabular-nums",
-                        isPassed(showtime.startsAt, currentTime) &&
-                          "text-muted-foreground line-through",
-                      )}
-                    >
-                      {formatTime(showtime.startsAt)}
-                    </span>
-                  </a>
-                );
-              })}
-              {visibleShowtimes.length < showtimes.length ? (
+        {hideDetails ? null : (
+          <CardContent className="flex flex-col gap-2 border-t border-border px-0 pt-3">
+            <div className="flex items-start justify-between gap-2">
+              <h3 className="line-clamp-2 font-serif text-lg leading-snug font-medium">
+                {showHoverPopover ? (
+                  <HoverCardTrigger asChild>{titleElement}</HoverCardTrigger>
+                ) : (
+                  titleElement
+                )}
+              </h3>
+              {hasShowtimes ? (
                 <button
                   type="button"
                   onClick={() => setAllShowtimesOpen((open) => !open)}
                   aria-expanded={allShowtimesOpen}
                   aria-controls={allShowtimesOpen ? allShowtimesPanelId : undefined}
-                  aria-label={`More showtimes for ${movie.title}`}
-                  className={cn(showtimeLinkClasses, "font-mono text-sm tabular-nums")}
+                  aria-label={`All showtimes for ${movie.title}`}
+                  className="mt-1 shrink-0 cursor-pointer text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  ...
+                  <ChevronDown
+                    aria-hidden
+                    className={cn(
+                      "size-4 transition-transform",
+                      allShowtimesOpen && "rotate-180",
+                    )}
+                  />
                 </button>
               ) : null}
             </div>
-          ) : (
-            <p className="text-muted-foreground text-sm">No showtimes yet</p>
-          )}
-          {allShowtimesOpen && hasShowtimes ? (
-            <section id={allShowtimesPanelId} className="border-t pt-3">
-              <CinemaShowtimeGroups groups={groups} currentTime={currentTime} />
-            </section>
-          ) : null}
-        </CardContent>
+            {meta.length > 0 ? (
+              <p className="text-muted-foreground text-xs">{meta.join(" · ")}</p>
+            ) : null}
+            {visibleShowtimes.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {visibleShowtimes.map((showtime, index) => {
+                  const key = `${showtime.startsAt}-${index}`;
+                  if (renderShowtime) {
+                    return <Fragment key={key}>{renderShowtime(showtime)}</Fragment>;
+                  }
+                  return (
+                    <a
+                      key={key}
+                      href={showtime.ticketUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={onShowtimeClick ? () => onShowtimeClick(showtime) : undefined}
+                      className={showtimeLinkClasses}
+                    >
+                      <span
+                        className={cn(
+                          "font-mono text-sm tabular-nums",
+                          isPassed(showtime.startsAt, currentTime) &&
+                            "text-muted-foreground line-through",
+                        )}
+                      >
+                        {formatTime(showtime.startsAt)}
+                      </span>
+                    </a>
+                  );
+                })}
+                {visibleShowtimes.length < showtimes.length ? (
+                  <button
+                    type="button"
+                    onClick={() => setAllShowtimesOpen((open) => !open)}
+                    aria-expanded={allShowtimesOpen}
+                    aria-controls={allShowtimesOpen ? allShowtimesPanelId : undefined}
+                    aria-label={`More showtimes for ${movie.title}`}
+                    className={cn(showtimeLinkClasses, "font-mono text-sm tabular-nums")}
+                  >
+                    ...
+                  </button>
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-sm">No showtimes yet</p>
+            )}
+            {allShowtimesOpen && hasShowtimes ? (
+              <section id={allShowtimesPanelId} className="border-t pt-3">
+                <CinemaShowtimeGroups groups={groups} currentTime={currentTime} />
+              </section>
+            ) : null}
+          </CardContent>
+        )}
       </Card>
       {showHoverPopover ? showtimesPanel : null}
     </HoverCard>
