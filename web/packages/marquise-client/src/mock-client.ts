@@ -166,9 +166,9 @@ export class MockMovieGridClient implements MovieGridClient {
   private readonly offsetSuffix: string;
 
   constructor(options: MockMovieGridClientOptions = {}) {
-    const startDate = options.startDate ?? toDateString(new Date());
+    const startDate = options.startDate ?? toLocalDateString(new Date());
     this.dates = Array.from({ length: options.days ?? 7 }, (_, index) =>
-      addDays(startDate, index),
+      addLocalDays(startDate, index),
     );
     this.offsetSuffix = localOffsetSuffix(new Date());
   }
@@ -183,11 +183,11 @@ export class MockMovieGridClient implements MovieGridClient {
     }
     const rand = mulberry32(hashString(date));
     const movieCount = 8 + Math.floor(rand() * Math.min(5, CATALOGUE.length));
-    const movies = pick(rand, CATALOGUE, movieCount);
+    const movies = pickDistinct(rand, CATALOGUE, movieCount);
     return movies.map((movie) => {
       const showtimeCount = 1 + Math.floor(rand() * 3);
-      const cinemas = pick(rand, CINEMAS, showtimeCount);
-      const times = pick(rand, TIMES, showtimeCount);
+      const cinemas = pickDistinct(rand, CINEMAS, showtimeCount);
+      const times = pickDistinct(rand, TIMES, showtimeCount);
       return {
         key: movie.key,
         movie: {
@@ -200,7 +200,7 @@ export class MockMovieGridClient implements MovieGridClient {
         },
         showtimesUrl: `https://example.com/movies/${movie.key}`,
         showtimes: times.map((time, index) =>
-          this.toShowtime(
+          this.toCinemaShowtime(
             date,
             movie.key,
             time,
@@ -212,7 +212,7 @@ export class MockMovieGridClient implements MovieGridClient {
     });
   }
 
-  private toShowtime(
+  private toCinemaShowtime(
     date: string,
     movieKey: string,
     time: string,
@@ -229,7 +229,11 @@ export class MockMovieGridClient implements MovieGridClient {
 }
 
 /** Pick `count` distinct items from `items`, in seeded random order. */
-function pick<T>(rand: () => number, items: readonly T[], count: number): T[] {
+function pickDistinct<T>(
+  rand: () => number,
+  items: readonly T[],
+  count: number,
+): T[] {
   const pool = [...items];
   const picked: T[] = [];
   while (picked.length < count && pool.length > 0) {
@@ -263,21 +267,21 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-function toDateString(date: Date): string {
+function toLocalDateString(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 
-function addDays(date: string, days: number): string {
+function addLocalDays(date: string, days: number): string {
   const parts = date.split("-").map(Number);
   const value = new Date(
     parts[0] ?? 0,
     (parts[1] ?? 1) - 1,
     (parts[2] ?? 1) + days,
   );
-  return toDateString(value);
+  return toLocalDateString(value);
 }
 
 function localOffsetSuffix(date: Date): string {
