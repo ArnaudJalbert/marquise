@@ -35,6 +35,9 @@ importers:
       lucide-react:
         specifier: ^0.469.0
         version: 0.469.0(react@19.2.8)
+      marquise-client:
+        specifier: workspace:*
+        version: link:../marquise-client
       tailwind-merge:
         specifier: ^3.0.0
         version: 3.6.0
@@ -78,6 +81,24 @@ importers:
       tw-animate-css:
         specifier: ^1.0.0
         version: 1.4.0
+      typescript:
+        specifier: ~6.0.2
+        version: 6.0.3
+      vite:
+        specifier: ^8.1.1
+        version: 8.2.0(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@24.13.3)(jsdom@29.1.1)(vite@8.2.0(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0))
+
+  packages/marquise-client:
+    devDependencies:
+      '@types/node':
+        specifier: ^24.13.2
+        version: 24.13.3
+      oxlint:
+        specifier: ^1.71.0
+        version: 1.76.0
       typescript:
         specifier: ~6.0.2
         version: 6.0.3

@@ -1,17 +1,12 @@
 import type { ReactNode } from "react";
 
-import type { CinemaShowtime } from "./cinema";
-import type { MovieCardData } from "./movie";
+import type {
+  CinemaShowtime,
+  MovieCardData,
+  MovieCardGridItem,
+} from "marquise-client";
 
-/** One cell in a movie card grid: the movie plus its own screenings. */
-export interface MovieCardGridItem {
-  /** Stable key for React reconciliation; falls back to title + index. */
-  key?: string;
-  movie: MovieCardData;
-  showtimes?: readonly CinemaShowtime[];
-  /** Link to the "all showtimes" page; the movie title always links to it. */
-  showtimesUrl: string;
-}
+export type { MovieCardGridItem } from "marquise-client";
 
 export interface MovieCardGridProps {
   items: readonly MovieCardGridItem[];
