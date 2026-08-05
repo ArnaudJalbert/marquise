@@ -5,4 +5,6 @@ export interface MovieCardData {
   releaseYear?: number | null;
   durationMinutes?: number | null;
   directors?: readonly string[] | null;
+  /** Genres, e.g. ["Drama", "Sci-Fi"] — used for local genre filtering. */
+  genres?: readonly string[] | null;
 }

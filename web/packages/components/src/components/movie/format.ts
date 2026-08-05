@@ -2,6 +2,7 @@ const timeFormatter = new Intl.DateTimeFormat("en-CA", {
   hour: "2-digit",
   minute: "2-digit",
   hour12: false,
+  hourCycle: "h23",
   timeZone: "America/Toronto",
 });
 
@@ -11,6 +12,22 @@ export function formatTime(startsAt: string): string {
     return startsAt;
   }
   return timeFormatter.format(date);
+}
+
+const hourFormatter = new Intl.DateTimeFormat("en-CA", {
+  hour: "2-digit",
+  hour12: false,
+  hourCycle: "h23",
+  timeZone: "America/Toronto",
+});
+
+/** Hour (0–23) of a showtime in the Montreal timezone, used for time-range filtering. */
+export function getHour(startsAt: string): number {
+  const date = new Date(startsAt);
+  if (Number.isNaN(date.getTime())) {
+    return 0;
+  }
+  return Number(hourFormatter.format(date));
 }
 
 export function formatDuration(durationMinutes: number): string {

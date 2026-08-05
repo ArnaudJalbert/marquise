@@ -1,0 +1,270 @@
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+
+import { formatDateLabel } from "./MovieFilterPanel";
+import { MovieGridController } from "./MovieGridController";
+import type { Cinema } from "./cinema";
+import type { CinemaShowtime } from "./cinema";
+import type { MovieCardGridItem } from "./movie-card-grid";
+import type { MovieGridClient } from "./movie-grid-client";
+
+const cinemaA: Cinema = {
+  id: "cinema-a",
+  name: "Cinéma A",
+  link: "https://example.com/cinemas/cinema-a",
+};
+const cinemaB: Cinema = {
+  id: "cinema-b",
+  name: "Cinéma B",
+  link: "https://example.com/cinemas/cinema-b",
+};
+
+function showtime(time: string, cinema: Cinema, language: string): CinemaShowtime {
+  return {
+    startsAt: `2026-08-03T${time}:00-04:00`,
+    ticketUrl: "https://tickets.example.com/t",
+    cinema,
+    language,
+  };
+}
+
+function item(
+  key: string,
+  genres: string[],
+  showtimes: CinemaShowtime[],
+): MovieCardGridItem {
+  return {
+    key,
+    movie: { title: key, genres },
+    showtimesUrl: `https://example.com/movies/${key}`,
+    showtimes,
+  };
+}
+
+const dayOne = [
+  item("dune", ["Sci-Fi"], [showtime("18:00", cinemaA, "VOSTF")]),
+  item("anora", ["Comedy"], [showtime("20:00", cinemaB, "VF")]),
+];
+
+const dayTwo = [
+  item("dune", ["Sci-Fi"], [showtime("18:00", cinemaA, "VOSTF")]),
+];
+
+function createClient() {
+  const byDate: Record<string, MovieCardGridItem[]> = {
+    "2026-08-03": dayOne,
+    "2026-08-04": dayTwo,
+  };
+  return {
+    listDates: vi.fn(async (): Promise<string[]> => [
+      "2026-08-03",
+      "2026-08-04",
+    ]),
+    fetchForDate: vi.fn(
+      async (date: string): Promise<MovieCardGridItem[]> => byDate[date] ?? [],
+    ),
+  };
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+describe("MovieGridController", () => {
+  it("renders the filter panel beside the grid once the date loads", async () => {
+    const client = createClient();
+    render(<MovieGridController client={client} />);
+
+    expect(
+      await screen.findByRole("heading", { name: "dune" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "anora" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /open calendar/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cinéma A" })).toBeInTheDocument();
+  });
+
+  it("shows a loading indicator while a date is being fetched", async () => {
+    const pending = deferred<MovieCardGridItem[]>();
+    const client: MovieGridClient = {
+      listDates: vi.fn(async () => ["2026-08-03"]),
+      fetchForDate: vi.fn(() => pending.promise),
+    };
+    render(<MovieGridController client={client} />);
+
+    expect(await screen.findByText("Loading showtimes…")).toBeInTheDocument();
+
+    act(() => {
+      pending.resolve(dayOne);
+    });
+
+    expect(
+      await screen.findByRole("heading", { name: "dune" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Loading showtimes…")).not.toBeInTheDocument();
+  });
+
+  it("filters the grid locally without refetching", async () => {
+    const client = createClient();
+    render(<MovieGridController client={client} />);
+
+    await screen.findByRole("heading", { name: "dune" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Cinéma B" }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("heading", { name: "dune" }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole("heading", { name: "anora" })).toBeInTheDocument();
+    expect(client.fetchForDate).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows an empty state when no screenings match", async () => {
+    const client = createClient();
+    render(<MovieGridController client={client} />);
+
+    await screen.findByRole("heading", { name: "dune" });
+
+    fireEvent.change(screen.getByLabelText("Start time"), {
+      target: { value: "23" },
+    });
+
+    expect(
+      await screen.findByText("No screenings match these filters."),
+    ).toBeInTheDocument();
+  });
+
+  it("forwards onMovieClick to the movie cards", async () => {
+    const client = createClient();
+    const onMovieClick = vi.fn();
+    render(<MovieGridController client={client} onMovieClick={onMovieClick} />);
+
+    await screen.findByRole("heading", { name: "dune" });
+
+    fireEvent.click(screen.getByRole("button", { name: "dune" }));
+
+    expect(onMovieClick).toHaveBeenCalledTimes(1);
+    expect(onMovieClick).toHaveBeenCalledWith({ title: "dune", genres: ["Sci-Fi"] });
+  });
+
+  it("shows an error and retries when the date fetch fails", async () => {
+    let fail = true;
+    const client: MovieGridClient = {
+      listDates: vi.fn(async () => ["2026-08-03"]),
+      fetchForDate: vi.fn(async () => {
+        if (fail) {
+          throw new Error("network");
+        }
+        return dayOne;
+      }),
+    };
+    render(<MovieGridController client={client} />);
+
+    expect(
+      await screen.findByText("Could not load showtimes for this date."),
+    ).toBeInTheDocument();
+
+    fail = false;
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "dune" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Could not load showtimes for this date.")).not.toBeInTheDocument();
+  });
+
+  it("fetches only when the date changes, never for local filters", async () => {
+    const client = createClient();
+    render(<MovieGridController client={client} />);
+
+    await waitFor(() => expect(client.fetchForDate).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByRole("button", { name: "Cinéma B" }));
+    expect(client.fetchForDate).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: /open calendar/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: formatDateLabel("2026-08-04") }),
+    );
+
+    await waitFor(() => expect(client.fetchForDate).toHaveBeenCalledTimes(2));
+  });
+
+  it("renders a card-size slider when pageSize is auto and resizes the grid", async () => {
+    class AutoResizeObserver implements ResizeObserver {
+      private readonly callback: ResizeObserverCallback;
+
+      constructor(callback: ResizeObserverCallback) {
+        this.callback = callback;
+      }
+
+      observe(_target: Element): void {
+        this.callback(
+          [{ contentRect: { width: 1430, height: 1200 } } as ResizeObserverEntry],
+          this,
+        );
+      }
+
+      unobserve(): void {}
+      disconnect(): void {}
+    }
+
+    vi.restoreAllMocks();
+    vi.stubGlobal("ResizeObserver", AutoResizeObserver);
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(200);
+
+    const client = createClient();
+    const { container } = render(
+      <MovieGridController client={client} pageSize="auto" />,
+    );
+
+    await screen.findByRole("heading", { name: "dune" });
+
+    const slider = screen.getByRole("slider", { name: "Card size" });
+    expect(slider).toHaveValue("200");
+
+    const list = container.querySelector("ul");
+    expect(list?.getAttribute("style")).toContain("repeat(6");
+
+    fireEvent.change(slider, { target: { value: "320" } });
+
+    expect(screen.getByRole("slider", { name: "Card size" })).toHaveValue("320");
+    expect(list?.getAttribute("style")).toContain("repeat(4");
+  });
+
+  it("omits the card-size slider when pageSize is not auto", async () => {
+    const client = createClient();
+    render(<MovieGridController client={client} />);
+
+    await screen.findByRole("heading", { name: "dune" });
+
+    expect(
+      screen.queryByRole("slider", { name: "Card size" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("toggles card details from the panel", async () => {
+    const client = createClient();
+    render(<MovieGridController client={client} />);
+
+    await screen.findByRole("heading", { name: "dune" });
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Show details" }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("heading", { name: "dune" }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole("link", { name: "Poster for dune" }),
+    ).toBeInTheDocument();
+  });
+});

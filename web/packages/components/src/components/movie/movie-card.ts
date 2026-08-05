@@ -17,10 +17,14 @@ export interface MovieCardProps {
   renderShowtime?: (showtime: CinemaShowtime) => ReactNode;
   /** Invoked when a showtime chip is clicked. */
   onShowtimeClick?: (showtime: CinemaShowtime) => void;
+  /** Invoked when the poster or title is clicked, replacing the showtimesUrl link. */
+  onMovieClick?: (movie: MovieCardData) => void;
   /** ISO-8601 timestamp treated as "now"; showtimes that already started are crossed out. */
   currentTime?: string;
   /** Background color (any CSS color) that fills the card behind poster and text. */
   backgroundColor?: string;
+  /** When true, renders only the poster (filling the card) and hides title, meta and showtimes. */
+  hideDetails?: boolean;
   /** Extra classes for the outer card. */
   className?: string;
 }

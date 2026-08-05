@@ -106,3 +106,55 @@
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
 }
+
+/* Dual-thumb time-range slider. Two overlapping range inputs share one track;
+   only the thumbs receive pointer events so dragging either edge updates one end. */
+.time-range-slider input[type="range"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: transparent;
+  pointer-events: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* Single-thumb card-size slider. The whole track is clickable. */
+.card-size-slider input[type="range"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.time-range-slider input[type="range"]::-webkit-slider-thumb,
+.card-size-slider input[type="range"]::-webkit-slider-thumb {
+  pointer-events: auto;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 1rem;
+  width: 1rem;
+  border-radius: 9999px;
+  background-color: var(--foreground);
+  border: 3px solid var(--background);
+  box-shadow: 0 0 0 1px var(--border);
+  cursor: pointer;
+}
+
+.time-range-slider input[type="range"]::-moz-range-thumb,
+.card-size-slider input[type="range"]::-moz-range-thumb {
+  pointer-events: auto;
+  height: 1rem;
+  width: 1rem;
+  border-radius: 9999px;
+  background-color: var(--foreground);
+  border: 3px solid var(--background);
+  box-shadow: 0 0 0 1px var(--border);
+  cursor: pointer;
+}

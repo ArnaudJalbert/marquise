@@ -12,10 +12,10 @@ const MIN_CARD_WIDTH = 200;
 const useIsomorphicLayoutEffect =
   typeof window === "undefined" ? useEffect : useLayoutEffect;
 
-/** Column count for auto-fit: between 2 and 4, based on container width and the grid gap. */
-function columnsForWidth(width: number): number {
-  const columnWidth = MIN_CARD_WIDTH + GRID_GAP;
-  return Math.min(4, Math.max(2, Math.floor((width + GRID_GAP) / columnWidth)));
+/** Column count for auto-fit: between 2 and 8, based on container width and the grid gap. */
+function columnsForWidth(width: number, cardSize: number, maxColumns: number): number {
+  const columnWidth = cardSize + GRID_GAP;
+  return Math.min(maxColumns, Math.max(2, Math.floor((width + GRID_GAP) / columnWidth)));
 }
 
 /**
@@ -35,7 +35,10 @@ export function MovieCardGrid({
   backgroundColor,
   renderShowtime,
   onShowtimeClick,
+  onMovieClick,
   pageSize,
+  cardSize,
+  hideDetails,
   className,
   cardClassName,
 }: MovieCardGridProps) {
@@ -59,7 +62,11 @@ export function MovieCardGrid({
     return () => observer.disconnect();
   }, [autoFit]);
 
-  const columns = autoFit && dims !== null ? columnsForWidth(dims.width) : null;
+  const cardWidth = cardSize ?? MIN_CARD_WIDTH;
+  const columns =
+    autoFit && dims !== null
+      ? columnsForWidth(dims.width, cardWidth, cardSize === undefined ? 6 : 8)
+      : null;
 
   useIsomorphicLayoutEffect(() => {
     if (!autoFit || dims === null || columns === null) return;
@@ -76,7 +83,7 @@ export function MovieCardGrid({
     if (heights.length > 0) {
       setRowHeight(Math.max(...heights));
     }
-  }, [autoFit, dims, columns]);
+  }, [autoFit, dims, columns, hideDetails]);
 
   const effectivePageSize =
     autoFit && dims !== null && rowHeight !== null && columns !== null
@@ -148,7 +155,9 @@ export function MovieCardGrid({
             backgroundColor={backgroundColor}
             renderShowtime={renderShowtime}
             onShowtimeClick={onShowtimeClick}
-            className={cn("h-full", cardClassName)}
+            onMovieClick={onMovieClick}
+            hideDetails={hideDetails}
+            className={cn(hideDetails ? undefined : "h-full", cardClassName)}
           />
         </li>
       ))}

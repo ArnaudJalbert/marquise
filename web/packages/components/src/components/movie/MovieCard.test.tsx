@@ -38,6 +38,45 @@ describe("MovieCard", () => {
     expect(screen.getByText("18:30")).toBeInTheDocument();
   });
 
+  it("renders only the poster when hideDetails is true", () => {
+    render(
+      <MovieCard
+        movie={{
+          title: "Anora",
+          releaseYear: 2024,
+          durationMinutes: 139,
+          directors: ["Sean Baker"],
+        }}
+        showtimesUrl="https://example.com/movies/anora"
+        showtimes={[
+          {
+            startsAt: "2026-08-03T22:30:00Z",
+            language: "VOSTF",
+            format: "2D",
+            ticketUrl: "https://tickets.example.com/anora",
+            cinema: {
+              id: "cinema-moderne",
+              name: "Cinéma Moderne",
+              link: "https://example.com/cinemas/cinema-moderne",
+            },
+          },
+        ]}
+        hideDetails
+      />,
+    );
+
+    const poster = screen.getByRole("link", { name: "Poster for Anora" });
+    expect(poster).toBeInTheDocument();
+    expect(poster).toHaveClass("aspect-[2/3]");
+    expect(
+      screen.queryByRole("heading", { name: "Anora" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("2024 · 2 h 19 min · Sean Baker"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("18:30")).not.toBeInTheDocument();
+  });
+
   it("sorts the card showtimes by time, not by input order", () => {
     render(
       <MovieCard
@@ -294,6 +333,29 @@ describe("MovieCard", () => {
     const posterLink = screen.getByRole("link", { name: "Poster for Anora" });
     expect(posterLink).toHaveAttribute("href", "https://example.com/movies/anora");
     expect(posterLink).toHaveAttribute("target", "_blank");
+  });
+
+  it("turns the title and poster into buttons that call onMovieClick", () => {
+    const onMovieClick = vi.fn();
+    const movie = { title: "Anora", posterUrl: "https://example.com/anora.jpg" };
+    render(
+      <MovieCard
+        movie={movie}
+        showtimesUrl="https://example.com/movies/anora"
+        onMovieClick={onMovieClick}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("link", { name: "Poster for Anora" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Anora" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Anora" }));
+    fireEvent.click(screen.getByRole("button", { name: "Poster for Anora" }));
+
+    expect(onMovieClick).toHaveBeenCalledTimes(2);
+    expect(onMovieClick).toHaveBeenCalledWith(movie);
   });
 
   it("keeps the placeholder behind the poster and loads the image at low priority", () => {
