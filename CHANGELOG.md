@@ -10,6 +10,18 @@ Typer CLI lives in `marquise-cli`, each with independent versions.
 
 ## 2026-08-05
 
+### marquise-interface (new)
+
+- **Landing page**: sticky header with the Marquise wordmark (logo top-left) and placeholder section nav ("À l'affiche", "Cinémas", "Films", "À propos"), plus a full-viewport `MovieGridController` — filter panel on the left, auto-paged movie grid filling the middle.
+- **Data-source switching**: `VITE_MARQUISE_DATA_SOURCE=mock|api` (mock default). API mode targets same-origin `/v1/*`, proxied to the local API (`make api`) by the Vite dev server.
+- **Source-level HMR**: the app aliases `marquise-components` and `marquise-client` to their source; component styles come from the package's prebuilt CSS bundle.
+
+### marquise-client (new)
+
+- **Data client for the REST API**: `HttpMovieGridClient` implements `MovieGridClient` — lists the upcoming days with screenings, paginates a date's screenings, bulk-fetches movie metadata (posters, genres, directors, duration) in chunks of 100, and resolves cinema websites for clickable cinema names. Empty base URL targets a same-origin API (dev proxy).
+- **`MockMovieGridClient`**: deterministic seeded demo data (12-film catalogue, 4 Montréal cinemas) so the UI runs with zero backend.
+- **Contract ownership moved out of `marquise-components`**: `Cinema`, `CinemaShowtime`, `MovieCardData`, `MovieCardGridItem` and `MovieGridClient` now live here; the components package re-exports them (dependency direction is now components → client).
+
 ### marquise-components
 
 - **Interactive movie grid filters**: `MovieFilterPanel` (date picker, cinema/genre/language chip groups, start/end time-range slider, optional card-size slider and details toggle), `useMovieFilters` (fetches dates + one selected date, filters applied locally), and pure `movie-grid-filter.ts` logic wired together by `MovieGridController`.
