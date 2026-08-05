@@ -67,7 +67,7 @@ export class HttpMovieGridClient implements MovieGridClient {
     const dates: string[] = [];
     for (let day = 0; day < this.horizonDays; day++) {
       const date = addUtcDays(today, day);
-      const page = await this.getJson<Page<ScreeningApi>>(
+      const page = await this.fetchJson<Page<ScreeningApi>>(
         `/v1/screenings?from=${date}&to=${date}&size=1`,
       );
       if (page.total > 0) {
@@ -78,7 +78,7 @@ export class HttpMovieGridClient implements MovieGridClient {
   }
 
   async fetchForDate(date: string): Promise<readonly MovieCardGridItem[]> {
-    const screenings = await this.fetchScreenings(date);
+    const screenings = await this.fetchScreeningsForDate(date);
     const screeningsByMovie = new Map<string, ScreeningApi[]>();
     for (const screening of screenings) {
       const list = screeningsByMovie.get(screening.movie_id) ?? [];
@@ -86,21 +86,21 @@ export class HttpMovieGridClient implements MovieGridClient {
       screeningsByMovie.set(screening.movie_id, list);
     }
     const movieIds = [...screeningsByMovie.keys()];
-    const movies = await this.fetchMovies(movieIds);
+    const movies = await this.fetchMoviesByIds(movieIds);
     const movieById = new Map(movies.map((movie) => [movie.id, movie]));
-    const cinemaLink = await this.loadCinemaLinks();
+    const cinemaLink = await this.loadCinemaWebsiteLinks();
     return movieIds.map((movieId) => {
       const movie = movieById.get(movieId);
       const movieScreenings = screeningsByMovie.get(movieId) ?? [];
-      return this.toGridItem(movie, movieScreenings, cinemaLink);
+      return this.toMovieGridItem(movie, movieScreenings, cinemaLink);
     });
   }
 
-  private async fetchScreenings(date: string): Promise<ScreeningApi[]> {
+  private async fetchScreeningsForDate(date: string): Promise<ScreeningApi[]> {
     const items: ScreeningApi[] = [];
     let page = 1;
     for (;;) {
-      const result = await this.getJson<Page<ScreeningApi>>(
+      const result = await this.fetchJson<Page<ScreeningApi>>(
         `/v1/screenings?from=${date}&to=${date}&page=${page}&size=${SCREENING_PAGE_SIZE}`,
       );
       items.push(...result.items);
@@ -116,12 +116,12 @@ export class HttpMovieGridClient implements MovieGridClient {
     return items.slice(0, this.maxScreenings);
   }
 
-  private async fetchMovies(ids: readonly string[]): Promise<MovieApi[]> {
+  private async fetchMoviesByIds(ids: readonly string[]): Promise<MovieApi[]> {
     const movies: MovieApi[] = [];
     for (let index = 0; index < ids.length; index += MOVIE_BULK_LIMIT) {
       const chunk = ids.slice(index, index + MOVIE_BULK_LIMIT);
       const query = chunk.map((id) => `ids=${encodeURIComponent(id)}`).join("&");
-      const result = await this.getJson<Page<MovieApi>>(
+      const result = await this.fetchJson<Page<MovieApi>>(
         `/v1/movies?${query}&size=${MOVIE_BULK_LIMIT}`,
       );
       movies.push(...result.items);
@@ -134,13 +134,13 @@ export class HttpMovieGridClient implements MovieGridClient {
    * UI links somewhere real. Best-effort: a failing cinemas request never
    * fails the movie fetch — links fall back to empty.
    */
-  private async loadCinemaLinks(): Promise<ReadonlyMap<string, string>> {
+  private async loadCinemaWebsiteLinks(): Promise<ReadonlyMap<string, string>> {
     if (this.cinemaWebsitesLoaded) {
       return this.cinemaWebsites;
     }
     this.cinemaWebsitesLoaded = true;
     try {
-      const result = await this.getJson<Page<CinemaApi>>("/v1/cinemas?size=100");
+      const result = await this.fetchJson<Page<CinemaApi>>("/v1/cinemas?size=100");
       for (const cinema of result.items) {
         if (cinema.website) {
           this.cinemaWebsites.set(cinema.id, cinema.website);
@@ -152,7 +152,7 @@ export class HttpMovieGridClient implements MovieGridClient {
     return this.cinemaWebsites;
   }
 
-  private toGridItem(
+  private toMovieGridItem(
     movie: MovieApi | undefined,
     screenings: readonly ScreeningApi[],
     cinemaLink: ReadonlyMap<string, string>,
@@ -169,12 +169,12 @@ export class HttpMovieGridClient implements MovieGridClient {
       },
       showtimesUrl: "#",
       showtimes: screenings.map((screening) =>
-        this.toShowtime(screening, cinemaLink),
+        this.toCinemaShowtime(screening, cinemaLink),
       ),
     };
   }
 
-  private toShowtime(
+  private toCinemaShowtime(
     screening: ScreeningApi,
     cinemaLink: ReadonlyMap<string, string>,
   ): CinemaShowtime {
@@ -190,7 +190,7 @@ export class HttpMovieGridClient implements MovieGridClient {
     };
   }
 
-  private async getJson<T>(path: string): Promise<T> {
+  private async fetchJson<T>(path: string): Promise<T> {
     const response = await this.fetchImpl(this.baseUrl + path);
     if (!response.ok) {
       throw new HttpMovieGridClientError(path, response.status);
