@@ -10,6 +10,7 @@ const externalLibraries = [
   "react-dom",
   "react/jsx-runtime",
   "@radix-ui/react-hover-card",
+  "@radix-ui/react-popover",
   "@radix-ui/react-separator",
   "@radix-ui/react-slot",
   "class-variance-authority",
