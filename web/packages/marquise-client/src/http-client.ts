@@ -19,7 +19,10 @@ export class HttpMovieGridClientError extends Error {
 }
 
 export interface HttpMovieGridClientOptions {
-  /** API origin, e.g. "https://marquise-api.fly.dev". */
+  /**
+   * API origin, e.g. "https://marquise-api.fly.dev". May be empty to target a
+   * same-origin API (e.g. behind a dev-server proxy).
+   */
   baseUrl: string;
   /** Number of upcoming days offered as selectable dates; defaults to 7. */
   horizonDays?: number;
@@ -52,9 +55,6 @@ export class HttpMovieGridClient implements MovieGridClient {
   private cinemaWebsitesLoaded = false;
 
   constructor(options: HttpMovieGridClientOptions) {
-    if (options.baseUrl.trim() === "") {
-      throw new Error("baseUrl must not be empty");
-    }
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
     this.horizonDays = options.horizonDays ?? DEFAULT_HORIZON_DAYS;
     this.maxScreenings = options.maxScreenings ?? DEFAULT_MAX_SCREENINGS;
