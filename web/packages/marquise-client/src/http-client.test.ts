@@ -81,7 +81,7 @@ function stubFetch(handler: (url: URL) => Response | unknown) {
         : input instanceof URL
           ? input.href
           : input.url;
-    const url = new URL(inputUrl);
+    const url = new URL(inputUrl, "http://localhost");
     const result = handler(url);
     if (result instanceof Response) {
       return result;
@@ -94,10 +94,18 @@ function stubFetch(handler: (url: URL) => Response | unknown) {
 const FIXED_NOW = () => new Date("2026-08-05T12:00:00Z");
 
 describe("HttpMovieGridClient", () => {
-  it("rejects an empty base URL", () => {
-    expect(() => new HttpMovieGridClient({ baseUrl: " " })).toThrow(
-      "baseUrl must not be empty",
-    );
+  it("targets relative paths when the base URL is empty (same-origin)", async () => {
+    const mock = stubFetch(() => pageOf([] as ScreeningApi[], 0));
+    const client = new HttpMovieGridClient({
+      baseUrl: "",
+      fetch: mock,
+      now: FIXED_NOW,
+      horizonDays: 1,
+    });
+
+    await client.listDates();
+
+    expect(String(mock.mock.calls[0]?.[0])).toBe("/v1/screenings?from=2026-08-05&to=2026-08-05&size=1");
   });
 
   it("lists only the upcoming dates that have screenings, in UTC days", async () => {
