@@ -8,6 +8,15 @@ Before 2026-07-15 the entire codebase shipped as a single package (`marquise`, n
 `marquise-core`). Starting 2026-07-15, the FastAPI application lives in `marquise-api` and the
 Typer CLI lives in `marquise-cli`, each with independent versions.
 
+## 2026-08-05
+
+### marquise-components
+
+- **Interactive movie grid filters**: `MovieFilterPanel` (date picker, cinema/genre/language chip groups, start/end time-range slider, optional card-size slider and details toggle), `useMovieFilters` (fetches dates + one selected date, filters applied locally), and pure `movie-grid-filter.ts` logic wired together by `MovieGridController`.
+- **Per-date movie detail page**: `MovieDetailPage` renders one showtime column per date; columns slide left/right, adapt to the container width, and each date's showtimes are fetched lazily as its column comes into view. Adds a `Popover` UI primitive and the `movie-detail-client` / `movie-grid-client` data-source protocols.
+- **Card presentation options**: `MovieCard` poster-only mode (`hideDetails`) and a card-size auto-fit path in `MovieCardGrid` (up to 6 columns default; 8 with an explicit `cardSize`).
+- **Robustness fixes from code review**: stale in-flight showtimes no longer overwrite the cache after a movie change; the fetch-error banner clears once a failed date recovers; per-date Retry no longer reloads the dates list; and a collapsed time-range slider can now be expanded by dragging its start thumb. 126 tests passing.
+
 ## 2026-08-04
 
 ### marquise-components v0.1.0 (new) + marquise (repository)
