@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { formatDateLabel } from "./date-selector";
@@ -55,6 +56,7 @@ const byDate: Record<string, CinemaShowtime[]> = {
 
 function createClient(overrides?: Partial<MovieDetailClient>) {
   const client: MovieDetailClient = {
+    fetchMovie: vi.fn(async () => movie),
     listDates: vi.fn(async () => dates),
     fetchShowtimes: vi.fn(
       async (_m: MovieCardData, date: string) => byDate[date] ?? [],
@@ -101,6 +103,19 @@ function lastResizeObserver(): ControllableResizeObserver {
 const defaultResizeObserver = globalThis.ResizeObserver;
 
 describe("MovieDetailPage", () => {
+  it("mounts under Strict Mode without a composed-ref update loop", async () => {
+    const client = createClient();
+    render(
+      <StrictMode>
+        <MovieDetailPage movie={movie} client={client} />
+      </StrictMode>,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Dune: Part Two" }),
+    ).toBeInTheDocument();
+  });
+
   it("renders the movie header and the first date's showtimes", async () => {
     const client = createClient();
     render(<MovieDetailPage movie={movie} client={client} />);
@@ -145,6 +160,26 @@ describe("MovieDetailPage", () => {
     expect(
       screen.getByRole("button", { name: "Later dates" }),
     ).toBeDisabled();
+  });
+
+  it("restores and reports the selected showtimes date", async () => {
+    const client = createClient();
+    const onDateChange = vi.fn();
+    render(
+      <MovieDetailPage
+        movie={movie}
+        client={client}
+        initialDate="2026-08-04"
+        onDateChange={onDateChange}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(client.fetchShowtimes).toHaveBeenCalledWith(movie, "2026-08-04"),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Earlier dates" }));
+
+    expect(onDateChange).toHaveBeenCalledWith("2026-08-03", "user");
   });
 
   it("shows a loading indicator while a date's showtimes are fetched", async () => {

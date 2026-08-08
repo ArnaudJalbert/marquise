@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { formatDateLabel } from "./MovieFilterPanel";
@@ -126,6 +127,51 @@ describe("MovieGridController", () => {
     expect(client.fetchForDate).toHaveBeenCalledTimes(1);
   });
 
+  it("restores local filters and reports their changes", async () => {
+    const client = createClient();
+    const onFiltersChange = vi.fn();
+    render(
+      <MovieGridController
+        client={client}
+        initialFilters={{ cinemas: ["Cinéma B"], timeRange: [0, 24] }}
+        onFiltersChange={onFiltersChange}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "anora" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "dune" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cinéma B" }));
+    await waitFor(() =>
+      expect(onFiltersChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({ cinemas: [] }),
+      ),
+    );
+  });
+
+  it("reports resolved and user-selected dates with their reasons", async () => {
+    const client = createClient();
+    const onSelectedDateChange = vi.fn();
+    render(
+      <MovieGridController
+        client={client}
+        initialFilters={{ timeRange: [0, 24] }}
+        onSelectedDateChange={onSelectedDateChange}
+      />,
+    );
+
+    await screen.findByRole("heading", { name: "dune" });
+    expect(onSelectedDateChange).toHaveBeenCalledWith(
+      "2026-08-03",
+      "normalization",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Next date" }));
+    expect(onSelectedDateChange).toHaveBeenLastCalledWith("2026-08-04", "user");
+  });
+
   it("shows an empty state when no screenings match", async () => {
     const client = createClient();
     render(<MovieGridController client={client} />);
@@ -197,7 +243,7 @@ describe("MovieGridController", () => {
     await waitFor(() => expect(client.fetchForDate).toHaveBeenCalledTimes(2));
   });
 
-  it("renders a card-size slider when pageSize is auto and resizes the grid", async () => {
+  it("renders a card-size slider without widening a small result set", async () => {
     class AutoResizeObserver implements ResizeObserver {
       private readonly callback: ResizeObserverCallback;
 
@@ -221,8 +267,13 @@ describe("MovieGridController", () => {
     vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(200);
 
     const client = createClient();
+    const onCardSizeChange = vi.fn();
     const { container } = render(
-      <MovieGridController client={client} pageSize="auto" />,
+      <MovieGridController
+        client={client}
+        pageSize="auto"
+        onCardSizeChange={onCardSizeChange}
+      />,
     );
 
     await screen.findByRole("heading", { name: "dune" });
@@ -237,6 +288,53 @@ describe("MovieGridController", () => {
 
     expect(screen.getByRole("slider", { name: "Card size" })).toHaveValue("320");
     expect(list?.getAttribute("style")).toContain("repeat(4");
+    expect(onCardSizeChange).toHaveBeenCalledWith(320);
+  });
+
+  it("changes auto-fit pages with the date selector mounted in Strict Mode", async () => {
+    class AutoResizeObserver implements ResizeObserver {
+      constructor(private readonly callback: ResizeObserverCallback) {}
+
+      observe(_target: Element): void {
+        this.callback(
+          [{ contentRect: { width: 896, height: 600 } } as ResizeObserverEntry],
+          this,
+        );
+      }
+
+      unobserve(): void {}
+      disconnect(): void {}
+    }
+
+    vi.restoreAllMocks();
+    vi.stubGlobal("ResizeObserver", AutoResizeObserver);
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(200);
+
+    const movies = Array.from({ length: 10 }, (_, index) =>
+      item(
+        `Movie ${index + 1}`,
+        ["Drama"],
+        [showtime("18:00", cinemaA, "VOSTF")],
+      ),
+    );
+    const client: MovieGridClient = {
+      listDates: vi.fn(async () => ["2026-08-03"]),
+      fetchForDate: vi.fn(async () => movies),
+    };
+
+    render(
+      <StrictMode>
+        <MovieGridController client={client} pageSize="auto" />
+      </StrictMode>,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Movie 1" }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+
+    expect(screen.getByText("2 / 2")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Movie 9" })).toBeInTheDocument();
   });
 
   it("omits the card-size slider when pageSize is not auto", async () => {
@@ -250,21 +348,24 @@ describe("MovieGridController", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("toggles card details from the panel", async () => {
+  it("toggles card details from the grid controls", async () => {
     const client = createClient();
-    render(<MovieGridController client={client} />);
+    const onHideDetailsChange = vi.fn();
+    render(
+      <MovieGridController
+        client={client}
+        onHideDetailsChange={onHideDetailsChange}
+      />,
+    );
 
     await screen.findByRole("heading", { name: "dune" });
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Show details" }));
 
-    await waitFor(() =>
-      expect(
-        screen.queryByRole("heading", { name: "dune" }),
-      ).not.toBeInTheDocument(),
-    );
+    expect(screen.getByRole("heading", { name: "dune" })).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Poster for dune" }),
     ).toBeInTheDocument();
+    expect(onHideDetailsChange).toHaveBeenCalledWith(true);
   });
 });
