@@ -18,7 +18,7 @@ web/
 ├── apps/
 │   └── marquise-interface/  # The Marquise landing page (Vite + React + TS)
 └── packages/
-    ├── client/           # marquise-client — REST API + mock data clients
+    ├── marquise-client/  # REST API + mock data clients
     └── components/       # marquise-components — self-contained component library
 ```
 
@@ -68,3 +68,6 @@ VITE_MARQUISE_DATA_SOURCE=api pnpm --filter marquise-interface dev
   not need their own Tailwind install.
 - The `demo/` page inside `packages/components` is excluded from the library build and is
   dev-only — it never lands in `dist/` and must never be deployed.
+- `marquise-interface` uses client-side movie routes such as `/movies/<id>`. Production
+  static hosting must rewrite unknown document requests to `index.html` so direct movie
+  links and refreshes load the Vite app.
