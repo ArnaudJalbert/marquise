@@ -32,7 +32,6 @@ body {
 .site-logo {
   display: inline-flex;
   align-items: center;
-  gap: 0.65rem;
   text-decoration: none;
   color: var(--foreground);
 }
@@ -61,14 +60,23 @@ body {
   color: var(--foreground);
 }
 
+.site-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
 .site-main {
   display: flex;
   flex: 1;
   width: 100%;
-  max-width: 80rem;
   min-height: 0;
-  margin: 0 auto;
-  padding: 1.5rem 2rem;
+  padding: 1rem 1.5rem;
+}
+
+/* Toggled by the header Filters button to hide the filter panel. */
+.is-hidden {
+  display: none;
 }
 
 .site-footer {

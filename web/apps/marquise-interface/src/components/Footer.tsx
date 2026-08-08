@@ -2,7 +2,7 @@
 export function Footer() {
   return (
     <footer className="site-footer">
-      <p>Marquise — l'affiche des cinémas de Montréal</p>
+      <p>Marquise — Montréal's movie showtimes</p>
     </footer>
   );
 }

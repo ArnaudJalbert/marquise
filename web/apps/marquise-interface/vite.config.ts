@@ -7,19 +7,25 @@ import { defineConfig } from "vite";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
-    alias: {
+    alias: [
       // Consume the workspace packages from source for instant HMR — no
-      // prebuild. "$" makes the alias exact so subpath imports (e.g.
-      // "marquise-components/index.css") still resolve via package exports.
-      "marquise-components$": path.resolve(
-        import.meta.dirname,
-        "../../packages/components/src/index.ts",
-      ),
-      "marquise-client$": path.resolve(
-        import.meta.dirname,
-        "../../packages/marquise-client/src/index.ts",
-      ),
-    },
+      // prebuild. Exact-match regexes keep subpath imports (e.g.
+      // "marquise-components/index.css") resolving via package exports.
+      {
+        find: /^marquise-components$/,
+        replacement: path.resolve(
+          import.meta.dirname,
+          "../../packages/components/src/index.ts",
+        ),
+      },
+      {
+        find: /^marquise-client$/,
+        replacement: path.resolve(
+          import.meta.dirname,
+          "../../packages/marquise-client/src/index.ts",
+        ),
+      },
+    ],
   },
   server: {
     proxy: {
