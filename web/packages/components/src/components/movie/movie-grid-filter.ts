@@ -30,6 +30,16 @@ export const DEFAULT_MOVIE_FILTERS: MovieFilters = {
   languages: [],
 };
 
+/** Create the initial filters, starting the time range at the current Montreal hour. */
+export function createDefaultMovieFilters(now: Date = new Date()): MovieFilters {
+  return {
+    timeRange: [getHour(now.toISOString()), TIME_MAX_HOUR],
+    cinemas: [],
+    genres: [],
+    languages: [],
+  };
+}
+
 function showtimeMatches(
   showtime: CinemaShowtime,
   filters: MovieFilters,

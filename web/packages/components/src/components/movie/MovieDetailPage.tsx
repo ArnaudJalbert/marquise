@@ -105,6 +105,11 @@ export interface MovieDetailPageProps {
   client: MovieDetailClient;
   /** Date shown first, as "YYYY-MM-DD"; defaults to the first available. */
   initialDate?: string;
+  /** Reports the leftmost selected date after user navigation or normalization. */
+  onDateChange?: (
+    date: string,
+    reason: "user" | "normalization",
+  ) => void;
   /** ISO-8601 timestamp treated as "now"; started showtimes are crossed out. */
   currentTime?: string;
   /** When set, renders a back button. */
@@ -127,6 +132,7 @@ export function MovieDetailPage({
   movie,
   client,
   initialDate,
+  onDateChange,
   currentTime,
   onBack,
   className,
@@ -146,9 +152,12 @@ export function MovieDetailPage({
   const viewportRef = useRef<HTMLDivElement>(null);
   const clientRef = useRef(client);
   const movieRef = useRef(movie);
+  const initialDateRef = useRef(initialDate);
+  const onDateChangeRef = useRef(onDateChange);
 
   useEffect(() => {
     clientRef.current = client;
+    onDateChangeRef.current = onDateChange;
   });
 
   useIsomorphicLayoutEffect(() => {
@@ -156,6 +165,7 @@ export function MovieDetailPage({
       return;
     }
     movieRef.current = movie;
+    initialDateRef.current = initialDate;
     setDates([]);
     setDatesLoading(true);
     setDatesError(null);
@@ -180,8 +190,14 @@ export function MovieDetailPage({
         const sorted = [...available].sort();
         setDates(sorted);
         setDatesLoading(false);
-        const index = initialDate !== undefined ? sorted.indexOf(initialDate) : 0;
-        setOffset(Math.max(0, index));
+        const requestedDate = initialDateRef.current;
+        const index = requestedDate !== undefined ? sorted.indexOf(requestedDate) : 0;
+        const initialOffset = Math.max(0, index);
+        setOffset(initialOffset);
+        const resolvedDate = sorted[initialOffset];
+        if (resolvedDate !== undefined && resolvedDate !== requestedDate) {
+          onDateChangeRef.current?.(resolvedDate, "normalization");
+        }
       })
       .catch(() => {
         if (stale) {
@@ -193,7 +209,7 @@ export function MovieDetailPage({
     return () => {
       stale = true;
     };
-  }, [movie, initialDate, datesRetryNonce]);
+  }, [movie, datesRetryNonce]);
 
   const stripReady = !datesLoading && dates.length > 0;
 
@@ -225,8 +241,14 @@ export function MovieDetailPage({
   const safeOffset = Math.min(offset, maxOffset);
 
   useEffect(() => {
-    setOffset((current) => Math.min(current, maxOffset));
-  }, [maxOffset]);
+    if (offset > maxOffset) {
+      setOffset(maxOffset);
+      const normalizedDate = dates[maxOffset];
+      if (normalizedDate !== undefined) {
+        onDateChangeRef.current?.(normalizedDate, "normalization");
+      }
+    }
+  }, [dates, maxOffset, offset]);
 
   useEffect(() => {
     const start = Math.max(0, safeOffset);
@@ -302,7 +324,14 @@ export function MovieDetailPage({
         type="button"
         aria-label="Earlier dates"
         disabled={safeOffset === 0}
-        onClick={() => setOffset(Math.max(0, safeOffset - 1))}
+        onClick={() => {
+          const nextOffset = Math.max(0, safeOffset - 1);
+          setOffset(nextOffset);
+          const date = dates[nextOffset];
+          if (date !== undefined) {
+            onDateChangeRef.current?.(date, "user");
+          }
+        }}
         className="flex cursor-pointer items-center justify-center p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
       >
         <ChevronLeft aria-hidden className="size-4" />
@@ -332,7 +361,14 @@ export function MovieDetailPage({
         type="button"
         aria-label="Later dates"
         disabled={safeOffset >= maxOffset}
-        onClick={() => setOffset(Math.min(maxOffset, safeOffset + 1))}
+        onClick={() => {
+          const nextOffset = Math.min(maxOffset, safeOffset + 1);
+          setOffset(nextOffset);
+          const date = dates[nextOffset];
+          if (date !== undefined) {
+            onDateChangeRef.current?.(date, "user");
+          }
+        }}
         className="flex cursor-pointer items-center justify-center p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
       >
         <ChevronRight aria-hidden className="size-4" />
@@ -381,7 +417,12 @@ export function MovieDetailPage({
               onSelect={(date) => {
                 const index = dates.indexOf(date);
                 if (index !== -1) {
-                  setOffset(Math.min(index, maxOffset));
+                  const nextOffset = Math.min(index, maxOffset);
+                  setOffset(nextOffset);
+                  const resolvedDate = dates[nextOffset];
+                  if (resolvedDate !== undefined) {
+                    onDateChangeRef.current?.(resolvedDate, "user");
+                  }
                 }
               }}
             />

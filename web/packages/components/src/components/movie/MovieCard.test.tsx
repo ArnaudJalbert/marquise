@@ -36,9 +36,10 @@ describe("MovieCard", () => {
       screen.getByText("2024 · 2 h 19 min · Sean Baker"),
     ).toBeInTheDocument();
     expect(screen.getByText("18:30")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Anora" })).toHaveClass("text-center");
   });
 
-  it("renders only the poster when hideDetails is true", () => {
+  it("retains the title but hides details when hideDetails is true", () => {
     render(
       <MovieCard
         movie={{
@@ -68,9 +69,7 @@ describe("MovieCard", () => {
     const poster = screen.getByRole("link", { name: "Poster for Anora" });
     expect(poster).toBeInTheDocument();
     expect(poster).toHaveClass("aspect-[2/3]");
-    expect(
-      screen.queryByRole("heading", { name: "Anora" }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Anora" })).toBeInTheDocument();
     expect(
       screen.queryByText("2024 · 2 h 19 min · Sean Baker"),
     ).not.toBeInTheDocument();
@@ -158,7 +157,7 @@ describe("MovieCard", () => {
     expect(screen.queryByText("15:00")).not.toBeInTheDocument();
   });
 
-  it("skips started showtimes when picking the default five", () => {
+  it("shows the five soonest showtimes, marking started ones as crossed out", () => {
     const showtimes = Array.from({ length: 6 }, (_, index) => {
       const hour = String(12 + index).padStart(2, "0");
       return {
@@ -188,8 +187,10 @@ describe("MovieCard", () => {
           text !== null && /^\d{2}:\d{2}$/.test(text),
       );
 
-    expect(chips).toEqual(["15:00", "16:00", "17:00"]);
-    expect(screen.queryByText("12:00")).not.toBeInTheDocument();
+    expect(chips).toEqual(["12:00", "13:00", "14:00", "15:00", "16:00"]);
+    expect(screen.getByText("12:00")).toHaveClass("line-through");
+    expect(screen.getByText("14:00")).toHaveClass("line-through");
+    expect(screen.queryByText("17:00")).not.toBeInTheDocument();
   });
 
   it("respects a custom maxShowtimes limit", () => {
@@ -434,7 +435,7 @@ describe("MovieCard", () => {
     expect(card).toHaveStyle({ backgroundColor: "#ff0000" });
   });
 
-  it("shows only upcoming showtimes by default and crossed-out ones in the widget", () => {
+  it("marks started showtimes as crossed out next to upcoming ones", () => {
     render(
       <MovieCard
         movie={{ title: "Anora" }}
@@ -463,14 +464,21 @@ describe("MovieCard", () => {
       />,
     );
 
-    expect(screen.queryByText("18:30")).not.toBeInTheDocument();
-    expect(screen.getByText("20:30")).not.toHaveClass("line-through");
+    expect(screen.getByText("18:30", { selector: "span" })).toHaveClass(
+      "line-through",
+    );
+    expect(screen.getByText("20:30", { selector: "span" })).not.toHaveClass(
+      "line-through",
+    );
 
     fireEvent.click(
       screen.getByRole("button", { name: "All showtimes for Anora" }),
     );
 
-    expect(screen.getByText("18:30")).toHaveClass("line-through");
+    const links = screen.getAllByRole("link", { name: "18:30" });
+    expect(links.some((link) => link.classList.contains("line-through"))).toBe(
+      true,
+    );
   });
 
   it("renders a showtime as a link to its ticketing URL", () => {
@@ -559,8 +567,8 @@ describe("MovieCard", () => {
     expect(link).toHaveAttribute("target", "_blank");
   });
 
-  it("toggles the inline all-showtimes widget grouped by cinema via the caret", () => {
-    render(
+  it("opens grouped showtimes in a portaled popover via the caret", () => {
+    const { container } = render(
       <MovieCard
         movie={{ title: "Anora" }}
         showtimesUrl="https://example.com/movies/anora"
@@ -597,8 +605,18 @@ describe("MovieCard", () => {
     expect(screen.getByText("Cinéma Moderne")).toBeInTheDocument();
     expect(screen.getByText("Cinémathèque québécoise")).toBeInTheDocument();
     expect(caret).toHaveAttribute("aria-expanded", "true");
+    const popover = screen.getByRole("dialog", {
+      name: "All showtimes for Anora",
+    });
+    expect(popover).toHaveClass("border", "border-border", "shadow-sm");
+    expect(container).not.toContainElement(popover);
+    expect(
+      screen.getByRole("button", { name: "Close all showtimes for Anora" }),
+    ).toHaveClass("bg-card");
 
-    fireEvent.click(caret);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Close all showtimes for Anora" }),
+    );
 
     expect(screen.queryByText("Cinéma Moderne")).not.toBeInTheDocument();
   });
@@ -664,7 +682,9 @@ describe("MovieCard", () => {
       />,
     );
 
-    fireEvent.pointerEnter(screen.getByRole("link", { name: "Anora" }));
+    fireEvent.pointerEnter(
+      screen.getByRole("link", { name: "Poster for Anora" }),
+    );
 
     expect(await screen.findByText("Cinéma Moderne")).toBeInTheDocument();
   });
@@ -696,7 +716,7 @@ describe("MovieCard", () => {
     expect(await screen.findByText("Cinéma Moderne")).toBeInTheDocument();
   });
 
-  it("suppresses the hover popover while the inline widget is open", async () => {
+  it("suppresses the hover popover while the expanded popover is open", async () => {
     render(
       <MovieCard
         movie={{ title: "Anora" }}
