@@ -1,5 +1,7 @@
 /** Flat, denormalised movie data — safe to pass straight from an API response. */
 export interface MovieCardData {
+  /** The movie's API id; set when the movie is known to the data source. */
+  id?: string;
   title: string;
   posterUrl?: string | null;
   releaseYear?: number | null;

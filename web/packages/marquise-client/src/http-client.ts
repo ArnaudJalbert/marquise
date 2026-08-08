@@ -1,5 +1,6 @@
 import type { CinemaShowtime } from "./cinema";
 import type { MovieCardGridItem, MovieGridClient } from "./movie-grid-client";
+import { addDays, montrealDayRange, toMontrealIsoDate } from "./montreal-date";
 
 import type { CinemaApi, MovieApi, Page, ScreeningApi } from "./api-types";
 
@@ -42,8 +43,12 @@ const MOVIE_BULK_LIMIT = 100;
 /**
  * A {@link MovieGridClient} backed by the Marquise read-only REST API.
  *
- * Dates are expressed in UTC, which matches the API's own date filtering —
- * `GET /v1/screenings?from=&to=` resolves dates to midnight UTC.
+ * Dates represent calendar days in Montréal. `GET /v1/screenings?from=&to=`
+ * receives inclusive UTC instants covering the selected Montréal day.
+ *
+ * `listDates()` is a pure date generator (no network): it returns every
+ * consecutive day from today up to `horizonDays` ahead, in Montréal. Screenings
+ * are only ever fetched for the one date being displayed.
  */
 export class HttpMovieGridClient implements MovieGridClient {
   private readonly baseUrl: string;
@@ -63,16 +68,10 @@ export class HttpMovieGridClient implements MovieGridClient {
   }
 
   async listDates(): Promise<readonly string[]> {
-    const today = toUtcDateString(this.now());
+    const today = toMontrealIsoDate(this.now());
     const dates: string[] = [];
     for (let day = 0; day < this.horizonDays; day++) {
-      const date = addUtcDays(today, day);
-      const page = await this.fetchJson<Page<ScreeningApi>>(
-        `/v1/screenings?from=${date}&to=${date}&size=1`,
-      );
-      if (page.total > 0) {
-        dates.push(date);
-      }
+      dates.push(addDays(today, day));
     }
     return dates;
   }
@@ -100,8 +99,9 @@ export class HttpMovieGridClient implements MovieGridClient {
     const items: ScreeningApi[] = [];
     let page = 1;
     for (;;) {
+      const { from, to } = montrealDayRange(date);
       const result = await this.fetchJson<Page<ScreeningApi>>(
-        `/v1/screenings?from=${date}&to=${date}&page=${page}&size=${SCREENING_PAGE_SIZE}`,
+        `/v1/screenings?from=${from}&to=${to}&page=${page}&size=${SCREENING_PAGE_SIZE}`,
       );
       items.push(...result.items);
       if (
@@ -160,6 +160,7 @@ export class HttpMovieGridClient implements MovieGridClient {
     return {
       key: movie?.id,
       movie: {
+        id: movie?.id,
         title: movie?.title ?? screenings[0]?.movie_title ?? "Unknown title",
         posterUrl: movie?.poster_url ?? null,
         releaseYear: movie?.release_year ?? null,
@@ -197,16 +198,4 @@ export class HttpMovieGridClient implements MovieGridClient {
     }
     return (await response.json()) as T;
   }
-}
-
-function toUtcDateString(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-function addUtcDays(date: string, days: number): string {
-  const parts = date.split("-").map(Number);
-  const value = new Date(
-    Date.UTC(parts[0] ?? 0, (parts[1] ?? 1) - 1, (parts[2] ?? 1) + days),
-  );
-  return value.toISOString().slice(0, 10);
 }

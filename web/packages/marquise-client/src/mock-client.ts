@@ -1,4 +1,9 @@
 import type { Cinema, CinemaShowtime } from "./cinema";
+import type { MovieCardData } from "./movie";
+import {
+  MovieNotFoundError,
+  type MovieDetailClient,
+} from "./movie-detail-client";
 import type { MovieCardGridItem, MovieGridClient } from "./movie-grid-client";
 
 export interface MockMovieGridClientOptions {
@@ -184,48 +189,109 @@ export class MockMovieGridClient implements MovieGridClient {
     const rand = mulberry32(hashString(date));
     const movieCount = 8 + Math.floor(rand() * Math.min(5, CATALOGUE.length));
     const movies = pickDistinct(rand, CATALOGUE, movieCount);
-    return movies.map((movie) => {
-      const showtimeCount = 1 + Math.floor(rand() * 3);
-      const cinemas = pickDistinct(rand, CINEMAS, showtimeCount);
-      const times = pickDistinct(rand, TIMES, showtimeCount);
-      return {
-        key: movie.key,
-        movie: {
-          title: movie.title,
-          posterUrl: movie.posterUrl,
-          releaseYear: movie.releaseYear,
-          durationMinutes: movie.durationMinutes,
-          directors: movie.directors,
-          genres: movie.genres,
-        },
-        showtimesUrl: `https://example.com/movies/${movie.key}`,
-        showtimes: times.map((time, index) =>
-          this.toCinemaShowtime(
-            date,
-            movie.key,
-            time,
-            cinemas[index] ?? CINEMA_MODERNE,
-            LANGUAGES[Math.floor(rand() * LANGUAGES.length)] ?? DEFAULT_LANGUAGE,
-          ),
-        ),
-      };
-    });
+    return movies.map((movie) => ({
+      key: movie.key,
+      movie: {
+        id: movie.key,
+        title: movie.title,
+        posterUrl: movie.posterUrl,
+        releaseYear: movie.releaseYear,
+        durationMinutes: movie.durationMinutes,
+        directors: movie.directors,
+        genres: movie.genres,
+      },
+      showtimesUrl: `https://example.com/movies/${movie.key}`,
+      showtimes: showtimesFor(date, movie.key, rand, this.offsetSuffix),
+    }));
+  }
+}
+
+/**
+ * A {@link MovieDetailClient} that replays {@link MockMovieGridClient}'s
+ * date-seeded algorithm, so the detail page shows exactly the showtimes the
+ * grid would have shown for the same movie and date — including days on which
+ * the movie does not screen at all.
+ */
+export class MockMovieDetailClient implements MovieDetailClient {
+  private readonly dates: readonly string[];
+  private readonly offsetSuffix: string;
+
+  constructor(options: MockMovieGridClientOptions = {}) {
+    const startDate = options.startDate ?? toLocalDateString(new Date());
+    this.dates = Array.from({ length: options.days ?? 7 }, (_, index) =>
+      addLocalDays(startDate, index),
+    );
+    this.offsetSuffix = localOffsetSuffix(new Date());
   }
 
-  private toCinemaShowtime(
-    date: string,
-    movieKey: string,
-    time: string,
-    cinema: Cinema,
-    language: string,
-  ): CinemaShowtime {
+  async fetchMovie(movieId: string): Promise<MovieCardData> {
+    const movie = CATALOGUE.find((candidate) => candidate.key === movieId);
+    if (movie === undefined) {
+      throw new MovieNotFoundError(movieId);
+    }
     return {
-      startsAt: `${date}T${time}:00${this.offsetSuffix}`,
-      ticketUrl: `https://example.com/tickets/${movieKey}-${date}-${time}`,
-      language,
-      cinema,
+      id: movie.key,
+      title: movie.title,
+      posterUrl: movie.posterUrl,
+      releaseYear: movie.releaseYear,
+      durationMinutes: movie.durationMinutes,
+      directors: movie.directors,
+      genres: movie.genres,
     };
   }
+
+  async listDates(movie: MovieCardData): Promise<readonly string[]> {
+    return this.dates.filter((date) =>
+      this.screensOn(date, movie.id),
+    );
+  }
+
+  async fetchShowtimes(
+    movie: MovieCardData,
+    date: string,
+  ): Promise<readonly CinemaShowtime[]> {
+    if (!this.dates.includes(date) || !this.screensOn(date, movie.id)) {
+      return [];
+    }
+    const rand = mulberry32(hashString(date));
+    const movieCount = 8 + Math.floor(rand() * Math.min(5, CATALOGUE.length));
+    const movies = pickDistinct(rand, CATALOGUE, movieCount);
+    const found = movies.find((candidate) => candidate.key === movie.id);
+    return found === undefined
+      ? []
+      : showtimesFor(date, found.key, rand, this.offsetSuffix);
+  }
+
+  /** Whether the movie screens on the date, per the grid's seeded selection. */
+  private screensOn(date: string, movieId: string | undefined): boolean {
+    if (movieId === undefined) {
+      return false;
+    }
+    const rand = mulberry32(hashString(date));
+    const movieCount = 8 + Math.floor(rand() * Math.min(5, CATALOGUE.length));
+    return pickDistinct(rand, CATALOGUE, movieCount).some(
+      (movie) => movie.key === movieId,
+    );
+  }
+}
+
+/** Generate a movie's showtimes for a date, consuming the seeded RNG stream. */
+function showtimesFor(
+  date: string,
+  movieKey: string,
+  rand: () => number,
+  offsetSuffix: string,
+): CinemaShowtime[] {
+  const showtimeCount = 1 + Math.floor(rand() * 3);
+  const cinemas = pickDistinct(rand, CINEMAS, showtimeCount);
+  const times = pickDistinct(rand, TIMES, showtimeCount);
+  return times.map((time, index) => ({
+    startsAt: `${date}T${time}:00${offsetSuffix}`,
+    ticketUrl: `https://example.com/tickets/${movieKey}-${date}-${time}`,
+    language:
+      LANGUAGES[Math.floor(rand() * LANGUAGES.length)] ?? DEFAULT_LANGUAGE,
+    cinema: cinemas[index] ?? CINEMA_MODERNE,
+  }));
 }
 
 /** Pick `count` distinct items from `items`, in seeded random order. */
