@@ -95,7 +95,12 @@ const FIXED_NOW = () => new Date("2026-08-05T12:00:00Z");
 
 describe("HttpMovieGridClient", () => {
   it("targets relative paths when the base URL is empty (same-origin)", async () => {
-    const mock = stubFetch(() => pageOf([] as ScreeningApi[], 0));
+    const mock = stubFetch((url) => {
+      if (url.pathname === "/v1/screenings") {
+        return pageOf([makeScreening()]);
+      }
+      return pageOf([] as CinemaApi[]);
+    });
     const client = new HttpMovieGridClient({
       baseUrl: "",
       fetch: mock,
@@ -103,21 +108,16 @@ describe("HttpMovieGridClient", () => {
       horizonDays: 1,
     });
 
-    await client.listDates();
+    await client.fetchForDate("2026-08-05");
 
-    expect(String(mock.mock.calls[0]?.[0])).toBe("/v1/screenings?from=2026-08-05&to=2026-08-05&size=1");
+    expect(String(mock.mock.calls[0]?.[0])).toBe(
+      "/v1/screenings?from=2026-08-05T04:00:00.000Z&to=2026-08-06T03:59:59.999Z&page=1&size=100",
+    );
   });
 
-  it("lists only the upcoming dates that have screenings, in UTC days", async () => {
-    const mock = stubFetch((url) => {
-      const from = url.searchParams.get("from");
-      if (from === "2026-08-05") {
-        return pageOf([makeScreening()]);
-      }
-      if (from === "2026-08-07") {
-        return pageOf([makeScreening()]);
-      }
-      return pageOf([] as ScreeningApi[], 0);
+  it("lists consecutive Montréal days from today without querying the API", async () => {
+    const mock = stubFetch(() => {
+      throw new Error("listDates must not hit the network");
     });
     const client = new HttpMovieGridClient({
       baseUrl: "https://api.example.com",
@@ -128,24 +128,38 @@ describe("HttpMovieGridClient", () => {
 
     await expect(client.listDates()).resolves.toEqual([
       "2026-08-05",
+      "2026-08-06",
       "2026-08-07",
     ]);
-    expect(mock.mock.calls).toHaveLength(3);
-    expect(String(mock.mock.calls[0]?.[0])).toContain(
-      "/v1/screenings?from=2026-08-05&to=2026-08-05&size=1",
-    );
+    expect(mock).not.toHaveBeenCalled();
   });
 
-  it("returns an empty date list when nothing screens", async () => {
-    const mock = stubFetch(() => pageOf([] as ScreeningApi[], 0));
+  it("uses Montréal's current day when UTC is already on the next date", async () => {
+    const client = new HttpMovieGridClient({
+      baseUrl: "https://api.example.com",
+      now: () => new Date("2026-08-05T01:00:00Z"),
+      horizonDays: 2,
+    });
+
+    await expect(client.listDates()).resolves.toEqual([
+      "2026-08-04",
+      "2026-08-05",
+    ]);
+  });
+
+  it("returns an empty date list when the horizon is zero", async () => {
+    const mock = stubFetch(() => {
+      throw new Error("listDates must not hit the network");
+    });
     const client = new HttpMovieGridClient({
       baseUrl: "https://api.example.com",
       fetch: mock,
       now: FIXED_NOW,
-      horizonDays: 2,
+      horizonDays: 0,
     });
 
     await expect(client.listDates()).resolves.toEqual([]);
+    expect(mock).not.toHaveBeenCalled();
   });
 
   it("maps screenings and movies into grid items with cinema links", async () => {
@@ -216,6 +230,7 @@ describe("HttpMovieGridClient", () => {
     expect(items[0]).toEqual({
       key: "movie-a",
       movie: {
+        id: "movie-a",
         title: "Movie A",
         posterUrl: "https://posters.example.com/a.jpg",
         releaseYear: 2024,
@@ -396,7 +411,9 @@ describe("HttpMovieGridClient", () => {
       now: FIXED_NOW,
     });
 
-    const caught = await client.listDates().catch((error: unknown) => error);
+    const caught = await client
+      .fetchForDate("2026-08-05")
+      .catch((error: unknown) => error);
 
     expect(caught).toBeInstanceOf(HttpMovieGridClientError);
     if (caught instanceof HttpMovieGridClientError) {
