@@ -8,6 +8,16 @@ Before 2026-07-15 the entire codebase shipped as a single package (`marquise`, n
 `marquise-core`). Starting 2026-07-15, the FastAPI application lives in `marquise-api` and the
 Typer CLI lives in `marquise-cli`, each with independent versions.
 
+## 2026-08-08
+
+### marquise-interface + marquise-components + marquise-client
+
+- **Restorable screenings URLs**: listing filters, selected date, pagination, card size, detail visibility, and filter-panel state are serialized in the URL. Movies now open on dedicated `/movies/<id>` routes, and browser Back restores the exact listings view.
+- **Screenings grid controls and cards**: display controls moved below the grid with details on the left, pagination centered, and card size on the right. Cards retain centered titles when details are hidden, use consistent row sizing, and show an accessible bordered showtimes expansion with a close button.
+- **Montréal-aware filtering**: today's time range starts at the current hour, future dates reset to all day, and returning to today reapplies the current-hour filter. API date ranges now cover Montréal calendar days correctly across UTC and daylight-saving boundaries.
+- **Movie detail data clients**: added HTTP and deterministic mock detail clients, movie IDs throughout the grid model, detail-route loading and error handling, and shared date/showtime behavior between grid and detail views.
+- **Interface and deployment cleanup**: navigation now contains only `Screenings`; Fly.io deployment builds the pnpm workspace into an nginx static image with SPA route fallback, a health check, and one warm interface/API machine.
+
 ## 2026-08-05
 
 ### marquise-interface (new)
