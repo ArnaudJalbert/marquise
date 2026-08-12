@@ -1,0 +1,95 @@
+/*
+ * Page-level layout for the Marquise interface. The design tokens
+ * (--background, --foreground, --border, …) come from marquise-components'
+ * stylesheet, imported by the package's entry point.
+ */
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+.page-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.site-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  height: 4rem;
+  padding: 0 2rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--background);
+}
+
+.site-logo {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  color: var(--foreground);
+}
+
+.site-logo-text {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+}
+
+.site-nav {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.site-nav a {
+  color: var(--muted-foreground);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.site-nav a:hover,
+.site-nav a[aria-current="page"] {
+  color: var(--foreground);
+}
+
+.site-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.site-main {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  padding: 1rem 1.5rem;
+}
+
+/* Toggled by the header Filters button to hide the filter panel. */
+.is-hidden {
+  display: none;
+}
+
+.site-footer {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 2rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+
+.site-footer p {
+  margin: 0;
+}

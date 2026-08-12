@@ -12,6 +12,64 @@ importers:
         specifier: ^2.5.8
         version: 2.10.8
 
+  apps/marquise-interface:
+    dependencies:
+      lucide-react:
+        specifier: ^0.469.0
+        version: 0.469.0(react@19.2.8)
+      marquise-client:
+        specifier: workspace:*
+        version: link:../../packages/marquise-client
+      marquise-components:
+        specifier: workspace:*
+        version: link:../../packages/components
+      react:
+        specifier: ^19.0.0
+        version: 19.2.8
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.8(react@19.2.8)
+    devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.0
+        version: 4.3.3(vite@8.2.0(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0))
+      '@testing-library/react':
+        specifier: ^16.3.2
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@types/node':
+        specifier: ^24.13.2
+        version: 24.13.3
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.18
+      '@types/react-dom':
+        specifier: ^19.0.0
+        version: 19.2.4(@types/react@19.2.18)
+      '@vitejs/plugin-react':
+        specifier: ^6.0.3
+        version: 6.0.5(vite@8.2.0(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0))
+      jsdom:
+        specifier: ^29.1.1
+        version: 29.1.1
+      oxlint:
+        specifier: ^1.71.0
+        version: 1.76.0
+      tailwindcss:
+        specifier: ^4.1.0
+        version: 4.3.3
+      tw-animate-css:
+        specifier: ^1.0.0
+        version: 1.4.0
+      typescript:
+        specifier: ~6.0.2
+        version: 6.0.3
+      vite:
+        specifier: ^8.1.1
+        version: 8.2.0(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@24.13.3)(jsdom@29.1.1)(vite@8.2.0(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0))
+
   packages/components:
     dependencies:
       '@radix-ui/react-hover-card':
@@ -35,6 +93,9 @@ importers:
       lucide-react:
         specifier: ^0.469.0
         version: 0.469.0(react@19.2.8)
+      marquise-client:
+        specifier: workspace:*
+        version: link:../marquise-client
       tailwind-merge:
         specifier: ^3.0.0
         version: 3.6.0
@@ -78,6 +139,24 @@ importers:
       tw-animate-css:
         specifier: ^1.0.0
         version: 1.4.0
+      typescript:
+        specifier: ~6.0.2
+        version: 6.0.3
+      vite:
+        specifier: ^8.1.1
+        version: 8.2.0(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@24.13.3)(jsdom@29.1.1)(vite@8.2.0(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0))
+
+  packages/marquise-client:
+    devDependencies:
+      '@types/node':
+        specifier: ^24.13.2
+        version: 24.13.3
+      oxlint:
+        specifier: ^1.71.0
+        version: 1.76.0
       typescript:
         specifier: ~6.0.2
         version: 6.0.3

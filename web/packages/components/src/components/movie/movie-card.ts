@@ -23,7 +23,7 @@ export interface MovieCardProps {
   currentTime?: string;
   /** Background color (any CSS color) that fills the card behind poster and text. */
   backgroundColor?: string;
-  /** When true, renders only the poster (filling the card) and hides title, meta and showtimes. */
+  /** When true, hides metadata and showtimes while retaining the title. */
   hideDetails?: boolean;
   /** Extra classes for the outer card. */
   className?: string;

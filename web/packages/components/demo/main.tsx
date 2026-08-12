@@ -258,6 +258,7 @@ function buildDay(date: string, dayIndex: number): MovieCardGridItem[] {
     return {
       key,
       movie: {
+        id: key,
         title: movie.title,
         releaseYear: movie.releaseYear,
         durationMinutes: movie.durationMinutes,
@@ -288,6 +289,14 @@ const mockClient: MovieGridClient = {
 };
 
 const detailClient: MovieDetailClient = {
+  async fetchMovie(movieId) {
+    await delay(150);
+    const movie = demoMovieByKey[movieId];
+    if (movie === undefined) {
+      throw new Error(`No demo movie for key ${movieId}`);
+    }
+    return { id: movieId, ...movie };
+  },
   async listDates(movie) {
     await delay(150);
     return demoDates.filter((date) => {

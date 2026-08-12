@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
+import { StrictMode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { MovieCardGrid } from "./MovieCardGrid";
@@ -307,6 +308,39 @@ describe("MovieCardGrid", () => {
     expect(screen.getByRole("button", { name: "Next page" })).toBeDisabled();
   });
 
+  it("restores an initial page and reports user navigation", () => {
+    const onPageIndexChange = vi.fn();
+    render(
+      <MovieCardGrid
+        pageSize={4}
+        initialPageIndex={1}
+        onPageIndexChange={onPageIndexChange}
+        items={movieItems(9)}
+      />,
+    );
+
+    expect(screen.getByText("2 / 3")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Movie 5" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+    expect(onPageIndexChange).toHaveBeenCalledWith(2, "user");
+  });
+
+  it("reports normalization when the restored page is unavailable", () => {
+    const onPageIndexChange = vi.fn();
+    render(
+      <MovieCardGrid
+        pageSize={4}
+        initialPageIndex={8}
+        onPageIndexChange={onPageIndexChange}
+        items={movieItems(6)}
+      />,
+    );
+
+    expect(screen.getByText("2 / 2")).toBeInTheDocument();
+    expect(onPageIndexChange).toHaveBeenCalledWith(1, "normalization");
+  });
+
   it("disables the previous control on the first page and navigates back", () => {
     render(<MovieCardGrid pageSize={4} items={movieItems(9)} />);
 
@@ -317,6 +351,27 @@ describe("MovieCardGrid", () => {
 
     expect(screen.getByText("1 / 3")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Movie 1" })).toBeInTheDocument();
+  });
+
+  it("navigates pages containing cards with expandable showtimes", () => {
+    const items = ["Movie 1", "Movie 2"].map((title) => ({
+      movie: { title },
+      showtimesUrl: `https://example.com/movies/${title}`,
+      showtimes: Array.from({ length: 6 }, (_, index) => ({
+        startsAt: `2026-08-03T${String(10 + index).padStart(2, "0")}:00:00-04:00`,
+        ticketUrl: `https://tickets.example.com/${title}/${index}`,
+        cinema,
+      })),
+    }));
+    render(
+      <StrictMode>
+        <MovieCardGrid pageSize={1} items={items} onMovieClick={vi.fn()} />
+      </StrictMode>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+
+    expect(screen.getByRole("heading", { name: "Movie 2" })).toBeInTheDocument();
   });
 
   it("omits the pagination controls when everything fits on one page", () => {
@@ -385,7 +440,74 @@ describe("MovieCardGrid", () => {
     expect(screen.getByText("1 / 2")).toBeInTheDocument();
   });
 
-  it("spreads to more columns on wide containers so several rows fit the height", () => {
+  it("keeps the measured column count for a sparse second page", () => {
+    class AutoResizeObserver implements ResizeObserver {
+      private readonly callback: ResizeObserverCallback;
+
+      constructor(callback: ResizeObserverCallback) {
+        this.callback = callback;
+      }
+
+      observe(_target: Element): void {
+        this.callback(
+          [{ contentRect: { width: 896, height: 600 } } as ResizeObserverEntry],
+          this,
+        );
+      }
+
+      unobserve(): void {}
+      disconnect(): void {}
+    }
+
+    vi.restoreAllMocks();
+    vi.stubGlobal("ResizeObserver", AutoResizeObserver);
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(200);
+
+    const { container } = render(
+      <MovieCardGrid pageSize="auto" items={movieItems(10)} />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+
+    const list = container.querySelector("ul");
+    expect(list?.getAttribute("style")).toContain("repeat(4");
+    expect(screen.getByRole("heading", { name: "Movie 9" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Movie 10" })).toBeInTheDocument();
+  });
+
+  it("does not recalculate page capacity from a shorter last page", () => {
+    class AutoResizeObserver implements ResizeObserver {
+      constructor(private readonly callback: ResizeObserverCallback) {}
+
+      observe(_target: Element): void {
+        this.callback(
+          [{ contentRect: { width: 896, height: 600 } } as ResizeObserverEntry],
+          this,
+        );
+      }
+
+      unobserve(): void {}
+      disconnect(): void {}
+    }
+
+    vi.restoreAllMocks();
+    vi.stubGlobal("ResizeObserver", AutoResizeObserver);
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(
+      function (this: HTMLElement) {
+        return this.textContent?.includes("Movie 5") ? 100 : 300;
+      },
+    );
+
+    render(<MovieCardGrid pageSize="auto" items={movieItems(6)} />);
+
+    expect(screen.getByText("1 / 2")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+
+    expect(screen.getByText("2 / 2")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Movie 5" })).toBeInTheDocument();
+  });
+
+  it("fills each row before starting another one", () => {
     class WideResizeObserver implements ResizeObserver {
       private readonly callback: ResizeObserverCallback;
 
@@ -416,6 +538,76 @@ describe("MovieCardGrid", () => {
     expect(list?.getAttribute("style")).toContain("repeat(6");
     expect(screen.getByRole("heading", { name: "Movie 12" })).toBeInTheDocument();
     expect(screen.queryByText(/^\d+ \/ \d+$/)).not.toBeInTheDocument();
+  });
+
+  it("keeps fixed-width cards in grid-aligned slots on a wide container", () => {
+    class WideResizeObserver implements ResizeObserver {
+      private readonly callback: ResizeObserverCallback;
+
+      constructor(callback: ResizeObserverCallback) {
+        this.callback = callback;
+      }
+
+      observe(_target: Element): void {
+        this.callback(
+          [{ contentRect: { width: 1430, height: 1200 } } as ResizeObserverEntry],
+          this,
+        );
+      }
+
+      unobserve(): void {}
+      disconnect(): void {}
+    }
+
+    vi.restoreAllMocks();
+    vi.stubGlobal("ResizeObserver", WideResizeObserver);
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(200);
+
+    const { container } = render(
+      <MovieCardGrid pageSize="auto" items={movieItems(6)} />,
+    );
+
+    const list = container.querySelector("ul");
+    expect(list).toHaveClass("grid");
+    expect(list?.getAttribute("style")).toContain("repeat(6");
+    const slots = list?.querySelectorAll(":scope > li");
+    expect(slots?.[0]?.firstElementChild).toHaveStyle({ maxWidth: "200px" });
+    expect(slots?.[1]?.firstElementChild).toHaveStyle({ maxWidth: "200px" });
+    expect(screen.getByRole("heading", { name: "Movie 6" })).toBeInTheDocument();
+    expect(screen.queryByText(/^\d+ \/ \d+$/)).not.toBeInTheDocument();
+  });
+
+  it("keeps the partial final row aligned to the auto-fit grid", () => {
+    class WideResizeObserver implements ResizeObserver {
+      private readonly callback: ResizeObserverCallback;
+
+      constructor(callback: ResizeObserverCallback) {
+        this.callback = callback;
+      }
+
+      observe(_target: Element): void {
+        this.callback(
+          [{ contentRect: { width: 1430, height: 1200 } } as ResizeObserverEntry],
+          this,
+        );
+      }
+
+      unobserve(): void {}
+      disconnect(): void {}
+    }
+
+    vi.restoreAllMocks();
+    vi.stubGlobal("ResizeObserver", WideResizeObserver);
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(200);
+
+    const { container } = render(
+      <MovieCardGrid pageSize="auto" items={movieItems(11)} />,
+    );
+
+    const list = container.querySelector("ul");
+    expect(list).toHaveClass("grid");
+    expect(list?.getAttribute("style")).toContain("repeat(6");
+    expect(screen.getByRole("heading", { name: "Movie 11" })).toBeInTheDocument();
   });
 
   it("uses a larger cardSize to shrink the column count", () => {
@@ -493,16 +685,91 @@ describe("MovieCardGrid", () => {
   });
 
   it("hides card details for every card when hideDetails is set", () => {
-    render(<MovieCardGrid pageSize={4} hideDetails items={movieItems(4)} />);
+    const { container } = render(
+      <MovieCardGrid pageSize={4} hideDetails items={movieItems(4)} />,
+    );
 
-    expect(
-      screen.queryByRole("heading", { name: "Movie 1" }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Movie 1" })).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Poster for Movie 1" }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Movie 4" })).toBeInTheDocument();
+    expect(container.querySelectorAll("[data-slot=card]")).toHaveLength(4);
+    for (const card of container.querySelectorAll("[data-slot=card]")) {
+      expect(card).toHaveClass("h-full");
+    }
+  });
+
+  it("renders a controlled card-size slider in auto-fit mode and reports changes", () => {
+    class AutoResizeObserver implements ResizeObserver {
+      constructor(private readonly callback: ResizeObserverCallback) {}
+
+      observe(_target: Element): void {
+        this.callback(
+          [{ contentRect: { width: 896, height: 600 } } as ResizeObserverEntry],
+          this,
+        );
+      }
+
+      unobserve(): void {}
+      disconnect(): void {}
+    }
+
+    vi.restoreAllMocks();
+    vi.stubGlobal("ResizeObserver", AutoResizeObserver);
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(200);
+    const onCardSizeChange = vi.fn();
+
+    render(
+      <MovieCardGrid
+        pageSize="auto"
+        cardSize={200}
+        onCardSizeChange={onCardSizeChange}
+        items={movieItems(12)}
+      />,
+    );
+
+    const slider = screen.getByRole("slider", { name: "Card size" });
+    expect(slider).toHaveValue("200");
+
+    fireEvent.change(slider, { target: { value: "320" } });
+
+    expect(onCardSizeChange).toHaveBeenCalledWith(320);
+  });
+
+  it("renders the controlled details toggle with pagination and reports its inverted value", () => {
+    const onHideDetailsChange = vi.fn();
+    render(
+      <MovieCardGrid
+        pageSize={4}
+        hideDetails={false}
+        onHideDetailsChange={onHideDetailsChange}
+        items={movieItems(9)}
+      />,
+    );
+
+    const toggle = screen.getByRole("checkbox", { name: "Show details" });
+    expect(toggle).toBeChecked();
+    expect(screen.getByText("1 / 3")).toBeInTheDocument();
+
+    fireEvent.click(toggle);
+
+    expect(onHideDetailsChange).toHaveBeenCalledWith(true);
+  });
+
+  it("omits display controls without their corresponding callbacks", () => {
+    render(
+      <MovieCardGrid
+        pageSize={4}
+        cardSize={200}
+        hideDetails={false}
+        items={movieItems(4)}
+      />,
+    );
+
+    expect(screen.queryByRole("slider", { name: "Card size" })).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("heading", { name: "Movie 4" }),
+      screen.queryByRole("checkbox", { name: "Show details" }),
     ).not.toBeInTheDocument();
   });
 

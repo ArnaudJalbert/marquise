@@ -211,59 +211,12 @@ describe("MovieFilterPanel", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows a card-size slider under Languages when cardSize props are given", () => {
-    renderPanel({ cardSize: 200, onCardSizeChange: vi.fn() });
-
-    const section = sectionFor("Card size");
-    expect(within(section).getByRole("slider", { name: "Card size" })).toHaveValue(
-      "200",
-    );
-  });
-
-  it("reports card-size changes through onCardSizeChange", () => {
-    const onCardSizeChange = vi.fn();
-    renderPanel({ cardSize: 200, onCardSizeChange });
-
-    fireEvent.change(screen.getByRole("slider", { name: "Card size" }), {
-      target: { value: "320" },
-    });
-
-    expect(onCardSizeChange).toHaveBeenCalledWith(320);
-  });
-
-  it("omits the card-size slider when cardSize props are absent", () => {
-    renderPanel();
-
-    expect(
-      screen.queryByRole("slider", { name: "Card size" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("shows a details toggle that reports changes through onHideDetailsChange", () => {
-    const onHideDetailsChange = vi.fn();
-    renderPanel({ hideDetails: false, onHideDetailsChange });
-
-    const toggle = screen.getByRole("checkbox", { name: "Show details" });
-    expect(toggle).toBeChecked();
-
-    fireEvent.click(toggle);
-
-    expect(onHideDetailsChange).toHaveBeenCalledWith(true);
-  });
-
-  it("reflects hidden details in the details toggle", () => {
-    renderPanel({ hideDetails: true, onHideDetailsChange: vi.fn() });
-
-    expect(
-      screen.getByRole("checkbox", { name: "Show details" }),
-    ).not.toBeChecked();
-  });
-
-  it("omits the details toggle when its props are absent", () => {
+  it("does not render display controls", () => {
     renderPanel();
 
     expect(
       screen.queryByRole("checkbox", { name: "Show details" }),
     ).not.toBeInTheDocument();
+    expect(screen.queryByRole("slider", { name: "Card size" })).not.toBeInTheDocument();
   });
 });

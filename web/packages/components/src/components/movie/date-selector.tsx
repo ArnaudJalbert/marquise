@@ -3,7 +3,6 @@ import type { KeyboardEvent } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { cn } from "../../lib/utils";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 
 const dateLabelFormatter = new Intl.DateTimeFormat("en-CA", {
   weekday: "short",
@@ -235,6 +234,7 @@ export function DateSelector({
   onDateChange: (date: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const selectorRef = useRef<HTMLDivElement>(null);
   const sortedDates = useMemo(() => [...dates].sort(), [dates]);
   const selectedIndex =
     selectedDate === "" ? -1 : sortedDates.indexOf(selectedDate);
@@ -251,8 +251,33 @@ export function DateSelector({
     }
   };
 
+  useEffect(() => {
+    if (!open) return;
+
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (
+        event.target instanceof Node &&
+        !selectorRef.current?.contains(event.target)
+      ) {
+        setOpen(false);
+      }
+    };
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
   return (
-    <div className="flex items-center gap-1">
+    <div ref={selectorRef} className="relative flex items-center gap-1">
       <button
         type="button"
         aria-label="Previous date"
@@ -262,26 +287,31 @@ export function DateSelector({
       >
         <ChevronLeft aria-hidden className="size-4" />
       </button>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            aria-label={
-              selectedDate === ""
-                ? "Open calendar"
-                : `Open calendar, selected ${formatDateLabel(selectedDate)}`
-            }
-            className="flex flex-1 cursor-pointer items-center justify-between gap-2 rounded-md border px-3 py-2 text-left text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {selectedDate === "" ? (
-              <span className="text-muted-foreground">Select a date</span>
-            ) : (
-              formatDateLabel(selectedDate)
-            )}
-            <CalendarDays aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-72">
+      <button
+        type="button"
+        aria-label={
+          selectedDate === ""
+            ? "Open calendar"
+            : `Open calendar, selected ${formatDateLabel(selectedDate)}`
+        }
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        onClick={() => setOpen((current) => !current)}
+        className="flex flex-1 cursor-pointer items-center justify-between gap-2 rounded-md border px-3 py-2 text-left text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        {selectedDate === "" ? (
+          <span className="text-muted-foreground">Select a date</span>
+        ) : (
+          formatDateLabel(selectedDate)
+        )}
+        <CalendarDays aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+      </button>
+      {open ? (
+        <div
+          role="dialog"
+          aria-label="Choose date"
+          className="absolute top-full left-7 z-50 mt-1 w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none"
+        >
           <Calendar
             dates={sortedDates}
             selectedDate={selectedDate}
@@ -291,8 +321,8 @@ export function DateSelector({
               setOpen(false);
             }}
           />
-        </PopoverContent>
-      </Popover>
+        </div>
+      ) : null}
       <button
         type="button"
         aria-label="Next date"

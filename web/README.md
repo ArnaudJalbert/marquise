@@ -15,8 +15,10 @@ web/
 ├── package.json          # Workspace root (private): Turborepo + shared scripts
 ├── pnpm-workspace.yaml   # Declares the workspaces: apps/* and packages/*
 ├── turbo.json            # Task pipeline (build, dev, lint, typecheck, test)
-├── apps/                 # Runnable applications (empty until one ships)
+├── apps/
+│   └── marquise-interface/  # The Marquise landing page (Vite + React + TS)
 └── packages/
+    ├── marquise-client/  # REST API + mock data clients
     └── components/       # marquise-components — self-contained component library
 ```
 
@@ -51,6 +53,13 @@ pnpm test       # vitest across the workspace
 # The components demo page (dev-only, never deployed):
 pnpm --filter marquise-components dev
 # → http://localhost:5173
+
+# The landing page (mock data by default; requires a built components dist for styles):
+pnpm --filter marquise-interface dev
+# → http://localhost:5173 (the components demo and the app share the port — run one at a time)
+
+# Use live API data (proxies /v1/* to http://localhost:8000 — run `make api`):
+VITE_MARQUISE_DATA_SOURCE=api pnpm --filter marquise-interface dev
 ```
 
 ## Notes
@@ -59,3 +68,6 @@ pnpm --filter marquise-components dev
   not need their own Tailwind install.
 - The `demo/` page inside `packages/components` is excluded from the library build and is
   dev-only — it never lands in `dist/` and must never be deployed.
+- `marquise-interface` uses client-side movie routes such as `/movies/<id>`. Production
+  static hosting must rewrite unknown document requests to `index.html` so direct movie
+  links and refreshes load the Vite app.
