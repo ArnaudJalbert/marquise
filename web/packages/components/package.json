@@ -36,6 +36,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.469.0",
+    "marquise-client": "workspace:*",
     "tailwind-merge": "^3.0.0"
   },
   "devDependencies": {
