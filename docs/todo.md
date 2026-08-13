@@ -1,5 +1,9 @@
 # Technical Debt & TODO
 
+Read before refactoring related areas.
+
+---
+
 ## Domain: Screening Entity References Full Objects
 
 `Screening` currently holds full `Movie` and `Cinema` entity objects (not just their
@@ -55,28 +59,21 @@ Inconsistent. Should standardize to timezone-aware.
 ## Tests: Empty Root `conftest.py`
 
 `tests/conftest.py` contains only a docstring. Should contain shared fixtures
-(e.g., `sample_cinema`, `sample_movie`) per AGENTS.md Section 9.4. Many test
-files currently define their own local fixtures that could be shared.
+(e.g., `sample_cinema`, `sample_movie`). Many test files currently define their
+own local fixtures that could be shared.
 
 ## Cleanup: Stale `__pycache__` Files
 
-Multiple stale `.pyc` files exist for deleted source files:
+Multiple stale `.pyc` files exist for deleted source files. Run:
 
-- `domain/value_objects/__pycache__/parameter_definition.cpython-313.pyc`
-- `domain/value_objects/__pycache__/source_parameters.cpython-313.pyc`
-- `tests/__pycache__/test_showtime_source.cpython-313-pytest-9.0.3.pyc`
-- `tests/__pycache__/test_source_parameters.cpython-313-pytest-9.0.3.pyc`
-- `tests/__pycache__/test_parameter_definition.cpython-313-pytest-9.0.3.pyc`
-
-Run `find . -name '*.pyc' -delete && find . -name '__pycache__' -type d -empty -delete`.
-
----
+```bash
+find . -name '*.pyc' -delete && find . -name '__pycache__' -type d -empty -delete
+```
 
 ## Docstrings: NumPy Style in Gateways
 
 `SupabaseMovieGateway` and `SupabaseScreeningGateway` use NumPy-style
-docstrings (`Parameters` / `Returns` sections) while AGENTS.md mandates
-Google-style (`Args:` / `Returns:`).
+docstrings while [python.md](python.md) mandates Google-style.
 
 ### Files to fix
 
@@ -86,34 +83,15 @@ Google-style (`Args:` / `Returns:`).
 ## Dead Code: `_parse_datetime` `str` Branch Unreachable
 
 `_parse_datetime` in `screening_repository.py:28-42` accepts `datetime | str`
-and has a `str` fallback, but asyncpg always returns `datetime` for TIMESTAMP
-columns. The `str` branch is dead code.
-
-### Desired fix
-
-1. Change the parameter type to `datetime` only.
-2. Remove the `fromisoformat` / `strptime` fallback logic.
-3. Remove the `MovieId` and `Showtime` import if all their callers were removed
-   (check after dead code removal).
+but asyncpg always returns `datetime` for TIMESTAMP columns.
 
 ## Missing Validation: `ShowtimeRow` Has No `__post_init__`
 
-`ShowtimeRow` (in `source_registry_query.py`) has no `__post_init__` validation
-per AGENTS.md Section 4.2 ("Both InputData and OutputData MUST validate data in
-`__post_init__`"). Allows empty strings for `movie_title` and `showtime`.
-
-### Desired fix
-
-Add `__post_init__` that rejects empty `movie_title` and `showtime`.
+`ShowtimeRow` has no validation — allows empty strings for `movie_title` and
+`showtime`.
 
 ## Security: SSL Verification Disabled in Scrapers
 
-Both `cinemapublic/gateways/source.py` and `cinemacinema/gateways/source.py`
-use `ssl._create_unverified_context()` to fetch data. This disables certificate
-verification.
-
-### Desired fix
-
-- Add a config option to enable verification in production.
-- Document why it's disabled (likely self-signed or expired certs on the
-  scraped sites).
+`cinemapublic/gateways/source.py` and `cinemacinema/gateways/source.py` use
+`ssl._create_unverified_context()`. Add a config option for production; document
+why it is disabled.
