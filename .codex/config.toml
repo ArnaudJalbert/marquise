@@ -1,0 +1,4 @@
+# Marquise — Codex project config
+# AGENTS.md at repo root is loaded automatically (primary instructions).
+
+project_doc_max_bytes = 65536

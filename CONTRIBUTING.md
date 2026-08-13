@@ -333,6 +333,19 @@ Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
 
 ## Further reading
 
+### AI coding agents
+
+| Tool | Config | Rules source |
+|------|--------|--------------|
+| Cursor | `.cursor/rules/marquise.mdc` | → [AGENTS.md](AGENTS.md) |
+| Claude Code | `.claude/CLAUDE.md` | `@AGENTS.md` import |
+| OpenCode | `opencode.json` + root AGENTS.md | AGENTS.md + `docs/*.md` via instructions |
+| Codex | `.codex/config.toml` + root AGENTS.md | AGENTS.md (auto) |
+
+Canonical rules: [AGENTS.md](AGENTS.md). Detailed guidelines: `docs/` (linked from AGENTS).
+
+### Documentation
+
 - [docs/architecture.md](docs/architecture.md) — layer diagram, DI, testability boundary
 - [AGENTS.md](AGENTS.md) — enforced rules and agent context
 - [docs/python.md](docs/python.md) — Python entity and use-case conventions
