@@ -6,7 +6,17 @@ orchestrated by [Turborepo](https://turbo.build/repo/docs), living alongside the
 backend in the same repository.
 
 > You do not need Python, `uv`, or a database to work here. This subtree is self-contained —
-> the only prerequisites are Node.js and pnpm.
+> the only prerequisites are Node.js and pnpm. See [AGENTS.md](../AGENTS.md) for enforced
+> rules and [CONTRIBUTING.md](../CONTRIBUTING.md) for paths and commands.
+
+## Design
+
+- **`marquise-components`** is modular and self-contained: presentational UI, pure filter logic, and **client protocol interfaces** (`MovieGridClient`, `MovieDetailClient`) exported from the package
+- **Apps compose** library exports — routes, layout, and real API wiring live in apps, not in the library
+- **Client implementations** are generic interfaces in the package; apps provide concrete fetch logic and pass them via the `client` prop
+- Each package builds, lints, typechecks, and tests on its own (demo uses a mock client; no app required)
+
+Full rules → [docs/architecture.md](../docs/architecture.md) (modular web packages) and [AGENTS.md](../AGENTS.md).
 
 ## Layout
 
