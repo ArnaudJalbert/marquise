@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { MovieGridClient } from "marquise-client";
 
 import { getCurrentMontrealDate } from "./format";
 import type { MovieCardGridItem } from "./movie-card-grid";
-import type { MovieGridClient } from "./movie-grid-client";
 import {
   createDefaultMovieFilters,
   filterMovieGridItems,
@@ -99,14 +99,10 @@ export function useMovieFilters(
     initialFilters?.timeRange !== undefined,
   );
   const clientRef = useRef(client);
-  const datesRef = useRef(dates);
 
   useEffect(() => {
     clientRef.current = client;
   });
-  useEffect(() => {
-    datesRef.current = dates;
-  }, [dates]);
 
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout>;
@@ -232,7 +228,8 @@ export function useMovieFilters(
   }, [selectedDate, fetchRetryNonce]);
 
   const selectDate = useCallback((date: string) => {
-    if (datesRef.current.length > 0 && !datesRef.current.includes(date)) {
+    const parsed = new Date(`${date}T12:00:00Z`);
+    if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) {
       return;
     }
     setSelectedDate(date);

@@ -1,11 +1,16 @@
 import type { CinemaShowtime } from "./cinema";
+import type { MovieCardData } from "./movie";
+import {
+  MovieNotFoundError,
+  type MovieDetailClient,
+} from "./movie-detail-client";
 import type { MovieCardGridItem, MovieGridClient } from "./movie-grid-client";
 import { addDays, montrealDayRange, toMontrealIsoDate } from "./montreal-date";
 
 import type { CinemaApi, MovieApi, Page, ScreeningApi } from "./api-types";
 
 /** Thrown when a request to the REST API fails with a non-2xx status. */
-export class HttpMovieGridClientError extends Error {
+export class HttpMarquiseClientError extends Error {
   /** The HTTP status code returned by the API. */
   readonly status: number;
   /** The request path, e.g. `/v1/screenings?from=2026-08-05`. */
@@ -13,23 +18,20 @@ export class HttpMovieGridClientError extends Error {
 
   constructor(path: string, status: number) {
     super(`Marquise API request failed: GET ${path} returned ${status}`);
-    this.name = "HttpMovieGridClientError";
+    this.name = "HttpMarquiseClientError";
     this.status = status;
     this.path = path;
   }
 }
 
-export interface HttpMovieGridClientOptions {
-  /**
-   * API origin, e.g. "https://marquise-api.fly.dev". May be empty to target a
-   * same-origin API (e.g. behind a dev-server proxy).
-   */
+export interface HttpMarquiseClientOptions {
+  /** API origin. May be empty to target a same-origin API. */
   baseUrl: string;
   /** Number of upcoming days offered as selectable dates; defaults to 7. */
   horizonDays?: number;
-  /** Largest number of screenings fetched for a single date; defaults to 500. */
+  /** Largest number of screenings fetched for a grid date; defaults to 500. */
   maxScreenings?: number;
-  /** Clock used to compute "today"; defaults to `new Date()`. Test seam. */
+  /** Clock used to compute "today"; defaults to `new Date()`. */
   now?: () => Date;
   /** Custom fetch implementation; defaults to the global fetch. */
   fetch?: typeof fetch;
@@ -40,26 +42,16 @@ const DEFAULT_MAX_SCREENINGS = 500;
 const SCREENING_PAGE_SIZE = 100;
 const MOVIE_BULK_LIMIT = 100;
 
-/**
- * A {@link MovieGridClient} backed by the Marquise read-only REST API.
- *
- * Dates represent calendar days in Montréal. `GET /v1/screenings?from=&to=`
- * receives inclusive UTC instants covering the selected Montréal day.
- *
- * `listDates()` is a pure date generator (no network): it returns every
- * consecutive day from today up to `horizonDays` ahead, in Montréal. Screenings
- * are only ever fetched for the one date being displayed.
- */
-export class HttpMovieGridClient implements MovieGridClient {
+/** REST API client shared by movie grids and movie detail pages. */
+export class HttpMarquiseClient implements MovieGridClient, MovieDetailClient {
   private readonly baseUrl: string;
   private readonly horizonDays: number;
   private readonly maxScreenings: number;
   private readonly now: () => Date;
   private readonly fetchImpl: typeof fetch;
-  private readonly cinemaWebsites = new Map<string, string>();
-  private cinemaWebsitesLoaded = false;
+  private cinemaWebsitesPromise: Promise<ReadonlyMap<string, string>> | undefined;
 
-  constructor(options: HttpMovieGridClientOptions) {
+  constructor(options: HttpMarquiseClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
     this.horizonDays = options.horizonDays ?? DEFAULT_HORIZON_DAYS;
     this.maxScreenings = options.maxScreenings ?? DEFAULT_MAX_SCREENINGS;
@@ -67,17 +59,20 @@ export class HttpMovieGridClient implements MovieGridClient {
     this.fetchImpl = (options.fetch ?? globalThis.fetch).bind(globalThis);
   }
 
-  async listDates(): Promise<readonly string[]> {
+  async listDates(): Promise<readonly string[]>;
+  async listDates(movie: MovieCardData): Promise<readonly string[]>;
+  async listDates(_movie?: MovieCardData): Promise<readonly string[]> {
     const today = toMontrealIsoDate(this.now());
-    const dates: string[] = [];
-    for (let day = 0; day < this.horizonDays; day++) {
-      dates.push(addDays(today, day));
-    }
-    return dates;
+    return Array.from({ length: this.horizonDays }, (_, day) =>
+      addDays(today, day),
+    );
   }
 
   async fetchForDate(date: string): Promise<readonly MovieCardGridItem[]> {
     const screenings = await this.fetchScreeningsForDate(date);
+    if (screenings.length === 0) {
+      return [];
+    }
     const screeningsByMovie = new Map<string, ScreeningApi[]>();
     for (const screening of screenings) {
       const list = screeningsByMovie.get(screening.movie_id) ?? [];
@@ -87,33 +82,83 @@ export class HttpMovieGridClient implements MovieGridClient {
     const movieIds = [...screeningsByMovie.keys()];
     const movies = await this.fetchMoviesByIds(movieIds);
     const movieById = new Map(movies.map((movie) => [movie.id, movie]));
-    const cinemaLink = await this.loadCinemaWebsiteLinks();
-    return movieIds.map((movieId) => {
-      const movie = movieById.get(movieId);
-      const movieScreenings = screeningsByMovie.get(movieId) ?? [];
-      return this.toMovieGridItem(movie, movieScreenings, cinemaLink);
-    });
+    const cinemaLinks = await this.loadCinemaWebsiteLinks();
+    return movieIds.map((movieId) =>
+      this.toMovieGridItem(
+        movieById.get(movieId),
+        screeningsByMovie.get(movieId) ?? [],
+        cinemaLinks,
+      ),
+    );
+  }
+
+  async fetchMovie(movieId: string): Promise<MovieCardData> {
+    let movie: MovieApi;
+    try {
+      movie = await this.fetchJson<MovieApi>(
+        `/v1/movies/${encodeURIComponent(movieId)}`,
+      );
+    } catch (error) {
+      if (error instanceof HttpMarquiseClientError && error.status === 404) {
+        throw new MovieNotFoundError(movieId);
+      }
+      throw error;
+    }
+    return this.toMovie(movie);
+  }
+
+  async fetchShowtimes(
+    movie: MovieCardData,
+    date: string,
+  ): Promise<readonly CinemaShowtime[]> {
+    if (movie.id === undefined) {
+      return [];
+    }
+    const screenings = await this.fetchScreeningsForMovieDate(movie.id, date);
+    const cinemaLinks = await this.loadCinemaWebsiteLinks();
+    return screenings.map((screening) =>
+      this.toCinemaShowtime(screening, cinemaLinks),
+    );
   }
 
   private async fetchScreeningsForDate(date: string): Promise<ScreeningApi[]> {
+    const { from, to } = montrealDayRange(date);
+    return this.fetchScreenings(
+      `/v1/screenings?from=${from}&to=${to}`,
+      this.maxScreenings,
+    );
+  }
+
+  private async fetchScreeningsForMovieDate(
+    movieId: string,
+    date: string,
+  ): Promise<ScreeningApi[]> {
+    const { from, to } = montrealDayRange(date);
+    return this.fetchScreenings(
+      `/v1/screenings?movie_id=${encodeURIComponent(movieId)}&from=${from}&to=${to}`,
+    );
+  }
+
+  private async fetchScreenings(
+    query: string,
+    limit = Number.POSITIVE_INFINITY,
+  ): Promise<ScreeningApi[]> {
     const items: ScreeningApi[] = [];
     let page = 1;
     for (;;) {
-      const { from, to } = montrealDayRange(date);
       const result = await this.fetchJson<Page<ScreeningApi>>(
-        `/v1/screenings?from=${from}&to=${to}&page=${page}&size=${SCREENING_PAGE_SIZE}`,
+        `${query}&page=${page}&size=${SCREENING_PAGE_SIZE}`,
       );
       items.push(...result.items);
       if (
         result.items.length === 0 ||
         items.length >= result.total ||
-        items.length >= this.maxScreenings
+        items.length >= limit
       ) {
-        break;
+        return items.slice(0, limit);
       }
       page += 1;
     }
-    return items.slice(0, this.maxScreenings);
   }
 
   private async fetchMoviesByIds(ids: readonly string[]): Promise<MovieApi[]> {
@@ -129,64 +174,81 @@ export class HttpMovieGridClient implements MovieGridClient {
     return movies;
   }
 
-  /**
-   * Resolve cinema ids to their official websites so the cinema name in the
-   * UI links somewhere real. Best-effort: a failing cinemas request never
-   * fails the movie fetch — links fall back to empty.
-   */
   private async loadCinemaWebsiteLinks(): Promise<ReadonlyMap<string, string>> {
-    if (this.cinemaWebsitesLoaded) {
-      return this.cinemaWebsites;
+    if (this.cinemaWebsitesPromise !== undefined) {
+      return this.cinemaWebsitesPromise;
     }
-    this.cinemaWebsitesLoaded = true;
-    try {
-      const result = await this.fetchJson<Page<CinemaApi>>("/v1/cinemas?size=100");
-      for (const cinema of result.items) {
-        if (cinema.website) {
-          this.cinemaWebsites.set(cinema.id, cinema.website);
+    const request = this.fetchJson<Page<CinemaApi>>("/v1/cinemas?size=100")
+      .then(
+        (result) =>
+          new Map(
+            result.items.flatMap((cinema) =>
+              cinema.website === null ? [] : [[cinema.id, cinema.website]],
+            ),
+          ),
+      )
+      .catch(() => {
+        if (this.cinemaWebsitesPromise === request) {
+          this.cinemaWebsitesPromise = undefined;
         }
-      }
-    } catch {
-      // The primary screenings/movies data already loaded; links are optional.
-    }
-    return this.cinemaWebsites;
+        return new Map<string, string>();
+      });
+    this.cinemaWebsitesPromise = request;
+    return request;
   }
 
   private toMovieGridItem(
     movie: MovieApi | undefined,
     screenings: readonly ScreeningApi[],
-    cinemaLink: ReadonlyMap<string, string>,
+    cinemaLinks: ReadonlyMap<string, string>,
   ): MovieCardGridItem {
+    const movieId = movie?.id ?? screenings[0]?.movie_id;
     return {
-      key: movie?.id,
-      movie: {
-        id: movie?.id,
-        title: movie?.title ?? screenings[0]?.movie_title ?? "Unknown title",
-        posterUrl: movie?.poster_url ?? null,
-        releaseYear: movie?.release_year ?? null,
-        durationMinutes: movie?.duration_minutes ?? null,
-        directors: movie?.directors ?? null,
-        genres: movie?.genres ?? null,
-      },
-      showtimesUrl: "#",
+      key: movieId,
+      movie: movie === undefined
+        ? {
+            id: movieId,
+            title: screenings[0]?.movie_title ?? "Unknown title",
+            posterUrl: null,
+            releaseYear: null,
+            durationMinutes: null,
+            directors: null,
+            genres: null,
+          }
+        : this.toMovie(movie),
+      showtimesUrl: movieId === undefined
+        ? ""
+        : `/movies/${encodeURIComponent(movieId)}`,
       showtimes: screenings.map((screening) =>
-        this.toCinemaShowtime(screening, cinemaLink),
+        this.toCinemaShowtime(screening, cinemaLinks),
       ),
+    };
+  }
+
+  private toMovie(movie: MovieApi): MovieCardData {
+    return {
+      id: movie.id,
+      title: movie.title,
+      posterUrl: movie.poster_url,
+      releaseYear: movie.release_year,
+      durationMinutes: movie.duration_minutes,
+      directors: movie.directors,
+      genres: movie.genres,
     };
   }
 
   private toCinemaShowtime(
     screening: ScreeningApi,
-    cinemaLink: ReadonlyMap<string, string>,
+    cinemaLinks: ReadonlyMap<string, string>,
   ): CinemaShowtime {
     return {
       startsAt: screening.showtime,
-      ticketUrl: screening.ticket_url ?? "#",
+      ticketUrl: screening.ticket_url,
       language: screening.language,
       cinema: {
         id: screening.cinema_id,
         name: screening.cinema_name,
-        link: cinemaLink.get(screening.cinema_id) ?? "",
+        link: cinemaLinks.get(screening.cinema_id) ?? null,
       },
     };
   }
@@ -194,7 +256,7 @@ export class HttpMovieGridClient implements MovieGridClient {
   private async fetchJson<T>(path: string): Promise<T> {
     const response = await this.fetchImpl(this.baseUrl + path);
     if (!response.ok) {
-      throw new HttpMovieGridClientError(path, response.status);
+      throw new HttpMarquiseClientError(path, response.status);
     }
     return (await response.json()) as T;
   }

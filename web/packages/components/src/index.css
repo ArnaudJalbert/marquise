@@ -49,6 +49,23 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .animate-loading-bar {
+    width: 100%;
+    animation: none;
+    transform: none;
+  }
+}
+
 :root {
   --radius: 0.625rem;
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,

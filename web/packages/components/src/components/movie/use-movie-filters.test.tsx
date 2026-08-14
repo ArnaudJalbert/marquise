@@ -1,10 +1,8 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import type { Cinema, CinemaShowtime, MovieGridClient } from "marquise-client";
 
-import type { Cinema } from "./cinema";
-import type { CinemaShowtime } from "./cinema";
 import type { MovieCardGridItem } from "./movie-card-grid";
-import type { MovieGridClient } from "./movie-grid-client";
 import { useMovieFilters } from "./use-movie-filters";
 
 const cinemaA: Cinema = {

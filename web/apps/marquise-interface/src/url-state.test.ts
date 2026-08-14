@@ -31,6 +31,16 @@ describe("listings URL state", () => {
     });
   });
 
+  it("hides filters unless URL state explicitly opens them", () => {
+    expect(parseListingsUrl(new URL("https://example.com/")).filtersOpen).toBe(false);
+    expect(
+      parseListingsUrl(new URL("https://example.com/?filters=open")).filtersOpen,
+    ).toBe(true);
+    expect(
+      parseListingsUrl(new URL("https://example.com/?filters=closed")).filtersOpen,
+    ).toBe(false);
+  });
+
   it("ignores malformed values and clamps card size", () => {
     const state = parseListingsUrl(
       new URL("https://example.com/?date=nope&from=23&to=4&card=999&page=0"),
@@ -65,7 +75,20 @@ describe("listings URL state", () => {
     expect(url.searchParams.get("date")).toBe("2026-08-08");
     expect(url.searchParams.getAll("cinema")).toEqual(["Cinéma Moderne"]);
     expect(url.searchParams.has("card")).toBe(false);
+    expect(url.searchParams.get("filters")).toBe("open");
     expect(url.hash).toBe("#section");
+  });
+
+  it("omits closed filter state from URLs", () => {
+    const url = serializeListingsUrl(new URL("https://example.com/"), {
+      filters: {},
+      cardSize: 200,
+      hideDetails: false,
+      filtersOpen: false,
+      pageIndex: 0,
+    });
+
+    expect(url.searchParams.has("filters")).toBe(false);
   });
 });
 

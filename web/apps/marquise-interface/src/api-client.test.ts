@@ -1,55 +1,26 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  HttpMovieDetailClient,
-  HttpMovieGridClient,
-  MockMovieDetailClient,
-  MockMovieGridClient,
-} from "marquise-client";
+import { HttpMarquiseClient, MockMarquiseClient } from "marquise-client";
 
-import { createMovieDetailClient, createMovieGridClient } from "./api-client";
+import { createMarquiseClient } from "./api-client";
 
-describe("createMovieGridClient", () => {
-  it("returns the mock client by default", () => {
-    expect(createMovieGridClient()).toBeInstanceOf(MockMovieGridClient);
+describe("createMarquiseClient", () => {
+  it("returns one mock client for both interfaces by default", () => {
+    const client = createMarquiseClient();
+
+    expect(client).toBeInstanceOf(MockMarquiseClient);
+    expect(client.fetchForDate).toBeTypeOf("function");
+    expect(client.fetchMovie).toBeTypeOf("function");
   });
 
-  it("returns the mock client for the mock data source", () => {
-    expect(createMovieGridClient({ dataSource: "mock" })).toBeInstanceOf(
-      MockMovieGridClient,
-    );
-  });
+  it("returns one HTTP client for both interfaces when configured", () => {
+    const client = createMarquiseClient({
+      dataSource: "api",
+      apiBaseUrl: "https://marquise-api.fly.dev",
+    });
 
-  it("returns the HTTP client for the api data source", () => {
-    expect(
-      createMovieGridClient({
-        dataSource: "api",
-        apiBaseUrl: "https://marquise-api.fly.dev",
-      }),
-    ).toBeInstanceOf(HttpMovieGridClient);
-  });
-
-  it("allows a same-origin (empty) API base URL", () => {
-    expect(createMovieGridClient({ dataSource: "api" })).toBeInstanceOf(
-      HttpMovieGridClient,
-    );
-  });
-});
-
-describe("createMovieDetailClient", () => {
-  it("returns the mock client by default", () => {
-    expect(createMovieDetailClient()).toBeInstanceOf(MockMovieDetailClient);
-  });
-
-  it("returns the mock client for the mock data source", () => {
-    expect(
-      createMovieDetailClient({ dataSource: "mock" }),
-    ).toBeInstanceOf(MockMovieDetailClient);
-  });
-
-  it("returns the HTTP client for the api data source", () => {
-    expect(
-      createMovieDetailClient({ dataSource: "api" }),
-    ).toBeInstanceOf(HttpMovieDetailClient);
+    expect(client).toBeInstanceOf(HttpMarquiseClient);
+    expect(client.fetchForDate).toBeTypeOf("function");
+    expect(client.fetchMovie).toBeTypeOf("function");
   });
 });
