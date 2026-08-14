@@ -174,16 +174,8 @@ export class MockMarquiseClient implements MovieGridClient, MovieDetailClient {
 
   async listDates(): Promise<readonly string[]>;
   async listDates(movie: MovieCardData): Promise<readonly string[]>;
-  async listDates(movie?: MovieCardData): Promise<readonly string[]> {
-    if (movie === undefined) {
-      return this.dates;
-    }
-    if (movie.id === undefined) {
-      return [];
-    }
-    return this.dates.filter((date) =>
-      this.itemsForDate(date).some((item) => item.movie.id === movie.id),
-    );
+  async listDates(_movie?: MovieCardData): Promise<readonly string[]> {
+    return this.dates;
   }
 
   async fetchForDate(date: string): Promise<readonly MovieCardGridItem[]> {

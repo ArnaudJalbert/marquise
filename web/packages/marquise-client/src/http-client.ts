@@ -61,28 +61,11 @@ export class HttpMarquiseClient implements MovieGridClient, MovieDetailClient {
 
   async listDates(): Promise<readonly string[]>;
   async listDates(movie: MovieCardData): Promise<readonly string[]>;
-  async listDates(movie?: MovieCardData): Promise<readonly string[]> {
+  async listDates(_movie?: MovieCardData): Promise<readonly string[]> {
     const today = toMontrealIsoDate(this.now());
-    if (movie === undefined) {
-      return Array.from({ length: this.horizonDays }, (_, day) =>
-        addDays(today, day),
-      );
-    }
-    if (movie.id === undefined || this.horizonDays <= 0) {
-      return [];
-    }
-    const screenings = await this.fetchScreeningsForMovieDate(
-      movie.id,
-      today,
-      addDays(today, this.horizonDays - 1),
+    return Array.from({ length: this.horizonDays }, (_, day) =>
+      addDays(today, day),
     );
-    return [
-      ...new Set(
-        screenings.map((screening) =>
-          toMontrealIsoDate(new Date(screening.showtime)),
-        ),
-      ),
-    ].sort();
   }
 
   async fetchForDate(date: string): Promise<readonly MovieCardGridItem[]> {
@@ -149,10 +132,8 @@ export class HttpMarquiseClient implements MovieGridClient, MovieDetailClient {
   private async fetchScreeningsForMovieDate(
     movieId: string,
     date: string,
-    endDate = date,
   ): Promise<ScreeningApi[]> {
-    const { from } = montrealDayRange(date);
-    const { to } = montrealDayRange(endDate);
+    const { from, to } = montrealDayRange(date);
     return this.fetchScreenings(
       `/v1/screenings?movie_id=${encodeURIComponent(movieId)}&from=${from}&to=${to}`,
     );

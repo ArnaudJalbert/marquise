@@ -85,18 +85,12 @@ describe("MockMarquiseClient detail", () => {
     await expect(detail.fetchMovie("missing")).rejects.toThrow("Movie not found");
   });
 
-  it("lists the dates the movie actually screens on", async () => {
+  it("lists every selectable date for a movie", async () => {
     const client = new MockMarquiseClient({ startDate: "2026-08-05", days: 3 });
+    const dates = await client.listDates();
+    const item = (await client.fetchForDate(dates[0] ?? ""))[0];
 
-    for (const date of await client.listDates()) {
-      const item = (await client.fetchForDate(date))[0];
-      const dates = await client.listDates(item?.movie ?? { title: "?" });
-
-      expect(dates).toContain(date);
-      for (const listed of dates) {
-        expect(await client.fetchShowtimes(item?.movie ?? { title: "?" }, listed)).not.toEqual([]);
-      }
-    }
+    await expect(client.listDates(item?.movie ?? { title: "?" })).resolves.toEqual(dates);
   });
 
   it("returns the same showtimes the grid shows for a movie and date", async () => {
@@ -112,34 +106,29 @@ describe("MockMarquiseClient detail", () => {
     }
   });
 
-  it("returns an empty list for days the movie does not screen", async () => {
+  it("returns empty showtimes for selectable days without a screening", async () => {
     const client = new MockMarquiseClient({ startDate: "2026-08-05", days: 3 });
+    const dates = await client.listDates();
+    let found: { movie: { id?: string; title: string }; date: string } | null = null;
 
-    let found: { movie: { id?: string; title: string }; gap: string } | null =
-      null;
-    for (const date of await client.listDates()) {
+    for (const date of dates) {
       for (const item of await client.fetchForDate(date)) {
-        const dates = await client.listDates(item.movie);
-        const gap = (await client.listDates()).filter(
-          (candidate) => !dates.includes(candidate),
-        )[0];
-        if (item.movie.id !== undefined && gap !== undefined) {
-          found = { movie: item.movie, gap };
-          break;
+        for (const candidate of dates) {
+          if ((await client.fetchShowtimes(item.movie, candidate)).length === 0) {
+            found = { movie: item.movie, date: candidate };
+            break;
+          }
         }
+        if (found !== null) break;
       }
-      if (found !== null) {
-        break;
-      }
+      if (found !== null) break;
     }
     if (found === null) {
       throw new Error("expected some movie to miss a day in the mock data");
     }
 
-    await expect(client.fetchShowtimes(found.movie, found.gap)).resolves.toEqual(
-      [],
-    );
-    await expect(client.listDates(found.movie)).resolves.not.toContain(found.gap);
+    await expect(client.fetchShowtimes(found.movie, found.date)).resolves.toEqual([]);
+    await expect(client.listDates(found.movie)).resolves.toEqual(dates);
   });
 
   it("is deterministic across instances", async () => {
@@ -165,6 +154,9 @@ describe("MockMarquiseClient detail", () => {
     await expect(
       detail.fetchShowtimes({ id: "dune", title: "Dune" }, "2026-08-12"),
     ).resolves.toEqual([]);
-    await expect(detail.listDates({ title: "No id" })).resolves.toEqual([]);
+    await expect(detail.listDates({ title: "No id" })).resolves.toEqual([
+      "2026-08-05",
+      "2026-08-06",
+    ]);
   });
 });

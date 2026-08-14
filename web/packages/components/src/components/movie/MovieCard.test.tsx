@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { CinemaShowtimeGroups, groupByCinema } from "./CinemaShowtimes";
@@ -37,6 +37,21 @@ describe("MovieCard", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("18:30")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Anora" })).toHaveClass("text-center");
+  });
+
+  it("shrinks and truncates long titles to one line", () => {
+    const title = "The Incredibly Long Movie Title That Must Stay Readable";
+    render(
+      <MovieCard
+        movie={{ title }}
+        showtimesUrl="https://example.com/movies/long-title"
+      />,
+    );
+
+    const heading = screen.getByRole("heading", { name: title });
+    expect(heading).toHaveClass("text-sm");
+    expect(heading).not.toHaveClass("line-clamp-2");
+    expect(screen.getByRole("link", { name: title })).toHaveClass("truncate");
   });
 
   it("retains the title but hides details when hideDetails is true", () => {
@@ -124,7 +139,7 @@ describe("MovieCard", () => {
     expect(times).toEqual(["16:15", "18:30", "21:00"]);
   });
 
-  it("shows all showtimes by default", () => {
+  it("shows a compact, wrapping subset and expands to every showtime", () => {
     const showtimes = Array.from({ length: 8 }, (_, index) => {
       const hour = String(10 + index).padStart(2, "0");
       return {
@@ -153,16 +168,19 @@ describe("MovieCard", () => {
           text !== null && /^\d{2}:\d{2}$/.test(text),
       );
 
-    expect(chips).toEqual([
-      "10:00",
-      "11:00",
-      "12:00",
-      "13:00",
-      "14:00",
-      "15:00",
-      "16:00",
-      "17:00",
-    ]);
+    expect(chips).toEqual(["10:00", "11:00", "12:00"]);
+    const compactShowtimes = screen.getByText("10:00").parentElement;
+    expect(compactShowtimes).toHaveClass("flex-wrap");
+    expect(compactShowtimes).not.toHaveClass("overflow-hidden");
+
+    fireEvent.click(screen.getByRole("button", { name: "All showtimes for Anora" }));
+
+    expect(
+      within(screen.getByRole("dialog", { name: "All showtimes for Anora" }))
+        .getAllByRole("link")
+        .map((link) => link.textContent)
+        .filter((text): text is string => text !== null && /^\d{2}:\d{2}$/.test(text)),
+    ).toEqual(["10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"]);
   });
 
   it("shows showtimes and marks started ones as crossed out", () => {
@@ -195,7 +213,7 @@ describe("MovieCard", () => {
           text !== null && /^\d{2}:\d{2}$/.test(text),
       );
 
-    expect(chips).toEqual(["12:00", "13:00", "14:00", "15:00", "16:00", "17:00"]);
+    expect(chips).toEqual(["12:00", "13:00", "14:00"]);
     expect(screen.getByText("12:00")).toHaveClass("line-through");
     expect(screen.getByText("14:00")).toHaveClass("line-through");
   });
@@ -270,7 +288,7 @@ describe("MovieCard", () => {
       />,
     );
 
-    expect(screen.getByText("15:00")).toBeInTheDocument();
+    expect(screen.getByText("12:00")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "All showtimes for Anora" }),
     ).toHaveAttribute("aria-expanded", "false");

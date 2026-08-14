@@ -79,7 +79,7 @@ export function parseListingsUrl(url: URL): ListingsUrlState {
     filters,
     cardSize,
     hideDetails: url.searchParams.get("details") === "hidden",
-    filtersOpen: url.searchParams.get("filters") !== "closed",
+    filtersOpen: url.searchParams.get("filters") === "open",
     pageIndex: (page ?? 1) - 1,
   };
 }
@@ -113,7 +113,7 @@ export function serializeListingsUrl(
     url.searchParams.set("card", String(state.cardSize));
   }
   if (state.hideDetails) url.searchParams.set("details", "hidden");
-  if (!state.filtersOpen) url.searchParams.set("filters", "closed");
+  if (state.filtersOpen) url.searchParams.set("filters", "open");
   if (state.pageIndex > 0) {
     url.searchParams.set("page", String(state.pageIndex + 1));
   }

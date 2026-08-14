@@ -166,6 +166,35 @@ describe("MovieDetailPage", () => {
     ).toBeDisabled();
   });
 
+  it("selects any future calendar date and shows an empty result", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-01T12:00:00Z"));
+    try {
+      const client = createClient();
+      render(<MovieDetailPage movie={movie} client={client} />);
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: `Open calendar, selected ${formatDateLabel("2026-08-03")}`,
+        }),
+      );
+      fireEvent.click(screen.getByRole("button", { name: formatDateLabel("2026-08-10") }));
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(client.fetchShowtimes).toHaveBeenCalledWith(movie, "2026-08-10");
+      expect(screen.getAllByText("No screenings.")).not.toHaveLength(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("restores and reports the selected showtimes date", async () => {
     const client = createClient();
     const onDateChange = vi.fn();
@@ -259,6 +288,61 @@ describe("MovieDetailPage", () => {
     globalThis.ResizeObserver = defaultResizeObserver;
   });
 
+  it("keeps offscreen date columns out of the accessibility tree", async () => {
+    const client = createClient();
+    render(<MovieDetailPage movie={movie} client={client} />);
+
+    await screen.findByText("Cinéma Moderne");
+
+    const firstColumn = screen
+      .getByRole("heading", { name: formatDateLabel("2026-08-03"), hidden: true })
+      .closest("[aria-hidden]");
+    const secondColumn = screen
+      .getByRole("heading", { name: formatDateLabel("2026-08-04"), hidden: true })
+      .closest("[aria-hidden]");
+    expect(firstColumn).toHaveAttribute("aria-hidden", "false");
+    expect(firstColumn).not.toHaveAttribute("inert");
+    expect(secondColumn).toHaveAttribute("aria-hidden", "true");
+    expect(secondColumn).toHaveAttribute("inert");
+    expect(
+      screen.queryByRole("heading", { name: formatDateLabel("2026-08-04") }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Later dates" }));
+
+    expect(firstColumn).toHaveAttribute("aria-hidden", "true");
+    expect(secondColumn).toHaveAttribute("aria-hidden", "false");
+  });
+
+  it("makes a selected date accessible and hides newly offscreen columns on resize", async () => {
+    vi.stubGlobal("ResizeObserver", ControllableResizeObserver);
+    ControllableResizeObserver.instances = [];
+    const client = createClient();
+    render(<MovieDetailPage movie={movie} client={client} />);
+
+    await screen.findByText("Cinéma Moderne");
+    act(() => lastResizeObserver().emit(900));
+    const secondColumn = screen
+      .getByRole("heading", { name: formatDateLabel("2026-08-04"), hidden: true })
+      .closest("[aria-hidden]");
+    expect(secondColumn).toHaveAttribute("aria-hidden", "false");
+
+    fireEvent.click(screen.getByRole("button", { name: "Next date" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next date" }));
+    const thirdColumn = screen
+      .getByRole("heading", { name: formatDateLabel("2026-08-05"), hidden: true })
+      .closest("[aria-hidden]");
+    expect(thirdColumn).toHaveAttribute("aria-hidden", "false");
+
+    act(() => lastResizeObserver().emit(288));
+
+    await waitFor(() => expect(secondColumn).toHaveAttribute("aria-hidden", "true"));
+    expect(thirdColumn).toHaveAttribute("aria-hidden", "false");
+    expect(secondColumn).toHaveAttribute("inert");
+
+    globalThis.ResizeObserver = defaultResizeObserver;
+  });
+
   it("keeps the chosen date visible when the viewport narrows", async () => {
     vi.stubGlobal("ResizeObserver", ControllableResizeObserver);
     ControllableResizeObserver.instances = [];
@@ -275,10 +359,14 @@ describe("MovieDetailPage", () => {
     await waitFor(() => expect(client.fetchShowtimes).toHaveBeenCalledTimes(2));
     act(() => lastResizeObserver().emit(900));
 
-    const dateSelect = screen.getByRole("combobox", { name: "Jump to a date" });
-    fireEvent.change(dateSelect, { target: { value: "2026-08-05" } });
+    fireEvent.click(screen.getByRole("button", { name: "Next date" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next date" }));
 
-    expect(dateSelect).toHaveValue("2026-08-05");
+    expect(
+      screen.getByRole("button", {
+        name: `Open calendar, selected ${formatDateLabel("2026-08-05")}`,
+      }),
+    ).toBeInTheDocument();
     expect(onDateChange).toHaveBeenCalledWith("2026-08-05", "user");
 
     act(() => lastResizeObserver().emit(288));

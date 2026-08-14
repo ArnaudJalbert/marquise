@@ -83,7 +83,7 @@ describe("MovieGridController", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "anora" })).toBeInTheDocument();
     expect(
-      screen.getByRole("combobox", { name: "Screening date" }),
+      screen.getByRole("button", { name: /Open calendar, selected/ }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Cinéma A" })).toBeInTheDocument();
   });
@@ -233,9 +233,7 @@ describe("MovieGridController", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cinéma B" }));
     expect(client.fetchForDate).toHaveBeenCalledTimes(1);
 
-    fireEvent.change(screen.getByRole("combobox", { name: "Screening date" }), {
-      target: { value: "2026-08-04" },
-    });
+    fireEvent.click(screen.getByRole("button", { name: "Next date" }));
 
     await waitFor(() => expect(client.fetchForDate).toHaveBeenCalledTimes(2));
   });

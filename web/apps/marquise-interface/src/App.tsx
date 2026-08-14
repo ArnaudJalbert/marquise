@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { SlidersHorizontal } from "lucide-react";
 import {
   Button,
   MovieDetailPage,
@@ -283,53 +284,64 @@ export function App({
     );
   } else {
     content = (
-      <MovieGridController
-        key={`listings-${locationSnapshot.restoreKey}`}
-        className="w-full md:h-full"
-        client={movieGridClient}
-        side="right"
-        pageSize="auto"
-        currentTime={currentTime}
-        initialDate={listingsState.date}
-        initialFilters={listingsState.filters}
-        initialPageIndex={listingsState.pageIndex}
-        defaultCardSize={listingsState.cardSize}
-        defaultHideDetails={listingsState.hideDetails}
-        panelClassName={listingsState.filtersOpen ? undefined : "is-hidden"}
-        onSelectedDateChange={(date, reason) =>
-          updateListings(
-            (current) => ({ ...current, date }),
-            reason === "user" ? "push" : "replace",
-          )
-        }
-        onFiltersChange={(filters: MovieFilters) =>
-          updateListings((current) => ({ ...current, filters }), "replace")
-        }
-        onPageIndexChange={(pageIndex, reason) =>
-          updateListings(
-            (current) => ({ ...current, pageIndex }),
-            reason === "user" ? "push" : "replace",
-          )
-        }
-        onCardSizeChange={(cardSize) =>
-          updateListings((current) => ({ ...current, cardSize }), "replace")
-        }
-        onHideDetailsChange={(hideDetails) =>
-          updateListings((current) => ({ ...current, hideDetails }), "replace")
-        }
-        onMovieClick={openMovie}
-      />
+      <section className="flex min-h-0 w-full flex-1 flex-col gap-4" aria-labelledby="screenings-heading">
+        <div className="flex items-center justify-between gap-4 border-b border-border pb-3">
+          <h1 id="screenings-heading" className="font-serif text-2xl font-medium">
+            Screenings
+          </h1>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleFilters}
+            aria-expanded={listingsState.filtersOpen}
+          >
+            <SlidersHorizontal aria-hidden />
+            Filters
+          </Button>
+        </div>
+        <MovieGridController
+          key={`listings-${locationSnapshot.restoreKey}`}
+          className="w-full min-h-0 flex-1"
+          client={movieGridClient}
+          side="right"
+          pageSize="auto"
+          currentTime={currentTime}
+          initialDate={listingsState.date}
+          initialFilters={listingsState.filters}
+          initialPageIndex={listingsState.pageIndex}
+          defaultCardSize={listingsState.cardSize}
+          defaultHideDetails={listingsState.hideDetails}
+          panelClassName={listingsState.filtersOpen ? undefined : "is-hidden"}
+          onSelectedDateChange={(date, reason) =>
+            updateListings(
+              (current) => ({ ...current, date }),
+              reason === "user" ? "push" : "replace",
+            )
+          }
+          onFiltersChange={(filters: MovieFilters) =>
+            updateListings((current) => ({ ...current, filters }), "replace")
+          }
+          onPageIndexChange={(pageIndex, reason) =>
+            updateListings(
+              (current) => ({ ...current, pageIndex }),
+              reason === "user" ? "push" : "replace",
+            )
+          }
+          onCardSizeChange={(cardSize) =>
+            updateListings((current) => ({ ...current, cardSize }), "replace")
+          }
+          onHideDetailsChange={(hideDetails) =>
+            updateListings((current) => ({ ...current, hideDetails }), "replace")
+          }
+          onMovieClick={openMovie}
+        />
+      </section>
     );
   }
 
   return (
     <div className="page-shell">
-      <Header
-        filtersOpen={listingsState.filtersOpen}
-        showFilters={route.kind === "listings"}
-        listingsActive={route.kind === "listings"}
-        onToggleFilters={toggleFilters}
-      />
+      <Header />
       <main className="site-main">{content}</main>
       <Footer />
     </div>
