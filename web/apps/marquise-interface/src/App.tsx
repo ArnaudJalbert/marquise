@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { SlidersHorizontal } from "lucide-react";
 import {
   Button,
   MovieDetailPage,
@@ -10,7 +11,7 @@ import {
 } from "marquise-components";
 import { MovieNotFoundError } from "marquise-client";
 
-import { createMovieDetailClient, createMovieGridClient } from "./api-client";
+import { createMarquiseClient } from "./api-client";
 import { Footer } from "./components/Footer";
 import { Header } from "./components/Header";
 import {
@@ -22,8 +23,6 @@ import {
   type ListingsUrlState,
 } from "./url-state";
 
-const defaultMovieGridClient = createMovieGridClient();
-const defaultMovieDetailClient = createMovieDetailClient();
 const LISTINGS_TITLE = "Marquise — Montréal movie showtimes";
 
 type LocationSnapshot = {
@@ -46,6 +45,7 @@ function MovieRoute({
   loadMovie,
   onBack,
   onDateChange,
+  currentTime,
 }: {
   movieId: string;
   initialDate?: string;
@@ -53,6 +53,7 @@ function MovieRoute({
   loadMovie: (movieId: string, refresh?: boolean) => Promise<MovieCardData>;
   onBack: () => void;
   onDateChange: (date: string) => void;
+  currentTime: string;
 }) {
   const [movie, setMovie] = useState<MovieCardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -116,11 +117,11 @@ function MovieRoute({
 
   return (
     <MovieDetailPage
-      className="h-full w-full overflow-y-auto"
+      className="w-full md:h-full md:overflow-y-auto"
       movie={movie}
       client={client}
       initialDate={initialDate}
-      currentTime={new Date().toISOString()}
+      currentTime={currentTime}
       onDateChange={(date) => onDateChange(date)}
       onBack={onBack}
     />
@@ -128,9 +129,13 @@ function MovieRoute({
 }
 
 export function App({
-  movieGridClient = defaultMovieGridClient,
-  movieDetailClient = defaultMovieDetailClient,
+  movieGridClient: movieGridClientOverride,
+  movieDetailClient: movieDetailClientOverride,
 }: AppProps) {
+  const [defaultClient] = useState(() => createMarquiseClient());
+  const movieGridClient = movieGridClientOverride ?? defaultClient;
+  const movieDetailClient = movieDetailClientOverride ?? defaultClient;
+  const [currentTime, setCurrentTime] = useState(() => new Date().toISOString());
   const [locationSnapshot, setLocationSnapshot] = useState<LocationSnapshot>(() => ({
     href: window.location.href,
     restoreKey: 0,
@@ -151,6 +156,14 @@ export function App({
     };
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(
+      () => setCurrentTime(new Date().toISOString()),
+      60_000,
+    );
+    return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -257,6 +270,7 @@ export function App({
         loadMovie={loadMovie}
         onBack={backToListings}
         onDateChange={updateMovieDate}
+        currentTime={currentTime}
       />
     );
   } else if (route.kind === "not-found") {
@@ -270,53 +284,64 @@ export function App({
     );
   } else {
     content = (
-      <MovieGridController
-        key={`listings-${locationSnapshot.restoreKey}`}
-        className="h-full w-full"
-        client={movieGridClient}
-        side="right"
-        pageSize="auto"
-        currentTime={new Date().toISOString()}
-        initialDate={listingsState.date}
-        initialFilters={listingsState.filters}
-        initialPageIndex={listingsState.pageIndex}
-        defaultCardSize={listingsState.cardSize}
-        defaultHideDetails={listingsState.hideDetails}
-        panelClassName={listingsState.filtersOpen ? undefined : "is-hidden"}
-        onSelectedDateChange={(date, reason) =>
-          updateListings(
-            (current) => ({ ...current, date }),
-            reason === "user" ? "push" : "replace",
-          )
-        }
-        onFiltersChange={(filters: MovieFilters) =>
-          updateListings((current) => ({ ...current, filters }), "replace")
-        }
-        onPageIndexChange={(pageIndex, reason) =>
-          updateListings(
-            (current) => ({ ...current, pageIndex }),
-            reason === "user" ? "push" : "replace",
-          )
-        }
-        onCardSizeChange={(cardSize) =>
-          updateListings((current) => ({ ...current, cardSize }), "replace")
-        }
-        onHideDetailsChange={(hideDetails) =>
-          updateListings((current) => ({ ...current, hideDetails }), "replace")
-        }
-        onMovieClick={openMovie}
-      />
+      <section className="flex min-h-0 w-full flex-1 flex-col gap-4" aria-labelledby="screenings-heading">
+        <div className="flex items-center justify-between gap-4 border-b border-border pb-3">
+          <h1 id="screenings-heading" className="font-serif text-2xl font-medium">
+            Screenings
+          </h1>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleFilters}
+            aria-expanded={listingsState.filtersOpen}
+          >
+            <SlidersHorizontal aria-hidden />
+            Filters
+          </Button>
+        </div>
+        <MovieGridController
+          key={`listings-${locationSnapshot.restoreKey}`}
+          className="w-full min-h-0 flex-1"
+          client={movieGridClient}
+          side="right"
+          pageSize="auto"
+          currentTime={currentTime}
+          initialDate={listingsState.date}
+          initialFilters={listingsState.filters}
+          initialPageIndex={listingsState.pageIndex}
+          defaultCardSize={listingsState.cardSize}
+          defaultHideDetails={listingsState.hideDetails}
+          panelClassName={listingsState.filtersOpen ? undefined : "is-hidden"}
+          onSelectedDateChange={(date, reason) =>
+            updateListings(
+              (current) => ({ ...current, date }),
+              reason === "user" ? "push" : "replace",
+            )
+          }
+          onFiltersChange={(filters: MovieFilters) =>
+            updateListings((current) => ({ ...current, filters }), "replace")
+          }
+          onPageIndexChange={(pageIndex, reason) =>
+            updateListings(
+              (current) => ({ ...current, pageIndex }),
+              reason === "user" ? "push" : "replace",
+            )
+          }
+          onCardSizeChange={(cardSize) =>
+            updateListings((current) => ({ ...current, cardSize }), "replace")
+          }
+          onHideDetailsChange={(hideDetails) =>
+            updateListings((current) => ({ ...current, hideDetails }), "replace")
+          }
+          onMovieClick={openMovie}
+        />
+      </section>
     );
   }
 
   return (
     <div className="page-shell">
-      <Header
-        filtersOpen={listingsState.filtersOpen}
-        showFilters={route.kind === "listings"}
-        listingsActive={route.kind === "listings"}
-        onToggleFilters={toggleFilters}
-      />
+      <Header />
       <main className="site-main">{content}</main>
       <Footer />
     </div>

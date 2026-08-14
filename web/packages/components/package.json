@@ -17,7 +17,6 @@
     "dist"
   ],
   "scripts": {
-    "dev": "vite",
     "build": "rm -rf dist && vite build && tsc -p tsconfig.build.json",
     "lint": "oxlint",
     "typecheck": "tsc --noEmit",
@@ -31,7 +30,6 @@
   "dependencies": {
     "@radix-ui/react-hover-card": "^1.1.23",
     "@radix-ui/react-popover": "^1.1.23",
-    "@radix-ui/react-separator": "^1.1.0",
     "@radix-ui/react-slot": "^1.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

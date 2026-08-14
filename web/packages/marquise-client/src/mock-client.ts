@@ -5,9 +5,10 @@ import {
   type MovieDetailClient,
 } from "./movie-detail-client";
 import type { MovieCardGridItem, MovieGridClient } from "./movie-grid-client";
+import { addDays, montrealDateTime, toMontrealIsoDate } from "./montreal-date";
 
-export interface MockMovieGridClientOptions {
-  /** First selectable date as "YYYY-MM-DD"; defaults to today (local time). */
+export interface MockMarquiseClientOptions {
+  /** First selectable date as "YYYY-MM-DD"; defaults to today in Montréal. */
   startDate?: string;
   /** Number of selectable days; defaults to 7. */
   days?: number;
@@ -160,68 +161,25 @@ const TIMES: readonly string[] = [
   "22:00",
 ];
 
-/**
- * A {@link MovieGridClient} that serves deterministic demo data, so the UI is
- * usable with zero backend. The same date always yields the same items —
- * every date is seeded from its "YYYY-MM-DD" string — across calls and
- * client instances.
- */
-export class MockMovieGridClient implements MovieGridClient {
+/** Deterministic demo client shared by movie grids and detail pages. */
+export class MockMarquiseClient implements MovieGridClient, MovieDetailClient {
   private readonly dates: readonly string[];
-  private readonly offsetSuffix: string;
 
-  constructor(options: MockMovieGridClientOptions = {}) {
-    const startDate = options.startDate ?? toLocalDateString(new Date());
+  constructor(options: MockMarquiseClientOptions = {}) {
+    const startDate = options.startDate ?? toMontrealIsoDate(new Date());
     this.dates = Array.from({ length: options.days ?? 7 }, (_, index) =>
-      addLocalDays(startDate, index),
+      addDays(startDate, index),
     );
-    this.offsetSuffix = localOffsetSuffix(new Date());
   }
 
-  async listDates(): Promise<readonly string[]> {
+  async listDates(): Promise<readonly string[]>;
+  async listDates(movie: MovieCardData): Promise<readonly string[]>;
+  async listDates(_movie?: MovieCardData): Promise<readonly string[]> {
     return this.dates;
   }
 
   async fetchForDate(date: string): Promise<readonly MovieCardGridItem[]> {
-    if (!this.dates.includes(date)) {
-      return [];
-    }
-    const rand = mulberry32(hashString(date));
-    const movieCount = 8 + Math.floor(rand() * Math.min(5, CATALOGUE.length));
-    const movies = pickDistinct(rand, CATALOGUE, movieCount);
-    return movies.map((movie) => ({
-      key: movie.key,
-      movie: {
-        id: movie.key,
-        title: movie.title,
-        posterUrl: movie.posterUrl,
-        releaseYear: movie.releaseYear,
-        durationMinutes: movie.durationMinutes,
-        directors: movie.directors,
-        genres: movie.genres,
-      },
-      showtimesUrl: `https://example.com/movies/${movie.key}`,
-      showtimes: showtimesFor(date, movie.key, rand, this.offsetSuffix),
-    }));
-  }
-}
-
-/**
- * A {@link MovieDetailClient} that replays {@link MockMovieGridClient}'s
- * date-seeded algorithm, so the detail page shows exactly the showtimes the
- * grid would have shown for the same movie and date — including days on which
- * the movie does not screen at all.
- */
-export class MockMovieDetailClient implements MovieDetailClient {
-  private readonly dates: readonly string[];
-  private readonly offsetSuffix: string;
-
-  constructor(options: MockMovieGridClientOptions = {}) {
-    const startDate = options.startDate ?? toLocalDateString(new Date());
-    this.dates = Array.from({ length: options.days ?? 7 }, (_, index) =>
-      addLocalDays(startDate, index),
-    );
-    this.offsetSuffix = localOffsetSuffix(new Date());
+    return this.dates.includes(date) ? this.itemsForDate(date) : [];
   }
 
   async fetchMovie(movieId: string): Promise<MovieCardData> {
@@ -240,38 +198,34 @@ export class MockMovieDetailClient implements MovieDetailClient {
     };
   }
 
-  async listDates(movie: MovieCardData): Promise<readonly string[]> {
-    return this.dates.filter((date) =>
-      this.screensOn(date, movie.id),
-    );
-  }
-
   async fetchShowtimes(
     movie: MovieCardData,
     date: string,
   ): Promise<readonly CinemaShowtime[]> {
-    if (!this.dates.includes(date) || !this.screensOn(date, movie.id)) {
+    if (!this.dates.includes(date) || movie.id === undefined) {
       return [];
     }
-    const rand = mulberry32(hashString(date));
-    const movieCount = 8 + Math.floor(rand() * Math.min(5, CATALOGUE.length));
-    const movies = pickDistinct(rand, CATALOGUE, movieCount);
-    const found = movies.find((candidate) => candidate.key === movie.id);
-    return found === undefined
-      ? []
-      : showtimesFor(date, found.key, rand, this.offsetSuffix);
+    return this.itemsForDate(date).find((item) => item.movie.id === movie.id)
+      ?.showtimes ?? [];
   }
 
-  /** Whether the movie screens on the date, per the grid's seeded selection. */
-  private screensOn(date: string, movieId: string | undefined): boolean {
-    if (movieId === undefined) {
-      return false;
-    }
+  private itemsForDate(date: string): readonly MovieCardGridItem[] {
     const rand = mulberry32(hashString(date));
     const movieCount = 8 + Math.floor(rand() * Math.min(5, CATALOGUE.length));
-    return pickDistinct(rand, CATALOGUE, movieCount).some(
-      (movie) => movie.key === movieId,
-    );
+    return pickDistinct(rand, CATALOGUE, movieCount).map((movie) => ({
+      key: movie.key,
+      movie: {
+        id: movie.key,
+        title: movie.title,
+        posterUrl: movie.posterUrl,
+        releaseYear: movie.releaseYear,
+        durationMinutes: movie.durationMinutes,
+        directors: movie.directors,
+        genres: movie.genres,
+      },
+      showtimesUrl: `/movies/${movie.key}`,
+      showtimes: showtimesFor(date, movie.key, rand),
+    }));
   }
 }
 
@@ -280,13 +234,12 @@ function showtimesFor(
   date: string,
   movieKey: string,
   rand: () => number,
-  offsetSuffix: string,
 ): CinemaShowtime[] {
   const showtimeCount = 1 + Math.floor(rand() * 3);
   const cinemas = pickDistinct(rand, CINEMAS, showtimeCount);
   const times = pickDistinct(rand, TIMES, showtimeCount);
   return times.map((time, index) => ({
-    startsAt: `${date}T${time}:00${offsetSuffix}`,
+    startsAt: montrealDateTime(date, time),
     ticketUrl: `https://example.com/tickets/${movieKey}-${date}-${time}`,
     language:
       LANGUAGES[Math.floor(rand() * LANGUAGES.length)] ?? DEFAULT_LANGUAGE,
@@ -331,30 +284,4 @@ function mulberry32(seed: number): () => number {
     value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
     return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
   };
-}
-
-function toLocalDateString(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function addLocalDays(date: string, days: number): string {
-  const parts = date.split("-").map(Number);
-  const value = new Date(
-    parts[0] ?? 0,
-    (parts[1] ?? 1) - 1,
-    (parts[2] ?? 1) + days,
-  );
-  return toLocalDateString(value);
-}
-
-function localOffsetSuffix(date: Date): string {
-  const minutes = -date.getTimezoneOffset();
-  const sign = minutes >= 0 ? "+" : "-";
-  const absolute = Math.abs(minutes);
-  const hours = String(Math.floor(absolute / 60)).padStart(2, "0");
-  const rest = String(absolute % 60).padStart(2, "0");
-  return `${sign}${hours}:${rest}`;
 }

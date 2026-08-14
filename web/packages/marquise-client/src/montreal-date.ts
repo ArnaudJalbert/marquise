@@ -45,6 +45,34 @@ export function addDays(isoDay: string, days: number): string {
   return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
 }
 
+/** Convert a Montréal local date and 24-hour time to an ISO-8601 instant. */
+export function montrealDateTime(isoDay: string, time: string): string {
+  const { year, month, day } = parseIsoDay(isoDay);
+  const match = /^(\d{2}):(\d{2})$/.exec(time);
+  if (match === null) {
+    throw new RangeError("time must use HH:MM format");
+  }
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) {
+    throw new RangeError("time must be valid");
+  }
+  const localTimeAsUtc = Date.UTC(year, month - 1, day, hour, minute);
+  const guess = new Date(localTimeAsUtc);
+  const guessParts = partsToNumbers(
+    montrealDateTimeFormatter.formatToParts(guess),
+  );
+  const guessLocalAsUtc = Date.UTC(
+    guessParts.year,
+    guessParts.month - 1,
+    guessParts.day,
+    guessParts.hour,
+    guessParts.minute,
+    guessParts.second,
+  );
+  return new Date(guess.getTime() - (guessLocalAsUtc - localTimeAsUtc)).toISOString();
+}
+
 function montrealMidnight(isoDay: string): Date {
   const { year, month, day } = parseIsoDay(isoDay);
   const utcMidnight = new Date(Date.UTC(year, month - 1, day));

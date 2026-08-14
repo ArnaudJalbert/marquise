@@ -21,7 +21,7 @@ export class MovieNotFoundError extends Error {
 export interface MovieDetailClient {
   /** Resolve the movie metadata required by a dedicated movie route. */
   fetchMovie(movieId: string): Promise<MovieCardData>;
-  /** Dates the movie has screenings on, as "YYYY-MM-DD" strings. */
+  /** Selectable dates, as "YYYY-MM-DD" strings. Dates without screenings return an empty showtime list. */
   listDates(movie: MovieCardData): Promise<readonly string[]>;
   /** Every screening of the movie on a single date. */
   fetchShowtimes(

@@ -8,6 +8,13 @@ Before 2026-07-15 the entire codebase shipped as a single package (`marquise`, n
 `marquise-core`). Starting 2026-07-15, the FastAPI application lives in `marquise-api` and the
 Typer CLI lives in `marquise-cli`, each with independent versions.
 
+## 2026-08-10
+
+### marquise-interface + marquise-components + marquise-client + marquise-api deployment
+
+- **Simpler shared interface stack**: one HTTP or mock client now powers both listings and movie details, while the reusable components package remains available to other consumers. Native selects and Radix primitives replace custom calendar, popover, and hover behavior; duplicate demos, proxy modules, unused UI primitives, and build-only machinery were removed.
+- **Correctness and responsive behavior**: listings and details now share consistent mock data, Montréal-aware dates and times, nullable external links, bounded request caching, row-aware auto-fit pagination, mobile scrolling, accurate date selection, and a live current-time marker. The deployed API explicitly allows the interface origin.
+
 ## 2026-08-08
 
 ### marquise-interface + marquise-components + marquise-client

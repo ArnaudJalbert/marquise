@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { MockMovieDetailClient, MockMovieGridClient } from "./mock-client";
+import { MockMarquiseClient } from "./mock-client";
 
-describe("MockMovieGridClient", () => {
+describe("MockMarquiseClient grid", () => {
   it("lists `days` dates starting at `startDate`", async () => {
-    const client = new MockMovieGridClient({
+    const client = new MockMarquiseClient({
       startDate: "2026-08-05",
       days: 7,
     });
@@ -21,7 +21,7 @@ describe("MockMovieGridClient", () => {
   });
 
   it("defaults to today with seven selectable days", async () => {
-    const client = new MockMovieGridClient();
+    const client = new MockMarquiseClient();
 
     const dates = await client.listDates();
 
@@ -30,8 +30,8 @@ describe("MockMovieGridClient", () => {
   });
 
   it("is deterministic: the same date yields the same items across instances", async () => {
-    const first = new MockMovieGridClient({ startDate: "2026-08-05", days: 3 });
-    const second = new MockMovieGridClient({ startDate: "2026-08-05", days: 3 });
+    const first = new MockMarquiseClient({ startDate: "2026-08-05", days: 3 });
+    const second = new MockMarquiseClient({ startDate: "2026-08-05", days: 3 });
 
     expect(await first.fetchForDate("2026-08-06")).toEqual(
       await second.fetchForDate("2026-08-06"),
@@ -39,7 +39,7 @@ describe("MockMovieGridClient", () => {
   });
 
   it("is deterministic: repeated fetches of the same date are identical", async () => {
-    const client = new MockMovieGridClient({ startDate: "2026-08-05", days: 3 });
+    const client = new MockMarquiseClient({ startDate: "2026-08-05", days: 3 });
 
     expect(await client.fetchForDate("2026-08-05")).toEqual(
       await client.fetchForDate("2026-08-05"),
@@ -47,7 +47,7 @@ describe("MockMovieGridClient", () => {
   });
 
   it("returns well-formed items for every date in the window", async () => {
-    const client = new MockMovieGridClient({ startDate: "2026-08-05", days: 3 });
+    const client = new MockMarquiseClient({ startDate: "2026-08-05", days: 3 });
 
     for (const date of await client.listDates()) {
       const items = await client.fetchForDate(date);
@@ -57,7 +57,7 @@ describe("MockMovieGridClient", () => {
         expect(item.movie.title.length).toBeGreaterThan(0);
         expect(item.showtimes?.length).toBeGreaterThan(0);
         for (const showtime of item.showtimes ?? []) {
-          expect(showtime.startsAt).toContain(date);
+          expect(new Date(showtime.startsAt).getTime()).not.toBeNaN();
           expect(showtime.cinema.id).toBeTruthy();
           expect(showtime.cinema.name.length).toBeGreaterThan(0);
           expect(showtime.ticketUrl).toContain("example.com");
@@ -68,15 +68,15 @@ describe("MockMovieGridClient", () => {
   });
 
   it("returns an empty list outside the date window", async () => {
-    const client = new MockMovieGridClient({ startDate: "2026-08-05", days: 2 });
+    const client = new MockMarquiseClient({ startDate: "2026-08-05", days: 2 });
 
     await expect(client.fetchForDate("2026-08-12")).resolves.toEqual([]);
   });
 });
 
-describe("MockMovieDetailClient", () => {
+describe("MockMarquiseClient detail", () => {
   it("fetches catalogue movie metadata by id", async () => {
-    const detail = new MockMovieDetailClient();
+    const detail = new MockMarquiseClient();
 
     await expect(detail.fetchMovie("dune")).resolves.toMatchObject({
       id: "dune",
@@ -85,73 +85,56 @@ describe("MockMovieDetailClient", () => {
     await expect(detail.fetchMovie("missing")).rejects.toThrow("Movie not found");
   });
 
-  it("lists the dates the movie actually screens on", async () => {
-    const grid = new MockMovieGridClient({ startDate: "2026-08-05", days: 3 });
-    const detail = new MockMovieDetailClient({ startDate: "2026-08-05", days: 3 });
+  it("lists every selectable date for a movie", async () => {
+    const client = new MockMarquiseClient({ startDate: "2026-08-05", days: 3 });
+    const dates = await client.listDates();
+    const item = (await client.fetchForDate(dates[0] ?? ""))[0];
 
-    for (const date of await grid.listDates()) {
-      const item = (await grid.fetchForDate(date))[0];
-      const dates = await detail.listDates(item?.movie ?? { title: "?" });
-
-      expect(dates).toContain(date);
-      for (const listed of dates) {
-        expect(await detail.fetchShowtimes(item?.movie ?? { title: "?" }, listed)).not.toEqual([]);
-      }
-    }
+    await expect(client.listDates(item?.movie ?? { title: "?" })).resolves.toEqual(dates);
   });
 
   it("returns the same showtimes the grid shows for a movie and date", async () => {
-    const grid = new MockMovieGridClient({ startDate: "2026-08-05", days: 3 });
-    const detail = new MockMovieDetailClient({ startDate: "2026-08-05", days: 3 });
-    const date = (await grid.listDates())[0];
+    const client = new MockMarquiseClient({ startDate: "2026-08-05", days: 3 });
+    const date = (await client.listDates())[0];
     if (date === undefined) {
       throw new Error("mock grid must provide a date");
     }
-    const item = (await grid.fetchForDate(date))[0];
-    if (item === undefined) {
-      throw new Error("mock grid must return items");
+    for (const item of await client.fetchForDate(date)) {
+      await expect(client.fetchShowtimes(item.movie, date)).resolves.toEqual(
+        item.showtimes,
+      );
     }
-
-    await expect(detail.fetchShowtimes(item.movie, date)).resolves.toEqual(
-      item.showtimes,
-    );
   });
 
-  it("returns an empty list for days the movie does not screen", async () => {
-    const grid = new MockMovieGridClient({ startDate: "2026-08-05", days: 3 });
-    const detail = new MockMovieDetailClient({ startDate: "2026-08-05", days: 3 });
+  it("returns empty showtimes for selectable days without a screening", async () => {
+    const client = new MockMarquiseClient({ startDate: "2026-08-05", days: 3 });
+    const dates = await client.listDates();
+    let found: { movie: { id?: string; title: string }; date: string } | null = null;
 
-    let found: { movie: { id?: string; title: string }; gap: string } | null =
-      null;
-    for (const date of await grid.listDates()) {
-      for (const item of await grid.fetchForDate(date)) {
-        const dates = await detail.listDates(item.movie);
-        const gap = (await grid.listDates()).filter(
-          (candidate) => !dates.includes(candidate),
-        )[0];
-        if (item.movie.id !== undefined && gap !== undefined) {
-          found = { movie: item.movie, gap };
-          break;
+    for (const date of dates) {
+      for (const item of await client.fetchForDate(date)) {
+        for (const candidate of dates) {
+          if ((await client.fetchShowtimes(item.movie, candidate)).length === 0) {
+            found = { movie: item.movie, date: candidate };
+            break;
+          }
         }
+        if (found !== null) break;
       }
-      if (found !== null) {
-        break;
-      }
+      if (found !== null) break;
     }
     if (found === null) {
       throw new Error("expected some movie to miss a day in the mock data");
     }
 
-    await expect(detail.fetchShowtimes(found.movie, found.gap)).resolves.toEqual(
-      [],
-    );
-    await expect(detail.listDates(found.movie)).resolves.not.toContain(found.gap);
+    await expect(client.fetchShowtimes(found.movie, found.date)).resolves.toEqual([]);
+    await expect(client.listDates(found.movie)).resolves.toEqual(dates);
   });
 
   it("is deterministic across instances", async () => {
-    const first = new MockMovieDetailClient({ startDate: "2026-08-05", days: 3 });
-    const second = new MockMovieDetailClient({ startDate: "2026-08-05", days: 3 });
-    const grid = new MockMovieGridClient({ startDate: "2026-08-05", days: 3 });
+    const first = new MockMarquiseClient({ startDate: "2026-08-05", days: 3 });
+    const second = new MockMarquiseClient({ startDate: "2026-08-05", days: 3 });
+    const grid = new MockMarquiseClient({ startDate: "2026-08-05", days: 3 });
     const item = (await grid.fetchForDate("2026-08-05"))[0];
     if (item === undefined) {
       throw new Error("mock grid must return items");
@@ -163,7 +146,7 @@ describe("MockMovieDetailClient", () => {
   });
 
   it("returns an empty list outside the date window or without an id", async () => {
-    const detail = new MockMovieDetailClient({ startDate: "2026-08-05", days: 2 });
+    const detail = new MockMarquiseClient({ startDate: "2026-08-05", days: 2 });
 
     await expect(
       detail.fetchShowtimes({ title: "No id" }, "2026-08-05"),
@@ -171,6 +154,9 @@ describe("MockMovieDetailClient", () => {
     await expect(
       detail.fetchShowtimes({ id: "dune", title: "Dune" }, "2026-08-12"),
     ).resolves.toEqual([]);
-    await expect(detail.listDates({ title: "No id" })).resolves.toEqual([]);
+    await expect(detail.listDates({ title: "No id" })).resolves.toEqual([
+      "2026-08-05",
+      "2026-08-06",
+    ]);
   });
 });

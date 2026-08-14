@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { StrictMode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
+import { fixedResizeObserver } from "../../../test/resize-observer";
 import { MovieCardGrid } from "./MovieCardGrid";
 
 const cinema = {
@@ -397,39 +398,8 @@ describe("MovieCardGrid", () => {
     expect(screen.queryByRole("button", { name: "Next page" })).not.toBeInTheDocument();
   });
 
-  it("navigates pages with the arrow keys", () => {
-    render(<MovieCardGrid pageSize={4} items={movieItems(9)} />);
-
-    const list = screen.getByRole("list");
-    fireEvent.keyDown(list, { key: "ArrowRight" });
-
-    expect(screen.getByText("2 / 3")).toBeInTheDocument();
-
-    fireEvent.keyDown(list, { key: "ArrowLeft" });
-
-    expect(screen.getByText("1 / 3")).toBeInTheDocument();
-  });
-
   it("auto-fits the page size to the measured container when pageSize is auto", () => {
-    class AutoResizeObserver implements ResizeObserver {
-      private readonly callback: ResizeObserverCallback;
-
-      constructor(callback: ResizeObserverCallback) {
-        this.callback = callback;
-      }
-
-      observe(_target: Element): void {
-        this.callback(
-          [{ contentRect: { width: 896, height: 600 } } as ResizeObserverEntry],
-          this,
-        );
-      }
-
-      unobserve(): void {}
-      disconnect(): void {}
-    }
-
-    vi.stubGlobal("ResizeObserver", AutoResizeObserver);
+    vi.stubGlobal("ResizeObserver", fixedResizeObserver(896, 600));
     vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(200);
 
     render(<MovieCardGrid pageSize="auto" items={movieItems(12)} />);
@@ -441,26 +411,8 @@ describe("MovieCardGrid", () => {
   });
 
   it("keeps the measured column count for a sparse second page", () => {
-    class AutoResizeObserver implements ResizeObserver {
-      private readonly callback: ResizeObserverCallback;
-
-      constructor(callback: ResizeObserverCallback) {
-        this.callback = callback;
-      }
-
-      observe(_target: Element): void {
-        this.callback(
-          [{ contentRect: { width: 896, height: 600 } } as ResizeObserverEntry],
-          this,
-        );
-      }
-
-      unobserve(): void {}
-      disconnect(): void {}
-    }
-
     vi.restoreAllMocks();
-    vi.stubGlobal("ResizeObserver", AutoResizeObserver);
+    vi.stubGlobal("ResizeObserver", fixedResizeObserver(896, 600));
     vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(200);
 
     const { container } = render(
@@ -476,22 +428,8 @@ describe("MovieCardGrid", () => {
   });
 
   it("does not recalculate page capacity from a shorter last page", () => {
-    class AutoResizeObserver implements ResizeObserver {
-      constructor(private readonly callback: ResizeObserverCallback) {}
-
-      observe(_target: Element): void {
-        this.callback(
-          [{ contentRect: { width: 896, height: 600 } } as ResizeObserverEntry],
-          this,
-        );
-      }
-
-      unobserve(): void {}
-      disconnect(): void {}
-    }
-
     vi.restoreAllMocks();
-    vi.stubGlobal("ResizeObserver", AutoResizeObserver);
+    vi.stubGlobal("ResizeObserver", fixedResizeObserver(896, 600));
     vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(
       function (this: HTMLElement) {
         return this.textContent?.includes("Movie 5") ? 100 : 300;
@@ -508,26 +446,8 @@ describe("MovieCardGrid", () => {
   });
 
   it("fills each row before starting another one", () => {
-    class WideResizeObserver implements ResizeObserver {
-      private readonly callback: ResizeObserverCallback;
-
-      constructor(callback: ResizeObserverCallback) {
-        this.callback = callback;
-      }
-
-      observe(_target: Element): void {
-        this.callback(
-          [{ contentRect: { width: 1430, height: 1200 } } as ResizeObserverEntry],
-          this,
-        );
-      }
-
-      unobserve(): void {}
-      disconnect(): void {}
-    }
-
     vi.restoreAllMocks();
-    vi.stubGlobal("ResizeObserver", WideResizeObserver);
+    vi.stubGlobal("ResizeObserver", fixedResizeObserver(1430, 1200));
     vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(200);
 
     const { container } = render(
@@ -535,32 +455,14 @@ describe("MovieCardGrid", () => {
     );
 
     const list = container.querySelector("ul");
-    expect(list?.getAttribute("style")).toContain("repeat(6");
+    expect(list?.getAttribute("style")).toContain("repeat(3");
     expect(screen.getByRole("heading", { name: "Movie 12" })).toBeInTheDocument();
     expect(screen.queryByText(/^\d+ \/ \d+$/)).not.toBeInTheDocument();
   });
 
   it("keeps fixed-width cards in grid-aligned slots on a wide container", () => {
-    class WideResizeObserver implements ResizeObserver {
-      private readonly callback: ResizeObserverCallback;
-
-      constructor(callback: ResizeObserverCallback) {
-        this.callback = callback;
-      }
-
-      observe(_target: Element): void {
-        this.callback(
-          [{ contentRect: { width: 1430, height: 1200 } } as ResizeObserverEntry],
-          this,
-        );
-      }
-
-      unobserve(): void {}
-      disconnect(): void {}
-    }
-
     vi.restoreAllMocks();
-    vi.stubGlobal("ResizeObserver", WideResizeObserver);
+    vi.stubGlobal("ResizeObserver", fixedResizeObserver(1430, 1200));
     vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(200);
 
     const { container } = render(
@@ -569,7 +471,7 @@ describe("MovieCardGrid", () => {
 
     const list = container.querySelector("ul");
     expect(list).toHaveClass("grid");
-    expect(list?.getAttribute("style")).toContain("repeat(6");
+    expect(list?.getAttribute("style")).toContain("repeat(2");
     const slots = list?.querySelectorAll(":scope > li");
     expect(slots?.[0]?.firstElementChild).toHaveStyle({ maxWidth: "200px" });
     expect(slots?.[1]?.firstElementChild).toHaveStyle({ maxWidth: "200px" });
@@ -578,26 +480,8 @@ describe("MovieCardGrid", () => {
   });
 
   it("keeps the partial final row aligned to the auto-fit grid", () => {
-    class WideResizeObserver implements ResizeObserver {
-      private readonly callback: ResizeObserverCallback;
-
-      constructor(callback: ResizeObserverCallback) {
-        this.callback = callback;
-      }
-
-      observe(_target: Element): void {
-        this.callback(
-          [{ contentRect: { width: 1430, height: 1200 } } as ResizeObserverEntry],
-          this,
-        );
-      }
-
-      unobserve(): void {}
-      disconnect(): void {}
-    }
-
     vi.restoreAllMocks();
-    vi.stubGlobal("ResizeObserver", WideResizeObserver);
+    vi.stubGlobal("ResizeObserver", fixedResizeObserver(1430, 1200));
     vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(200);
 
     const { container } = render(
@@ -606,31 +490,13 @@ describe("MovieCardGrid", () => {
 
     const list = container.querySelector("ul");
     expect(list).toHaveClass("grid");
-    expect(list?.getAttribute("style")).toContain("repeat(6");
+    expect(list?.getAttribute("style")).toContain("repeat(3");
     expect(screen.getByRole("heading", { name: "Movie 11" })).toBeInTheDocument();
   });
 
   it("uses a larger cardSize to shrink the column count", () => {
-    class WideResizeObserver implements ResizeObserver {
-      private readonly callback: ResizeObserverCallback;
-
-      constructor(callback: ResizeObserverCallback) {
-        this.callback = callback;
-      }
-
-      observe(_target: Element): void {
-        this.callback(
-          [{ contentRect: { width: 1430, height: 1200 } } as ResizeObserverEntry],
-          this,
-        );
-      }
-
-      unobserve(): void {}
-      disconnect(): void {}
-    }
-
     vi.restoreAllMocks();
-    vi.stubGlobal("ResizeObserver", WideResizeObserver);
+    vi.stubGlobal("ResizeObserver", fixedResizeObserver(1430, 1200));
     vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(570);
 
     const { container } = render(
@@ -643,26 +509,8 @@ describe("MovieCardGrid", () => {
   });
 
   it("uses a smaller cardSize to grow the column count", () => {
-    class WideResizeObserver implements ResizeObserver {
-      private readonly callback: ResizeObserverCallback;
-
-      constructor(callback: ResizeObserverCallback) {
-        this.callback = callback;
-      }
-
-      observe(_target: Element): void {
-        this.callback(
-          [{ contentRect: { width: 1430, height: 1200 } } as ResizeObserverEntry],
-          this,
-        );
-      }
-
-      unobserve(): void {}
-      disconnect(): void {}
-    }
-
     vi.restoreAllMocks();
-    vi.stubGlobal("ResizeObserver", WideResizeObserver);
+    vi.stubGlobal("ResizeObserver", fixedResizeObserver(1430, 1200));
     vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(200);
 
     const { container } = render(
@@ -670,7 +518,7 @@ describe("MovieCardGrid", () => {
     );
 
     const list = container.querySelector("ul");
-    expect(list?.getAttribute("style")).toContain("repeat(8");
+    expect(list?.getAttribute("style")).toContain("repeat(3");
     expect(screen.getByRole("heading", { name: "Movie 12" })).toBeInTheDocument();
     expect(screen.queryByText(/^\d+ \/ \d+$/)).not.toBeInTheDocument();
   });
@@ -701,22 +549,8 @@ describe("MovieCardGrid", () => {
   });
 
   it("renders a controlled card-size slider in auto-fit mode and reports changes", () => {
-    class AutoResizeObserver implements ResizeObserver {
-      constructor(private readonly callback: ResizeObserverCallback) {}
-
-      observe(_target: Element): void {
-        this.callback(
-          [{ contentRect: { width: 896, height: 600 } } as ResizeObserverEntry],
-          this,
-        );
-      }
-
-      unobserve(): void {}
-      disconnect(): void {}
-    }
-
     vi.restoreAllMocks();
-    vi.stubGlobal("ResizeObserver", AutoResizeObserver);
+    vi.stubGlobal("ResizeObserver", fixedResizeObserver(896, 600));
     vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(200);
     const onCardSizeChange = vi.fn();
 
@@ -731,6 +565,10 @@ describe("MovieCardGrid", () => {
 
     const slider = screen.getByRole("slider", { name: "Card size" });
     expect(slider).toHaveValue("200");
+    expect(slider.closest(".movie-grid-controls")).toHaveClass(
+      "flex-col",
+      "md:grid",
+    );
 
     fireEvent.change(slider, { target: { value: "320" } });
 

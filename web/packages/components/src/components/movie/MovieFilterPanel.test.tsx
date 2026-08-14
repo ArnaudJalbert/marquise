@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   MovieFilterPanel,
@@ -18,6 +18,8 @@ function sectionFor(label: string): HTMLElement {
 
 function renderPanel(overrides?: Partial<MovieFilterPanelProps>) {
   const props: MovieFilterPanelProps = {
+    query: "",
+    onQueryChange: vi.fn(),
     dates: ["2026-08-03", "2026-08-04"],
     selectedDate: "2026-08-03",
     onDateChange: vi.fn(),
@@ -39,11 +41,32 @@ function renderPanel(overrides?: Partial<MovieFilterPanelProps>) {
 }
 
 describe("MovieFilterPanel", () => {
-  it("shows the selected date on the calendar trigger", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-01T12:00:00Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+  it("updates movie search", () => {
+    const { props } = renderPanel();
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search movies" }), {
+      target: { value: "anora" },
+    });
+
+    expect(props.onQueryChange).toHaveBeenCalledWith("anora");
+  });
+
+  it("shows the selected date in the calendar trigger", () => {
     renderPanel();
 
-    const trigger = screen.getByRole("button", { name: /open calendar/i });
-    expect(trigger).toHaveTextContent(formatDateLabel("2026-08-03"));
+    expect(
+      screen.getByRole("button", {
+        name: `Open calendar, selected ${formatDateLabel("2026-08-03")}`,
+      }),
+    ).toBeInTheDocument();
   });
 
   it("shows a placeholder when no date is selected", () => {
@@ -58,7 +81,7 @@ describe("MovieFilterPanel", () => {
     const next = screen.getByRole("button", { name: "Next date" });
     const previous = screen.getByRole("button", { name: "Previous date" });
 
-    expect(previous).toBeDisabled();
+    expect(previous).not.toBeDisabled();
     expect(next).not.toBeDisabled();
 
     fireEvent.click(next);
@@ -66,33 +89,84 @@ describe("MovieFilterPanel", () => {
     expect(props.onDateChange).toHaveBeenCalledWith("2026-08-04");
   });
 
-  it("disables the next arrow on the last available date", () => {
-    renderPanel({ selectedDate: "2026-08-04" });
+  it("steps past the initial date range", () => {
+    const { props } = renderPanel({ selectedDate: "2026-08-04" });
 
-    expect(
-      screen.getByRole("button", { name: "Next date" }),
-    ).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Next date" }));
+
+    expect(props.onDateChange).toHaveBeenCalledWith("2026-08-05");
   });
 
-  it("picks a date from the calendar popover", () => {
+  it("picks a date from the calendar", () => {
     const { props } = renderPanel();
 
-    fireEvent.click(screen.getByRole("button", { name: /open calendar/i }));
     fireEvent.click(
-      screen.getByRole("button", { name: formatDateLabel("2026-08-04") }),
+      screen.getByRole("button", {
+        name: `Open calendar, selected ${formatDateLabel("2026-08-03")}`,
+      }),
     );
+    fireEvent.click(screen.getByRole("button", { name: formatDateLabel("2026-08-04") }));
 
     expect(props.onDateChange).toHaveBeenCalledWith("2026-08-04");
   });
 
-  it("disables calendar days that are not available", () => {
-    renderPanel({ dates: ["2026-08-03", "2026-08-05"] });
+  it("allows any calendar date", () => {
+    const { props } = renderPanel({ dates: ["2026-08-03", "2026-08-05"] });
 
-    fireEvent.click(screen.getByRole("button", { name: /open calendar/i }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: `Open calendar, selected ${formatDateLabel("2026-08-03")}`,
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: formatDateLabel("2026-08-04") }));
 
-    expect(
-      screen.getByRole("button", { name: formatDateLabel("2026-08-04") }),
-    ).toBeDisabled();
+    expect(props.onDateChange).toHaveBeenCalledWith("2026-08-04");
+  });
+
+  it("greys out past calendar dates", () => {
+    vi.setSystemTime(new Date("2026-08-04T12:00:00Z"));
+    renderPanel({ selectedDate: "2026-08-05" });
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: `Open calendar, selected ${formatDateLabel("2026-08-05")}`,
+      }),
+    );
+
+    expect(screen.getByRole("button", { name: formatDateLabel("2026-08-03") })).toBeDisabled();
+    expect(screen.getByRole("button", { name: formatDateLabel("2026-08-04") })).not.toBeDisabled();
+  });
+
+  it("uses Montréal's date when deciding whether a day is past", () => {
+    vi.setSystemTime(new Date("2026-08-05T01:00:00Z"));
+    renderPanel({ selectedDate: "2026-08-04" });
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: `Open calendar, selected ${formatDateLabel("2026-08-04")}`,
+      }),
+    );
+
+    expect(screen.getByRole("button", { name: formatDateLabel("2026-08-04") })).not.toBeDisabled();
+  });
+
+  it("skips disabled dates during calendar keyboard navigation", () => {
+    vi.setSystemTime(new Date("2026-08-04T12:00:00Z"));
+    renderPanel({ selectedDate: "2026-08-05" });
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: `Open calendar, selected ${formatDateLabel("2026-08-05")}`,
+      }),
+    );
+    const calendar = screen.getByRole("grid", { name: "Calendar" });
+    fireEvent.keyDown(calendar, { key: "ArrowLeft" });
+    fireEvent.keyDown(calendar, { key: "ArrowLeft" });
+
+    expect(screen.getByRole("button", { name: formatDateLabel("2026-08-04") })).toHaveAttribute(
+      "tabindex",
+      "0",
+    );
   });
 
   it("adds a cinema chip when it is toggled on", () => {

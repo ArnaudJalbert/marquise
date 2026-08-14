@@ -8,9 +8,8 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: [
-      // Consume the workspace packages from source for instant HMR — no
-      // prebuild. Exact-match regexes keep subpath imports (e.g.
-      // "marquise-components/index.css") resolving via package exports.
+      // Consume workspace packages from source for instant HMR. Exact-match
+      // regexes keep subpath imports resolving via package exports.
       {
         find: /^marquise-components$/,
         replacement: path.resolve(

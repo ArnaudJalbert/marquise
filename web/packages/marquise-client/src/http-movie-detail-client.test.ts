@@ -1,8 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { CinemaApi, MovieApi, Page, ScreeningApi } from "./api-types";
-import { HttpMovieGridClientError } from "./http-client";
-import { HttpMovieDetailClient } from "./http-movie-detail-client";
+import { HttpMarquiseClient, HttpMarquiseClientError } from "./http-client";
 import { MovieNotFoundError } from "./movie-detail-client";
 
 let sequence = 0;
@@ -77,7 +76,7 @@ const MOVIE = {
   title: "Movie A",
 };
 
-describe("HttpMovieDetailClient", () => {
+describe("HttpMarquiseClient detail", () => {
   it("fetches movie metadata by id", async () => {
     const movie: MovieApi = {
       id: "movie-a",
@@ -98,7 +97,7 @@ describe("HttpMovieDetailClient", () => {
       expect(url.pathname).toBe("/v1/movies/movie-a");
       return movie;
     });
-    const client = new HttpMovieDetailClient({
+    const client = new HttpMarquiseClient({
       baseUrl: "https://api.example.com",
       fetch: mock,
     });
@@ -116,7 +115,7 @@ describe("HttpMovieDetailClient", () => {
 
   it("reports a missing movie with the route-level error", async () => {
     const mock = stubFetch(() => new Response("missing", { status: 404 }));
-    const client = new HttpMovieDetailClient({
+    const client = new HttpMarquiseClient({
       baseUrl: "https://api.example.com",
       fetch: mock,
     });
@@ -126,19 +125,11 @@ describe("HttpMovieDetailClient", () => {
     );
   });
 
-  it("lists the dates the movie screens on, within the horizon", async () => {
-    const mock = stubFetch((url) => {
-      expect(url.pathname).toBe("/v1/screenings");
-      expect(url.searchParams.get("movie_id")).toBe("movie-a");
-      expect(url.searchParams.get("from")).toBe("2026-08-05T04:00:00.000Z");
-      expect(url.searchParams.get("to")).toBe("2026-08-08T03:59:59.999Z");
-      return pageOf([
-        makeScreening({ showtime: "2026-08-05T18:30:00Z" }),
-        makeScreening({ showtime: "2026-08-05T20:00:00Z" }),
-        makeScreening({ showtime: "2026-08-07T21:00:00Z" }),
-      ]);
+  it("lists every horizon date for a movie without querying screenings", async () => {
+    const mock = stubFetch(() => {
+      throw new Error("listDates must not hit the network");
     });
-    const client = new HttpMovieDetailClient({
+    const client = new HttpMarquiseClient({
       baseUrl: "https://api.example.com",
       fetch: mock,
       now: FIXED_NOW,
@@ -147,43 +138,22 @@ describe("HttpMovieDetailClient", () => {
 
     await expect(client.listDates(MOVIE)).resolves.toEqual([
       "2026-08-05",
+      "2026-08-06",
       "2026-08-07",
     ]);
-    expect(mock.mock.calls).toHaveLength(1);
-  });
-
-  it("returns an empty date list when the movie has no id", async () => {
-    const mock = stubFetch(() => {
-      throw new Error("must not fetch without a movie id");
-    });
-    const client = new HttpMovieDetailClient({
-      baseUrl: "https://api.example.com",
-      fetch: mock,
-    });
-
-    await expect(client.listDates({ title: "No id" })).resolves.toEqual([]);
+    await expect(client.listDates({ title: "No id" })).resolves.toEqual([
+      "2026-08-05",
+      "2026-08-06",
+      "2026-08-07",
+    ]);
     expect(mock).not.toHaveBeenCalled();
-  });
-
-  it("groups an early UTC screening under its Montréal calendar date", async () => {
-    const mock = stubFetch(() =>
-      pageOf([makeScreening({ showtime: "2026-08-06T01:00:00Z" })]),
-    );
-    const client = new HttpMovieDetailClient({
-      baseUrl: "https://api.example.com",
-      fetch: mock,
-      now: FIXED_NOW,
-      horizonDays: 2,
-    });
-
-    await expect(client.listDates(MOVIE)).resolves.toEqual(["2026-08-05"]);
   });
 
   it("returns an empty date list without querying when the horizon is zero", async () => {
     const mock = stubFetch(() => {
       throw new Error("must not fetch for a zero-day horizon");
     });
-    const client = new HttpMovieDetailClient({
+    const client = new HttpMarquiseClient({
       baseUrl: "https://api.example.com",
       fetch: mock,
       now: FIXED_NOW,
@@ -222,7 +192,7 @@ describe("HttpMovieDetailClient", () => {
       }
       throw new Error(`Unexpected request: ${url}`);
     });
-    const client = new HttpMovieDetailClient({
+    const client = new HttpMarquiseClient({
       baseUrl: "https://api.example.com",
       fetch: mock,
     });
@@ -242,9 +212,9 @@ describe("HttpMovieDetailClient", () => {
       },
       {
         startsAt: "2026-08-05T21:00:00Z",
-        ticketUrl: "#",
+        ticketUrl: null,
         language: "VOSTF",
-        cinema: { id: "cinema-2", name: "Cinema Two", link: "" },
+        cinema: { id: "cinema-2", name: "Cinema Two", link: null },
       },
     ]);
   });
@@ -268,7 +238,7 @@ describe("HttpMovieDetailClient", () => {
       }
       throw new Error(`Unexpected request: ${url}`);
     });
-    const client = new HttpMovieDetailClient({
+    const client = new HttpMarquiseClient({
       baseUrl: "https://api.example.com",
       fetch: mock,
     });
@@ -286,7 +256,7 @@ describe("HttpMovieDetailClient", () => {
     const mock = stubFetch(() => {
       throw new Error("must not fetch without a movie id");
     });
-    const client = new HttpMovieDetailClient({
+    const client = new HttpMarquiseClient({
       baseUrl: "https://api.example.com",
       fetch: mock,
     });
@@ -297,9 +267,9 @@ describe("HttpMovieDetailClient", () => {
     expect(mock).not.toHaveBeenCalled();
   });
 
-  it("throws an HttpMovieGridClientError on a failing response", async () => {
+  it("throws an HttpMarquiseClientError on a failing response", async () => {
     const mock = stubFetch(() => new Response("boom", { status: 503 }));
-    const client = new HttpMovieDetailClient({
+    const client = new HttpMarquiseClient({
       baseUrl: "https://api.example.com",
       fetch: mock,
     });
@@ -308,8 +278,8 @@ describe("HttpMovieDetailClient", () => {
       .fetchShowtimes(MOVIE, "2026-08-05")
       .catch((error: unknown) => error);
 
-    expect(caught).toBeInstanceOf(HttpMovieGridClientError);
-    if (caught instanceof HttpMovieGridClientError) {
+    expect(caught).toBeInstanceOf(HttpMarquiseClientError);
+    if (caught instanceof HttpMarquiseClientError) {
       expect(caught.status).toBe(503);
       expect(caught.path).toContain("/v1/screenings?movie_id=movie-a");
     }

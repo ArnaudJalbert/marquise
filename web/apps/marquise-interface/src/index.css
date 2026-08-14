@@ -60,18 +60,13 @@ body {
   color: var(--foreground);
 }
 
-.site-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-}
-
 .site-main {
   display: flex;
   flex: 1;
   width: 100%;
   min-height: 0;
   padding: 1rem 1.5rem;
+  overflow-y: auto;
 }
 
 /* Toggled by the header Filters button to hide the filter panel. */
@@ -92,4 +87,25 @@ body {
 
 .site-footer p {
   margin: 0;
+}
+
+@media (max-width: 767px) {
+  .site-header {
+    padding: 0 1rem;
+  }
+
+  .site-nav {
+    display: none;
+  }
+
+  .page-shell {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .site-main {
+    display: block;
+    overflow: visible;
+  }
 }

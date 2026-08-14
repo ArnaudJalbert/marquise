@@ -3,7 +3,6 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-  type KeyboardEvent,
 } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -85,9 +84,16 @@ export function MovieCardGrid({
     autoFit && dims !== null && rowHeight !== null
       ? Math.max(1, Math.floor((dims.height + GRID_GAP) / (rowHeight + GRID_GAP)))
       : null;
+  const columns =
+    widthColumns !== null && availableRows !== null
+      ? Math.min(
+          widthColumns,
+          Math.max(2, Math.ceil(items.length / availableRows)),
+        )
+      : widthColumns;
   const effectivePageSize =
-    autoFit && widthColumns !== null && availableRows !== null
-      ? widthColumns * availableRows
+    autoFit && columns !== null && availableRows !== null
+      ? columns * availableRows
       : autoFit
         ? null
         : pageSize !== undefined
@@ -114,8 +120,6 @@ export function MovieCardGrid({
   } else if (measuring) {
     renderItems = items.slice(0, widthColumns ?? 2);
   }
-
-  const columns = widthColumns;
 
   useIsomorphicLayoutEffect(() => {
     if (!autoFit || dims === null || columns === null) return;
@@ -146,27 +150,9 @@ export function MovieCardGrid({
       ? ((cardSize - CARD_SIZE_MIN) / (CARD_SIZE_MAX - CARD_SIZE_MIN)) * 100
       : 0;
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLUListElement>) => {
-    if (!showPagination) return;
-    if (event.target instanceof HTMLAnchorElement) return;
-    if (event.key === "ArrowRight") {
-      event.preventDefault();
-      const nextPage = Math.min(pageCount - 1, pageIndex + 1);
-      setPageIndex(nextPage);
-      onPageIndexChange?.(nextPage, "user");
-    } else if (event.key === "ArrowLeft") {
-      event.preventDefault();
-      const nextPage = Math.max(0, pageIndex - 1);
-      setPageIndex(nextPage);
-      onPageIndexChange?.(nextPage, "user");
-    }
-  };
-
   const grid = (
     <ul
       ref={gridRef}
-      onKeyDown={handleKeyDown}
-      tabIndex={showControls ? 0 : undefined}
       aria-label="Movie grid"
       style={
         autoFit
@@ -215,9 +201,9 @@ export function MovieCardGrid({
   );
 
   const controls = showControls ? (
-    <div className="grid grid-cols-3 items-center gap-3">
+    <div className="movie-grid-controls flex flex-col gap-3 md:grid md:grid-cols-3 md:items-center">
       {showDetailsControl ? (
-        <label className="col-start-1 flex w-fit cursor-pointer items-center gap-2 text-sm justify-self-start">
+        <label className="flex w-fit cursor-pointer items-center gap-2 text-sm md:col-start-1 md:justify-self-start">
           <input
             type="checkbox"
             checked={!hideDetails}
@@ -228,7 +214,7 @@ export function MovieCardGrid({
         </label>
       ) : null}
       {showPagination ? (
-        <div className="col-start-2 flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-2 md:col-start-2">
           <button
             type="button"
             onClick={() => {
@@ -264,7 +250,7 @@ export function MovieCardGrid({
         </div>
       ) : null}
       {showCardSizeControl ? (
-        <div className="col-start-3 flex items-center gap-3 justify-self-end">
+        <div className="flex w-full items-center justify-between gap-3 md:col-start-3 md:w-auto md:justify-self-end">
           <span className="text-sm">Card size</span>
           <div className="card-size-slider relative h-8 w-40 select-none">
             <div className="absolute top-1/2 h-1.5 w-full -translate-y-1/2 rounded-full bg-muted" />
