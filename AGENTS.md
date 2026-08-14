@@ -145,7 +145,7 @@ Reject changes that:
 - Return raw dicts from repositories
 - Import internal library layers from a delivery app
 - **Web:** package importing from an app; deep-importing another package's internals; live API calls in unit tests; shipping dev-only demo code in library `dist`
-- **Web:** library component fetching without injected client; app duplicating library UI instead of composing exports; client implementation in a shared package (unless a dedicated generic HTTP client package with no app coupling)
+- **Web:** library component fetching without injected client; app duplicating library UI instead of composing exports; client implementation outside a dedicated client package, or coupled to app routing or env
 
 Rationale for each → [docs/architecture.md](docs/architecture.md).
 
@@ -161,5 +161,4 @@ Repo-specific detail lives in `docs/` — read when the task touches that area:
 | [docs/python.md](docs/python.md) | Domain entities, value objects, use cases |
 | [docs/setup.md](docs/setup.md) | Database setup, schema, Supabase |
 | [docs/sources.md](docs/sources.md) | Scrapers, source adapters, registry |
-| [docs/todo.md](docs/todo.md) | Known debt before refactoring related code |
 | [docs/releasing.md](docs/releasing.md) | Version bumps, tags, releases |

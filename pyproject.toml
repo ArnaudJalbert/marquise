@@ -8,9 +8,6 @@ marquise-core = { workspace = true }
 dev = [
     "httpx>=0.28.1",
     "import-linter>=2.13",
-    "mkdocs>=1.6.1",
-    "mkdocs-material>=9.7.6",
-    "mkdocstrings-python>=2.0.4",
     "pytest>=9.0.3",
     "pytest-asyncio>=1.3.0",
     "pytest-cov>=7.1.0",

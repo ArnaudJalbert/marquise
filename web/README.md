@@ -11,10 +11,10 @@ backend in the same repository.
 
 ## Design
 
-- **`marquise-components`** is modular and self-contained: presentational UI, pure filter logic, and **client protocol interfaces** (`MovieGridClient`, `MovieDetailClient`) exported from the package
-- **Apps compose** library exports — routes, layout, and real API wiring live in apps, not in the library
-- **Client implementations** are generic interfaces in the package; apps provide concrete fetch logic and pass them via the `client` prop
-- Each package builds, lints, typechecks, and tests on its own (demo uses a mock client; no app required)
+- **`marquise-components`** owns presentational UI and pure filter logic; it receives clients via props
+- **`marquise-client`** owns client protocols, API types, and injected HTTP and mock implementations
+- **Apps compose** library exports, configure clients, and pass them via props
+- Each package builds, lints, typechecks, and tests on its own; client tests inject `fetch`
 
 Full rules → [docs/architecture.md](../docs/architecture.md) (modular web packages) and [AGENTS.md](../AGENTS.md).
 
