@@ -3,9 +3,8 @@ import { createRoot } from "react-dom/client";
 
 import { App } from "./App";
 import "./index.css";
-// Prebuilt component styles + design tokens. The JS is consumed from source
-// (see vite.config.ts) for HMR, but the stylesheet is imported from the
-// package's built bundle, which rolldown emits reliably in production builds.
+// Component styles + design tokens. Workspace development resolves this import
+// to source for HMR; published consumers receive the package's built CSS.
 import "marquise-components/index.css";
 
 const root = document.getElementById("root");

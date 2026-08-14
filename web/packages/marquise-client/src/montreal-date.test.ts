@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { montrealDayRange, toMontrealIsoDate } from "./montreal-date";
+import {
+  montrealDateTime,
+  montrealDayRange,
+  toMontrealIsoDate,
+} from "./montreal-date";
 
 describe("montrealDayRange", () => {
   it("uses the full Montréal day during daylight saving time", () => {
@@ -29,6 +33,17 @@ describe("toMontrealIsoDate", () => {
   it("maps a previous UTC evening to the correct Montréal calendar date", () => {
     expect(toMontrealIsoDate(new Date("2026-08-06T01:00:00Z"))).toBe(
       "2026-08-05",
+    );
+  });
+});
+
+describe("montrealDateTime", () => {
+  it("uses the offset in effect on each side of daylight saving time", () => {
+    expect(montrealDateTime("2026-03-07", "11:15")).toBe(
+      "2026-03-07T16:15:00.000Z",
+    );
+    expect(montrealDateTime("2026-03-08", "11:15")).toBe(
+      "2026-03-08T15:15:00.000Z",
     );
   });
 });

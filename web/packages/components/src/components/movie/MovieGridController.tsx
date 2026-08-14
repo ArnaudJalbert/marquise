@@ -1,13 +1,15 @@
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
+import type {
+  CinemaShowtime,
+  MovieCardData,
+  MovieGridClient,
+} from "marquise-client";
 
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { MovieCardGrid } from "./MovieCardGrid";
 import { MovieFilterPanel } from "./MovieFilterPanel";
-import type { CinemaShowtime } from "./cinema";
-import type { MovieCardData } from "./movie";
-import type { MovieGridClient } from "./movie-grid-client";
 import type { MovieFilters } from "./movie-grid-filter";
 import { useMovieFilters } from "./use-movie-filters";
 
@@ -146,6 +148,8 @@ export function MovieGridController({
       )}
     >
       <MovieFilterPanel
+        query={filters.query}
+        onQueryChange={(query) => updateFilters({ query })}
         dates={dates}
         selectedDate={selectedDate ?? ""}
         onDateChange={handleDateChange}

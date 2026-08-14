@@ -3,7 +3,6 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-  type KeyboardEvent,
 } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -85,9 +84,16 @@ export function MovieCardGrid({
     autoFit && dims !== null && rowHeight !== null
       ? Math.max(1, Math.floor((dims.height + GRID_GAP) / (rowHeight + GRID_GAP)))
       : null;
+  const columns =
+    widthColumns !== null && availableRows !== null
+      ? Math.min(
+          widthColumns,
+          Math.max(2, Math.ceil(items.length / availableRows)),
+        )
+      : widthColumns;
   const effectivePageSize =
-    autoFit && widthColumns !== null && availableRows !== null
-      ? widthColumns * availableRows
+    autoFit && columns !== null && availableRows !== null
+      ? columns * availableRows
       : autoFit
         ? null
         : pageSize !== undefined
@@ -114,8 +120,6 @@ export function MovieCardGrid({
   } else if (measuring) {
     renderItems = items.slice(0, widthColumns ?? 2);
   }
-
-  const columns = widthColumns;
 
   useIsomorphicLayoutEffect(() => {
     if (!autoFit || dims === null || columns === null) return;
@@ -146,27 +150,9 @@ export function MovieCardGrid({
       ? ((cardSize - CARD_SIZE_MIN) / (CARD_SIZE_MAX - CARD_SIZE_MIN)) * 100
       : 0;
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLUListElement>) => {
-    if (!showPagination) return;
-    if (event.target instanceof HTMLAnchorElement) return;
-    if (event.key === "ArrowRight") {
-      event.preventDefault();
-      const nextPage = Math.min(pageCount - 1, pageIndex + 1);
-      setPageIndex(nextPage);
-      onPageIndexChange?.(nextPage, "user");
-    } else if (event.key === "ArrowLeft") {
-      event.preventDefault();
-      const nextPage = Math.max(0, pageIndex - 1);
-      setPageIndex(nextPage);
-      onPageIndexChange?.(nextPage, "user");
-    }
-  };
-
   const grid = (
     <ul
       ref={gridRef}
-      onKeyDown={handleKeyDown}
-      tabIndex={showControls ? 0 : undefined}
       aria-label="Movie grid"
       style={
         autoFit

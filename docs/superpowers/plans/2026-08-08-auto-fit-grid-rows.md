@@ -27,7 +27,7 @@
 - Consumes: `items`, measured `dims.width` / `dims.height`, measured `rowHeight`, and `cardSize`.
 - Produces: an unchanged `MovieCardGrid` public interface with auto-fit CSS columns and pagination that use both available rows and width.
 
-- [ ] **Step 1: Write the failing small-result-set layout test**
+- [x] **Step 1: Write the failing small-result-set layout test**
 
 Add a Vitest case using the existing 1430px × 1200px resize observer and 200px card height. Render six movie items with `pageSize="auto"` and assert:
 
@@ -39,13 +39,13 @@ expect(screen.queryByText(/^\d+ \/ \d+$/)).not.toBeInTheDocument();
 
 The height fits five rows (`floor((1200 + 16) / (200 + 16)) = 5`), so six items should use two columns and three occupied rows instead of six columns and one row.
 
-- [ ] **Step 2: Run the focused test to verify it fails**
+- [x] **Step 2: Run the focused test to verify it fails**
 
 Run: `pnpm --filter marquise-components test -- MovieCardGrid.test.tsx`
 
 Expected: FAIL because `columnsForWidth(1430, 200, 6)` currently produces six columns without considering available rows.
 
-- [ ] **Step 3: Implement row-aware column capping**
+- [x] **Step 3: Implement row-aware column capping**
 
 After `rowHeight` is known, calculate:
 
@@ -60,7 +60,7 @@ const columns = Math.min(columnsForWidth(dims.width, cardWidth, maxColumns), col
 
 Use the width-derived column count until `rowHeight` is measured so the existing measurement subset can render. Once measured, use the capped count for both `gridTemplateColumns` and `effectivePageSize = columns * availableRows`. Keep `maxColumns` at 6 when `cardSize` is omitted and 8 when it is supplied.
 
-- [ ] **Step 4: Update large-result layout expectations**
+- [x] **Step 4: Update large-result layout expectations**
 
 Update the existing 12-item, 1430px × 1200px test to expect three columns and four occupied rows:
 
@@ -71,13 +71,13 @@ expect(screen.getByRole("heading", { name: "Movie 12" })).toBeInTheDocument();
 
 This confirms the grid uses as many available rows as possible even when the full result set fits on one page.
 
-- [ ] **Step 5: Run focused tests to verify the component behavior**
+- [x] **Step 5: Run focused tests to verify the component behavior**
 
 Run: `pnpm --filter marquise-components test -- MovieCardGrid.test.tsx`
 
 Expected: PASS, including pagination, card-size, resize, and row-aware layout tests.
 
-- [ ] **Step 6: Commit the focused component correction**
+- [ ] **Step 6: Commit the focused component correction** (not requested)
 
 ```bash
 git add web/packages/components/src/components/movie/MovieCardGrid.tsx web/packages/components/src/components/movie/MovieCardGrid.test.tsx

@@ -117,6 +117,8 @@ function MultiSelectGroup({
 }
 
 export interface MovieFilterPanelProps {
+  query: string;
+  onQueryChange: (query: string) => void;
   /** Selectable dates as "YYYY-MM-DD" strings. */
   dates: readonly string[];
   selectedDate: string;
@@ -143,11 +145,13 @@ export interface MovieFilterPanelProps {
 
 /**
  * Vertical, controlled filter panel for a movie grid. The date is picked from a
- * calendar popover (with arrows to step to the previous/next available date),
+ * native date selector (with arrows to step through available dates),
  * the time range from a slider, and cinema/genre/language from chip groups;
  * every value is lifted up so callers decide when to fetch and how to filter.
  */
 export function MovieFilterPanel({
+  query,
+  onQueryChange,
   dates,
   selectedDate,
   onDateChange,
@@ -182,6 +186,17 @@ export function MovieFilterPanel({
 
   return (
     <div className={cn("flex min-h-0 flex-col gap-6 overflow-y-auto", className)}>
+      <section className="flex flex-col gap-2">
+        <SectionHeading>Search</SectionHeading>
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => onQueryChange(event.target.value)}
+          placeholder="Movie title"
+          aria-label="Search movies"
+          className="h-8 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+      </section>
       <section className="flex flex-col gap-2">
         <SectionHeading>Date</SectionHeading>
         <DateSelector

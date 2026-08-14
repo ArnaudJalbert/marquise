@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { MovieGridClient } from "marquise-client";
 
 import { getCurrentMontrealDate } from "./format";
 import type { MovieCardGridItem } from "./movie-card-grid";
-import type { MovieGridClient } from "./movie-grid-client";
 import {
   createDefaultMovieFilters,
   filterMovieGridItems,

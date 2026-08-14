@@ -3,10 +3,6 @@ import { Button } from "marquise-components";
 
 import { Logo } from "./Logo";
 
-const NAV_SECTIONS = [
-  { label: "Screenings", href: "/" },
-];
-
 export interface HeaderProps {
   /** Whether the filter panel is currently visible. */
   filtersOpen: boolean;
@@ -30,19 +26,9 @@ export function Header({
       <Logo />
       <div className="site-header-actions">
         <nav className="site-nav" aria-label="Site sections">
-          {NAV_SECTIONS.map((section) => (
-            <a
-              key={section.label}
-              href={section.href}
-              aria-current={
-                listingsActive && section.label === "Now Showing"
-                  ? "page"
-                  : undefined
-              }
-            >
-              {section.label}
-            </a>
-          ))}
+          <a href="/" aria-current={listingsActive ? "page" : undefined}>
+            Screenings
+          </a>
         </nav>
         {showFilters ? (
           <Button

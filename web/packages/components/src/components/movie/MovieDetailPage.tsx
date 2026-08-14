@@ -1,21 +1,17 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import {
-  ArrowLeft,
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import type {
+  CinemaShowtime,
+  MovieCardData,
+  MovieDetailClient,
+} from "marquise-client";
 
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { CinemaShowtimeGroups, groupByCinema } from "./CinemaShowtimes";
-import { Calendar, formatDateLabel } from "./date-selector";
+import { formatDateLabel } from "./date-selector";
 import { formatDuration } from "./format";
 import { MoviePoster } from "./MoviePoster";
-import type { CinemaShowtime } from "./cinema";
-import type { MovieCardData } from "./movie";
-import type { MovieDetailClient } from "./movie-detail-client";
 
 /** Width of one date column, in px. The number of visible columns adapts to the container width. */
 const COLUMN_WIDTH = 288;
@@ -72,30 +68,19 @@ function JumpToDate({
   selectedDate: string;
   onSelect: (date: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label="Jump to a date"
-          className="flex cursor-pointer items-center justify-center p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <CalendarDays aria-hidden className="size-4" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-72">
-        <Calendar
-          dates={dates}
-          selectedDate={selectedDate}
-          initialMonth={selectedDate}
-          onSelect={(date) => {
-            onSelect(date);
-            setOpen(false);
-          }}
-        />
-      </PopoverContent>
-    </Popover>
+    <select
+      aria-label="Jump to a date"
+      value={selectedDate}
+      onChange={(event) => onSelect(event.target.value)}
+      className="cursor-pointer rounded-md border bg-background px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      {dates.map((date) => (
+        <option key={date} value={date}>
+          {formatDateLabel(date)}
+        </option>
+      ))}
+    </select>
   );
 }
 
@@ -105,7 +90,7 @@ export interface MovieDetailPageProps {
   client: MovieDetailClient;
   /** Date shown first, as "YYYY-MM-DD"; defaults to the first available. */
   initialDate?: string;
-  /** Reports the leftmost selected date after user navigation or normalization. */
+  /** Reports the selected date after user navigation or normalization. */
   onDateChange?: (
     date: string,
     reason: "user" | "normalization",
@@ -148,6 +133,7 @@ export function MovieDetailPage({
   const [fetchRetryNonce, setFetchRetryNonce] = useState(0);
   const requestedRef = useRef<Set<string>>(new Set());
   const [offset, setOffset] = useState(0);
+  const [selectedDate, setSelectedDate] = useState("");
   const [viewportWidth, setViewportWidth] = useState<number | null>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const clientRef = useRef(client);
@@ -175,6 +161,7 @@ export function MovieDetailPage({
     setFetchError(null);
     requestedRef.current = new Set();
     setOffset(0);
+    setSelectedDate("");
   }, [movie]);
 
   useEffect(() => {
@@ -195,6 +182,7 @@ export function MovieDetailPage({
         const initialOffset = Math.max(0, index);
         setOffset(initialOffset);
         const resolvedDate = sorted[initialOffset];
+        setSelectedDate(resolvedDate ?? "");
         if (resolvedDate !== undefined && resolvedDate !== requestedDate) {
           onDateChangeRef.current?.(resolvedDate, "normalization");
         }
@@ -241,14 +229,22 @@ export function MovieDetailPage({
   const safeOffset = Math.min(offset, maxOffset);
 
   useEffect(() => {
-    if (offset > maxOffset) {
-      setOffset(maxOffset);
-      const normalizedDate = dates[maxOffset];
-      if (normalizedDate !== undefined) {
-        onDateChangeRef.current?.(normalizedDate, "normalization");
+    const selectedIndex = dates.indexOf(selectedDate);
+    let nextOffset = Math.min(offset, maxOffset);
+    if (selectedIndex !== -1) {
+      if (selectedIndex < nextOffset) {
+        nextOffset = selectedIndex;
+      } else if (selectedIndex >= nextOffset + visibleCount) {
+        nextOffset = Math.min(
+          selectedIndex - visibleCount + 1,
+          maxOffset,
+        );
       }
     }
-  }, [dates, maxOffset, offset]);
+    if (nextOffset !== offset) {
+      setOffset(nextOffset);
+    }
+  }, [dates, maxOffset, offset, selectedDate, visibleCount]);
 
   useEffect(() => {
     const start = Math.max(0, safeOffset);
@@ -316,8 +312,6 @@ export function MovieDetailPage({
     movie.genres && movie.genres.length > 0 ? movie.genres.join(", ") : null,
   ].filter((part): part is string => part !== null);
 
-  const selectedDate = dates[safeOffset] ?? dates[0] ?? "";
-
   const showtimesColumns = (
     <div className="flex items-stretch gap-1">
       <button
@@ -329,6 +323,7 @@ export function MovieDetailPage({
           setOffset(nextOffset);
           const date = dates[nextOffset];
           if (date !== undefined) {
+            setSelectedDate(date);
             onDateChangeRef.current?.(date, "user");
           }
         }}
@@ -366,6 +361,7 @@ export function MovieDetailPage({
           setOffset(nextOffset);
           const date = dates[nextOffset];
           if (date !== undefined) {
+            setSelectedDate(date);
             onDateChangeRef.current?.(date, "user");
           }
         }}
@@ -417,12 +413,9 @@ export function MovieDetailPage({
               onSelect={(date) => {
                 const index = dates.indexOf(date);
                 if (index !== -1) {
-                  const nextOffset = Math.min(index, maxOffset);
-                  setOffset(nextOffset);
-                  const resolvedDate = dates[nextOffset];
-                  if (resolvedDate !== undefined) {
-                    onDateChangeRef.current?.(resolvedDate, "user");
-                  }
+                  setSelectedDate(date);
+                  setOffset(Math.min(index, maxOffset));
+                  onDateChangeRef.current?.(date, "user");
                 }
               }}
             />
