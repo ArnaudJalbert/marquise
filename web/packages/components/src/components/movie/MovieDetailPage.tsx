@@ -1,21 +1,17 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import {
-  ArrowLeft,
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import type {
+  CinemaShowtime,
+  MovieCardData,
+  MovieDetailClient,
+} from "marquise-client";
 
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { CinemaShowtimeGroups, groupByCinema } from "./CinemaShowtimes";
-import { Calendar, formatDateLabel } from "./date-selector";
+import { addIsoDays, DateSelector, formatDateLabel } from "./date-selector";
 import { formatDuration } from "./format";
 import { MoviePoster } from "./MoviePoster";
-import type { CinemaShowtime } from "./cinema";
-import type { MovieCardData } from "./movie";
-import type { MovieDetailClient } from "./movie-detail-client";
 
 /** Width of one date column, in px. The number of visible columns adapts to the container width. */
 const COLUMN_WIDTH = 288;
@@ -63,48 +59,17 @@ function DateColumn({
   );
 }
 
-function JumpToDate({
-  dates,
-  selectedDate,
-  onSelect,
-}: {
-  dates: readonly string[];
-  selectedDate: string;
-  onSelect: (date: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label="Jump to a date"
-          className="flex cursor-pointer items-center justify-center p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <CalendarDays aria-hidden className="size-4" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-72">
-        <Calendar
-          dates={dates}
-          selectedDate={selectedDate}
-          initialMonth={selectedDate}
-          onSelect={(date) => {
-            onSelect(date);
-            setOpen(false);
-          }}
-        />
-      </PopoverContent>
-    </Popover>
-  );
-}
-
 export interface MovieDetailPageProps {
   movie: MovieCardData;
   /** Data source; showtimes are fetched per date as each column comes into view. */
   client: MovieDetailClient;
   /** Date shown first, as "YYYY-MM-DD"; defaults to the first available. */
   initialDate?: string;
+  /** Reports the selected date after user navigation or normalization. */
+  onDateChange?: (
+    date: string,
+    reason: "user" | "normalization",
+  ) => void;
   /** ISO-8601 timestamp treated as "now"; started showtimes are crossed out. */
   currentTime?: string;
   /** When set, renders a back button. */
@@ -127,6 +92,7 @@ export function MovieDetailPage({
   movie,
   client,
   initialDate,
+  onDateChange,
   currentTime,
   onBack,
   className,
@@ -142,13 +108,17 @@ export function MovieDetailPage({
   const [fetchRetryNonce, setFetchRetryNonce] = useState(0);
   const requestedRef = useRef<Set<string>>(new Set());
   const [offset, setOffset] = useState(0);
+  const [selectedDate, setSelectedDate] = useState("");
   const [viewportWidth, setViewportWidth] = useState<number | null>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const clientRef = useRef(client);
   const movieRef = useRef(movie);
+  const initialDateRef = useRef(initialDate);
+  const onDateChangeRef = useRef(onDateChange);
 
   useEffect(() => {
     clientRef.current = client;
+    onDateChangeRef.current = onDateChange;
   });
 
   useIsomorphicLayoutEffect(() => {
@@ -156,6 +126,7 @@ export function MovieDetailPage({
       return;
     }
     movieRef.current = movie;
+    initialDateRef.current = initialDate;
     setDates([]);
     setDatesLoading(true);
     setDatesError(null);
@@ -165,6 +136,7 @@ export function MovieDetailPage({
     setFetchError(null);
     requestedRef.current = new Set();
     setOffset(0);
+    setSelectedDate("");
   }, [movie]);
 
   useEffect(() => {
@@ -180,8 +152,15 @@ export function MovieDetailPage({
         const sorted = [...available].sort();
         setDates(sorted);
         setDatesLoading(false);
-        const index = initialDate !== undefined ? sorted.indexOf(initialDate) : 0;
-        setOffset(Math.max(0, index));
+        const requestedDate = initialDateRef.current;
+        const index = requestedDate !== undefined ? sorted.indexOf(requestedDate) : 0;
+        const initialOffset = Math.max(0, index);
+        setOffset(initialOffset);
+        const resolvedDate = sorted[initialOffset];
+        setSelectedDate(resolvedDate ?? "");
+        if (resolvedDate !== undefined && resolvedDate !== requestedDate) {
+          onDateChangeRef.current?.(resolvedDate, "normalization");
+        }
       })
       .catch(() => {
         if (stale) {
@@ -193,7 +172,7 @@ export function MovieDetailPage({
     return () => {
       stale = true;
     };
-  }, [movie, initialDate, datesRetryNonce]);
+  }, [movie, datesRetryNonce]);
 
   const stripReady = !datesLoading && dates.length > 0;
 
@@ -225,8 +204,22 @@ export function MovieDetailPage({
   const safeOffset = Math.min(offset, maxOffset);
 
   useEffect(() => {
-    setOffset((current) => Math.min(current, maxOffset));
-  }, [maxOffset]);
+    const selectedIndex = dates.indexOf(selectedDate);
+    let nextOffset = Math.min(offset, maxOffset);
+    if (selectedIndex !== -1) {
+      if (selectedIndex < nextOffset) {
+        nextOffset = selectedIndex;
+      } else if (selectedIndex >= nextOffset + visibleCount) {
+        nextOffset = Math.min(
+          selectedIndex - visibleCount + 1,
+          maxOffset,
+        );
+      }
+    }
+    if (nextOffset !== offset) {
+      setOffset(nextOffset);
+    }
+  }, [dates, maxOffset, offset, selectedDate, visibleCount]);
 
   useEffect(() => {
     const start = Math.max(0, safeOffset);
@@ -287,6 +280,22 @@ export function MovieDetailPage({
     setDatesRetryNonce((nonce) => nonce + 1);
   };
 
+  const selectDate = (date: string) => {
+    const index = dates.indexOf(date);
+    if (index === -1) {
+      setDates(
+        Array.from({ length: Math.max(dates.length, 1) }, (_, offset) =>
+          addIsoDays(date, offset),
+        ),
+      );
+      setOffset(0);
+    } else {
+      setOffset(Math.min(index, maxOffset));
+    }
+    setSelectedDate(date);
+    onDateChangeRef.current?.(date, "user");
+  };
+
   const meta = [
     movie.releaseYear != null ? String(movie.releaseYear) : null,
     movie.durationMinutes != null ? formatDuration(movie.durationMinutes) : null,
@@ -294,15 +303,21 @@ export function MovieDetailPage({
     movie.genres && movie.genres.length > 0 ? movie.genres.join(", ") : null,
   ].filter((part): part is string => part !== null);
 
-  const selectedDate = dates[safeOffset] ?? dates[0] ?? "";
-
   const showtimesColumns = (
     <div className="flex items-stretch gap-1">
       <button
         type="button"
         aria-label="Earlier dates"
         disabled={safeOffset === 0}
-        onClick={() => setOffset(Math.max(0, safeOffset - 1))}
+        onClick={() => {
+          const nextOffset = Math.max(0, safeOffset - 1);
+          setOffset(nextOffset);
+          const date = dates[nextOffset];
+          if (date !== undefined) {
+            setSelectedDate(date);
+            onDateChangeRef.current?.(date, "user");
+          }
+        }}
         className="flex cursor-pointer items-center justify-center p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
       >
         <ChevronLeft aria-hidden className="size-4" />
@@ -315,8 +330,14 @@ export function MovieDetailPage({
             transition: "transform 300ms ease",
           }}
         >
-          {dates.map((date) => (
-            <div key={date} className="shrink-0" style={{ width: columnWidth }}>
+          {dates.map((date, index) => (
+            <div
+              key={date}
+              aria-hidden={index < safeOffset || index >= safeOffset + visibleCount}
+              inert={index < safeOffset || index >= safeOffset + visibleCount}
+              className="shrink-0"
+              style={{ width: columnWidth }}
+            >
               <DateColumn
                 date={date}
                 showtimes={cache.get(date)}
@@ -332,7 +353,15 @@ export function MovieDetailPage({
         type="button"
         aria-label="Later dates"
         disabled={safeOffset >= maxOffset}
-        onClick={() => setOffset(Math.min(maxOffset, safeOffset + 1))}
+        onClick={() => {
+          const nextOffset = Math.min(maxOffset, safeOffset + 1);
+          setOffset(nextOffset);
+          const date = dates[nextOffset];
+          if (date !== undefined) {
+            setSelectedDate(date);
+            onDateChangeRef.current?.(date, "user");
+          }
+        }}
         className="flex cursor-pointer items-center justify-center p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
       >
         <ChevronRight aria-hidden className="size-4" />
@@ -375,15 +404,10 @@ export function MovieDetailPage({
             Showtimes
           </h2>
           {dates.length > 0 ? (
-            <JumpToDate
+            <DateSelector
               dates={dates}
               selectedDate={selectedDate}
-              onSelect={(date) => {
-                const index = dates.indexOf(date);
-                if (index !== -1) {
-                  setOffset(Math.min(index, maxOffset));
-                }
-              }}
+              onDateChange={selectDate}
             />
           ) : null}
         </div>

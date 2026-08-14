@@ -6,9 +6,6 @@ import { TIME_MAX_HOUR, TIME_MIN_HOUR } from "./movie-grid-filter";
 
 export { formatDateLabel } from "./date-selector";
 
-const CARD_SIZE_MIN = 150;
-const CARD_SIZE_MAX = 320;
-
 export function formatHourLabel(hour: number): string {
   return `${String(hour).padStart(2, "0")}:00`;
 }
@@ -120,6 +117,8 @@ function MultiSelectGroup({
 }
 
 export interface MovieFilterPanelProps {
+  query: string;
+  onQueryChange: (query: string) => void;
   /** Selectable dates as "YYYY-MM-DD" strings. */
   dates: readonly string[];
   selectedDate: string;
@@ -139,14 +138,6 @@ export interface MovieFilterPanelProps {
   /** Start–end hours, both inclusive. */
   timeRange: readonly [number, number];
   onTimeRangeChange: (next: readonly [number, number]) => void;
-  /** Minimum card width in px for the grid; shows the card-size slider when set. */
-  cardSize?: number;
-  /** Invoked whenever the card-size slider moves. */
-  onCardSizeChange?: (size: number) => void;
-  /** When true, the grid shows only posters; shows the details toggle when set. */
-  hideDetails?: boolean;
-  /** Invoked whenever the details visibility toggle changes. */
-  onHideDetailsChange?: (hide: boolean) => void;
   minHour?: number;
   maxHour?: number;
   className?: string;
@@ -154,11 +145,13 @@ export interface MovieFilterPanelProps {
 
 /**
  * Vertical, controlled filter panel for a movie grid. The date is picked from a
- * calendar popover (with arrows to step to the previous/next available date),
+ * native date selector (with arrows to step through available dates),
  * the time range from a slider, and cinema/genre/language from chip groups;
  * every value is lifted up so callers decide when to fetch and how to filter.
  */
 export function MovieFilterPanel({
+  query,
+  onQueryChange,
   dates,
   selectedDate,
   onDateChange,
@@ -173,10 +166,6 @@ export function MovieFilterPanel({
   onLanguagesChange,
   timeRange,
   onTimeRangeChange,
-  cardSize,
-  onCardSizeChange,
-  hideDetails,
-  onHideDetailsChange,
   minHour = TIME_MIN_HOUR,
   maxHour = TIME_MAX_HOUR,
   className,
@@ -184,10 +173,6 @@ export function MovieFilterPanel({
   const span = maxHour - minHour;
   const startPct = span > 0 ? ((timeRange[0] - minHour) / span) * 100 : 0;
   const endPct = span > 0 ? ((timeRange[1] - minHour) / span) * 100 : 100;
-  const cardSizePct =
-    cardSize !== undefined
-      ? ((cardSize - CARD_SIZE_MIN) / (CARD_SIZE_MAX - CARD_SIZE_MIN)) * 100
-      : 0;
 
   const handleStartChange = (event: ChangeEvent<HTMLInputElement>) => {
     const value = Math.max(minHour, Number(event.target.value));
@@ -200,7 +185,18 @@ export function MovieFilterPanel({
   };
 
   return (
-    <div className={cn("flex flex-col gap-6", className)}>
+    <div className={cn("flex min-h-0 flex-col gap-6 overflow-y-auto", className)}>
+      <section className="flex flex-col gap-2">
+        <SectionHeading>Search</SectionHeading>
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => onQueryChange(event.target.value)}
+          placeholder="Movie title"
+          aria-label="Search movies"
+          className="h-8 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+      </section>
       <section className="flex flex-col gap-2">
         <SectionHeading>Date</SectionHeading>
         <DateSelector
@@ -266,44 +262,6 @@ export function MovieFilterPanel({
         selected={selectedLanguages}
         onChange={onLanguagesChange}
       />
-
-      {cardSize !== undefined && onCardSizeChange !== undefined ? (
-        <section className="flex flex-col gap-2">
-          <SectionHeading>Card size</SectionHeading>
-          <div className="card-size-slider relative h-8 select-none">
-            <div className="absolute top-1/2 h-1.5 w-full -translate-y-1/2 rounded-full bg-muted" />
-            <div
-              className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-foreground"
-              style={{ left: 0, width: `${cardSizePct}%` }}
-            />
-            <input
-              type="range"
-              min={CARD_SIZE_MIN}
-              max={CARD_SIZE_MAX}
-              step={10}
-              value={cardSize}
-              onChange={(event) => onCardSizeChange(Number(event.target.value))}
-              aria-label="Card size"
-              aria-valuetext={`${cardSize} pixels`}
-            />
-          </div>
-        </section>
-      ) : null}
-
-      {hideDetails !== undefined && onHideDetailsChange !== undefined ? (
-        <section className="flex flex-col gap-2">
-          <SectionHeading>Details</SectionHeading>
-          <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={!hideDetails}
-              onChange={(event) => onHideDetailsChange(!event.target.checked)}
-              className="size-4 accent-[var(--foreground)]"
-            />
-            Show details
-          </label>
-        </section>
-      ) : null}
     </div>
   );
 }

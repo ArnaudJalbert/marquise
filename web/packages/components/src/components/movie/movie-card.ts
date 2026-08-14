@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
-
-import type { CinemaShowtime } from "./cinema";
-import type { MovieCardData } from "./movie";
+import type { CinemaShowtime, MovieCardData } from "marquise-client";
 
 export interface MovieCardProps {
   movie: MovieCardData;
@@ -9,7 +7,7 @@ export interface MovieCardProps {
   showtimes?: readonly CinemaShowtime[];
   /** Link to the "all showtimes" page; the movie title always links to it. */
   showtimesUrl: string;
-  /** Maximum number of upcoming showtime chips to show before the all-showtimes widget. */
+  /** Optional maximum number of upcoming showtime chips to show. */
   maxShowtimes?: number;
   /** Delay in ms before the hover popover opens. */
   hoverOpenDelay?: number;
@@ -23,7 +21,7 @@ export interface MovieCardProps {
   currentTime?: string;
   /** Background color (any CSS color) that fills the card behind poster and text. */
   backgroundColor?: string;
-  /** When true, renders only the poster (filling the card) and hides title, meta and showtimes. */
+  /** When true, hides metadata and showtimes while retaining the title. */
   hideDetails?: boolean;
   /** Extra classes for the outer card. */
   className?: string;

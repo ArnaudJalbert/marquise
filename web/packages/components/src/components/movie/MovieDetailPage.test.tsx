@@ -1,12 +1,15 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
 import { describe, expect, it, vi } from "vitest";
+import type {
+  Cinema,
+  CinemaShowtime,
+  MovieCardData,
+  MovieDetailClient,
+} from "marquise-client";
 
 import { formatDateLabel } from "./date-selector";
 import { MovieDetailPage } from "./MovieDetailPage";
-import type { Cinema } from "./cinema";
-import type { CinemaShowtime } from "./cinema";
-import type { MovieCardData } from "./movie";
-import type { MovieDetailClient } from "./movie-detail-client";
 
 const cinemaModerne: Cinema = {
   id: "cinema-moderne",
@@ -55,6 +58,7 @@ const byDate: Record<string, CinemaShowtime[]> = {
 
 function createClient(overrides?: Partial<MovieDetailClient>) {
   const client: MovieDetailClient = {
+    fetchMovie: vi.fn(async () => movie),
     listDates: vi.fn(async () => dates),
     fetchShowtimes: vi.fn(
       async (_m: MovieCardData, date: string) => byDate[date] ?? [],
@@ -101,6 +105,19 @@ function lastResizeObserver(): ControllableResizeObserver {
 const defaultResizeObserver = globalThis.ResizeObserver;
 
 describe("MovieDetailPage", () => {
+  it("mounts under Strict Mode without a composed-ref update loop", async () => {
+    const client = createClient();
+    render(
+      <StrictMode>
+        <MovieDetailPage movie={movie} client={client} />
+      </StrictMode>,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Dune: Part Two" }),
+    ).toBeInTheDocument();
+  });
+
   it("renders the movie header and the first date's showtimes", async () => {
     const client = createClient();
     render(<MovieDetailPage movie={movie} client={client} />);
@@ -113,8 +130,10 @@ describe("MovieDetailPage", () => {
     ).toBeInTheDocument();
 
     expect(client.listDates).toHaveBeenCalledWith(movie);
-    expect(client.fetchShowtimes).toHaveBeenCalledWith(movie, "2026-08-03");
-    expect(screen.getByText(formatDateLabel("2026-08-03"))).toBeInTheDocument();
+    await waitFor(() =>
+      expect(client.fetchShowtimes).toHaveBeenCalledWith(movie, "2026-08-03"),
+    );
+    expect(screen.getAllByText(formatDateLabel("2026-08-03")).length).toBeGreaterThan(0);
     expect(await screen.findByText("Cinéma Moderne")).toBeInTheDocument();
     expect(screen.getByText("18:00")).toBeInTheDocument();
     expect(screen.getByText("21:00")).toBeInTheDocument();
@@ -147,6 +166,55 @@ describe("MovieDetailPage", () => {
     ).toBeDisabled();
   });
 
+  it("selects any future calendar date and shows an empty result", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-01T12:00:00Z"));
+    try {
+      const client = createClient();
+      render(<MovieDetailPage movie={movie} client={client} />);
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: `Open calendar, selected ${formatDateLabel("2026-08-03")}`,
+        }),
+      );
+      fireEvent.click(screen.getByRole("button", { name: formatDateLabel("2026-08-10") }));
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(client.fetchShowtimes).toHaveBeenCalledWith(movie, "2026-08-10");
+      expect(screen.getAllByText("No screenings.")).not.toHaveLength(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("restores and reports the selected showtimes date", async () => {
+    const client = createClient();
+    const onDateChange = vi.fn();
+    render(
+      <MovieDetailPage
+        movie={movie}
+        client={client}
+        initialDate="2026-08-04"
+        onDateChange={onDateChange}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(client.fetchShowtimes).toHaveBeenCalledWith(movie, "2026-08-04"),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Earlier dates" }));
+
+    expect(onDateChange).toHaveBeenCalledWith("2026-08-03", "user");
+  });
+
   it("shows a loading indicator while a date's showtimes are fetched", async () => {
     const pendings = new Map<
       string,
@@ -161,11 +229,7 @@ describe("MovieDetailPage", () => {
     });
     render(<MovieDetailPage movie={movie} client={client} />);
 
-    await waitFor(() => {
-      expect(
-        screen.getAllByText("Loading showtimes…").length,
-      ).toBeGreaterThan(0);
-    });
+    await waitFor(() => expect(pendings.has("2026-08-03")).toBe(true));
 
     act(() => {
       pendings.get("2026-08-03")?.resolve(dayOne);
@@ -217,9 +281,102 @@ describe("MovieDetailPage", () => {
     expect(
       screen.getByRole("button", { name: "Later dates" }),
     ).toBeDisabled();
-    expect(screen.getByText(formatDateLabel("2026-08-03"))).toBeInTheDocument();
-    expect(screen.getByText(formatDateLabel("2026-08-04"))).toBeInTheDocument();
-    expect(screen.getByText(formatDateLabel("2026-08-05"))).toBeInTheDocument();
+    expect(screen.getAllByText(formatDateLabel("2026-08-03")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(formatDateLabel("2026-08-04")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(formatDateLabel("2026-08-05")).length).toBeGreaterThan(0);
+
+    globalThis.ResizeObserver = defaultResizeObserver;
+  });
+
+  it("keeps offscreen date columns out of the accessibility tree", async () => {
+    const client = createClient();
+    render(<MovieDetailPage movie={movie} client={client} />);
+
+    await screen.findByText("Cinéma Moderne");
+
+    const firstColumn = screen
+      .getByRole("heading", { name: formatDateLabel("2026-08-03"), hidden: true })
+      .closest("[aria-hidden]");
+    const secondColumn = screen
+      .getByRole("heading", { name: formatDateLabel("2026-08-04"), hidden: true })
+      .closest("[aria-hidden]");
+    expect(firstColumn).toHaveAttribute("aria-hidden", "false");
+    expect(firstColumn).not.toHaveAttribute("inert");
+    expect(secondColumn).toHaveAttribute("aria-hidden", "true");
+    expect(secondColumn).toHaveAttribute("inert");
+    expect(
+      screen.queryByRole("heading", { name: formatDateLabel("2026-08-04") }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Later dates" }));
+
+    expect(firstColumn).toHaveAttribute("aria-hidden", "true");
+    expect(secondColumn).toHaveAttribute("aria-hidden", "false");
+  });
+
+  it("makes a selected date accessible and hides newly offscreen columns on resize", async () => {
+    vi.stubGlobal("ResizeObserver", ControllableResizeObserver);
+    ControllableResizeObserver.instances = [];
+    const client = createClient();
+    render(<MovieDetailPage movie={movie} client={client} />);
+
+    await screen.findByText("Cinéma Moderne");
+    act(() => lastResizeObserver().emit(900));
+    const secondColumn = screen
+      .getByRole("heading", { name: formatDateLabel("2026-08-04"), hidden: true })
+      .closest("[aria-hidden]");
+    expect(secondColumn).toHaveAttribute("aria-hidden", "false");
+
+    fireEvent.click(screen.getByRole("button", { name: "Next date" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next date" }));
+    const thirdColumn = screen
+      .getByRole("heading", { name: formatDateLabel("2026-08-05"), hidden: true })
+      .closest("[aria-hidden]");
+    expect(thirdColumn).toHaveAttribute("aria-hidden", "false");
+
+    act(() => lastResizeObserver().emit(288));
+
+    await waitFor(() => expect(secondColumn).toHaveAttribute("aria-hidden", "true"));
+    expect(thirdColumn).toHaveAttribute("aria-hidden", "false");
+    expect(secondColumn).toHaveAttribute("inert");
+
+    globalThis.ResizeObserver = defaultResizeObserver;
+  });
+
+  it("keeps the chosen date visible when the viewport narrows", async () => {
+    vi.stubGlobal("ResizeObserver", ControllableResizeObserver);
+    ControllableResizeObserver.instances = [];
+    const client = createClient();
+    const onDateChange = vi.fn();
+    render(
+      <MovieDetailPage
+        movie={movie}
+        client={client}
+        onDateChange={onDateChange}
+      />,
+    );
+
+    await waitFor(() => expect(client.fetchShowtimes).toHaveBeenCalledTimes(2));
+    act(() => lastResizeObserver().emit(900));
+
+    fireEvent.click(screen.getByRole("button", { name: "Next date" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next date" }));
+
+    expect(
+      screen.getByRole("button", {
+        name: `Open calendar, selected ${formatDateLabel("2026-08-05")}`,
+      }),
+    ).toBeInTheDocument();
+    expect(onDateChange).toHaveBeenCalledWith("2026-08-05", "user");
+
+    act(() => lastResizeObserver().emit(288));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Earlier dates" }),
+      ).not.toBeDisabled(),
+    );
+    expect(screen.getByRole("button", { name: "Later dates" })).toBeDisabled();
 
     globalThis.ResizeObserver = defaultResizeObserver;
   });

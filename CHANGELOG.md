@@ -8,7 +8,36 @@ Before 2026-07-15 the entire codebase shipped as a single package (`marquise`, n
 `marquise-core`). Starting 2026-07-15, the FastAPI application lives in `marquise-api` and the
 Typer CLI lives in `marquise-cli`, each with independent versions.
 
+## 2026-08-10
+
+### marquise-interface + marquise-components + marquise-client + marquise-api deployment
+
+- **Simpler shared interface stack**: one HTTP or mock client now powers both listings and movie details, while the reusable components package remains available to other consumers. Native selects and Radix primitives replace custom calendar, popover, and hover behavior; duplicate demos, proxy modules, unused UI primitives, and build-only machinery were removed.
+- **Correctness and responsive behavior**: listings and details now share consistent mock data, Montréal-aware dates and times, nullable external links, bounded request caching, row-aware auto-fit pagination, mobile scrolling, accurate date selection, and a live current-time marker. The deployed API explicitly allows the interface origin.
+
+## 2026-08-08
+
+### marquise-interface + marquise-components + marquise-client
+
+- **Restorable screenings URLs**: listing filters, selected date, pagination, card size, detail visibility, and filter-panel state are serialized in the URL. Movies now open on dedicated `/movies/<id>` routes, and browser Back restores the exact listings view.
+- **Screenings grid controls and cards**: display controls moved below the grid with details on the left, pagination centered, and card size on the right. Cards retain centered titles when details are hidden, use consistent row sizing, and show an accessible bordered showtimes expansion with a close button.
+- **Montréal-aware filtering**: today's time range starts at the current hour, future dates reset to all day, and returning to today reapplies the current-hour filter. API date ranges now cover Montréal calendar days correctly across UTC and daylight-saving boundaries.
+- **Movie detail data clients**: added HTTP and deterministic mock detail clients, movie IDs throughout the grid model, detail-route loading and error handling, and shared date/showtime behavior between grid and detail views.
+- **Interface and deployment cleanup**: navigation now contains only `Screenings`; Fly.io deployment builds the pnpm workspace into an nginx static image with SPA route fallback, a health check, and one warm interface/API machine.
+
 ## 2026-08-05
+
+### marquise-interface (new)
+
+- **Landing page**: sticky header with the Marquise wordmark (logo top-left) and placeholder section nav ("À l'affiche", "Cinémas", "Films", "À propos"), plus a full-viewport `MovieGridController` — filter panel on the left, auto-paged movie grid filling the middle.
+- **Data-source switching**: `VITE_MARQUISE_DATA_SOURCE=mock|api` (mock default). API mode targets same-origin `/v1/*`, proxied to the local API (`make api`) by the Vite dev server.
+- **Source-level HMR**: the app aliases `marquise-components` and `marquise-client` to their source; component styles come from the package's prebuilt CSS bundle.
+
+### marquise-client (new)
+
+- **Data client for the REST API**: `HttpMovieGridClient` implements `MovieGridClient` — lists the upcoming days with screenings, paginates a date's screenings, bulk-fetches movie metadata (posters, genres, directors, duration) in chunks of 100, and resolves cinema websites for clickable cinema names. Empty base URL targets a same-origin API (dev proxy).
+- **`MockMovieGridClient`**: deterministic seeded demo data (12-film catalogue, 4 Montréal cinemas) so the UI runs with zero backend.
+- **Contract ownership moved out of `marquise-components`**: `Cinema`, `CinemaShowtime`, `MovieCardData`, `MovieCardGridItem` and `MovieGridClient` now live here; the components package re-exports them (dependency direction is now components → client).
 
 ### marquise-components
 

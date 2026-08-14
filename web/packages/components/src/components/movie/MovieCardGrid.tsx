@@ -1,4 +1,9 @@
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { cn } from "../../lib/utils";
@@ -7,6 +12,8 @@ import type { MovieCardGridItem, MovieCardGridProps } from "./movie-card-grid";
 
 const GRID_GAP = 16;
 const MIN_CARD_WIDTH = 200;
+const CARD_SIZE_MIN = 150;
+const CARD_SIZE_MAX = 320;
 
 /** Layout effects measure the DOM; on the server `useLayoutEffect` warns, so fall back to `useEffect`. */
 const useIsomorphicLayoutEffect =
@@ -37,8 +44,12 @@ export function MovieCardGrid({
   onShowtimeClick,
   onMovieClick,
   pageSize,
+  initialPageIndex = 0,
+  onPageIndexChange,
   cardSize,
+  onCardSizeChange,
   hideDetails,
+  onHideDetailsChange,
   className,
   cardClassName,
 }: MovieCardGridProps) {
@@ -47,7 +58,9 @@ export function MovieCardGrid({
   const gridRef = useRef<HTMLUListElement>(null);
   const [dims, setDims] = useState<{ width: number; height: number } | null>(null);
   const [rowHeight, setRowHeight] = useState<number | null>(null);
-  const [pageIndex, setPageIndex] = useState(0);
+  const [pageIndex, setPageIndex] = useState(() =>
+    Math.max(0, Math.floor(initialPageIndex)),
+  );
 
   useIsomorphicLayoutEffect(() => {
     if (!autoFit) return;
@@ -63,10 +76,50 @@ export function MovieCardGrid({
   }, [autoFit]);
 
   const cardWidth = cardSize ?? MIN_CARD_WIDTH;
-  const columns =
+  const widthColumns =
     autoFit && dims !== null
       ? columnsForWidth(dims.width, cardWidth, cardSize === undefined ? 6 : 8)
       : null;
+  const availableRows =
+    autoFit && dims !== null && rowHeight !== null
+      ? Math.max(1, Math.floor((dims.height + GRID_GAP) / (rowHeight + GRID_GAP)))
+      : null;
+  const columns =
+    widthColumns !== null && availableRows !== null
+      ? Math.min(
+          widthColumns,
+          Math.max(2, Math.ceil(items.length / availableRows)),
+        )
+      : widthColumns;
+  const effectivePageSize =
+    autoFit && columns !== null && availableRows !== null
+      ? columns * availableRows
+      : autoFit
+        ? null
+        : pageSize !== undefined
+          ? Math.max(1, pageSize)
+          : null;
+  const hasPagination = effectivePageSize !== null;
+  const pageCount = hasPagination
+    ? Math.max(1, Math.ceil(items.length / (effectivePageSize as number)))
+    : 1;
+  const measuring = autoFit && effectivePageSize === null;
+
+  useIsomorphicLayoutEffect(() => {
+    if (hasPagination && pageIndex >= pageCount) {
+      const normalizedPage = Math.max(0, pageCount - 1);
+      setPageIndex(normalizedPage);
+      onPageIndexChange?.(normalizedPage, "normalization");
+    }
+  }, [hasPagination, onPageIndexChange, pageCount, pageIndex]);
+
+  let renderItems: readonly MovieCardGridItem[] = items;
+  if (hasPagination) {
+    const startIndex = pageIndex * (effectivePageSize as number);
+    renderItems = items.slice(startIndex, startIndex + (effectivePageSize as number));
+  } else if (measuring) {
+    renderItems = items.slice(0, widthColumns ?? 2);
+  }
 
   useIsomorphicLayoutEffect(() => {
     if (!autoFit || dims === null || columns === null) return;
@@ -81,56 +134,25 @@ export function MovieCardGrid({
       }
     }
     if (heights.length > 0) {
-      setRowHeight(Math.max(...heights));
+      const measuredHeight = Math.max(...heights);
+      setRowHeight((current) =>
+        current === measuredHeight ? current : measuredHeight,
+      );
     }
-  }, [autoFit, dims, columns, hideDetails]);
+  }, [autoFit, columns, dims, hideDetails]);
 
-  const effectivePageSize =
-    autoFit && dims !== null && rowHeight !== null && columns !== null
-      ? columns *
-        Math.max(1, Math.floor((dims.height + GRID_GAP) / (rowHeight + GRID_GAP)))
-      : autoFit
-        ? null
-        : pageSize !== undefined
-          ? Math.max(1, pageSize)
-          : null;
-  const hasPagination = effectivePageSize !== null;
-  const pageCount = hasPagination
-    ? Math.max(1, Math.ceil(items.length / (effectivePageSize as number)))
-    : 1;
-  const measuring = autoFit && effectivePageSize === null;
-
-  useIsomorphicLayoutEffect(() => {
-    setPageIndex((page) => (page >= pageCount ? Math.max(0, pageCount - 1) : page));
-  }, [pageCount]);
-
-  let renderItems: readonly MovieCardGridItem[] = items;
-  if (hasPagination) {
-    const startIndex = pageIndex * (effectivePageSize as number);
-    renderItems = items.slice(startIndex, startIndex + (effectivePageSize as number));
-  } else if (measuring) {
-    renderItems = items.slice(0, columns ?? 2);
-  }
-
-  const showControls = hasPagination && pageCount > 1;
-
-  const handleKeyDown = (event: KeyboardEvent<HTMLUListElement>) => {
-    if (!showControls) return;
-    if (event.target instanceof HTMLAnchorElement) return;
-    if (event.key === "ArrowRight") {
-      event.preventDefault();
-      setPageIndex((page) => Math.min(pageCount - 1, page + 1));
-    } else if (event.key === "ArrowLeft") {
-      event.preventDefault();
-      setPageIndex((page) => Math.max(0, page - 1));
-    }
-  };
+  const showPagination = hasPagination && pageCount > 1;
+  const showCardSizeControl = autoFit && cardSize !== undefined && onCardSizeChange !== undefined;
+  const showDetailsControl = hideDetails !== undefined && onHideDetailsChange !== undefined;
+  const showControls = showPagination || showCardSizeControl || showDetailsControl;
+  const cardSizePct =
+    cardSize !== undefined
+      ? ((cardSize - CARD_SIZE_MIN) / (CARD_SIZE_MAX - CARD_SIZE_MIN)) * 100
+      : 0;
 
   const grid = (
     <ul
       ref={gridRef}
-      onKeyDown={handleKeyDown}
-      tabIndex={showControls ? 0 : undefined}
       aria-label="Movie grid"
       style={
         autoFit
@@ -143,8 +165,8 @@ export function MovieCardGrid({
         autoFit ? undefined : className,
       )}
     >
-      {renderItems.map((item, index) => (
-        <li key={item.key ?? `${item.movie.title}-${index}`}>
+      {renderItems.map((item, index) => {
+        const card = (
           <MovieCard
             movie={item.movie}
             showtimes={item.showtimes}
@@ -157,39 +179,98 @@ export function MovieCardGrid({
             onShowtimeClick={onShowtimeClick}
             onMovieClick={onMovieClick}
             hideDetails={hideDetails}
-            className={cn(hideDetails ? undefined : "h-full", cardClassName)}
+            className={cn("h-full", cardClassName)}
           />
-        </li>
-      ))}
+        );
+        return (
+          <li
+            key={item.key ?? `${item.movie.title}-${index}`}
+            className={autoFit ? "flex justify-center" : undefined}
+          >
+            {autoFit ? (
+              <div className="w-full" style={{ maxWidth: `${cardWidth}px` }}>
+                {card}
+              </div>
+            ) : (
+              card
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 
   const controls = showControls ? (
-    <div className="flex items-center justify-center gap-2">
-      <button
-        type="button"
-        onClick={() => setPageIndex((page) => Math.max(0, page - 1))}
-        disabled={pageIndex === 0}
-        aria-label="Previous page"
-        className="flex cursor-pointer items-center justify-center p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
-      >
-        <ChevronLeft aria-hidden className="size-4" />
-      </button>
-      <span
-        aria-live="polite"
-        className="font-mono text-xs text-muted-foreground tabular-nums"
-      >
-        {pageIndex + 1} / {pageCount}
-      </span>
-      <button
-        type="button"
-        onClick={() => setPageIndex((page) => Math.min(pageCount - 1, page + 1))}
-        disabled={pageIndex >= pageCount - 1}
-        aria-label="Next page"
-        className="flex cursor-pointer items-center justify-center p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
-      >
-        <ChevronRight aria-hidden className="size-4" />
-      </button>
+    <div className="movie-grid-controls flex flex-col gap-3 md:grid md:grid-cols-3 md:items-center">
+      {showDetailsControl ? (
+        <label className="flex w-fit cursor-pointer items-center gap-2 text-sm md:col-start-1 md:justify-self-start">
+          <input
+            type="checkbox"
+            checked={!hideDetails}
+            onChange={(event) => onHideDetailsChange?.(!event.target.checked)}
+            className="size-4 accent-[var(--foreground)]"
+          />
+          Show details
+        </label>
+      ) : null}
+      {showPagination ? (
+        <div className="flex items-center justify-center gap-2 md:col-start-2">
+          <button
+            type="button"
+            onClick={() => {
+              const nextPage = Math.max(0, pageIndex - 1);
+              setPageIndex(nextPage);
+              onPageIndexChange?.(nextPage, "user");
+            }}
+            disabled={pageIndex === 0}
+            aria-label="Previous page"
+            className="flex cursor-pointer items-center justify-center p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
+          >
+            <ChevronLeft aria-hidden className="size-4" />
+          </button>
+          <span
+            aria-live="polite"
+            className="font-mono text-xs text-muted-foreground tabular-nums"
+          >
+            {pageIndex + 1} / {pageCount}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              const nextPage = Math.min(pageCount - 1, pageIndex + 1);
+              setPageIndex(nextPage);
+              onPageIndexChange?.(nextPage, "user");
+            }}
+            disabled={pageIndex >= pageCount - 1}
+            aria-label="Next page"
+            className="flex cursor-pointer items-center justify-center p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
+          >
+            <ChevronRight aria-hidden className="size-4" />
+          </button>
+        </div>
+      ) : null}
+      {showCardSizeControl ? (
+        <div className="flex w-full items-center justify-between gap-3 md:col-start-3 md:w-auto md:justify-self-end">
+          <span className="text-sm">Card size</span>
+          <div className="card-size-slider relative h-8 w-40 select-none">
+            <div className="absolute top-1/2 h-1.5 w-full -translate-y-1/2 rounded-full bg-muted" />
+            <div
+              className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-foreground"
+              style={{ left: 0, width: `${cardSizePct}%` }}
+            />
+            <input
+              type="range"
+              min={CARD_SIZE_MIN}
+              max={CARD_SIZE_MAX}
+              step={10}
+              value={cardSize}
+              onChange={(event) => onCardSizeChange?.(Number(event.target.value))}
+              aria-label="Card size"
+              aria-valuetext={`${cardSize} pixels`}
+            />
+          </div>
+        </div>
+      ) : null}
     </div>
   ) : null;
 

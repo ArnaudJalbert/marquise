@@ -1,4 +1,4 @@
-.PHONY: test test-core test-api test-cli api cli lint format ty docs web-demo
+.PHONY: test test-core test-api test-cli api cli lint format ty docs web web-live web-demo
 
 test: test-core test-api test-cli
 
@@ -35,3 +35,16 @@ docs:
 # Start the marquise-components demo page (dev-only) → http://localhost:5173
 web-demo:
 	cd web && pnpm --filter marquise-components dev
+
+# Start the Marquise landing page with mock data → http://localhost:5173
+web:
+	cd web && VITE_MARQUISE_DATA_SOURCE=mock pnpm --filter marquise-interface dev
+
+# Start the local API and the landing page with live data → http://localhost:5173
+# (requires the DATABASE_URL env var, e.g. via the repo's .env file)
+web-live:
+	@echo "Starting local API on http://localhost:8000 ..."; \
+	uv run --package marquise-api uvicorn marquise_api.app:create_app --factory --host 0.0.0.0 --port 8000 & \
+	API_PID=$$!; \
+	trap 'kill $$API_PID 2>/dev/null' EXIT INT TERM; \
+	cd web && VITE_MARQUISE_DATA_SOURCE=api pnpm --filter marquise-interface dev

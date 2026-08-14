@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { Cinema, CinemaShowtime } from "marquise-client";
 
-import type { Cinema } from "./cinema";
-import type { CinemaShowtime } from "./cinema";
 import type { MovieCardGridItem } from "./movie-card-grid";
 import {
   DEFAULT_MOVIE_FILTERS,
@@ -47,6 +46,7 @@ function item(
 }
 
 const allFilters: MovieFilters = {
+  query: "",
   timeRange: [0, 24],
   cinemas: [],
   genres: [],
@@ -61,6 +61,17 @@ describe("filterMovieGridItems", () => {
     ];
 
     expect(filterMovieGridItems(items, allFilters)).toEqual(items);
+  });
+
+  it("filters titles case-insensitively", () => {
+    const items = [
+      item("Dune: Part Two", [], [showtime("18:00", cinemaA)]),
+      item("Anora", [], [showtime("20:00", cinemaB)]),
+    ];
+
+    expect(filterMovieGridItems(items, { ...allFilters, query: "DUNE" }).map((entry) => entry.key)).toEqual([
+      "Dune: Part Two",
+    ]);
   });
 
   it("filters by cinema name", () => {
