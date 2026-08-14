@@ -614,7 +614,7 @@ requires-dist = [
 
 [[package]]
 name = "marquise-cli"
-version = "0.1.1"
+version = "0.1.2"
 source = { editable = "apps/marquise-cli" }
 dependencies = [
     { name = "marquise-core" },
