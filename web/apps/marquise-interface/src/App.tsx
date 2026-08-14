@@ -10,7 +10,7 @@ import {
 } from "marquise-components";
 import { MovieNotFoundError } from "marquise-client";
 
-import { createMovieDetailClient, createMovieGridClient } from "./api-client";
+import { createMarquiseClient } from "./api-client";
 import { Footer } from "./components/Footer";
 import { Header } from "./components/Header";
 import {
@@ -22,8 +22,6 @@ import {
   type ListingsUrlState,
 } from "./url-state";
 
-const defaultMovieGridClient = createMovieGridClient();
-const defaultMovieDetailClient = createMovieDetailClient();
 const LISTINGS_TITLE = "Marquise — Montréal movie showtimes";
 
 type LocationSnapshot = {
@@ -46,6 +44,7 @@ function MovieRoute({
   loadMovie,
   onBack,
   onDateChange,
+  currentTime,
 }: {
   movieId: string;
   initialDate?: string;
@@ -53,6 +52,7 @@ function MovieRoute({
   loadMovie: (movieId: string, refresh?: boolean) => Promise<MovieCardData>;
   onBack: () => void;
   onDateChange: (date: string) => void;
+  currentTime: string;
 }) {
   const [movie, setMovie] = useState<MovieCardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -116,11 +116,11 @@ function MovieRoute({
 
   return (
     <MovieDetailPage
-      className="h-full w-full overflow-y-auto"
+      className="w-full md:h-full md:overflow-y-auto"
       movie={movie}
       client={client}
       initialDate={initialDate}
-      currentTime={new Date().toISOString()}
+      currentTime={currentTime}
       onDateChange={(date) => onDateChange(date)}
       onBack={onBack}
     />
@@ -128,9 +128,13 @@ function MovieRoute({
 }
 
 export function App({
-  movieGridClient = defaultMovieGridClient,
-  movieDetailClient = defaultMovieDetailClient,
+  movieGridClient: movieGridClientOverride,
+  movieDetailClient: movieDetailClientOverride,
 }: AppProps) {
+  const [defaultClient] = useState(() => createMarquiseClient());
+  const movieGridClient = movieGridClientOverride ?? defaultClient;
+  const movieDetailClient = movieDetailClientOverride ?? defaultClient;
+  const [currentTime, setCurrentTime] = useState(() => new Date().toISOString());
   const [locationSnapshot, setLocationSnapshot] = useState<LocationSnapshot>(() => ({
     href: window.location.href,
     restoreKey: 0,
@@ -151,6 +155,14 @@ export function App({
     };
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(
+      () => setCurrentTime(new Date().toISOString()),
+      60_000,
+    );
+    return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -257,6 +269,7 @@ export function App({
         loadMovie={loadMovie}
         onBack={backToListings}
         onDateChange={updateMovieDate}
+        currentTime={currentTime}
       />
     );
   } else if (route.kind === "not-found") {
@@ -272,11 +285,11 @@ export function App({
     content = (
       <MovieGridController
         key={`listings-${locationSnapshot.restoreKey}`}
-        className="h-full w-full"
+        className="w-full md:h-full"
         client={movieGridClient}
         side="right"
         pageSize="auto"
-        currentTime={new Date().toISOString()}
+        currentTime={currentTime}
         initialDate={listingsState.date}
         initialFilters={listingsState.filters}
         initialPageIndex={listingsState.pageIndex}

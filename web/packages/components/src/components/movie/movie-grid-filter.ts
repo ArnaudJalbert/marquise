@@ -1,5 +1,5 @@
 import { getHour } from "./format";
-import type { CinemaShowtime } from "./cinema";
+import type { CinemaShowtime } from "marquise-client";
 import type { MovieCardGridItem } from "./movie-card-grid";
 
 /** Lower bound of the time-range slider (inclusive), in hours. */
@@ -13,6 +13,8 @@ export const TIME_MAX_HOUR = 24;
  * already-fetched date's data.
  */
 export interface MovieFilters {
+  /** Case-insensitive movie-title search; empty means no title filter. */
+  query: string;
   /** Start–end hours, both inclusive, within `[TIME_MIN_HOUR, TIME_MAX_HOUR]`. */
   timeRange: readonly [number, number];
   /** Cinema names to keep; empty means no cinema filter. */
@@ -24,6 +26,7 @@ export interface MovieFilters {
 }
 
 export const DEFAULT_MOVIE_FILTERS: MovieFilters = {
+  query: "",
   timeRange: [TIME_MIN_HOUR, TIME_MAX_HOUR],
   cinemas: [],
   genres: [],
@@ -33,6 +36,7 @@ export const DEFAULT_MOVIE_FILTERS: MovieFilters = {
 /** Create the initial filters, starting the time range at the current Montreal hour. */
 export function createDefaultMovieFilters(now: Date = new Date()): MovieFilters {
   return {
+    query: "",
     timeRange: [getHour(now.toISOString()), TIME_MAX_HOUR],
     cinemas: [],
     genres: [],
@@ -88,7 +92,11 @@ export function filterMovieGridItems(
   filters: MovieFilters,
 ): MovieCardGridItem[] {
   const result: MovieCardGridItem[] = [];
+  const query = filters.query.trim().toLocaleLowerCase();
   for (const item of items) {
+    if (!item.movie.title.toLocaleLowerCase().includes(query)) {
+      continue;
+    }
     const movieGenres = item.movie.genres ?? [];
     if (
       filters.genres.length > 0 &&

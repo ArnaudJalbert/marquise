@@ -39,7 +39,7 @@ function createClients(): {
   const items: MovieCardGridItem[] = Array.from({ length: 10 }, (_, index) => ({
     key: `movie-${index + 1}`,
     movie: movie(index + 1),
-    showtimesUrl: "#",
+    showtimesUrl: "/movies/anora",
     showtimes: [
       {
         startsAt: `${DATE}T23:00:00-04:00`,

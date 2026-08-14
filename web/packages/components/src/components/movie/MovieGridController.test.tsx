@@ -1,13 +1,11 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { StrictMode } from "react";
 import { describe, expect, it, vi } from "vitest";
+import type { Cinema, CinemaShowtime, MovieGridClient } from "marquise-client";
 
-import { formatDateLabel } from "./MovieFilterPanel";
+import { fixedResizeObserver } from "../../../test/resize-observer";
 import { MovieGridController } from "./MovieGridController";
-import type { Cinema } from "./cinema";
-import type { CinemaShowtime } from "./cinema";
 import type { MovieCardGridItem } from "./movie-card-grid";
-import type { MovieGridClient } from "./movie-grid-client";
 
 const cinemaA: Cinema = {
   id: "cinema-a",
@@ -85,7 +83,7 @@ describe("MovieGridController", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "anora" })).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /open calendar/i }),
+      screen.getByRole("combobox", { name: "Screening date" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Cinéma A" })).toBeInTheDocument();
   });
@@ -235,35 +233,16 @@ describe("MovieGridController", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cinéma B" }));
     expect(client.fetchForDate).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByRole("button", { name: /open calendar/i }));
-    fireEvent.click(
-      screen.getByRole("button", { name: formatDateLabel("2026-08-04") }),
-    );
+    fireEvent.change(screen.getByRole("combobox", { name: "Screening date" }), {
+      target: { value: "2026-08-04" },
+    });
 
     await waitFor(() => expect(client.fetchForDate).toHaveBeenCalledTimes(2));
   });
 
   it("renders a card-size slider without widening a small result set", async () => {
-    class AutoResizeObserver implements ResizeObserver {
-      private readonly callback: ResizeObserverCallback;
-
-      constructor(callback: ResizeObserverCallback) {
-        this.callback = callback;
-      }
-
-      observe(_target: Element): void {
-        this.callback(
-          [{ contentRect: { width: 1430, height: 1200 } } as ResizeObserverEntry],
-          this,
-        );
-      }
-
-      unobserve(): void {}
-      disconnect(): void {}
-    }
-
     vi.restoreAllMocks();
-    vi.stubGlobal("ResizeObserver", AutoResizeObserver);
+    vi.stubGlobal("ResizeObserver", fixedResizeObserver(1430, 1200));
     vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(200);
 
     const client = createClient();
@@ -282,32 +261,18 @@ describe("MovieGridController", () => {
     expect(slider).toHaveValue("200");
 
     const list = container.querySelector("ul");
-    expect(list?.getAttribute("style")).toContain("repeat(6");
+    expect(list?.getAttribute("style")).toContain("repeat(2");
 
     fireEvent.change(slider, { target: { value: "320" } });
 
     expect(screen.getByRole("slider", { name: "Card size" })).toHaveValue("320");
-    expect(list?.getAttribute("style")).toContain("repeat(4");
+    expect(list?.getAttribute("style")).toContain("repeat(2");
     expect(onCardSizeChange).toHaveBeenCalledWith(320);
   });
 
   it("changes auto-fit pages with the date selector mounted in Strict Mode", async () => {
-    class AutoResizeObserver implements ResizeObserver {
-      constructor(private readonly callback: ResizeObserverCallback) {}
-
-      observe(_target: Element): void {
-        this.callback(
-          [{ contentRect: { width: 896, height: 600 } } as ResizeObserverEntry],
-          this,
-        );
-      }
-
-      unobserve(): void {}
-      disconnect(): void {}
-    }
-
     vi.restoreAllMocks();
-    vi.stubGlobal("ResizeObserver", AutoResizeObserver);
+    vi.stubGlobal("ResizeObserver", fixedResizeObserver(896, 600));
     vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(200);
 
     const movies = Array.from({ length: 10 }, (_, index) =>

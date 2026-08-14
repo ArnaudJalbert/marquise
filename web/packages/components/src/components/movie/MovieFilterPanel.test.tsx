@@ -18,6 +18,8 @@ function sectionFor(label: string): HTMLElement {
 
 function renderPanel(overrides?: Partial<MovieFilterPanelProps>) {
   const props: MovieFilterPanelProps = {
+    query: "",
+    onQueryChange: vi.fn(),
     dates: ["2026-08-03", "2026-08-04"],
     selectedDate: "2026-08-03",
     onDateChange: vi.fn(),
@@ -39,11 +41,22 @@ function renderPanel(overrides?: Partial<MovieFilterPanelProps>) {
 }
 
 describe("MovieFilterPanel", () => {
-  it("shows the selected date on the calendar trigger", () => {
+  it("updates movie search", () => {
+    const { props } = renderPanel();
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search movies" }), {
+      target: { value: "anora" },
+    });
+
+    expect(props.onQueryChange).toHaveBeenCalledWith("anora");
+  });
+
+  it("shows the selected date in the native selector", () => {
     renderPanel();
 
-    const trigger = screen.getByRole("button", { name: /open calendar/i });
-    expect(trigger).toHaveTextContent(formatDateLabel("2026-08-03"));
+    expect(screen.getByRole("combobox", { name: "Screening date" })).toHaveDisplayValue(
+      formatDateLabel("2026-08-03"),
+    );
   });
 
   it("shows a placeholder when no date is selected", () => {
@@ -74,25 +87,23 @@ describe("MovieFilterPanel", () => {
     ).toBeDisabled();
   });
 
-  it("picks a date from the calendar popover", () => {
+  it("picks a date from the native selector", () => {
     const { props } = renderPanel();
 
-    fireEvent.click(screen.getByRole("button", { name: /open calendar/i }));
-    fireEvent.click(
-      screen.getByRole("button", { name: formatDateLabel("2026-08-04") }),
-    );
+    fireEvent.change(screen.getByRole("combobox", { name: "Screening date" }), {
+      target: { value: "2026-08-04" },
+    });
 
     expect(props.onDateChange).toHaveBeenCalledWith("2026-08-04");
   });
 
-  it("disables calendar days that are not available", () => {
+  it("only offers available dates", () => {
     renderPanel({ dates: ["2026-08-03", "2026-08-05"] });
 
-    fireEvent.click(screen.getByRole("button", { name: /open calendar/i }));
-
-    expect(
-      screen.getByRole("button", { name: formatDateLabel("2026-08-04") }),
-    ).toBeDisabled();
+    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
+      formatDateLabel("2026-08-03"),
+      formatDateLabel("2026-08-05"),
+    ]);
   });
 
   it("adds a cinema chip when it is toggled on", () => {

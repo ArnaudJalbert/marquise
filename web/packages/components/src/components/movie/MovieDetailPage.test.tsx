@@ -1,13 +1,15 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { StrictMode } from "react";
 import { describe, expect, it, vi } from "vitest";
+import type {
+  Cinema,
+  CinemaShowtime,
+  MovieCardData,
+  MovieDetailClient,
+} from "marquise-client";
 
 import { formatDateLabel } from "./date-selector";
 import { MovieDetailPage } from "./MovieDetailPage";
-import type { Cinema } from "./cinema";
-import type { CinemaShowtime } from "./cinema";
-import type { MovieCardData } from "./movie";
-import type { MovieDetailClient } from "./movie-detail-client";
 
 const cinemaModerne: Cinema = {
   id: "cinema-moderne",
@@ -128,8 +130,10 @@ describe("MovieDetailPage", () => {
     ).toBeInTheDocument();
 
     expect(client.listDates).toHaveBeenCalledWith(movie);
-    expect(client.fetchShowtimes).toHaveBeenCalledWith(movie, "2026-08-03");
-    expect(screen.getByText(formatDateLabel("2026-08-03"))).toBeInTheDocument();
+    await waitFor(() =>
+      expect(client.fetchShowtimes).toHaveBeenCalledWith(movie, "2026-08-03"),
+    );
+    expect(screen.getAllByText(formatDateLabel("2026-08-03")).length).toBeGreaterThan(0);
     expect(await screen.findByText("Cinéma Moderne")).toBeInTheDocument();
     expect(screen.getByText("18:00")).toBeInTheDocument();
     expect(screen.getByText("21:00")).toBeInTheDocument();
@@ -196,11 +200,7 @@ describe("MovieDetailPage", () => {
     });
     render(<MovieDetailPage movie={movie} client={client} />);
 
-    await waitFor(() => {
-      expect(
-        screen.getAllByText("Loading showtimes…").length,
-      ).toBeGreaterThan(0);
-    });
+    await waitFor(() => expect(pendings.has("2026-08-03")).toBe(true));
 
     act(() => {
       pendings.get("2026-08-03")?.resolve(dayOne);
@@ -252,9 +252,43 @@ describe("MovieDetailPage", () => {
     expect(
       screen.getByRole("button", { name: "Later dates" }),
     ).toBeDisabled();
-    expect(screen.getByText(formatDateLabel("2026-08-03"))).toBeInTheDocument();
-    expect(screen.getByText(formatDateLabel("2026-08-04"))).toBeInTheDocument();
-    expect(screen.getByText(formatDateLabel("2026-08-05"))).toBeInTheDocument();
+    expect(screen.getAllByText(formatDateLabel("2026-08-03")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(formatDateLabel("2026-08-04")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(formatDateLabel("2026-08-05")).length).toBeGreaterThan(0);
+
+    globalThis.ResizeObserver = defaultResizeObserver;
+  });
+
+  it("keeps the chosen date visible when the viewport narrows", async () => {
+    vi.stubGlobal("ResizeObserver", ControllableResizeObserver);
+    ControllableResizeObserver.instances = [];
+    const client = createClient();
+    const onDateChange = vi.fn();
+    render(
+      <MovieDetailPage
+        movie={movie}
+        client={client}
+        onDateChange={onDateChange}
+      />,
+    );
+
+    await waitFor(() => expect(client.fetchShowtimes).toHaveBeenCalledTimes(2));
+    act(() => lastResizeObserver().emit(900));
+
+    const dateSelect = screen.getByRole("combobox", { name: "Jump to a date" });
+    fireEvent.change(dateSelect, { target: { value: "2026-08-05" } });
+
+    expect(dateSelect).toHaveValue("2026-08-05");
+    expect(onDateChange).toHaveBeenCalledWith("2026-08-05", "user");
+
+    act(() => lastResizeObserver().emit(288));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Earlier dates" }),
+      ).not.toBeDisabled(),
+    );
+    expect(screen.getByRole("button", { name: "Later dates" })).toBeDisabled();
 
     globalThis.ResizeObserver = defaultResizeObserver;
   });

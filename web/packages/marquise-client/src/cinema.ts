@@ -4,8 +4,8 @@ export interface Cinema {
   id: string;
   /** Cinema name — always shown. */
   name: string;
-  /** Link to the cinema's own page, opened in a new tab. */
-  link: string;
+  /** Link to the cinema's own page, opened in a new tab when available. */
+  link: string | null;
 }
 
 /** A cinema with its screenings, as used by the all-showtimes views. */
@@ -18,8 +18,8 @@ export interface CinemaShowtimeGroup {
 export interface CinemaShowtime {
   /** ISO-8601 timestamp of the screening start. */
   startsAt: string;
-  /** Link to the ticketing page for this screening — required. */
-  ticketUrl: string;
+  /** Link to the ticketing page for this screening, when available. */
+  ticketUrl: string | null;
   /** Cinema where this screening happens — required. */
   cinema: Cinema;
   /** Language tag, e.g. "VF", "VOSTF", "EN". */

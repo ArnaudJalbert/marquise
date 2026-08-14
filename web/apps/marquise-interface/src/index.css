@@ -72,6 +72,7 @@ body {
   width: 100%;
   min-height: 0;
   padding: 1rem 1.5rem;
+  overflow-y: auto;
 }
 
 /* Toggled by the header Filters button to hide the filter panel. */
@@ -92,4 +93,17 @@ body {
 
 .site-footer p {
   margin: 0;
+}
+
+@media (max-width: 767px) {
+  .page-shell {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .site-main {
+    display: block;
+    overflow: visible;
+  }
 }
