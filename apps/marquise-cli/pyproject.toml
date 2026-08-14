@@ -1,6 +1,6 @@
 [project]
 name = "marquise-cli"
-version = "0.1.1"
+version = "0.1.2"
 description = "Marquise administration CLI"
 requires-python = ">=3.13"
 dependencies = [
@@ -16,7 +16,7 @@ Repository = "https://github.com/ArnaudJalbert/marquise"
 Changelog = "https://github.com/ArnaudJalbert/marquise/blob/main/CHANGELOG.md"
 
 [project.scripts]
-marquise = "marquise_cli.app:app"
+marquise = "marquise_cli.app:main"
 
 [build-system]
 requires = ["hatchling"]
