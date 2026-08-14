@@ -6,7 +6,17 @@ orchestrated by [Turborepo](https://turbo.build/repo/docs), living alongside the
 backend in the same repository.
 
 > You do not need Python, `uv`, or a database to work here. This subtree is self-contained —
-> the only prerequisites are Node.js and pnpm.
+> the only prerequisites are Node.js and pnpm. See [AGENTS.md](../AGENTS.md) for enforced
+> rules and [CONTRIBUTING.md](../CONTRIBUTING.md) for paths and commands.
+
+## Design
+
+- **`marquise-components`** owns presentational UI and pure filter logic; it receives clients via props
+- **`marquise-client`** owns client protocols, API types, and injected HTTP and mock implementations
+- **Apps compose** library exports, configure clients, and pass them via props
+- Each package builds, lints, typechecks, and tests on its own; client tests inject `fetch`
+
+Full rules → [docs/architecture.md](../docs/architecture.md) (modular web packages) and [AGENTS.md](../AGENTS.md).
 
 ## Layout
 
