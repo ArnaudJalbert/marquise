@@ -160,9 +160,9 @@ Same inject-at-the-boundary idea as [Dependency injection and testability](#depe
 
 | Package role | Owns | Must not | Tested with |
 |--------------|------|----------|-------------|
-| UI library | Components, hooks, pure filter logic, **client protocol types** | HTTP, routing, env, app-specific URLs | Vitest + mock client + Testing Library |
-| Client protocol | Interface contract only (e.g. list dates, fetch for date) | Implementation details | Type-level; mock in component tests |
-| App | Routes, layout, **client implementation**, wiring props | Reimplementing UI logic duplicated from library | Integration/E2E optional; unit-test wiring with mocks |
+| UI library | Components, hooks, pure filter logic | HTTP, routing, env, app-specific URLs | Vitest + mock client + Testing Library |
+| Client package | Client protocol types, API data shapes, HTTP and mock implementations | App routing or env access | Vitest with injected `fetch` |
+| App | Routes, layout, client configuration and prop wiring | Reimplementing UI logic or HTTP client | Integration/E2E optional; unit-test wiring with mocks |
 
 **Composition rule:** apps **compose** library exports; they do not fork or duplicate library UI. All I/O crosses the client boundary — parallel to gateway protocols on the backend.
 

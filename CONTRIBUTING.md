@@ -105,15 +105,18 @@ web/
 ├── pnpm-workspace.yaml    # apps/* and packages/*
 ├── turbo.json             # task pipeline
 ├── tsconfig.base.json     # shared TS strict defaults
-├── apps/                  # runnable applications (may be empty until one ships)
+├── apps/
+│   └── marquise-interface/ # Vite + React app
 └── packages/
-    └── components/        # marquise-components — shared React component library
+    ├── marquise-client/   # client protocols, HTTP and mock clients
+    └── components/         # marquise-components UI library
 ```
 
 | Member | Role |
 |--------|------|
+| `packages/marquise-client` | Client protocols, API types, injected HTTP and mock implementations |
 | `packages/components` | Publishable UI library (`marquise-components`); ships `dist/` + CSS bundle |
-| `apps/*` | Runnable front-end apps (when added) |
+| `apps/marquise-interface` | Routes, client configuration, and UI composition |
 
 **Install rule**: run `pnpm install` only from `web/`, never from a package subdirectory.
 
@@ -129,8 +132,9 @@ Design rules → [docs/architecture.md](docs/architecture.md) and [web/README.md
 
 | Package | Role |
 |---------|------|
-| `packages/components` | Publishable UI library (`marquise-components`); client protocols + components |
-| `apps/*` (when added) | Routes, real client implementation, compose library exports |
+| `packages/marquise-client` | Client protocols, API types, HTTP and mock implementations |
+| `packages/components` | Publishable UI library (`marquise-components`); components and filter logic |
+| `apps/marquise-interface` | Routes, client configuration, compose library exports |
 
 ---
 
@@ -313,8 +317,6 @@ Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
 - [ ] Import boundary not violated
 - [ ] `CHANGELOG.md` entry under current date; version bump in affected package's `pyproject.toml`
 
-- [ ] Read [docs/todo.md](docs/todo.md) if touching debt-related areas
-
 ### Web changes
 
 - [ ] `pnpm lint`, `pnpm typecheck`, and `pnpm test` pass (from `web/`)
@@ -333,17 +335,6 @@ Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
 
 ## Further reading
 
-### AI coding agents
-
-| Tool | Config | Rules source |
-|------|--------|--------------|
-| Cursor | `.cursor/rules/marquise.mdc` | → [AGENTS.md](AGENTS.md) |
-| Claude Code | `.claude/CLAUDE.md` | `@AGENTS.md` import |
-| OpenCode | `opencode.json` + root AGENTS.md | AGENTS.md + `docs/*.md` via instructions |
-| Codex | `.codex/config.toml` + root AGENTS.md | AGENTS.md (auto) |
-
-Canonical rules: [AGENTS.md](AGENTS.md). Detailed guidelines: `docs/` (linked from AGENTS).
-
 ### Documentation
 
 - [docs/architecture.md](docs/architecture.md) — layer diagram, DI, testability boundary
@@ -351,6 +342,5 @@ Canonical rules: [AGENTS.md](AGENTS.md). Detailed guidelines: `docs/` (linked fr
 - [docs/python.md](docs/python.md) — Python entity and use-case conventions
 - [docs/setup.md](docs/setup.md) — database schema bootstrap
 - [docs/sources.md](docs/sources.md) — showtime source scrapers
-- [docs/todo.md](docs/todo.md) — technical debt tracker
 - [docs/releasing.md](docs/releasing.md) — version bumps and releases
 - [web/README.md](web/README.md) — web workspace quick start
