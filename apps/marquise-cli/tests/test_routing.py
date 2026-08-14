@@ -40,9 +40,9 @@ def test_root_help_lists_command_groups(capsys: pytest.CaptureFixture[str]) -> N
 @pytest.mark.parametrize(
     ("argv", "message"),
     [
-        ([], "the following arguments are required: group"),
+        ([], "the following arguments are required"),
         (["unknown"], "invalid choice"),
-        (["cinema"], "the following arguments are required: command"),
+        (["cinema"], "the following arguments are required"),
         (["cinema", "unknown"], "invalid choice"),
     ],
 )

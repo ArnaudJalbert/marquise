@@ -41,15 +41,40 @@ def create_parser(fallback_handler: Handler) -> argparse.ArgumentParser:
     """
     parser = argparse.ArgumentParser(
         prog="marquise",
-        description="Marquise movie showtimes aggregator administration CLI",
+        usage="%(prog)s <command> [<args>]",
+        description="Manage Marquise movie showtimes.",
+        epilog="Run '%(prog)s <command> --help' for command details.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    groups = parser.add_subparsers(dest="group", required=True)
+    groups = parser.add_subparsers(
+        dest="group",
+        required=True,
+        title="commands",
+        metavar="<command>",
+    )
 
     for group, help_text, commands in _COMMANDS:
-        group_parser = groups.add_parser(group, help=help_text, description=help_text)
-        leaves = group_parser.add_subparsers(dest="command", required=True)
+        group_parser = groups.add_parser(
+            group,
+            prog=f"marquise {group}",
+            help=help_text,
+            usage="%(prog)s <command> [<args>]",
+            description=help_text,
+            epilog="Run '%(prog)s <command> --help' for command details.",
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+        )
+        leaves = group_parser.add_subparsers(
+            dest="command",
+            required=True,
+            title="commands",
+            metavar="<command>",
+        )
         for command in commands:
-            leaf = leaves.add_parser(command, add_help=False)
+            leaf = leaves.add_parser(
+                command,
+                add_help=False,
+                help=command.replace("-", " ").capitalize(),
+            )
             leaf.set_defaults(handler=fallback_handler, args=[])
 
     return parser
