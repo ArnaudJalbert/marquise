@@ -201,9 +201,9 @@ export function MovieCardGrid({
   );
 
   const controls = showControls ? (
-    <div className="grid grid-cols-3 items-center gap-3">
+    <div className="movie-grid-controls flex flex-col gap-3 md:grid md:grid-cols-3 md:items-center">
       {showDetailsControl ? (
-        <label className="col-start-1 flex w-fit cursor-pointer items-center gap-2 text-sm justify-self-start">
+        <label className="flex w-fit cursor-pointer items-center gap-2 text-sm md:col-start-1 md:justify-self-start">
           <input
             type="checkbox"
             checked={!hideDetails}
@@ -214,7 +214,7 @@ export function MovieCardGrid({
         </label>
       ) : null}
       {showPagination ? (
-        <div className="col-start-2 flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-2 md:col-start-2">
           <button
             type="button"
             onClick={() => {
@@ -250,7 +250,7 @@ export function MovieCardGrid({
         </div>
       ) : null}
       {showCardSizeControl ? (
-        <div className="col-start-3 flex items-center gap-3 justify-self-end">
+        <div className="flex w-full items-center justify-between gap-3 md:col-start-3 md:w-auto md:justify-self-end">
           <span className="text-sm">Card size</span>
           <div className="card-size-slider relative h-8 w-40 select-none">
             <div className="absolute top-1/2 h-1.5 w-full -translate-y-1/2 rounded-full bg-muted" />

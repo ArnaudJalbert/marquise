@@ -23,7 +23,7 @@ export function MovieCard({
   movie,
   showtimes = [],
   showtimesUrl,
-  maxShowtimes,
+  maxShowtimes = 3,
   hoverOpenDelay = 200,
   renderShowtime,
   onShowtimeClick,
@@ -41,6 +41,13 @@ export function MovieCard({
     .sort((a, b) => compareByStart(a.startsAt, b.startsAt))
     .slice(0, maxShowtimes);
 
+  const titleSize =
+    movie.title.length > 40
+      ? "text-sm"
+      : movie.title.length > 26
+        ? "text-base"
+        : "text-lg";
+
   const meta = [
     movie.releaseYear != null ? String(movie.releaseYear) : null,
     movie.durationMinutes != null ? formatDuration(movie.durationMinutes) : null,
@@ -50,7 +57,8 @@ export function MovieCard({
     <button
       type="button"
       onClick={() => onMovieClick(movie)}
-      className="cursor-pointer hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      title={movie.title}
+      className="block w-full truncate cursor-pointer hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {movie.title}
     </button>
@@ -59,7 +67,8 @@ export function MovieCard({
       href={showtimesUrl}
       target="_blank"
       rel="noreferrer"
-      className="hover:underline underline-offset-4"
+      title={movie.title}
+      className="block w-full truncate hover:underline underline-offset-4"
     >
       {movie.title}
     </a>
@@ -106,7 +115,12 @@ export function MovieCard({
 
         <CardContent className="flex flex-col gap-2 border-t border-border px-0 pt-3">
           <div className="relative flex items-start justify-center">
-            <h3 className="line-clamp-2 w-full px-6 text-center font-serif text-lg leading-snug font-medium">
+            <h3
+              className={cn(
+                "w-full min-w-0 px-6 text-center font-serif leading-snug font-medium",
+                titleSize,
+              )}
+            >
               {titleElement}
             </h3>
             {!hideDetails && hasShowtimes ? (
@@ -134,7 +148,7 @@ export function MovieCard({
                 <p className="text-muted-foreground text-xs">{meta.join(" · ")}</p>
               ) : null}
               {visibleShowtimes.length > 0 ? (
-                <div className="flex flex-nowrap gap-1.5 overflow-hidden">
+                <div className="flex flex-wrap gap-1.5">
                   {visibleShowtimes.map((showtime, index) => {
                     const key = `${showtime.startsAt}-${index}`;
                     return renderShowtime ? (

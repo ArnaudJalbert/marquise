@@ -9,7 +9,7 @@ import type {
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { CinemaShowtimeGroups, groupByCinema } from "./CinemaShowtimes";
-import { formatDateLabel } from "./date-selector";
+import { addIsoDays, DateSelector, formatDateLabel } from "./date-selector";
 import { formatDuration } from "./format";
 import { MoviePoster } from "./MoviePoster";
 
@@ -56,31 +56,6 @@ function DateColumn({
         <CinemaShowtimeGroups groups={groups} currentTime={currentTime} />
       )}
     </div>
-  );
-}
-
-function JumpToDate({
-  dates,
-  selectedDate,
-  onSelect,
-}: {
-  dates: readonly string[];
-  selectedDate: string;
-  onSelect: (date: string) => void;
-}) {
-  return (
-    <select
-      aria-label="Jump to a date"
-      value={selectedDate}
-      onChange={(event) => onSelect(event.target.value)}
-      className="cursor-pointer rounded-md border bg-background px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      {dates.map((date) => (
-        <option key={date} value={date}>
-          {formatDateLabel(date)}
-        </option>
-      ))}
-    </select>
   );
 }
 
@@ -305,6 +280,22 @@ export function MovieDetailPage({
     setDatesRetryNonce((nonce) => nonce + 1);
   };
 
+  const selectDate = (date: string) => {
+    const index = dates.indexOf(date);
+    if (index === -1) {
+      setDates(
+        Array.from({ length: Math.max(dates.length, 1) }, (_, offset) =>
+          addIsoDays(date, offset),
+        ),
+      );
+      setOffset(0);
+    } else {
+      setOffset(Math.min(index, maxOffset));
+    }
+    setSelectedDate(date);
+    onDateChangeRef.current?.(date, "user");
+  };
+
   const meta = [
     movie.releaseYear != null ? String(movie.releaseYear) : null,
     movie.durationMinutes != null ? formatDuration(movie.durationMinutes) : null,
@@ -339,8 +330,14 @@ export function MovieDetailPage({
             transition: "transform 300ms ease",
           }}
         >
-          {dates.map((date) => (
-            <div key={date} className="shrink-0" style={{ width: columnWidth }}>
+          {dates.map((date, index) => (
+            <div
+              key={date}
+              aria-hidden={index < safeOffset || index >= safeOffset + visibleCount}
+              inert={index < safeOffset || index >= safeOffset + visibleCount}
+              className="shrink-0"
+              style={{ width: columnWidth }}
+            >
               <DateColumn
                 date={date}
                 showtimes={cache.get(date)}
@@ -407,17 +404,10 @@ export function MovieDetailPage({
             Showtimes
           </h2>
           {dates.length > 0 ? (
-            <JumpToDate
+            <DateSelector
               dates={dates}
               selectedDate={selectedDate}
-              onSelect={(date) => {
-                const index = dates.indexOf(date);
-                if (index !== -1) {
-                  setSelectedDate(date);
-                  setOffset(Math.min(index, maxOffset));
-                  onDateChangeRef.current?.(date, "user");
-                }
-              }}
+              onDateChange={selectDate}
             />
           ) : null}
         </div>

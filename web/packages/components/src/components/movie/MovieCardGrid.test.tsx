@@ -565,6 +565,10 @@ describe("MovieCardGrid", () => {
 
     const slider = screen.getByRole("slider", { name: "Card size" });
     expect(slider).toHaveValue("200");
+    expect(slider.closest(".movie-grid-controls")).toHaveClass(
+      "flex-col",
+      "md:grid",
+    );
 
     fireEvent.change(slider, { target: { value: "320" } });
 

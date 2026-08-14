@@ -68,6 +68,7 @@ function createClients(): {
 beforeEach(() => {
   history.replaceState(null, "", "/");
   vi.stubGlobal("ResizeObserver", AutoResizeObserver);
+  vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: true })));
   vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(200);
 });
 
@@ -79,6 +80,28 @@ afterEach(() => {
 });
 
 describe("App URL navigation", () => {
+  it("hides filters by default and lets URL state open them", async () => {
+    const clients = createClients();
+    render(<App movieGridClient={clients.grid} movieDetailClient={clients.detail} />);
+
+    await screen.findByRole("heading", { name: "Movie 1" });
+    const filters = screen.getByRole("button", { name: "Filters" });
+    expect(filters.getAttribute("aria-expanded")).toBe("false");
+
+    fireEvent.click(filters);
+    expect(filters.getAttribute("aria-expanded")).toBe("true");
+    expect(window.location.search).toContain("filters=open");
+
+    cleanup();
+    history.replaceState(null, "", "/?filters=open");
+    render(<App movieGridClient={clients.grid} movieDetailClient={clients.detail} />);
+
+    await screen.findByRole("heading", { name: "Movie 1" });
+    expect(
+      screen.getByRole("button", { name: "Filters" }).getAttribute("aria-expanded"),
+    ).toBe("true");
+  });
+
   it("pushes page navigation and replaces display-control state", async () => {
     history.replaceState(null, "", `/?date=${DATE}&from=0&to=24`);
     const clients = createClients();
