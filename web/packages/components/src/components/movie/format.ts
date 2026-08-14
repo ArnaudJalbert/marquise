@@ -21,6 +21,13 @@ const hourFormatter = new Intl.DateTimeFormat("en-CA", {
   timeZone: "America/Toronto",
 });
 
+const dateFormatter = new Intl.DateTimeFormat("en-CA", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  timeZone: "America/Toronto",
+});
+
 /** Hour (0–23) of a showtime in the Montreal timezone, used for time-range filtering. */
 export function getHour(startsAt: string): number {
   const date = new Date(startsAt);
@@ -28,6 +35,17 @@ export function getHour(startsAt: string): number {
     return 0;
   }
   return Number(hourFormatter.format(date));
+}
+
+/** Current date as YYYY-MM-DD in the Montreal timezone. */
+export function getCurrentMontrealDate(now: Date = new Date()): string {
+  const parts = dateFormatter.formatToParts(now);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  return year !== undefined && month !== undefined && day !== undefined
+    ? `${year}-${month}-${day}`
+    : "";
 }
 
 export function formatDuration(durationMinutes: number): string {

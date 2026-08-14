@@ -1,13 +1,16 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type {
+  CinemaShowtime,
+  MovieCardData,
+  MovieGridClient,
+} from "marquise-client";
 
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { MovieCardGrid } from "./MovieCardGrid";
 import { MovieFilterPanel } from "./MovieFilterPanel";
-import type { CinemaShowtime } from "./cinema";
-import type { MovieCardData } from "./movie";
-import type { MovieGridClient } from "./movie-grid-client";
+import type { MovieFilters } from "./movie-grid-filter";
 import { useMovieFilters } from "./use-movie-filters";
 
 export interface MovieGridControllerProps {
@@ -15,6 +18,15 @@ export interface MovieGridControllerProps {
   client: MovieGridClient;
   /** Date selected on first render, as "YYYY-MM-DD"; defaults to the first available. */
   initialDate?: string;
+  /** Local filters selected on first render. */
+  initialFilters?: Partial<MovieFilters>;
+  /** Reports resolved and user-selected dates. */
+  onSelectedDateChange?: (
+    date: string,
+    reason: "user" | "normalization",
+  ) => void;
+  /** Reports every local filter-state change, including automatic time resets. */
+  onFiltersChange?: (filters: MovieFilters) => void;
   /** Side of the grid the vertical filter panel sits on. */
   side?: "left" | "right";
   /** Forwarded to every movie card: ISO-8601 timestamp treated as "now". */
@@ -27,6 +39,12 @@ export interface MovieGridControllerProps {
   /** Invoked when a card's poster or title is clicked. */
   onMovieClick?: (movie: MovieCardData) => void;
   pageSize?: number | "auto";
+  /** Zero-based grid page selected on first render. */
+  initialPageIndex?: number;
+  onPageIndexChange?: (
+    pageIndex: number,
+    reason: "user" | "normalization",
+  ) => void;
   /** Starting minimum card width in px for the size slider; defaults to 200. */
   defaultCardSize?: number;
   /** Invoked whenever the card-size slider moves; useful for persistence. */
@@ -52,6 +70,9 @@ export interface MovieGridControllerProps {
 export function MovieGridController({
   client,
   initialDate,
+  initialFilters,
+  onSelectedDateChange,
+  onFiltersChange,
   side = "left",
   currentTime,
   hoverOpenDelay,
@@ -61,6 +82,8 @@ export function MovieGridController({
   onShowtimeClick,
   onMovieClick,
   pageSize,
+  initialPageIndex,
+  onPageIndexChange,
   defaultCardSize = 200,
   onCardSizeChange,
   defaultHideDetails = false,
@@ -84,7 +107,19 @@ export function MovieGridController({
     selectDate,
     options,
     items,
-  } = useMovieFilters(client, initialDate);
+  } = useMovieFilters(client, initialDate, initialFilters);
+  const reportedDateRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (selectedDate !== null && reportedDateRef.current !== selectedDate) {
+      reportedDateRef.current = selectedDate;
+      onSelectedDateChange?.(selectedDate, "normalization");
+    }
+  }, [onSelectedDateChange, selectedDate]);
+
+  useEffect(() => {
+    onFiltersChange?.(filters);
+  }, [filters, onFiltersChange]);
 
   const loading = datesLoading || isLoading;
 
@@ -98,6 +133,12 @@ export function MovieGridController({
     onHideDetailsChange?.(next);
   };
 
+  const handleDateChange = (date: string) => {
+    reportedDateRef.current = date;
+    onSelectedDateChange?.(date, "user");
+    selectDate(date);
+  };
+
   return (
     <div
       className={cn(
@@ -107,9 +148,11 @@ export function MovieGridController({
       )}
     >
       <MovieFilterPanel
+        query={filters.query}
+        onQueryChange={(query) => updateFilters({ query })}
         dates={dates}
         selectedDate={selectedDate ?? ""}
-        onDateChange={selectDate}
+        onDateChange={handleDateChange}
         cinemas={options.cinemas}
         selectedCinemas={filters.cinemas}
         onCinemasChange={(cinemas) => updateFilters({ cinemas })}
@@ -121,12 +164,6 @@ export function MovieGridController({
         onLanguagesChange={(languages) => updateFilters({ languages })}
         timeRange={filters.timeRange}
         onTimeRangeChange={(timeRange) => updateFilters({ timeRange })}
-        cardSize={pageSize === "auto" ? cardSize : undefined}
-        onCardSizeChange={
-          pageSize === "auto" ? handleCardSizeChange : undefined
-        }
-        hideDetails={hideDetails}
-        onHideDetailsChange={handleHideDetailsChange}
         className={cn("w-full shrink-0 md:w-72", panelClassName)}
       />
 
@@ -167,8 +204,14 @@ export function MovieGridController({
             onShowtimeClick={onShowtimeClick}
             onMovieClick={onMovieClick}
             pageSize={pageSize}
+            initialPageIndex={initialPageIndex}
+            onPageIndexChange={onPageIndexChange}
             cardSize={pageSize === "auto" ? cardSize : undefined}
+            onCardSizeChange={
+              pageSize === "auto" ? handleCardSizeChange : undefined
+            }
             hideDetails={hideDetails}
+            onHideDetailsChange={handleHideDetailsChange}
             cardClassName={cardClassName}
             className={gridClassName}
           />

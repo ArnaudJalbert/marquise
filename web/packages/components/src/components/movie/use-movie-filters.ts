@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { MovieGridClient } from "marquise-client";
 
+import { getCurrentMontrealDate } from "./format";
 import type { MovieCardGridItem } from "./movie-card-grid";
-import type { MovieGridClient } from "./movie-grid-client";
 import {
-  DEFAULT_MOVIE_FILTERS,
+  createDefaultMovieFilters,
   filterMovieGridItems,
+  TIME_MIN_HOUR,
+  TIME_MAX_HOUR,
   type MovieFilters,
 } from "./movie-grid-filter";
 
@@ -74,26 +77,78 @@ export interface UseMovieFiltersResult {
 export function useMovieFilters(
   client: MovieGridClient,
   initialDate?: string,
+  initialFilters?: Partial<MovieFilters>,
 ): UseMovieFiltersResult {
   const [dates, setDates] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [items, setItems] = useState<MovieCardGridItem[]>([]);
-  const [filters, setFilters] = useState<MovieFilters>(DEFAULT_MOVIE_FILTERS);
+  const [filters, setFilters] = useState<MovieFilters>(() => ({
+    ...createDefaultMovieFilters(),
+    ...initialFilters,
+  }));
   const [isLoading, setIsLoading] = useState(false);
   const [datesLoading, setDatesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [datesRetryNonce, setDatesRetryNonce] = useState(0);
   const [fetchRetryNonce, setFetchRetryNonce] = useState(0);
   const requestIdRef = useRef(0);
+  const timeRangeChangedRef = useRef(initialFilters?.timeRange !== undefined);
+  const previousDateRef = useRef<string | null>(null);
+  const initialDateRef = useRef(initialDate);
+  const preserveInitialTimeRangeRef = useRef(
+    initialFilters?.timeRange !== undefined,
+  );
   const clientRef = useRef(client);
-  const datesRef = useRef(dates);
 
   useEffect(() => {
     clientRef.current = client;
   });
+
   useEffect(() => {
-    datesRef.current = dates;
-  }, [dates]);
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const scheduleNextHour = () => {
+      const now = new Date();
+      const millisecondsUntilNextHour =
+        (60 - now.getMinutes()) * 60_000 -
+        now.getSeconds() * 1_000 -
+        now.getMilliseconds();
+      timeoutId = setTimeout(() => {
+        if (
+          (selectedDate === null || selectedDate === getCurrentMontrealDate()) &&
+          !timeRangeChangedRef.current
+        ) {
+          setFilters((current) => ({
+            ...current,
+            timeRange: [createDefaultMovieFilters().timeRange[0], TIME_MAX_HOUR],
+          }));
+        }
+        scheduleNextHour();
+      }, millisecondsUntilNextHour);
+    };
+
+    scheduleNextHour();
+    return () => clearTimeout(timeoutId);
+  }, [selectedDate]);
+
+  useEffect(() => {
+    if (selectedDate === null || selectedDate === previousDateRef.current) {
+      return;
+    }
+    previousDateRef.current = selectedDate;
+    if (preserveInitialTimeRangeRef.current) {
+      preserveInitialTimeRangeRef.current = false;
+      return;
+    }
+    timeRangeChangedRef.current = false;
+    setFilters((current) => ({
+      ...current,
+      timeRange:
+        selectedDate === getCurrentMontrealDate()
+          ? createDefaultMovieFilters().timeRange
+          : [TIME_MIN_HOUR, TIME_MAX_HOUR],
+    }));
+  }, [selectedDate]);
 
   useEffect(() => {
     let stale = false;
@@ -110,7 +165,11 @@ export function useMovieFilters(
           if (current !== null) {
             return current;
           }
-          return available.find((date) => date === initialDate) ?? available[0] ?? null;
+          return (
+            available.find((date) => date === initialDateRef.current) ??
+            available[0] ??
+            null
+          );
         });
         if (available.length === 0) {
           setDatesLoading(false);
@@ -126,7 +185,7 @@ export function useMovieFilters(
     return () => {
       stale = true;
     };
-  }, [initialDate, datesRetryNonce]);
+  }, [datesRetryNonce]);
 
   useEffect(() => {
     if (selectedDate === null) {
@@ -169,13 +228,17 @@ export function useMovieFilters(
   }, [selectedDate, fetchRetryNonce]);
 
   const selectDate = useCallback((date: string) => {
-    if (datesRef.current.length > 0 && !datesRef.current.includes(date)) {
+    const parsed = new Date(`${date}T12:00:00Z`);
+    if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) {
       return;
     }
     setSelectedDate(date);
   }, []);
 
   const updateFilters = useCallback((patch: Partial<MovieFilters>) => {
+    if (patch.timeRange !== undefined) {
+      timeRangeChangedRef.current = true;
+    }
     setFilters((current) => ({ ...current, ...patch }));
   }, []);
 

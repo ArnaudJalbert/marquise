@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { cn } from "../../lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { getCurrentMontrealDate } from "./format";
 
 const dateLabelFormatter = new Intl.DateTimeFormat("en-CA", {
   weekday: "short",
@@ -36,7 +37,7 @@ function isoDayKey(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-/** First day (UTC) of the month containing the given "YYYY-MM-DD" day. */
+/** First day (UTC) of month containing given "YYYY-MM-DD" day. */
 function monthStart(isoDay: string): Date {
   const [year, month] = isoDay.split("-").map(Number);
   return new Date(Date.UTC(year ?? 2000, (month ?? 1) - 1, 1));
@@ -46,11 +47,10 @@ function shiftMonth(date: Date, delta: number): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + delta, 1));
 }
 
-function todayIso(): string {
-  const now = new Date();
-  return isoDayKey(
-    new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())),
-  );
+export function addIsoDays(isoDay: string, days: number): string {
+  const date = dateFromIsoDay(isoDay);
+  date.setUTCDate(date.getUTCDate() + days);
+  return isoDayKey(date);
 }
 
 export function formatDateLabel(isoDay: string): string {
@@ -62,22 +62,20 @@ export function formatDateLabel(isoDay: string): string {
 }
 
 export function Calendar({
-  dates,
   selectedDate,
   initialMonth,
   onSelect,
 }: {
-  dates: readonly string[];
   selectedDate: string;
   initialMonth: string;
   onSelect: (date: string) => void;
 }) {
   const [visible, setVisible] = useState(() => monthStart(initialMonth));
-  const [focusedDate, setFocusedDate] = useState<string | null>(() =>
-    dates.includes(selectedDate) ? selectedDate : null,
+  const [focusedDate, setFocusedDate] = useState<string | null>(
+    selectedDate || null,
   );
   const focusableRef = useRef<HTMLButtonElement | null>(null);
-  const available = useMemo(() => new Set(dates), [dates]);
+  const today = getCurrentMontrealDate();
   const year = visible.getUTCFullYear();
   const month = visible.getUTCMonth();
   const firstWeekday = visible.getUTCDay();
@@ -102,8 +100,7 @@ export function Calendar({
   const focusableDate =
     focusedDate !== null && cells.includes(focusedDate)
       ? focusedDate
-      : cells.find((iso): iso is string => iso !== null && available.has(iso)) ??
-        null;
+      : cells.find((iso): iso is string => iso !== null) ?? null;
 
   useEffect(() => {
     focusableRef.current?.focus();
@@ -113,9 +110,16 @@ export function Calendar({
     if (focusableDate === null) {
       return;
     }
-    const target = cells[cells.indexOf(focusableDate) + delta];
-    if (typeof target === "string") {
-      setFocusedDate(target);
+    for (
+      let index = cells.indexOf(focusableDate) + delta;
+      index >= 0 && index < cells.length;
+      index += delta
+    ) {
+      const target = cells[index];
+      if (typeof target === "string" && target >= today) {
+        setFocusedDate(target);
+        return;
+      }
     }
   };
 
@@ -134,11 +138,11 @@ export function Calendar({
       moveFocus(7);
     } else if (event.key === "Home") {
       event.preventDefault();
-      setFocusedDate(cells.find((iso): iso is string => iso !== null) ?? null);
+      setFocusedDate(cells.find((iso): iso is string => iso !== null && iso >= today) ?? null);
     } else if (event.key === "End") {
       event.preventDefault();
       setFocusedDate(
-        [...cells].reverse().find((iso): iso is string => iso !== null) ?? null,
+        [...cells].reverse().find((iso): iso is string => iso !== null && iso >= today) ?? null,
       );
     }
   };
@@ -197,15 +201,13 @@ export function Calendar({
                       tabIndex={focusableDate === iso ? 0 : -1}
                       aria-label={formatDateLabel(iso)}
                       aria-pressed={iso === selectedDate}
-                      disabled={!available.has(iso)}
+                      disabled={iso < today}
                       onClick={() => onSelect(iso)}
                       className={cn(
-                        "size-8 cursor-pointer rounded-md text-sm tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                        iso === selectedDate
-                          ? "bg-primary font-semibold text-primary-foreground"
-                          : "hover:bg-accent",
-                        !available.has(iso) &&
-                          "cursor-default text-muted-foreground/40 hover:bg-transparent",
+                        "size-8 cursor-pointer rounded-md text-sm tabular-nums transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        iso < today
+                          ? "cursor-default text-muted-foreground/40 hover:bg-transparent"
+                          : iso === selectedDate && "bg-primary font-semibold text-primary-foreground",
                       )}
                     >
                       {Number(iso.slice(-2))}
@@ -221,10 +223,7 @@ export function Calendar({
   );
 }
 
-/**
- * A compact date picker: previous/next arrows step through the available
- * dates, and a trigger button opens a calendar popover to jump to any of them.
- */
+/** Compact date picker with adjacent-date shortcuts and calendar popover. */
 export function DateSelector({
   dates,
   selectedDate,
@@ -235,20 +234,13 @@ export function DateSelector({
   onDateChange: (date: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const sortedDates = useMemo(() => [...dates].sort(), [dates]);
-  const selectedIndex =
-    selectedDate === "" ? -1 : sortedDates.indexOf(selectedDate);
-  const hasPrevious = selectedIndex > 0;
-  const hasNext =
-    selectedIndex !== -1 && selectedIndex < sortedDates.length - 1;
-  const anchorDate =
-    selectedDate !== "" ? selectedDate : (sortedDates[0] ?? todayIso());
+  const today = getCurrentMontrealDate();
+  const canStepBack = selectedDate > today;
+  const canStepForward = selectedDate !== "";
+  const anchorDate = selectedDate || dates[0] || today;
 
   const step = (delta: -1 | 1) => {
-    const target = sortedDates[selectedIndex + delta];
-    if (target !== undefined) {
-      onDateChange(target);
-    }
+    if (selectedDate !== "") onDateChange(addIsoDays(selectedDate, delta));
   };
 
   return (
@@ -256,7 +248,7 @@ export function DateSelector({
       <button
         type="button"
         aria-label="Previous date"
-        disabled={!hasPrevious}
+        disabled={!canStepBack}
         onClick={() => step(-1)}
         className="flex cursor-pointer items-center justify-center p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
       >
@@ -283,7 +275,6 @@ export function DateSelector({
         </PopoverTrigger>
         <PopoverContent align="start" className="w-72">
           <Calendar
-            dates={sortedDates}
             selectedDate={selectedDate}
             initialMonth={anchorDate}
             onSelect={(date) => {
@@ -296,7 +287,7 @@ export function DateSelector({
       <button
         type="button"
         aria-label="Next date"
-        disabled={!hasNext}
+        disabled={!canStepForward}
         onClick={() => step(1)}
         className="flex cursor-pointer items-center justify-center p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
       >

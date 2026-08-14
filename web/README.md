@@ -25,8 +25,10 @@ web/
 ├── package.json          # Workspace root (private): Turborepo + shared scripts
 ├── pnpm-workspace.yaml   # Declares the workspaces: apps/* and packages/*
 ├── turbo.json            # Task pipeline (build, dev, lint, typecheck, test)
-├── apps/                 # Runnable applications (empty until one ships)
+├── apps/
+│   └── marquise-interface/  # The Marquise landing page (Vite + React + TS)
 └── packages/
+    ├── marquise-client/  # REST API + mock data clients
     └── components/       # marquise-components — self-contained component library
 ```
 
@@ -52,20 +54,27 @@ pnpm install
 ## Everyday commands
 
 ```bash
-pnpm dev        # dev servers for every package (currently: the components demo page)
+pnpm dev        # landing page with source HMR for both workspace packages
 pnpm build      # build every package in dependency order
 pnpm lint       # oxlint across the workspace
 pnpm typecheck  # tsc --noEmit across the workspace
 pnpm test       # vitest across the workspace
 
-# The components demo page (dev-only, never deployed):
-pnpm --filter marquise-components dev
+# The landing page (mock data by default):
+pnpm --filter marquise-interface dev
 # → http://localhost:5173
+
+# Use live API data (proxies /v1/* to http://localhost:8000 — run `make api`):
+VITE_MARQUISE_DATA_SOURCE=api pnpm --filter marquise-interface dev
 ```
 
 ## Notes
 
-- `packages/components` ships a **prebuilt CSS bundle** (`dist/index.css`), so consumers do
-  not need their own Tailwind install.
-- The `demo/` page inside `packages/components` is excluded from the library build and is
-  dev-only — it never lands in `dist/` and must never be deployed.
+- `packages/components` ships a **prebuilt CSS bundle** (`dist/index.css`), so external
+  consumers do not need their own Tailwind install. The workspace app resolves both the
+  component code and stylesheet from source for fresh-checkout development and HMR.
+- `marquise-interface` is the development and visual-test consumer for the shared component
+  package; there is no second demo application to keep in sync.
+- `marquise-interface` uses client-side movie routes such as `/movies/<id>`. Production
+  static hosting must rewrite unknown document requests to `index.html` so direct movie
+  links and refreshes load the Vite app.

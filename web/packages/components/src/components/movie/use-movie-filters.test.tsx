@@ -1,10 +1,8 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import type { Cinema, CinemaShowtime, MovieGridClient } from "marquise-client";
 
-import type { Cinema } from "./cinema";
-import type { CinemaShowtime } from "./cinema";
 import type { MovieCardGridItem } from "./movie-card-grid";
-import type { MovieGridClient } from "./movie-grid-client";
 import { useMovieFilters } from "./use-movie-filters";
 
 const cinemaA: Cinema = {
@@ -77,6 +75,42 @@ function deferred<T>() {
 }
 
 describe("useMovieFilters", () => {
+  it("defaults the time range to the current Montreal hour and advances on the hour", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-03T19:12:00Z"));
+    const client = createClient();
+    const { result, unmount } = renderHook(() => useMovieFilters(client));
+
+    expect(result.current.filters.timeRange).toEqual([15, 24]);
+
+    act(() => {
+      vi.advanceTimersByTime(48 * 60_000);
+    });
+
+    expect(result.current.filters.timeRange).toEqual([16, 24]);
+    unmount();
+    vi.useRealTimers();
+  });
+
+  it("uses an all-day time range for other dates and restores the current hour for today", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-03T19:12:00Z"));
+    const client = createClient();
+    const { result, unmount } = renderHook(() => useMovieFilters(client));
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    act(() => result.current.selectDate("2026-08-04"));
+    expect(result.current.filters.timeRange).toEqual([0, 24]);
+
+    act(() => result.current.selectDate("2026-08-03"));
+    expect(result.current.filters.timeRange).toEqual([15, 24]);
+    unmount();
+    vi.useRealTimers();
+  });
+
   it("loads the dates and fetches the first date on mount", async () => {
     const client = createClient();
     const { result } = renderHook(() => useMovieFilters(client));
@@ -100,6 +134,41 @@ describe("useMovieFilters", () => {
     await waitFor(() =>
       expect(client.fetchForDate).toHaveBeenCalledWith("2026-08-04"),
     );
+  });
+
+  it("treats initialDate as initial-only when URL synchronization rerenders", async () => {
+    const client = createClient();
+    const { rerender } = renderHook(
+      ({ initialDate }: { initialDate?: string }) =>
+        useMovieFilters(client, initialDate),
+      { initialProps: { initialDate: undefined as string | undefined } },
+    );
+
+    await waitFor(() => expect(client.fetchForDate).toHaveBeenCalledTimes(1));
+    rerender({ initialDate: "2026-08-03" });
+
+    expect(client.listDates).toHaveBeenCalledTimes(1);
+    expect(client.fetchForDate).toHaveBeenCalledTimes(1);
+  });
+
+  it("preserves a time range restored from URL state", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-03T19:12:00Z"));
+    const client = createClient();
+    const { result, unmount } = renderHook(() =>
+      useMovieFilters(client, "2026-08-03", { timeRange: [9, 22] }),
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(result.current.filters.timeRange).toEqual([9, 22]);
+
+    act(() => vi.advanceTimersByTime(60 * 60_000));
+    expect(result.current.filters.timeRange).toEqual([9, 22]);
+    unmount();
+    vi.useRealTimers();
   });
 
   it("selecting a different date triggers exactly one additional fetch", async () => {
