@@ -7,7 +7,6 @@ dependencies = [
     "marquise-core>=0.2.0",
     "questionary>=2.1.1",
     "rich>=15.0.0",
-    "typer>=0.26.7",
 ]
 
 [project.urls]

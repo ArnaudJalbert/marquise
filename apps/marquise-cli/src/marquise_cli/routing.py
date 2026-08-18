@@ -3,85 +3,134 @@
 from __future__ import annotations
 
 import argparse
-import asyncio
-import inspect
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Callable, Sequence
 
-HandlerResult = int | None
-Handler = Callable[[argparse.Namespace], HandlerResult | Awaitable[HandlerResult]]
-
-_COMMANDS = (
-    ("cinema", "Manage cinemas", ("create", "delete", "update", "list")),
-    (
-        "source",
-        "Manage showtime sources",
-        (
-            "list-registered",
-            "assign",
-            "unassign",
-            "list-assignments",
-            "list-available",
-            "register",
-            "unregister",
-            "import",
-        ),
-    ),
-    ("import", "Bulk import showtimes", ("all",)),
+from marquise_cli.cinema_commands import create, delete, list_cinemas, update
+from marquise_cli.import_commands import import_all
+from marquise_cli.source_commands import (
+    assign,
+    import_screenings,
+    list_assignments,
+    list_available_sources,
+    list_registered_sources,
+    register_sources,
+    unassign,
+    unregister_sources,
 )
 
+Handler = Callable[..., None]
 
-def create_parser(fallback_handler: Handler) -> argparse.ArgumentParser:
-    """Create parser with fallback routes for unmigrated Typer commands.
 
-    Args:
-        fallback_handler: Handler delegated to for every registered command.
+def _positive_int(value: str) -> int:
+    """Parse an integer greater than zero."""
+    parsed = int(value)
+    if parsed < 1:
+        raise argparse.ArgumentTypeError("must be greater than zero")
+    return parsed
+
+
+def _command(
+    commands: argparse._SubParsersAction[argparse.ArgumentParser],
+    name: str,
+    handler: Handler,
+    help_text: str,
+    arguments: tuple[str, ...] = (),
+) -> argparse.ArgumentParser:
+    """Add a command that invokes an existing CLI function."""
+    parser = commands.add_parser(name, help=help_text, description=help_text)
+    parser.set_defaults(handler=handler, handler_arguments=arguments)
+    return parser
+
+
+def create_parser() -> argparse.ArgumentParser:
+    """Create parser for every Marquise CLI command.
 
     Returns:
         Configured root parser.
     """
     parser = argparse.ArgumentParser(
         prog="marquise",
-        usage="%(prog)s <command> [<args>]",
         description="Manage Marquise movie showtimes.",
-        epilog="Run '%(prog)s <command> --help' for command details.",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    groups = parser.add_subparsers(
-        dest="group",
-        required=True,
-        title="commands",
-        metavar="<command>",
+    groups = parser.add_subparsers(dest="group", required=True, title="commands")
+
+    cinema = groups.add_parser("cinema", help="Manage cinemas")
+    cinema_commands = cinema.add_subparsers(
+        dest="command", required=True, title="commands"
+    )
+    create_command = _command(
+        cinema_commands,
+        "create",
+        create,
+        "Create a new cinema.",
+        ("name", "address", "city", "website"),
+    )
+    create_command.add_argument("--name", help="Cinema name")
+    create_command.add_argument("--address", help="Cinema street address")
+    create_command.add_argument("--city", help="City where cinema is located")
+    create_command.add_argument("--website", help="Cinema website URL")
+    _command(cinema_commands, "delete", delete, "Delete a cinema.")
+    _command(cinema_commands, "update", update, "Update a cinema.")
+    list_command = _command(
+        cinema_commands, "list", list_cinemas, "List cinemas.", ("name", "verbose")
+    )
+    list_command.add_argument("--name", "-n", help="Filter cinemas by name")
+    list_command.add_argument(
+        "--verbose", "-v", action="store_true", help="Show detailed cinema information"
     )
 
-    for group, help_text, commands in _COMMANDS:
-        group_parser = groups.add_parser(
-            group,
-            prog=f"marquise {group}",
-            help=help_text,
-            usage="%(prog)s <command> [<args>]",
-            description=help_text,
-            epilog="Run '%(prog)s <command> --help' for command details.",
-            formatter_class=argparse.RawDescriptionHelpFormatter,
-        )
-        leaves = group_parser.add_subparsers(
-            dest="command",
-            required=True,
-            title="commands",
-            metavar="<command>",
-        )
-        for command in commands:
-            leaf = leaves.add_parser(
-                command,
-                add_help=False,
-                help=command.replace("-", " ").capitalize(),
-            )
-            leaf.set_defaults(handler=fallback_handler, args=[])
+    source = groups.add_parser("source", help="Manage showtime sources")
+    source_commands = source.add_subparsers(
+        dest="command", required=True, title="commands"
+    )
+    _command(
+        source_commands,
+        "list-registered",
+        list_registered_sources,
+        "List registered sources.",
+    )
+    _command(source_commands, "assign", assign, "Assign source to cinema.")
+    _command(source_commands, "unassign", unassign, "Unassign source from cinema.")
+    _command(
+        source_commands,
+        "list-assignments",
+        list_assignments,
+        "List cinema source assignments.",
+    )
+    _command(
+        source_commands,
+        "list-available",
+        list_available_sources,
+        "List available sources.",
+    )
+    _command(source_commands, "register", register_sources, "Register sources.")
+    _command(source_commands, "unregister", unregister_sources, "Unregister sources.")
+    _command(source_commands, "import", import_screenings, "Import cinema screenings.")
+
+    import_group = groups.add_parser("import", help="Bulk import showtimes")
+    import_commands = import_group.add_subparsers(
+        dest="command", required=True, title="commands"
+    )
+    import_command = _command(
+        import_commands,
+        "all",
+        import_all,
+        "Import showtimes for every cinema.",
+        ("days",),
+    )
+    import_command.add_argument(
+        "--days",
+        "-d",
+        type=_positive_int,
+        default=7,
+        help="Days to import, starting today",
+    )
 
     return parser
 
 
 def dispatch(parser: argparse.ArgumentParser, argv: Sequence[str]) -> int:
-    """Parse arguments and invoke selected sync or async command handler.
+    """Parse arguments and invoke selected command.
 
     Args:
         parser: Configured command parser.
@@ -90,9 +139,7 @@ def dispatch(parser: argparse.ArgumentParser, argv: Sequence[str]) -> int:
     Returns:
         Command exit code.
     """
-    namespace, remaining = parser.parse_known_args(argv)
-    namespace.args = remaining
-    result = namespace.handler(namespace)
-    if inspect.isawaitable(result):
-        result = asyncio.run(result)
-    return result or 0
+    namespace = parser.parse_args(argv)
+    arguments = {name: getattr(namespace, name) for name in namespace.handler_arguments}
+    namespace.handler(**arguments)
+    return 0
