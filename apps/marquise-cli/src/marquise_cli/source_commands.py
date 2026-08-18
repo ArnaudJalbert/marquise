@@ -17,7 +17,7 @@ from marquise import (
     ListCinemasUseCase,
     MarquiseFactory,
 )
-from marquise_cli.helpers import run_spinner
+from marquise_cli.helpers import run_spinner, select_source
 
 _console = Console()
 MONTREAL_TZ = ZoneInfo("America/Toronto")
@@ -73,7 +73,7 @@ def assign() -> None:
             if selected is None:
                 return
 
-            source_name = await _select_source(factory, "Select a source to assign:")
+            source_name = await select_source(factory, "Select a source to assign:")
             if source_name is None:
                 return
 
@@ -594,46 +594,6 @@ async def _select_cinema(
             value=c,
         )
         for c in response.cinemas
-    ]
-    choices.append(questionary.Choice(title="← exit", value="__exit__"))
-
-    selected = await questionary.select(prompt, choices=choices).ask_async()
-
-    if selected is None or selected == "__exit__":
-        print("Cancelled.")
-        return None
-
-    return selected
-
-
-async def _select_source(
-    factory: MarquiseFactory,
-    prompt: str,
-) -> str | None:
-    """Let the user pick a source interactively from a list.
-
-    Args:
-        factory: The factory providing controllers.
-        prompt: The question to display in the selector.
-
-    Returns:
-        The selected source name, or ``None`` if the user cancelled.
-    """
-    try:
-        response = await factory.source.list_sources()
-    except Exception:
-        raise
-
-    if not response.sources:
-        print("No sources available.")
-        return None
-
-    choices = [
-        questionary.Choice(
-            title=f"{s.display_name} ({s.name})",
-            value=s.name,
-        )
-        for s in response.sources
     ]
     choices.append(questionary.Choice(title="← exit", value="__exit__"))
 
