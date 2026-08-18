@@ -6,7 +6,6 @@ from unittest.mock import create_autospec
 
 import pytest
 
-from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
 from marquise.application.use_cases.get_cinema import GetCinemaUseCase
 from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
@@ -16,12 +15,6 @@ from marquise.application.use_cases.get_cinema_screenings import (
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.infrastructure.controllers.cinema_controller import CinemaController
-
-
-@pytest.fixture
-def mock_create_use_case() -> CreateCinemaUseCase:
-    """Provide a mocked CreateCinemaUseCase."""
-    return create_autospec(CreateCinemaUseCase, instance=True)
 
 
 @pytest.fixture
@@ -62,7 +55,6 @@ def mock_get_screenings_use_case() -> GetCinemaScreeningsUseCase:
 
 @pytest.fixture
 def controller(
-    mock_create_use_case: CreateCinemaUseCase,
     mock_delete_use_case: DeleteCinemaUseCase,
     mock_get_use_case: GetCinemaUseCase,
     mock_get_movies_use_case: GetCinemaMoviesUseCase,
@@ -72,7 +64,6 @@ def controller(
 ) -> CinemaController:
     """Provide a CinemaController wired to mocks."""
     return CinemaController(
-        create_cinema_use_case=mock_create_use_case,
         delete_cinema_use_case=mock_delete_use_case,
         get_cinema_use_case=mock_get_use_case,
         get_cinema_movies_use_case=mock_get_movies_use_case,
@@ -80,36 +71,6 @@ def controller(
         list_cinemas_use_case=mock_list_use_case,
         update_cinema_use_case=mock_update_use_case,
     )
-
-
-@pytest.mark.asyncio
-async def test_create_delegates_to_use_case(
-    controller: CinemaController,
-    mock_create_use_case: CreateCinemaUseCase,
-) -> None:
-    """Verify create delegates to the use case."""
-    expected_output = CreateCinemaUseCase.OutputData(
-        id="cin-001",
-        name="Test Cinema",
-        address="123 Test St",
-        city="Montreal",
-        website="https://example.com",
-    )
-    mock_create_use_case.execute.return_value = expected_output
-
-    result = await controller.create(
-        name="Test Cinema",
-        address="123 Test St",
-        city="Montreal",
-        website="https://example.com",
-    )
-
-    assert result == expected_output
-    mock_create_use_case.execute.assert_awaited_once()
-    input_data = mock_create_use_case.execute.call_args[0][0]
-    assert isinstance(input_data, CreateCinemaUseCase.InputData)
-    assert input_data.name == "Test Cinema"
-    assert input_data.address == "123 Test St"
 
 
 @pytest.mark.asyncio
