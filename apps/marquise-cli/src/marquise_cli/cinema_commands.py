@@ -3,29 +3,27 @@
 from __future__ import annotations
 
 import asyncio
+import sys
 
 import questionary
-import typer
 
 from marquise import MarquiseFactory
-
-cinema_app = typer.Typer(no_args_is_help=True)
-
 
 # ── commands ─────────────────────────────────────────────────────────────────
 
 
-@cinema_app.command()
 def create(
-    name: str = typer.Option(..., prompt=True, help="Cinema name"),
-    address: str | None = typer.Option(None, prompt=True, help="Cinema street address"),
-    city: str | None = typer.Option(
-        None, prompt=True, help="City where the cinema is located"
-    ),
-    website: str | None = typer.Option(None, prompt=True, help="Cinema website URL"),
+    name: str | None = None,
+    address: str | None = None,
+    city: str | None = None,
+    website: str | None = None,
 ) -> None:
     """Create a new cinema."""
-    address_val = address if address and address.strip() else None
+    name = name or input("Cinema name: ")
+    address = address if address is not None else input("Cinema street address: ")
+    city = city if city is not None else input("City where cinema is located: ")
+    website = website if website is not None else input("Cinema website URL: ")
+    address_val = address if address.strip() else None
     city_val = city if city and city.strip() else None
     website_val = website if website and website.strip() else None
 
@@ -40,26 +38,25 @@ def create(
                 city=city_val,
                 website=website_val,
             )
-            typer.echo("Cinema created:")
-            typer.echo(f"  ID:      {response.id}")
-            typer.echo(f"  Name:    {response.name}")
+            print("Cinema created:")
+            print(f"  ID:      {response.id}")
+            print(f"  Name:    {response.name}")
             if response.address:
-                typer.echo(f"  Address: {response.address}")
+                print(f"  Address: {response.address}")
             if response.city:
-                typer.echo(f"  City:    {response.city}")
+                print(f"  City:    {response.city}")
             if response.website:
-                typer.echo(f"  Website: {response.website}")
+                print(f"  Website: {response.website}")
         finally:
             await factory.shutdown()
 
     try:
         asyncio.run(_run())
     except Exception as e:
-        typer.echo(f"Failed to create cinema: {e}", err=True)
-        raise typer.Exit(code=1) from e
+        print(f"Failed to create cinema: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
 
 
-@cinema_app.command()
 def delete() -> None:
     """Delete a cinema after interactive selection and confirmation."""
     factory = MarquiseFactory()
@@ -70,11 +67,11 @@ def delete() -> None:
             response = await factory.cinema.list_cinemas()
         except Exception as e:
             await factory.shutdown()
-            typer.echo(f"Failed to list cinemas: {e}", err=True)
-            raise typer.Exit(code=1) from e
+            print(f"Failed to list cinemas: {e}", file=sys.stderr)
+            raise SystemExit(1) from e
 
         if not response.cinemas:
-            typer.echo("No cinemas available to delete.")
+            print("No cinemas available to delete.")
             await factory.shutdown()
             return
 
@@ -93,7 +90,7 @@ def delete() -> None:
         ).ask_async()
 
         if selected is None or selected == "__exit__":
-            typer.echo("Cancelled.")
+            print("Cancelled.")
             await factory.shutdown()
             return
 
@@ -102,24 +99,24 @@ def delete() -> None:
         ).ask_async()
 
         if confirmed_name is None:
-            typer.echo("Cancelled.")
+            print("Cancelled.")
             await factory.shutdown()
             return
 
         if confirmed_name.strip() != selected.name:
-            typer.echo(
+            print(
                 f'Name mismatch: expected "{selected.name}", got "{confirmed_name}"',
-                err=True,
+                file=sys.stderr,
             )
             await factory.shutdown()
-            raise typer.Exit(code=1)
+            raise SystemExit(1)
 
         try:
             await factory.cinema.delete(cinema_id=selected.id)
-            typer.echo(f'Cinema "{selected.name}" (ID: {selected.id}) deleted.')
+            print(f'Cinema "{selected.name}" (ID: {selected.id}) deleted.')
         except Exception as e:
-            typer.echo(f"Failed to delete cinema: {e}", err=True)
-            raise typer.Exit(code=1) from e
+            print(f"Failed to delete cinema: {e}", file=sys.stderr)
+            raise SystemExit(1) from e
         finally:
             await factory.shutdown()
 
@@ -128,11 +125,10 @@ def delete() -> None:
     except SystemExit:
         raise
     except Exception as e:
-        typer.echo(f"Failed to delete cinema: {e}", err=True)
-        raise typer.Exit(code=1) from e
+        print(f"Failed to delete cinema: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
 
 
-@cinema_app.command()
 def update() -> None:
     """Update an existing cinema after interactive field selection."""
     factory = MarquiseFactory()
@@ -143,11 +139,11 @@ def update() -> None:
             response = await factory.cinema.list_cinemas()
         except Exception as e:
             await factory.shutdown()
-            typer.echo(f"Failed to list cinemas: {e}", err=True)
-            raise typer.Exit(code=1) from e
+            print(f"Failed to list cinemas: {e}", file=sys.stderr)
+            raise SystemExit(1) from e
 
         if not response.cinemas:
-            typer.echo("No cinemas available to update.")
+            print("No cinemas available to update.")
             await factory.shutdown()
             return
 
@@ -166,7 +162,7 @@ def update() -> None:
         ).ask_async()
 
         if selected is None or selected == "__exit__":
-            typer.echo("Cancelled.")
+            print("Cancelled.")
             await factory.shutdown()
             return
 
@@ -188,7 +184,7 @@ def update() -> None:
         ).ask_async()
 
         if selected_fields is None or not selected_fields:
-            typer.echo("No fields selected. Cancelled.")
+            print("No fields selected. Cancelled.")
             await factory.shutdown()
             return
 
@@ -202,7 +198,7 @@ def update() -> None:
             ).ask_async()
 
             if new_value is None:
-                typer.echo("Cancelled.")
+                print("Cancelled.")
                 await factory.shutdown()
                 return
 
@@ -222,18 +218,18 @@ def update() -> None:
                 city=final_city,
                 website=final_website,
             )
-            typer.echo("Cinema updated:")
-            typer.echo(f"  ID:      {result.id}")
-            typer.echo(f"  Name:    {result.name}")
+            print("Cinema updated:")
+            print(f"  ID:      {result.id}")
+            print(f"  Name:    {result.name}")
             if result.address:
-                typer.echo(f"  Address: {result.address}")
+                print(f"  Address: {result.address}")
             if result.city:
-                typer.echo(f"  City:    {result.city}")
+                print(f"  City:    {result.city}")
             if result.website:
-                typer.echo(f"  Website: {result.website}")
+                print(f"  Website: {result.website}")
         except Exception as e:
-            typer.echo(f"Failed to update cinema: {e}", err=True)
-            raise typer.Exit(code=1) from e
+            print(f"Failed to update cinema: {e}", file=sys.stderr)
+            raise SystemExit(1) from e
         finally:
             await factory.shutdown()
 
@@ -242,18 +238,13 @@ def update() -> None:
     except SystemExit:
         raise
     except Exception as e:
-        typer.echo(f"Failed to update cinema: {e}", err=True)
-        raise typer.Exit(code=1) from e
+        print(f"Failed to update cinema: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
 
 
-@cinema_app.command(name="list")
 def list_cinemas(
-    name: str | None = typer.Option(
-        None, "--name", "-n", help="Filter cinemas by name (case-insensitive)"
-    ),
-    verbose: bool = typer.Option(
-        False, "--verbose", "-v", help="Show detailed cinema information"
-    ),
+    name: str | None = None,
+    verbose: bool = False,
 ) -> None:
     """List all available cinemas."""
 
@@ -269,10 +260,10 @@ def list_cinemas(
         cinemas = response.cinemas
 
         if not cinemas:
-            typer.echo("No cinemas found.")
+            print("No cinemas found.")
             return
 
-        typer.echo("Available cinemas:")
+        print("Available cinemas:")
 
         if verbose:
             for c in cinemas:
@@ -283,13 +274,13 @@ def list_cinemas(
                     parts.append(f"City: {c.city}")
                 if c.website:
                     parts.append(f"Website: {c.website}")
-                typer.echo(" | ".join(parts))
+                print(" | ".join(parts))
         else:
             for c in cinemas:
-                typer.echo(f"  {c.name}")
+                print(f"  {c.name}")
 
     try:
         asyncio.run(_run())
     except Exception as e:
-        typer.echo(f"Failed to list cinemas: {e}", err=True)
-        raise typer.Exit(code=1) from e
+        print(f"Failed to list cinemas: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
