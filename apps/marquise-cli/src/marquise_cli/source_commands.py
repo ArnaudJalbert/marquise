@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import sys
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import questionary
-import typer
 from rich.console import Console
 from rich.table import Table
 from rich.text import Text
@@ -19,15 +19,10 @@ from marquise import (
 )
 from marquise_cli.helpers import run_spinner
 
-source_app = typer.Typer(
-    no_args_is_help=True,
-)
-
 _console = Console()
 MONTREAL_TZ = ZoneInfo("America/Toronto")
 
 
-@source_app.command(name="list-registered", rich_help_panel="Information")
 def list_registered_sources() -> None:
     """List registered showtime sources in the database."""
 
@@ -44,7 +39,7 @@ def list_registered_sources() -> None:
             await factory.shutdown()
 
         if not response.sources:
-            typer.echo("No sources registered.")
+            print("No sources registered.")
             return
 
         table = Table(title="Registered sources")
@@ -61,11 +56,10 @@ def list_registered_sources() -> None:
     try:
         asyncio.run(_run())
     except Exception as e:
-        typer.echo(f"Failed to list sources: {e}", err=True)
-        raise typer.Exit(code=1) from e
+        print(f"Failed to list sources: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
 
 
-@source_app.command(rich_help_panel="Management")
 def assign() -> None:
     """Assign a showtime source to a cinema after interactive selection."""
     factory = MarquiseFactory()
@@ -90,9 +84,9 @@ def assign() -> None:
                 ),
                 description="Assigning source...",
             )
-            typer.echo("Source assigned:")
-            typer.echo(f"  Cinema:      {response.cinema_id}")
-            typer.echo(f"  Source:      {response.source_name}")
+            print("Source assigned:")
+            print(f"  Cinema:      {response.cinema_id}")
+            print(f"  Source:      {response.source_name}")
         finally:
             await factory.shutdown()
 
@@ -101,11 +95,10 @@ def assign() -> None:
     except SystemExit:
         raise
     except Exception as e:
-        typer.echo(f"Failed to assign source: {e}", err=True)
-        raise typer.Exit(code=1) from e
+        print(f"Failed to assign source: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
 
 
-@source_app.command(rich_help_panel="Management")
 def unassign() -> None:
     """Remove the showtime source assignment from a cinema."""
     factory = MarquiseFactory()
@@ -125,7 +118,7 @@ def unassign() -> None:
                 ),
                 description="Removing source assignment...",
             )
-            typer.echo(f"Source unassigned from cinema {response.cinema_id}.")
+            print(f"Source unassigned from cinema {response.cinema_id}.")
         finally:
             await factory.shutdown()
 
@@ -134,11 +127,10 @@ def unassign() -> None:
     except SystemExit:
         raise
     except Exception as e:
-        typer.echo(f"Failed to unassign source: {e}", err=True)
-        raise typer.Exit(code=1) from e
+        print(f"Failed to unassign source: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
 
 
-@source_app.command(name="list-assignments", rich_help_panel="Information")
 def list_assignments() -> None:
     """Display which showtime source is assigned to each cinema.
 
@@ -155,7 +147,7 @@ def list_assignments() -> None:
             )
 
             if not cinemas_response.cinemas:
-                typer.echo("No cinemas found.")
+                print("No cinemas found.")
                 return
 
             table = Table(title="Cinema source assignments")
@@ -185,8 +177,8 @@ def list_assignments() -> None:
     except SystemExit:
         raise
     except Exception as e:
-        typer.echo(f"Failed to list assignments: {e}", err=True)
-        raise typer.Exit(code=1) from e
+        print(f"Failed to list assignments: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
 
 
 # ---------------------------------------------------------------------------
@@ -194,7 +186,6 @@ def list_assignments() -> None:
 # ---------------------------------------------------------------------------
 
 
-@source_app.command(name="list-available", rich_help_panel="Information")
 def list_available_sources() -> None:
     """List showtime sources available in the code-level registry.
 
@@ -213,7 +204,7 @@ def list_available_sources() -> None:
             )
 
             if not registry_response.sources:
-                typer.echo("No sources registered in the registry.")
+                print("No sources registered in the registry.")
                 return
 
             db_names: set[str] = set()
@@ -241,8 +232,8 @@ def list_available_sources() -> None:
     try:
         asyncio.run(_run())
     except Exception as e:
-        typer.echo(f"Failed to list registry sources: {e}", err=True)
-        raise typer.Exit(code=1) from e
+        print(f"Failed to list registry sources: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
 
 
 # ---------------------------------------------------------------------------
@@ -250,7 +241,6 @@ def list_available_sources() -> None:
 # ---------------------------------------------------------------------------
 
 
-@source_app.command("register", rich_help_panel="Management")
 def register_sources() -> None:
     """Register new showtime sources from the registry into the database.
 
@@ -278,7 +268,7 @@ def register_sources() -> None:
             ]
 
             if not registry_response.sources:
-                typer.echo("No sources available in the registry.")
+                print("No sources available in the registry.")
                 return
 
             table = Table(title="Sources available in registry")
@@ -287,33 +277,33 @@ def register_sources() -> None:
 
             for entry in registry_response.sources:
                 if entry.name in db_names:
-                    status = typer.style("already registered", fg=typer.colors.GREEN)
+                    status = "already registered"
                 else:
-                    status = typer.style("new", fg=typer.colors.YELLOW)
+                    status = "new"
                 table.add_row(entry.name, status)
 
             _console.print(table)
 
             if not new_sources:
-                typer.echo("All registry sources are already in the database.")
+                print("All registry sources are already in the database.")
                 return
 
-            typer.echo(f"{len(new_sources)} source(s) can be registered.")
+            print(f"{len(new_sources)} source(s) can be registered.")
 
             for entry in new_sources:
-                typer.echo(f"\n--- Registering: {entry.name} ---")
+                print(f"\n--- Registering: {entry.name} ---")
                 display_name = await questionary.text(
                     "Display name:",
                 ).ask_async()
                 if display_name is None:
-                    typer.echo("Cancelled.")
+                    print("Cancelled.")
                     return
 
                 description = await questionary.text(
                     "Description (optional):",
                 ).ask_async()
                 if description is None:
-                    typer.echo("Cancelled.")
+                    print("Cancelled.")
                     return
 
                 desc_val = description if description.strip() else None
@@ -327,16 +317,11 @@ def register_sources() -> None:
                         ),
                         description=f"Registering {entry.name}...",
                     )
-                    typer.echo(
-                        typer.style(
-                            f"  Created: {result.name}",
-                            fg=typer.colors.GREEN,
-                        )
-                    )
+                    print(f"  Created: {result.name}")
                 except Exception as e:
-                    typer.echo(
-                        typer.style(f"  Failed: {e}", fg=typer.colors.RED),
-                        err=True,
+                    print(
+                        f"  Failed: {e}",
+                        file=sys.stderr,
                     )
 
         finally:
@@ -347,8 +332,8 @@ def register_sources() -> None:
     except SystemExit:
         raise
     except Exception as e:
-        typer.echo(f"Failed to register sources: {e}", err=True)
-        raise typer.Exit(code=1) from e
+        print(f"Failed to register sources: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
 
 
 # ---------------------------------------------------------------------------
@@ -356,7 +341,6 @@ def register_sources() -> None:
 # ---------------------------------------------------------------------------
 
 
-@source_app.command("unregister", rich_help_panel="Management")
 def unregister_sources() -> None:
     """Remove showtime sources from the database.
 
@@ -378,7 +362,7 @@ def unregister_sources() -> None:
             )
 
             if not db_response.sources:
-                typer.echo("No sources registered in the database.")
+                print("No sources registered in the database.")
                 return
 
             registry_names = {s.name for s in registry_response.sources}
@@ -389,9 +373,9 @@ def unregister_sources() -> None:
 
             for s in db_response.sources:
                 if s.name in registry_names:
-                    status = typer.style("in registry", fg=typer.colors.GREEN)
+                    status = "in registry"
                 else:
-                    status = typer.style("not in registry", fg=typer.colors.YELLOW)
+                    status = "not in registry"
                 table.add_row(s.name, status)
 
             _console.print(table)
@@ -408,7 +392,7 @@ def unregister_sources() -> None:
             ).ask_async()
 
             if selected is None or not selected:
-                typer.echo("No sources selected.")
+                print("No sources selected.")
                 return
 
             confirmed = await questionary.confirm(
@@ -417,7 +401,7 @@ def unregister_sources() -> None:
             ).ask_async()
 
             if not confirmed:
-                typer.echo("Cancelled.")
+                print("Cancelled.")
                 return
 
             for source_name in selected:
@@ -428,16 +412,11 @@ def unregister_sources() -> None:
                         ),
                         description=f"Removing {source_name}...",
                     )
-                    typer.echo(
-                        typer.style(
-                            f"  Removed: {source_name}",
-                            fg=typer.colors.GREEN,
-                        )
-                    )
+                    print(f"  Removed: {source_name}")
                 except Exception as e:
-                    typer.echo(
-                        typer.style(f"  Failed: {e}", fg=typer.colors.RED),
-                        err=True,
+                    print(
+                        f"  Failed: {e}",
+                        file=sys.stderr,
                     )
 
         finally:
@@ -448,8 +427,8 @@ def unregister_sources() -> None:
     except SystemExit:
         raise
     except Exception as e:
-        typer.echo(f"Failed to unregister sources: {e}", err=True)
-        raise typer.Exit(code=1) from e
+        print(f"Failed to unregister sources: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
 
 
 # ---------------------------------------------------------------------------
@@ -457,7 +436,6 @@ def unregister_sources() -> None:
 # ---------------------------------------------------------------------------
 
 
-@source_app.command("import", rich_help_panel="Management")
 def import_screenings() -> None:
     """Fetch showtimes from a cinema's source and save them to the database.
 
@@ -478,8 +456,8 @@ def import_screenings() -> None:
             assignment = await factory.source.get_cinema_source(
                 cinema_id=selected.id,
             )
-            typer.echo(f"  Cinema:        {selected.name}")
-            typer.echo(f"  Assigned source: {assignment.source_display_name}")
+            print(f"  Cinema:        {selected.name}")
+            print(f"  Assigned source: {assignment.source_display_name}")
 
             today = date.today()
             frame_choice = await questionary.select(
@@ -505,7 +483,7 @@ def import_screenings() -> None:
                 ],
             ).ask_async()
             if frame_choice is None:
-                typer.echo("Cancelled.")
+                print("Cancelled.")
                 return
 
             if frame_choice == "__custom__":
@@ -513,22 +491,22 @@ def import_screenings() -> None:
                     "Start date (YYYY-MM-DD):",
                 ).ask_async()
                 if start_str is None or not start_str.strip():
-                    typer.echo("Cancelled.")
+                    print("Cancelled.")
                     return
 
                 end_str = await questionary.text(
                     "End date (YYYY-MM-DD):",
                 ).ask_async()
                 if end_str is None or not end_str.strip():
-                    typer.echo("Cancelled.")
+                    print("Cancelled.")
                     return
 
                 try:
                     start_date = date.fromisoformat(start_str)
                     end_date = date.fromisoformat(end_str)
                 except ValueError:
-                    typer.echo("Invalid date format. Use YYYY-MM-DD.", err=True)
-                    raise typer.Exit(code=1)
+                    print("Invalid date format. Use YYYY-MM-DD.", file=sys.stderr)
+                    raise SystemExit(1)
             else:
                 start_date = today
                 end_date = today + frame_choice
@@ -553,11 +531,7 @@ def import_screenings() -> None:
             table.add_column("Status")
 
             for s in result.screenings:
-                status = (
-                    typer.style("imported", fg=typer.colors.GREEN)
-                    if s.imported
-                    else typer.style("updated", fg=typer.colors.YELLOW)
-                )
+                status = "imported" if s.imported else "updated"
                 dt = datetime.fromisoformat(s.showtime).astimezone(MONTREAL_TZ)
                 local_time = dt.strftime("%Y-%m-%d %H:%M")
                 table.add_row(s.movie_title, local_time, status)
@@ -584,7 +558,7 @@ def import_screenings() -> None:
         import traceback
 
         traceback.print_exc()
-        raise typer.Exit(code=1)
+        raise SystemExit(1)
 
 
 # ---------------------------------------------------------------------------
@@ -611,7 +585,7 @@ async def _select_cinema(
         raise
 
     if not response.cinemas:
-        typer.echo("No cinemas available.")
+        print("No cinemas available.")
         return None
 
     choices = [
@@ -626,7 +600,7 @@ async def _select_cinema(
     selected = await questionary.select(prompt, choices=choices).ask_async()
 
     if selected is None or selected == "__exit__":
-        typer.echo("Cancelled.")
+        print("Cancelled.")
         return None
 
     return selected
@@ -651,7 +625,7 @@ async def _select_source(
         raise
 
     if not response.sources:
-        typer.echo("No sources available.")
+        print("No sources available.")
         return None
 
     choices = [
@@ -666,7 +640,7 @@ async def _select_source(
     selected = await questionary.select(prompt, choices=choices).ask_async()
 
     if selected is None or selected == "__exit__":
-        typer.echo("Cancelled.")
+        print("Cancelled.")
         return None
 
     return selected

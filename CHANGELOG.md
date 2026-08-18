@@ -12,7 +12,7 @@ Typer CLI lives in `marquise-cli`, each with independent versions.
 
 ### marquise-cli v0.1.2
 
-- **Add argparse CLI routing foundation**: root and command-group help now use stdlib `argparse`; existing `cinema`, `source`, and `import` leaf commands continue through Typer unchanged until individually migrated. Closes #161.
+- **Replace Typer with argparse**: `cinema`, `source`, and `import` commands now use stdlib `argparse`; interactive prompts continue through `questionary`. Closes #161.
 
 ## 2026-08-10
 

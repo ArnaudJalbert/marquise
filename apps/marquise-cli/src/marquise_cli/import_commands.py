@@ -9,10 +9,9 @@ assignment are skipped rather than treated as errors.
 from __future__ import annotations
 
 import asyncio
+import sys
 from dataclasses import dataclass
 from datetime import date, timedelta
-
-import typer
 
 from marquise import (
     CinemaNotFoundError,
@@ -20,8 +19,6 @@ from marquise import (
     ListCinemasUseCase,
     MarquiseFactory,
 )
-
-import_app = typer.Typer(no_args_is_help=True)
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,7 +67,7 @@ async def run_import_all(
     async def _import_cinema(
         cinema: ListCinemasUseCase.CinemaData,
     ) -> CinemaImportResult:
-        typer.echo(f"  Importing {cinema.name}...")
+        print(f"  Importing {cinema.name}...")
         try:
             output = await factory.source.import_screenings(
                 cinema_id=cinema.id,
@@ -109,21 +106,12 @@ async def run_import_all(
     )
 
 
-@import_app.command(name="all")
-def import_all(
-    days: int = typer.Option(
-        7,
-        "--days",
-        "-d",
-        min=1,
-        help="Number of days to import, starting today (inclusive).",
-    ),
-) -> None:
+def import_all(days: int = 7) -> None:
     """Import showtimes for every cinema that has a source assignment."""
     factory = MarquiseFactory()
     today = date.today()
     end_date = today + timedelta(days=days - 1)
-    typer.echo(f"Starting bulk import: {today} → {end_date} ({days} days)")
+    print(f"Starting bulk import: {today} → {end_date} ({days} days)")
 
     async def _run() -> list[CinemaImportResult]:
         await factory.initialize()
@@ -135,38 +123,38 @@ def import_all(
     try:
         results = asyncio.run(_run())
     except Exception as e:
-        typer.echo(
+        print(
             f"Bulk import failed during initialization: {type(e).__name__}: {e}",
-            err=True,
+            file=sys.stderr,
         )
-        raise typer.Exit(code=1) from e
+        raise SystemExit(1) from e
 
     imported = [r for r in results if r.status == "imported"]
     skipped = [r for r in results if r.status == "skipped"]
     failed = [r for r in results if r.status == "failed"]
 
-    typer.echo("\nResults:")
+    print("\nResults:")
     for r in imported:
         suffix = (
             f", {r.skipped_screenings_count} skipped"
             if r.skipped_screenings_count
             else ""
         )
-        typer.echo(
+        print(
             f"  [ok]      {r.cinema_name}: "
             f"{r.imported_count} new, {r.updated_count} updated{suffix}"
         )
     for r in skipped:
-        typer.echo(f"  [skipped] {r.cinema_name}: {r.detail}")
+        print(f"  [skipped] {r.cinema_name}: {r.detail}")
     for r in failed:
-        typer.echo(f"  [failed]  {r.cinema_name}: {r.detail}", err=True)
+        print(f"  [failed]  {r.cinema_name}: {r.detail}", file=sys.stderr)
 
     total_new = sum(r.imported_count for r in imported)
     total_updated = sum(r.updated_count for r in imported)
-    typer.echo(
+    print(
         f"Done: {len(imported)} imported, {len(skipped)} skipped, "
         f"{len(failed)} failed — {total_new} new, {total_updated} updated."
     )
 
     if failed:
-        raise typer.Exit(code=1)
+        raise SystemExit(1)
