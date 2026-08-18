@@ -31,8 +31,7 @@ def create(
     factory = MarquiseFactory()
 
     async def _run() -> None:
-        try:
-            await factory.initialize()
+        async with factory:
             response = await factory.create_cinema_use_case.execute(
                 CreateCinemaUseCase.InputData(
                     name=name,
@@ -67,8 +66,6 @@ def create(
                     print("Source assigned:")
                     print(f"  Cinema:      {assignment.cinema_id}")
                     print(f"  Source:      {assignment.source_name}")
-        finally:
-            await factory.shutdown()
 
     try:
         asyncio.run(_run())

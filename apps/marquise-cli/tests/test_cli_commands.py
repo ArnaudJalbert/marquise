@@ -47,7 +47,10 @@ def _mock_env(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def mock_factory() -> MagicMock:
     """Provide a mocked MarquiseFactory."""
-    return MagicMock()
+    factory = MagicMock()
+    factory.__aenter__ = AsyncMock(return_value=factory)
+    factory.__aexit__ = AsyncMock(return_value=False)
+    return factory
 
 
 # ---------------------------------------------------------------------------
@@ -80,8 +83,6 @@ def test_cinema_create_success(mock_factory: MagicMock) -> None:
     """Verify cinema create uses the direct use case and prints details."""
     use_case = _mock_create_use_case(response=_created_cinema())
     mock_factory.create_cinema_use_case = use_case
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
 
     with (
         patch(
@@ -106,8 +107,8 @@ def test_cinema_create_success(mock_factory: MagicMock) -> None:
     assert request.address == "123 Test St"
     assert request.city == "Montreal"
     assert request.website == "https://example.com"
-    mock_factory.initialize.assert_called_once()
-    mock_factory.shutdown.assert_called_once()
+    mock_factory.__aenter__.assert_awaited_once()
+    mock_factory.__aexit__.assert_awaited_once()
 
 
 def test_cinema_create_assigns_source_after_success(mock_factory: MagicMock) -> None:
@@ -119,8 +120,6 @@ def test_cinema_create_assigns_source_after_success(mock_factory: MagicMock) -> 
     )
     mock_factory.create_cinema_use_case = use_case
     mock_factory.source = source
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
 
     with (
         patch(
@@ -139,6 +138,8 @@ def test_cinema_create_assigns_source_after_success(mock_factory: MagicMock) -> 
         )
 
     assert result.exit_code == 0
+    mock_factory.__aenter__.assert_awaited_once()
+    mock_factory.__aexit__.assert_awaited_once()
     assert "Source assigned:" in result.stdout
     request = use_case.execute.call_args.args[0]
     assert request.address is None
@@ -156,8 +157,6 @@ def test_cinema_create_declines_source_assignment(mock_factory: MagicMock) -> No
     source.assign_source = AsyncMock()
     mock_factory.create_cinema_use_case = use_case
     mock_factory.source = source
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
 
     with (
         patch(
@@ -173,6 +172,8 @@ def test_cinema_create_declines_source_assignment(mock_factory: MagicMock) -> No
         result = invoke(["cinema", "create"], input="Test Cinema\n\n\n\n")
 
     assert result.exit_code == 0
+    mock_factory.__aenter__.assert_awaited_once()
+    mock_factory.__aexit__.assert_awaited_once()
     select_source.assert_not_awaited()
     source.assign_source.assert_not_awaited()
 
@@ -184,8 +185,6 @@ def test_cinema_create_assignment_failure(mock_factory: MagicMock) -> None:
     source.assign_source = AsyncMock(side_effect=ValueError("Source unavailable"))
     mock_factory.create_cinema_use_case = use_case
     mock_factory.source = source
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
 
     with (
         patch(
@@ -202,15 +201,13 @@ def test_cinema_create_assignment_failure(mock_factory: MagicMock) -> None:
 
     assert result.exit_code == 1
     assert "Failed to create cinema: Source unavailable" in result.stderr
-    mock_factory.shutdown.assert_called_once()
+    mock_factory.__aexit__.assert_awaited_once()
 
 
 def test_cinema_create_failure(mock_factory: MagicMock) -> None:
     """Verify cinema create shows error on failure and shuts down."""
     use_case = _mock_create_use_case(error=ValueError("Admin required"))
     mock_factory.create_cinema_use_case = use_case
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
 
     with patch(
         "marquise_cli.cinema_commands.MarquiseFactory",
@@ -224,8 +221,7 @@ def test_cinema_create_failure(mock_factory: MagicMock) -> None:
     assert result.exit_code == 1
     assert "Failed to create cinema: Admin required" in result.stderr
     assert "Created" not in result.stdout
-    mock_factory.initialize.assert_called_once()
-    mock_factory.shutdown.assert_called_once()
+    mock_factory.__aexit__.assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------
