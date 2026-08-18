@@ -2,10 +2,17 @@
 
 from __future__ import annotations
 
+import logging
 import sys
 from collections.abc import Sequence
 
 from marquise_cli.routing import create_parser, dispatch
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%H:%M:%S",
+)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
