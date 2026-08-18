@@ -52,12 +52,10 @@ def create_parser() -> argparse.ArgumentParser:
         prog="marquise",
         description="Manage Marquise movie showtimes.",
     )
-    groups = parser.add_subparsers(dest="group", required=True, title="commands")
+    groups = parser.add_subparsers(required=True, title="commands")
 
     cinema = groups.add_parser("cinema", help="Manage cinemas")
-    cinema_commands = cinema.add_subparsers(
-        dest="command", required=True, title="commands"
-    )
+    cinema_commands = cinema.add_subparsers(required=True, title="commands")
     create_command = _command(
         cinema_commands,
         "create",
@@ -80,9 +78,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     source = groups.add_parser("source", help="Manage showtime sources")
-    source_commands = source.add_subparsers(
-        dest="command", required=True, title="commands"
-    )
+    source_commands = source.add_subparsers(required=True, title="commands")
     _command(
         source_commands,
         "list-registered",
@@ -108,9 +104,7 @@ def create_parser() -> argparse.ArgumentParser:
     _command(source_commands, "import", import_screenings, "Import cinema screenings.")
 
     import_group = groups.add_parser("import", help="Bulk import showtimes")
-    import_commands = import_group.add_subparsers(
-        dest="command", required=True, title="commands"
-    )
+    import_commands = import_group.add_subparsers(required=True, title="commands")
     import_command = _command(
         import_commands,
         "all",
