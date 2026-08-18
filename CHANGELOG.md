@@ -8,6 +8,12 @@ Before 2026-07-15 the entire codebase shipped as a single package (`marquise`, n
 `marquise-core`). Starting 2026-07-15, the FastAPI application lives in `marquise-api` and the
 Typer CLI lives in `marquise-cli`, each with independent versions.
 
+## 2026-08-14
+
+### marquise-cli v0.1.2
+
+- **Replace Typer with argparse**: `cinema`, `source`, and `import` commands now use stdlib `argparse`; interactive prompts continue through `questionary`. Closes #161.
+
 ## 2026-08-10
 
 ### marquise-interface + marquise-components + marquise-client + marquise-api deployment

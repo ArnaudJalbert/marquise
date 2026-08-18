@@ -1,7 +1,9 @@
-"""Tests for CLI commands using CliRunner and mocked MarquiseFactory."""
+"""Tests for CLI commands with mocked MarquiseFactory."""
 
 from __future__ import annotations
 
+from contextlib import redirect_stderr, redirect_stdout
+from io import StringIO
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 
@@ -12,6 +14,27 @@ from marquise import (
     ListCinemasUseCase,
     SourceController,
 )
+from marquise_cli.app import main
+
+
+def invoke(args: list[str], input: str = "") -> SimpleNamespace:
+    """Run CLI and capture process result."""
+    stdout = StringIO()
+    stderr = StringIO()
+    with (
+        patch("builtins.input", side_effect=input.splitlines()),
+        redirect_stdout(stdout),
+        redirect_stderr(stderr),
+    ):
+        try:
+            exit_code = main(args)
+        except SystemExit as error:
+            exit_code = error.code or 0
+    return SimpleNamespace(
+        exit_code=exit_code,
+        stdout=stdout.getvalue(),
+        stderr=stderr.getvalue(),
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -50,17 +73,11 @@ def test_cinema_create_success(
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     with patch(
         "marquise_cli.cinema_commands.MarquiseFactory",
         return_value=mock_factory,
     ):
-        runner = CliRunner()
-        result = runner.invoke(
-            app,
+        result = invoke(
             ["cinema", "create"],
             input="Test Cinema\n123 Test St\nMontreal\nhttps://example.com\n",
         )
@@ -87,17 +104,11 @@ def test_cinema_create_failure(
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     with patch(
         "marquise_cli.cinema_commands.MarquiseFactory",
         return_value=mock_factory,
     ):
-        runner = CliRunner()
-        result = runner.invoke(
-            app,
+        result = invoke(
             ["cinema", "create"],
             input="Test Cinema\n123 Test St\nMontreal\nhttps://example.com\n",
         )
@@ -166,10 +177,6 @@ def test_cinema_delete_success(
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     with (
         patch(
             "marquise_cli.cinema_commands.MarquiseFactory",
@@ -180,8 +187,7 @@ def test_cinema_delete_success(
         mock_q.select.return_value.ask_async = AsyncMock(return_value=cinema)
         mock_q.text.return_value.ask_async = AsyncMock(return_value="Test Cinema")
 
-        runner = CliRunner()
-        result = runner.invoke(app, ["cinema", "delete"])
+        result = invoke(["cinema", "delete"])
 
     assert result.exit_code == 0
     assert 'Cinema "Test Cinema" (ID: cin-001) deleted.' in result.stdout
@@ -205,10 +211,6 @@ def test_cinema_delete_name_mismatch(
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     with (
         patch(
             "marquise_cli.cinema_commands.MarquiseFactory",
@@ -221,8 +223,7 @@ def test_cinema_delete_name_mismatch(
         )
         mock_q.text.return_value.ask_async = AsyncMock(return_value="Wrong Name")
 
-        runner = CliRunner()
-        result = runner.invoke(app, ["cinema", "delete"])
+        result = invoke(["cinema", "delete"])
 
     assert result.exit_code == 1
     assert 'Name mismatch: expected "Test Cinema", got "Wrong Name"' in result.stderr
@@ -243,16 +244,11 @@ def test_cinema_delete_no_cinemas(
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     with patch(
         "marquise_cli.cinema_commands.MarquiseFactory",
         return_value=mock_factory,
     ):
-        runner = CliRunner()
-        result = runner.invoke(app, ["cinema", "delete"])
+        result = invoke(["cinema", "delete"])
 
     assert result.exit_code == 0
     assert "No cinemas available to delete." in result.stdout
@@ -272,10 +268,6 @@ def test_cinema_delete_cancelled_at_select(
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     with (
         patch(
             "marquise_cli.cinema_commands.MarquiseFactory",
@@ -285,8 +277,7 @@ def test_cinema_delete_cancelled_at_select(
     ):
         mock_q.select.return_value.ask_async = AsyncMock(return_value="__exit__")
 
-        runner = CliRunner()
-        result = runner.invoke(app, ["cinema", "delete"])
+        result = invoke(["cinema", "delete"])
 
     assert result.exit_code == 0
     assert "Cancelled." in result.stdout
@@ -306,10 +297,6 @@ def test_cinema_delete_cancelled_at_confirmation(
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     with (
         patch(
             "marquise_cli.cinema_commands.MarquiseFactory",
@@ -322,8 +309,7 @@ def test_cinema_delete_cancelled_at_confirmation(
         )
         mock_q.text.return_value.ask_async = AsyncMock(return_value=None)
 
-        runner = CliRunner()
-        result = runner.invoke(app, ["cinema", "delete"])
+        result = invoke(["cinema", "delete"])
 
     assert result.exit_code == 0
     assert "Cancelled." in result.stdout
@@ -346,10 +332,6 @@ def test_cinema_delete_failure(
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     with (
         patch(
             "marquise_cli.cinema_commands.MarquiseFactory",
@@ -362,8 +344,7 @@ def test_cinema_delete_failure(
         )
         mock_q.text.return_value.ask_async = AsyncMock(return_value="Test Cinema")
 
-        runner = CliRunner()
-        result = runner.invoke(app, ["cinema", "delete"])
+        result = invoke(["cinema", "delete"])
 
     assert result.exit_code == 1
     assert "Failed to delete cinema: Something went wrong" in result.stderr
@@ -408,16 +389,11 @@ def test_cinema_list_success(
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     with patch(
         "marquise_cli.cinema_commands.MarquiseFactory",
         return_value=mock_factory,
     ):
-        runner = CliRunner()
-        result = runner.invoke(app, ["cinema", "list"])
+        result = invoke(["cinema", "list"])
 
     assert result.exit_code == 0
     assert "Available cinemas:" in result.stdout
@@ -440,16 +416,11 @@ def test_cinema_list_empty(
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     with patch(
         "marquise_cli.cinema_commands.MarquiseFactory",
         return_value=mock_factory,
     ):
-        runner = CliRunner()
-        result = runner.invoke(app, ["cinema", "list"])
+        result = invoke(["cinema", "list"])
 
     assert result.exit_code == 0
     assert "No cinemas found." in result.stdout
@@ -469,16 +440,11 @@ def test_cinema_list_failure(
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     with patch(
         "marquise_cli.cinema_commands.MarquiseFactory",
         return_value=mock_factory,
     ):
-        runner = CliRunner()
-        result = runner.invoke(app, ["cinema", "list"])
+        result = invoke(["cinema", "list"])
 
     assert result.exit_code == 1
     assert "Failed to list cinemas: Something went wrong" in result.stderr
@@ -500,16 +466,11 @@ def test_cinema_list_verbose(
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     with patch(
         "marquise_cli.cinema_commands.MarquiseFactory",
         return_value=mock_factory,
     ):
-        runner = CliRunner()
-        result = runner.invoke(app, ["cinema", "list", "--verbose"])
+        result = invoke(["cinema", "list", "--verbose"])
 
     assert result.exit_code == 0
     assert "Available cinemas:" in result.stdout
@@ -535,16 +496,11 @@ def test_cinema_list_with_name_filter(
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     with patch(
         "marquise_cli.cinema_commands.MarquiseFactory",
         return_value=mock_factory,
     ):
-        runner = CliRunner()
-        result = runner.invoke(app, ["cinema", "list", "--name", "Parc"])
+        result = invoke(["cinema", "list", "--name", "Parc"])
 
     assert result.exit_code == 0
     mock_cinema_controller.list.assert_called_once_with(name="Parc")
@@ -578,10 +534,6 @@ def test_cinema_update_success(
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     with (
         patch(
             "marquise_cli.cinema_commands.MarquiseFactory",
@@ -597,8 +549,7 @@ def test_cinema_update_success(
             side_effect=["Updated Name", "456 New Ave"]
         )
 
-        runner = CliRunner()
-        result = runner.invoke(app, ["cinema", "update"])
+        result = invoke(["cinema", "update"])
 
     assert result.exit_code == 0
     assert "Cinema updated:" in result.stdout
@@ -636,10 +587,6 @@ def test_cinema_update_single_field(
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     with (
         patch(
             "marquise_cli.cinema_commands.MarquiseFactory",
@@ -651,8 +598,7 @@ def test_cinema_update_single_field(
         mock_q.checkbox.return_value.ask_async = AsyncMock(return_value=["name"])
         mock_q.text.return_value.ask_async = AsyncMock(return_value="Renamed")
 
-        runner = CliRunner()
-        result = runner.invoke(app, ["cinema", "update"])
+        result = invoke(["cinema", "update"])
 
     assert result.exit_code == 0
     assert "Cinema updated:" in result.stdout
@@ -688,10 +634,6 @@ def test_cinema_update_clear_optional_field(
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     with (
         patch(
             "marquise_cli.cinema_commands.MarquiseFactory",
@@ -703,8 +645,7 @@ def test_cinema_update_clear_optional_field(
         mock_q.checkbox.return_value.ask_async = AsyncMock(return_value=["address"])
         mock_q.text.return_value.ask_async = AsyncMock(return_value="")
 
-        runner = CliRunner()
-        result = runner.invoke(app, ["cinema", "update"])
+        result = invoke(["cinema", "update"])
 
     assert result.exit_code == 0
     assert "Cinema updated:" in result.stdout
@@ -729,16 +670,11 @@ def test_cinema_update_no_cinemas(
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     with patch(
         "marquise_cli.cinema_commands.MarquiseFactory",
         return_value=mock_factory,
     ):
-        runner = CliRunner()
-        result = runner.invoke(app, ["cinema", "update"])
+        result = invoke(["cinema", "update"])
 
     assert result.exit_code == 0
     assert "No cinemas available to update." in result.stdout
@@ -757,10 +693,6 @@ def test_cinema_update_cancelled_at_select(
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     with (
         patch(
             "marquise_cli.cinema_commands.MarquiseFactory",
@@ -770,8 +702,7 @@ def test_cinema_update_cancelled_at_select(
     ):
         mock_q.select.return_value.ask_async = AsyncMock(return_value="__exit__")
 
-        runner = CliRunner()
-        result = runner.invoke(app, ["cinema", "update"])
+        result = invoke(["cinema", "update"])
 
     assert result.exit_code == 0
     assert "Cancelled." in result.stdout
@@ -792,10 +723,6 @@ def test_cinema_update_cancelled_at_fields(
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     with (
         patch(
             "marquise_cli.cinema_commands.MarquiseFactory",
@@ -806,8 +733,7 @@ def test_cinema_update_cancelled_at_fields(
         mock_q.select.return_value.ask_async = AsyncMock(return_value=cinema)
         mock_q.checkbox.return_value.ask_async = AsyncMock(return_value=[])
 
-        runner = CliRunner()
-        result = runner.invoke(app, ["cinema", "update"])
+        result = invoke(["cinema", "update"])
 
     assert result.exit_code == 0
     assert "No fields selected. Cancelled." in result.stdout
@@ -831,10 +757,6 @@ def test_cinema_update_failure(
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     with (
         patch(
             "marquise_cli.cinema_commands.MarquiseFactory",
@@ -846,8 +768,7 @@ def test_cinema_update_failure(
         mock_q.checkbox.return_value.ask_async = AsyncMock(return_value=["name"])
         mock_q.text.return_value.ask_async = AsyncMock(return_value="New Name")
 
-        runner = CliRunner()
-        result = runner.invoke(app, ["cinema", "update"])
+        result = invoke(["cinema", "update"])
 
     assert result.exit_code == 1
     assert "Failed to update cinema" in result.stderr
@@ -873,10 +794,6 @@ def test_source_registry_show_sources(
     mock_factory: MagicMock,
 ) -> None:
     """Verify source registry command lists available sources with status."""
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     mock_source_controller = create_autospec(SourceController, instance=True)
     mock_source_controller.list_registry_sources = AsyncMock(
         return_value=SimpleNamespace(sources=[_make_registry_source_entry()])
@@ -892,8 +809,7 @@ def test_source_registry_show_sources(
         "marquise_cli.source_commands.MarquiseFactory",
         return_value=mock_factory,
     ):
-        runner = CliRunner()
-        result = runner.invoke(app, ["source", "list-available"])
+        result = invoke(["source", "list-available"])
 
     assert result.exit_code == 0
     assert "cinemacinema" in result.stdout
@@ -907,10 +823,6 @@ def test_source_registry_empty(
     mock_factory: MagicMock,
 ) -> None:
     """Verify source registry shows empty message when no sources."""
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     mock_source_controller = create_autospec(SourceController, instance=True)
     mock_source_controller.list_registry_sources = AsyncMock(
         return_value=SimpleNamespace(sources=[])
@@ -923,8 +835,7 @@ def test_source_registry_empty(
         "marquise_cli.source_commands.MarquiseFactory",
         return_value=mock_factory,
     ):
-        runner = CliRunner()
-        result = runner.invoke(app, ["source", "list-available"])
+        result = invoke(["source", "list-available"])
 
     assert result.exit_code == 0
     assert "No sources registered in the registry." in result.stdout
@@ -937,10 +848,6 @@ def test_source_registry_failure(
     mock_factory: MagicMock,
 ) -> None:
     """Verify source registry shows error on failure."""
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     mock_source_controller = create_autospec(SourceController, instance=True)
     mock_source_controller.list_registry_sources = AsyncMock(
         side_effect=ValueError("Something went wrong")
@@ -953,8 +860,7 @@ def test_source_registry_failure(
         "marquise_cli.source_commands.MarquiseFactory",
         return_value=mock_factory,
     ):
-        runner = CliRunner()
-        result = runner.invoke(app, ["source", "list-available"])
+        result = invoke(["source", "list-available"])
 
     assert result.exit_code == 1
     assert "Failed to list registry sources: Something went wrong" in result.stderr
@@ -969,10 +875,6 @@ def test_source_register_new_source(
     mock_factory: MagicMock,
 ) -> None:
     """Verify source register creates a new source after prompting."""
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     mock_source_controller = create_autospec(SourceController, instance=True)
     mock_source_controller.list_registry_sources = AsyncMock(
         return_value=SimpleNamespace(sources=[_make_registry_source_entry()])
@@ -1005,8 +907,7 @@ def test_source_register_new_source(
             ]
         )
 
-        runner = CliRunner()
-        result = runner.invoke(app, ["source", "register"])
+        result = invoke(["source", "register"])
 
     assert result.exit_code == 0
     assert "cinemacinema" in result.stdout
@@ -1025,10 +926,6 @@ def test_source_register_all_existing(
     mock_factory: MagicMock,
 ) -> None:
     """Verify source register shows all done when nothing new to add."""
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     mock_source_controller = create_autospec(SourceController, instance=True)
     mock_source_controller.list_registry_sources = AsyncMock(
         return_value=SimpleNamespace(sources=[_make_registry_source_entry()])
@@ -1051,8 +948,7 @@ def test_source_register_all_existing(
         "marquise_cli.source_commands.MarquiseFactory",
         return_value=mock_factory,
     ):
-        runner = CliRunner()
-        result = runner.invoke(app, ["source", "register"])
+        result = invoke(["source", "register"])
 
     assert result.exit_code == 0
     assert "already registered" in result.stdout
@@ -1066,10 +962,6 @@ def test_source_register_failure(
     mock_factory: MagicMock,
 ) -> None:
     """Verify source register shows error when create_source fails."""
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     mock_source_controller = create_autospec(SourceController, instance=True)
     mock_source_controller.list_registry_sources = AsyncMock(
         return_value=SimpleNamespace(sources=[_make_registry_source_entry()])
@@ -1095,11 +987,10 @@ def test_source_register_failure(
             side_effect=["Cinéma Cinéma", "Showtimes description"]
         )
 
-        runner = CliRunner()
-        result = runner.invoke(app, ["source", "register"])
+        result = invoke(["source", "register"])
 
     assert result.exit_code == 0
-    assert "Failed: SourceAlreadyExistsError" in result.output
+    assert "Failed: SourceAlreadyExistsError" in result.stderr
     assert "  Failed: SourceAlreadyExistsError" in result.stderr
 
 
@@ -1112,10 +1003,6 @@ def test_source_unregister_success(
     mock_factory: MagicMock,
 ) -> None:
     """Verify source unregister removes selected sources after confirmation."""
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     mock_source_controller = create_autospec(SourceController, instance=True)
     mock_source_controller.list_registry_sources = AsyncMock(
         return_value=SimpleNamespace(sources=[_make_registry_source_entry()])
@@ -1149,8 +1036,7 @@ def test_source_unregister_success(
         )
         mock_q.confirm.return_value.ask_async = AsyncMock(return_value=True)
 
-        runner = CliRunner()
-        result = runner.invoke(app, ["source", "unregister"])
+        result = invoke(["source", "unregister"])
 
     assert result.exit_code == 0
     assert "in registry" in result.stdout
@@ -1166,10 +1052,6 @@ def test_source_unregister_no_selection(
     mock_factory: MagicMock,
 ) -> None:
     """Verify source unregister bails when no sources are selected."""
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     mock_source_controller = create_autospec(SourceController, instance=True)
     mock_source_controller.list_registry_sources = AsyncMock(
         return_value=SimpleNamespace(sources=[_make_registry_source_entry()])
@@ -1197,8 +1079,7 @@ def test_source_unregister_no_selection(
     ):
         mock_q.checkbox.return_value.ask_async = AsyncMock(return_value=[])
 
-        runner = CliRunner()
-        result = runner.invoke(app, ["source", "unregister"])
+        result = invoke(["source", "unregister"])
 
     assert result.exit_code == 0
     assert "No sources selected." in result.stdout
@@ -1209,10 +1090,6 @@ def test_source_unregister_empty_db(
     mock_factory: MagicMock,
 ) -> None:
     """Verify source unregister bails when database has no sources."""
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     mock_source_controller = create_autospec(SourceController, instance=True)
     mock_source_controller.list_sources = AsyncMock(
         return_value=SimpleNamespace(sources=[])
@@ -1225,8 +1102,7 @@ def test_source_unregister_empty_db(
         "marquise_cli.source_commands.MarquiseFactory",
         return_value=mock_factory,
     ):
-        runner = CliRunner()
-        result = runner.invoke(app, ["source", "unregister"])
+        result = invoke(["source", "unregister"])
 
     assert result.exit_code == 0
     assert "No sources registered in the database." in result.stdout
@@ -1237,10 +1113,6 @@ def test_source_unregister_cancelled_at_confirm(
     mock_factory: MagicMock,
 ) -> None:
     """Verify source unregister bails when user declines confirmation."""
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     mock_source_controller = create_autospec(SourceController, instance=True)
     mock_source_controller.list_registry_sources = AsyncMock(
         return_value=SimpleNamespace(sources=[_make_registry_source_entry()])
@@ -1271,8 +1143,7 @@ def test_source_unregister_cancelled_at_confirm(
         )
         mock_q.confirm.return_value.ask_async = AsyncMock(return_value=False)
 
-        runner = CliRunner()
-        result = runner.invoke(app, ["source", "unregister"])
+        result = invoke(["source", "unregister"])
 
     assert result.exit_code == 0
     assert "Cancelled." in result.stdout
@@ -1283,10 +1154,6 @@ def test_source_unregister_partial_failure(
     mock_factory: MagicMock,
 ) -> None:
     """Verify source unregister shows per-source errors on failure."""
-    from typer.testing import CliRunner
-
-    from marquise_cli.app import app
-
     mock_source_controller = create_autospec(SourceController, instance=True)
     mock_source_controller.list_registry_sources = AsyncMock(
         return_value=SimpleNamespace(sources=[_make_registry_source_entry()])
@@ -1320,8 +1187,7 @@ def test_source_unregister_partial_failure(
         )
         mock_q.confirm.return_value.ask_async = AsyncMock(return_value=True)
 
-        runner = CliRunner()
-        result = runner.invoke(app, ["source", "unregister"])
+        result = invoke(["source", "unregister"])
 
     assert result.exit_code == 0
-    assert "Failed: Something went wrong" in result.output
+    assert "Failed: Something went wrong" in result.stderr
