@@ -127,7 +127,7 @@ def test_cinema_create_assigns_source_after_success(mock_factory: MagicMock) -> 
         ),
         patch("marquise_cli.cinema_commands.questionary.confirm") as confirm,
         patch(
-            "marquise_cli.cinema_commands._select_source",
+            "marquise_cli.cinema_commands.select_source",
             new=AsyncMock(return_value="cineplex"),
         ),
     ):
@@ -164,7 +164,7 @@ def test_cinema_create_declines_source_assignment(mock_factory: MagicMock) -> No
         ),
         patch("marquise_cli.cinema_commands.questionary.confirm") as confirm,
         patch(
-            "marquise_cli.cinema_commands._select_source",
+            "marquise_cli.cinema_commands.select_source",
             new=AsyncMock(),
         ) as select_source,
     ):
@@ -192,7 +192,7 @@ def test_cinema_create_assignment_failure(mock_factory: MagicMock) -> None:
         ),
         patch("marquise_cli.cinema_commands.questionary.confirm") as confirm,
         patch(
-            "marquise_cli.cinema_commands._select_source",
+            "marquise_cli.cinema_commands.select_source",
             new=AsyncMock(return_value="cineplex"),
         ),
     ):

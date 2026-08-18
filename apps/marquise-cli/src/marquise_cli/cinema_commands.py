@@ -8,9 +8,58 @@ import sys
 import questionary
 
 from marquise import CreateCinemaUseCase, MarquiseFactory
-from marquise_cli.source_commands import _select_source
+from marquise_cli.helpers import select_source
 
 # ── commands ─────────────────────────────────────────────────────────────────
+
+
+async def _create_cinema(
+    factory: MarquiseFactory,
+    name: str,
+    address: str | None,
+    city: str | None,
+    website: str | None,
+) -> CreateCinemaUseCase.OutputData:
+    """Create a cinema and display its details."""
+    response = await factory.create_cinema_use_case.execute(
+        CreateCinemaUseCase.InputData(
+            name=name,
+            address=address,
+            city=city,
+            website=website,
+        )
+    )
+    print("Cinema created:")
+    print(f"  ID:      {response.id}")
+    print(f"  Name:    {response.name}")
+    if response.address:
+        print(f"  Address: {response.address}")
+    if response.city:
+        print(f"  City:    {response.city}")
+    if response.website:
+        print(f"  Website: {response.website}")
+    return response
+
+
+async def _assign_source(factory: MarquiseFactory, cinema_id: str) -> None:
+    """Optionally assign a source to a newly created cinema."""
+    if not await questionary.confirm(
+        "Assign a showtime source now?",
+        default=False,
+    ).ask_async():
+        return
+
+    source_name = await select_source(factory, "Select a source to assign:")
+    if source_name is None:
+        return
+
+    assignment = await factory.source.assign_source(
+        cinema_id=cinema_id,
+        source_name=source_name,
+    )
+    print("Source assigned:")
+    print(f"  Cinema:      {assignment.cinema_id}")
+    print(f"  Source:      {assignment.source_name}")
 
 
 def create(
@@ -32,40 +81,14 @@ def create(
 
     async def _run() -> None:
         async with factory:
-            response = await factory.create_cinema_use_case.execute(
-                CreateCinemaUseCase.InputData(
-                    name=name,
-                    address=address_val,
-                    city=city_val,
-                    website=website_val,
-                )
+            response = await _create_cinema(
+                factory,
+                name=name,
+                address=address_val,
+                city=city_val,
+                website=website_val,
             )
-            print("Cinema created:")
-            print(f"  ID:      {response.id}")
-            print(f"  Name:    {response.name}")
-            if response.address:
-                print(f"  Address: {response.address}")
-            if response.city:
-                print(f"  City:    {response.city}")
-            if response.website:
-                print(f"  Website: {response.website}")
-
-            assign = await questionary.confirm(
-                "Assign a showtime source now?",
-                default=False,
-            ).ask_async()
-            if assign:
-                source_name = await _select_source(
-                    factory, "Select a source to assign:"
-                )
-                if source_name is not None:
-                    assignment = await factory.source.assign_source(
-                        cinema_id=response.id,
-                        source_name=source_name,
-                    )
-                    print("Source assigned:")
-                    print(f"  Cinema:      {assignment.cinema_id}")
-                    print(f"  Source:      {assignment.source_name}")
+            await _assign_source(factory, response.id)
 
     try:
         asyncio.run(_run())
