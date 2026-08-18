@@ -8,6 +8,12 @@ Before 2026-07-15 the entire codebase shipped as a single package (`marquise`, n
 `marquise-core`). Starting 2026-07-15, the FastAPI application lives in `marquise-api` and the
 Typer CLI lives in `marquise-cli`, each with independent versions.
 
+## 2026-08-18
+
+### marquise-core v0.2.3
+
+- **Expose create-cinema use case**: `MarquiseFactory.create_cinema_use_case` and top-level `CreateCinemaUseCase` now provide CLI consumers with configured direct creation access. Closes #162.
+
 ## 2026-08-14
 
 ### marquise-cli v0.1.2

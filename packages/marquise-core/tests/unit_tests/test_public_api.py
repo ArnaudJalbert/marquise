@@ -17,6 +17,7 @@ EXPECTED_PUBLIC_SURFACE: set[str] = {
     "CinemaNotFoundError",
     "CinemaSourceAssignmentAlreadyExistsError",
     "CinemaSourceAssignmentNotFoundError",
+    "CreateCinemaUseCase",
     "create_factory",
     "create_factory_session",
     "ListCinemasUseCase",
