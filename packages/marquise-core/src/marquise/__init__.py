@@ -36,6 +36,7 @@ from marquise.application.exceptions import (
     SourceNotFoundError,
     TooManyMovieIdsError,
 )
+from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.bootstrap import (
     MarquiseFactory,
@@ -55,6 +56,7 @@ __all__ = [
     "CinemaNotFoundError",
     "CinemaSourceAssignmentAlreadyExistsError",
     "CinemaSourceAssignmentNotFoundError",
+    "CreateCinemaUseCase",
     "create_factory",
     "create_factory_session",
     "ListCinemasUseCase",
