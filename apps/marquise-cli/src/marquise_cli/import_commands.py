@@ -106,7 +106,7 @@ async def run_import_all(
     )
 
 
-def import_all(days: int = 7) -> None:
+def import_all(days: int) -> None:
     """Import showtimes for every cinema that has a source assignment."""
     factory = MarquiseFactory()
     today = date.today()
