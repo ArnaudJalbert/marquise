@@ -10,6 +10,14 @@ Typer CLI lives in `marquise-cli`, each with independent versions.
 
 ## 2026-08-18
 
+### marquise-core v0.2.4
+
+- **Migrate cinema creation to direct use-case execution**: `marquise cinema create` now executes `CreateCinemaUseCase` directly and optionally assigns a source after creation. Closes #163.
+
+### marquise-cli v0.1.3
+
+- **Migrate cinema creation to direct use-case execution**: `marquise cinema create` now executes `CreateCinemaUseCase` directly and optionally assigns a source after creation. Closes #163.
+
 ### marquise-core v0.2.3
 
 - **Expose create-cinema use case**: `MarquiseFactory.create_cinema_use_case` and top-level `CreateCinemaUseCase` now provide CLI consumers with configured direct creation access. Closes #162.
