@@ -7,7 +7,8 @@ import sys
 
 import questionary
 
-from marquise import MarquiseFactory
+from marquise import CreateCinemaUseCase, MarquiseFactory
+from marquise_cli.source_commands import _select_source
 
 # ── commands ─────────────────────────────────────────────────────────────────
 
@@ -30,13 +31,15 @@ def create(
     factory = MarquiseFactory()
 
     async def _run() -> None:
-        await factory.initialize()
         try:
-            response = await factory.cinema.create(
-                name=name,
-                address=address_val,
-                city=city_val,
-                website=website_val,
+            await factory.initialize()
+            response = await factory.create_cinema_use_case.execute(
+                CreateCinemaUseCase.InputData(
+                    name=name,
+                    address=address_val,
+                    city=city_val,
+                    website=website_val,
+                )
             )
             print("Cinema created:")
             print(f"  ID:      {response.id}")
@@ -47,6 +50,23 @@ def create(
                 print(f"  City:    {response.city}")
             if response.website:
                 print(f"  Website: {response.website}")
+
+            assign = await questionary.confirm(
+                "Assign a showtime source now?",
+                default=False,
+            ).ask_async()
+            if assign:
+                source_name = await _select_source(
+                    factory, "Select a source to assign:"
+                )
+                if source_name is not None:
+                    assignment = await factory.source.assign_source(
+                        cinema_id=response.id,
+                        source_name=source_name,
+                    )
+                    print("Source assigned:")
+                    print(f"  Cinema:      {assignment.cinema_id}")
+                    print(f"  Source:      {assignment.source_name}")
         finally:
             await factory.shutdown()
 

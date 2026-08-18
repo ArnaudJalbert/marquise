@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
 from marquise.application.use_cases.get_cinema import GetCinemaUseCase
 from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
@@ -25,7 +24,6 @@ class CinemaController:
 
     def __init__(
         self,
-        create_cinema_use_case: CreateCinemaUseCase,
         delete_cinema_use_case: DeleteCinemaUseCase,
         get_cinema_use_case: GetCinemaUseCase,
         get_cinema_movies_use_case: GetCinemaMoviesUseCase,
@@ -33,46 +31,12 @@ class CinemaController:
         list_cinemas_use_case: ListCinemasUseCase,
         update_cinema_use_case: UpdateCinemaUseCase,
     ) -> None:
-        self._create_use_case = create_cinema_use_case
         self._delete_use_case = delete_cinema_use_case
         self._get_use_case = get_cinema_use_case
         self._get_movies_use_case = get_cinema_movies_use_case
         self._get_screenings_use_case = get_cinema_screenings_use_case
         self._list_use_case = list_cinemas_use_case
         self._update_use_case = update_cinema_use_case
-
-    async def create(
-        self,
-        name: str,
-        address: str | None = None,
-        city: str | None = None,
-        website: str | None = None,
-    ) -> CreateCinemaUseCase.OutputData:
-        """Create a new cinema.
-
-        Delegates to the create-cinema use case.
-
-        Args:
-            name: Cinema name.
-            address: Street address (optional).
-            city: City (optional).
-            website: Website URL (optional).
-
-        Returns:
-            The output data from the use case.
-
-        Raises:
-            CinemaAlreadyExistsError: If a cinema with the same name+address
-                exists.
-            CinemaIdAlreadyExistsError: On UUID collision.
-        """
-        request = CreateCinemaUseCase.InputData(
-            name=name,
-            address=address,
-            city=city,
-            website=website,
-        )
-        return await self._create_use_case.execute(request)
 
     async def list_cinemas(
         self,

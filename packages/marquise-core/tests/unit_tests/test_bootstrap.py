@@ -92,12 +92,8 @@ async def test_create_cinema_use_case_returns_configured_use_case() -> None:
         await factory.initialize()
 
         use_case = factory.create_cinema_use_case
-        controller = factory.cinema
         assert isinstance(use_case, CreateCinemaUseCase)
         assert use_case.cinema_repository._gateway._pool is mock_database.pool
-        assert controller._create_use_case.cinema_repository._gateway._pool is (
-            mock_database.pool
-        )
 
         await factory.shutdown()
 
