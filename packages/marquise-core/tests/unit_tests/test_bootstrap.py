@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.bootstrap import MarquiseFactory, create_factory, create_factory_session
 from marquise.infrastructure.controllers.cinema_controller import CinemaController
 from marquise.infrastructure.controllers.source_controller import SourceController
@@ -66,8 +67,39 @@ async def test_initialize_is_idempotent() -> None:
 
 
 # ------------------------------------------------------------------
-# Controller properties
+# Controller and use-case properties
 # ------------------------------------------------------------------
+
+
+def test_create_cinema_use_case_requires_initialize() -> None:
+    """Verify create use case retains factory's pre-init failure behavior."""
+    factory = MarquiseFactory()
+
+    with pytest.raises(RuntimeError, match="Database pool not available"):
+        _ = factory.create_cinema_use_case
+
+
+@pytest.mark.asyncio
+async def test_create_cinema_use_case_returns_configured_use_case() -> None:
+    """Verify factory returns create use case wired to initialized pool."""
+    mock_database = AsyncMock()
+    mock_database.pool = AsyncMock()
+
+    with patch(
+        "marquise.infrastructure.di.container.Database", return_value=mock_database
+    ):
+        factory = MarquiseFactory()
+        await factory.initialize()
+
+        use_case = factory.create_cinema_use_case
+        controller = factory.cinema
+        assert isinstance(use_case, CreateCinemaUseCase)
+        assert use_case.cinema_repository._gateway._pool is mock_database.pool
+        assert controller._create_use_case.cinema_repository._gateway._pool is (
+            mock_database.pool
+        )
+
+        await factory.shutdown()
 
 
 @pytest.mark.asyncio

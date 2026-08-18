@@ -441,8 +441,13 @@ class Container:
         )
 
     # ------------------------------------------------------------------
-    # Read-only use cases (public — used by the REST API)
+    # Public use cases
     # ------------------------------------------------------------------
+
+    @property
+    def create_cinema_use_case(self) -> CreateCinemaUseCase:
+        """Public create-cinema use case."""
+        return self._create_cinema_use_case
 
     @property
     def list_cinemas_use_case(self) -> ListCinemasUseCase:

@@ -1,8 +1,9 @@
 """Public bootstrap API for Marquise.
 
 Provides :class:`MarquiseFactory` — the single entry point for external
-consumers (apps) to obtain fully-wired controllers.  Internal code
-may continue to use the :class:`~marquise.infrastructure.di.container.Container`
+consumers (apps) to obtain fully-wired controllers and supported use cases.
+Internal code may continue to use the
+:class:`~marquise.infrastructure.di.container.Container`
 directly.
 """
 
@@ -12,6 +13,7 @@ import types
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
+from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.infrastructure.controllers.cinema_controller import CinemaController
 from marquise.infrastructure.controllers.movie_controller import MovieController
 from marquise.infrastructure.controllers.screening_controller import ScreeningController
@@ -70,8 +72,13 @@ class MarquiseFactory:
         return await self._container.check_database_health()
 
     # ------------------------------------------------------------------
-    # Controllers (read-only properties)
+    # Controllers and use cases (read-only properties)
     # ------------------------------------------------------------------
+
+    @property
+    def create_cinema_use_case(self) -> CreateCinemaUseCase:
+        """Configured use case for creating cinemas."""
+        return self._container.create_cinema_use_case
 
     @property
     def cinema(self) -> CinemaController:
