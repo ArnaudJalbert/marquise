@@ -200,7 +200,7 @@ def test_cinema_create_assignment_failure(mock_factory: MagicMock) -> None:
         result = invoke(["cinema", "create"], input="Test Cinema\n\n\n\n")
 
     assert result.exit_code == 1
-    assert "Failed to create cinema: Source unavailable" in result.stderr
+    assert "Failed to assign source: Source unavailable" in result.stderr
     mock_factory.__aexit__.assert_awaited_once()
 
 

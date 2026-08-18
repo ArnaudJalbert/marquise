@@ -88,10 +88,16 @@ def create(
                 city=city_val,
                 website=website_val,
             )
-            await _assign_source(factory, response.id)
+            try:
+                await _assign_source(factory, response.id)
+            except Exception as e:
+                print(f"Failed to assign source: {e}", file=sys.stderr)
+                raise SystemExit(1) from e
 
     try:
         asyncio.run(_run())
+    except SystemExit:
+        raise
     except Exception as e:
         print(f"Failed to create cinema: {e}", file=sys.stderr)
         raise SystemExit(1) from e
