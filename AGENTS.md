@@ -1,397 +1,164 @@
-# Marquise Development Guide
+# Development rules
 
-**Version**: 2.0  
-**Audience**: All developers and AI coding assistants  
-**Purpose**: Rules and standards that are actually enforced on this codebase
+Enforced standards for contributors and AI assistants.
 
-**Quick index**:
-- What the system is → [ARCHITECTURE.md](ARCHITECTURE.md)
-- Setup and commands → [CONTRIBUTING.md](CONTRIBUTING.md)
-- Enforced rules → this document
-
----
-
-## 1. Project Overview
-
-**Marquise** is a Montreal cinema showtimes aggregator. It fetches screening data from Cineplex, CinemaCinema, Cinema Public, Cinéma Moderne, Cinémathèque québécoise, and Théâtre Outremont; normalises it; and stores it in a Supabase (PostgreSQL) database. The interface includes a Typer CLI, a read-only FastAPI REST API, and a public bootstrap API (`MarquiseFactory`) for apps in `apps/`.
-
-Known technical debt and TODO items: [`docs/todo.md`](docs/todo.md).
+| Document | Purpose |
+|----------|---------|
+| [docs/architecture.md](docs/architecture.md) | Design principles: layers, DI, testability |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | This repository: setup, commands, paths, CI |
+| [docs/](docs/) | Detailed repo-specific guidelines (read on demand) |
 
 ---
 
-## 2. Technology Stack
+## Agent context
 
-- **Language**: Python 3.13 (strict requirement)
-- **Package manager**: `uv` — all commands use `uv run`, all deps via `uv add`
-- **Database**: Supabase (PostgreSQL via `asyncpg`) — abstracted behind repository interfaces
-- **CLI**: Typer + Rich
-- **REST API**: FastAPI (read-only public endpoints + admin endpoints)
-- **Testing**: pytest + pytest-asyncio
-- **Code quality**: Ruff (formatting + linting) — mandatory before every commit
-- **Coverage gate**: 70% CI minimum; target 80%+ overall, 100% for `domain/` and `application/`
+You are a **senior full-stack developer** working on this codebase.
 
-**No exceptions**: Never use `pip` directly. All dependencies go through `uv`.
+**Priority order (non-negotiable):**
 
----
+1. **Clean Architecture rules** — always win. Never break layer boundaries,
+   dependency direction, injectability, or single responsibility to save lines.
+   Lean means fewer lines *within* clean arch, not shortcuts around it.
+2. **Lean / minimal (ponytail)** — default once arch constraints are satisfied.
+   Prefer the smallest change that correctly solves the problem. Reuse before
+   writing. Stdlib before dependencies. No speculative abstractions. Deletion
+   over addition.
 
-## 3. Clean Architecture — The Foundation
+When lean and clean arch appear to conflict, choose clean arch and find a
+smaller solution that still respects it — never the other way around.
 
-Marquise uses **Clean Architecture**. **Dependencies point inward only.** Outer layers depend on inner layers; inner layers never depend on outer layers.
-
-```
-┌──────────────────────────────────────┐
-│  infrastructure/  (CLI, DB, sources) │
-├──────────────────────────────────────┤
-│  interface_adapters/  (repos, adapters) │
-├──────────────────────────────────────┤
-│  application/  (use cases, repo ABCs)│
-├──────────────────────────────────────┤
-│  domain/  (entities, value objects)  │
-└──────────────────────────────────────┘
-```
-
-### 3.1 Layer Rules
-
-**Domain** (innermost):
-- Zero dependencies — standard library only
-- Entities: `@dataclass(kw_only=True, slots=True)`, validate in `__post_init__`
-- Value objects: `@dataclass(frozen=True, slots=True)`
-
-**Application**:
-- Imports from `domain` only — never from `interface_adapters` or `infrastructure`
-- Each use case has inner `InputData` and `OutputData` as `@dataclass(frozen=True, slots=True)`
-- Both `InputData` and `OutputData` **must** validate in `__post_init__`
-- `execute(input: InputData) -> OutputData` is the only public method
-- Repository interfaces are ABCs defined here — no concrete implementations
-
-**Interface adapters**:
-- Imports from `application` and `domain` — never from `infrastructure`
-- Repository implementations: entity mapping only — no SQL here
-- Gateway protocols: `typing.Protocol` types, stdlib + domain/application imports only
-
-**Infrastructure**:
-- The only layer allowed to import `asyncpg`, Supabase SDK, Typer, or external libraries
-- Gateways execute SQL and return plain dicts — they never import domain entities
-- CLI commands wire use cases to the terminal — business logic belongs in use cases
-
-### 3.2 Boundary Rules
-
-1. No circular imports
-2. Domain never knows about databases, HTTP, or external systems
-3. Application never knows about databases or HTTP
-4. Interface adapters and infrastructure implement interfaces defined in application
-5. Use cases catch domain exceptions and re-raise them as `ApplicationError` subclasses — domain exceptions must not escape the application layer
-
-### 3.3 Public Surface & Import Boundary
-
-Apps in `apps/` depend only on a defined public surface of `marquise-core` — never on internal modules.
-
-**What is public** (defined in `marquise/__init__.py`, enforced via `__all__`):
-- `MarquiseFactory` — dependency container with lazy-loaded controllers
-- `create_factory()` — async factory function that returns a configured `MarquiseFactory`
-- `create_factory_session()` — async context manager for request-scoped sessions
-- `CinemaController`, `SourceController` — thin wiring layer
-
-**What is NOT public**: Domain entities, value objects, use cases, repositories, protocols, infrastructure.
-
-**Import rules for `apps/`**:
-- May import only from `marquise` (top-level) and `marquise.bootstrap`
-- Must **never** import from `marquise.{domain,application,interface_adapters,infrastructure}`
-
-**Enforcement**:
-- AST-based scanner in `tests/unit_tests/test_import_boundary.py`
-- `import-linter` contract in root `pyproject.toml`
-- Snapshot test in `tests/unit_tests/test_public_api.py` prevents accidental `__all__` additions
+When unsure, ship the simple version and note what was skipped. Complexity needs
+justification; boredom is a feature — but architectural integrity is not optional.
 
 ---
 
-## 4. Code Quality Standards
+## Monorepo contract
 
-### 4.1 Type Hints — Mandatory Everywhere
+This repository contains **two independent monorepos**:
 
-Every function, method, and class attribute must have complete type hints. Use `str | None` (Python 3.10+ union syntax) — not `Optional[str]`.
+| Stack | Tooling | Scope |
+|-------|---------|--------|
+| Python backend | uv workspace | Library + API + CLI |
+| Web frontend | pnpm workspace + Turborepo | Shared packages + apps |
 
-```python
-# Correct
-async def find_by_name(self, name: str) -> Cinema | None: ...
+They do not share a lockfile or package manager. Work in one subtree at a time.
 
-# Forbidden — missing hints, old Optional syntax
-def find(self, name):
-    ...
-```
+### Python (uv)
 
-### 4.2 Ruff — Run Before Every Commit
+- Shared library package + delivery app packages
+- Virtual root workspace config; **single lockfile** — sync only from Python repo root
+- Each member owns its own dependencies, scripts, and pytest config
+- Run **each app test suite in its own pytest invocation**
+- Delivery apps import the **library public facade only** (see [docs/architecture.md](docs/architecture.md))
 
-```bash
-uv run ruff format .
-uv run ruff check --fix .
-```
+### Web (pnpm + Turborepo)
 
-Never manually style code — let Ruff handle it. Never commit code that fails either command.
+- Self-contained under `web/` — pnpm + Turborepo; single lockfile from `web/` root
+- Apps → packages only; public API via package `exports`
+- Inject client at boundary; no live HTTP in unit tests
+- Full rules → [docs/architecture.md#modular-web-packages](docs/architecture.md#modular-web-packages)
 
-### 4.3 Docstrings — Google Style
-
-Every public module, class, method, and function must have a Google-style docstring.
-
-```python
-def fetch_cinemas(city: str, limit: int = 10) -> list[Cinema]:
-    """Retrieve cinemas in a given city.
-
-    Args:
-        city: The city to filter by (case-insensitive).
-        limit: Maximum number of results to return.
-
-    Returns:
-        A list of Cinema entities matching the filter.
-
-    Raises:
-        ValueError: If city is empty.
-    """
-```
-
-Test functions must have docstrings describing the scenario under test.
-
-### 4.4 Package Conventions
-
-`__init__.py` files re-export symbols from submodules — they must not define classes or functions directly. Each logical group lives in its own file (`cinema.py`, `movie.py`, etc.).
-
-### 4.5 Infrastructure Technology Isolation
-
-Each external technology lives in its own subdirectory under `infrastructure/` and communicates with `interface_adapters/` through a `typing.Protocol` defined in `interface_adapters/repositories/protocols/`.
-
-Rules:
-- `interface_adapters/` never imports `asyncpg`, SQL strings, or any infrastructure module
-- `infrastructure/<tech>/gateways/` fully owns SQL/API logic and returns plain dicts — no domain entity imports
-- Protocol definitions use only stdlib and domain/application types
-
-### 4.6 No Module-Level Mutable State
-
-Never assign mutable objects at module level (global caches, lazy singletons). Each CLI invocation runs in its own process — there is no cross-call sharing.
-
-Exception: `rich.Console()` is a stateless display-config object and is idiomatic at module level.
-
-```python
-# Forbidden
-_container: Container | None = None
-
-# Correct — fresh instance per command
-@cinema_app.command()
-def list_cinemas(...) -> None:
-    controller = Container().cinema_controller
-    ...
-```
+Repo-specific layout and commands → [CONTRIBUTING.md](CONTRIBUTING.md) (Python and web sections).
 
 ---
 
-## 5. Testing
+## Architecture contract
 
-### 5.1 Organisation
+Details → [docs/architecture.md](docs/architecture.md). **Clean Architecture is the ceiling
+and the floor** — all work stays inside it. Ponytail optimisations must not
+violate these rules:
 
-Tests live under `packages/marquise-core/tests/`, not root-level `tests/` (see [§9.1 Workspace layout](#91-workspace-layout)):
+- Inward dependencies only; single responsibility per component
+- Infrastructure ↔ application boundary: **InputData / OutputData** at the
+  delivery edge — no domain entities in delivery or infrastructure signatures
+- **All collaborators injectable** at the composition root — no hidden globals,
+  no constructing dependencies inside use cases
 
-```
-packages/marquise-core/tests/
-├── conftest.py          # shared fixtures
-├── unit_tests/
-│   ├── domain/          # entities, value objects
-│   ├── application/     # use cases (repos mocked)
-│   └── interface_adapters/  # adapter mapping (gateway mocked)
-└── integration_tests/
-    └── infrastructure/  # gateways with real DB
-```
-
-No `integration_tests/interface_adapters/` — that directory must not exist. Interface adapter tests are unit tests that mock the gateway protocol.
-
-### 5.2 Test-by-Layer Rules
-
-| Layer | Test type | What to mock |
-|---|---|---|
-| `domain/` | Unit | Nothing — pure Python |
-| `application/` | Unit | Repository interfaces via `create_autospec` |
-| `interface_adapters/` | Unit | Gateway protocols via `create_autospec` |
-| `infrastructure/<tech>/gateways/` | Integration | Real database only |
-
-### 5.3 Mocking
-
-Use `unittest.mock.create_autospec` with the ABC or Protocol to enforce correct signatures:
-
-```python
-from unittest.mock import create_autospec
-
-mock_repo = create_autospec(CinemaRepository, instance=True)
-mock_repo.save.return_value = Cinema(...)
-
-use_case = CreateCinemaUseCase(cinema_repository=mock_repo)
-await use_case.execute(request)
-
-mock_repo.save.assert_awaited_once()
-```
-
-Use `assert_awaited_once()` / `assert_awaited_once_with()` for async methods, `assert_not_awaited()` for verifying no call.
-
-### 5.4 Async Tests
-
-All async tests use `@pytest.mark.asyncio`. Tests are function-style — never class-style.
-
-```python
-@pytest.mark.asyncio
-async def test_use_case_returns_cinema() -> None:
-    """Use case returns a Cinema entity when the repo save succeeds."""
-    ...
-```
-
-### 5.5 Coverage
-
-```bash
-# Check coverage
-uv run pytest packages/marquise-core/tests/unit_tests/ --cov=marquise --cov-report=term-missing -q
-
-# CI gate
-uv run pytest packages/marquise-core/tests/unit_tests/ --cov=marquise --cov-fail-under=70
-```
-
-Target: 100% for `domain/` and `application/`. CI fails below 70%. Do not open a PR that drops coverage.
+If a lean approach would skip a layer, merge boundaries, hard-code a dependency,
+or expose domain types at the delivery edge, reject it and find a smaller change
+that preserves the architecture.
 
 ---
 
-## 6. Pitfalls to Avoid
+## Testing contract
 
-### Architecture violations
+Everything through **interface adapters** is unit-testable with **zero external
+I/O**. Infrastructure is the only layer that touches real externals (integration
+tests only).
 
-- Importing infrastructure classes in domain or application
-- Using `asyncpg` or Supabase SDK outside `infrastructure/`
-- Putting business logic in CLI commands, controllers, or repository implementations
-- Creating circular dependencies between layers
-- Using `Any` without a comment explaining why
-- Importing internal modules from `apps/` (must only use `marquise` public surface)
+### Injectable dependencies
 
-### Quality gate violations
+- Use cases receive repository interfaces via constructor — never instantiate stores inside
+- Adapters receive gateway protocols via constructor — never open connections inside
+- Controllers receive use cases via constructor
+- Tests swap real collaborators for `create_autospec` mocks of the same ABC or protocol
 
-- Committing unformatted code (`ruff format --check` must pass)
-- Committing lint errors (`ruff check` must pass)
-- Committing failing tests
-- Committing code that drops coverage below 70%
+Layer rules, testability boundary, and web testing →
+[docs/architecture.md#dependency-injection-and-testability](docs/architecture.md#dependency-injection-and-testability).
+Concrete test paths → [CONTRIBUTING.md#testability-in-this-repo](CONTRIBUTING.md#testability-in-this-repo).
 
-### Design violations
+### Mechanics
 
-- Module-level mutable state (see §4.6)
-- Domain exceptions escaping the application layer (see §3.1)
-- Returning `dict` from repositories — return domain entities or value objects
-- Putting query logic in use cases — keep it in repository implementations
-- Mixing ORM/driver-specific types in domain — convert immediately in the gateway
+- Function-style tests — never class-based
+- `@pytest.mark.asyncio` for async tests
+- `create_autospec(Interface, instance=True)` — enforces signature match
+- `assert_awaited_once()` / `assert_not_awaited()` for async mocks
+- Scenario docstring on every test function
+- Coverage: **70% CI minimum**; target **100%** for domain and application
 
----
+### Red flags (reject in review)
 
-## 7. Commands Reference
-
-```bash
-# ── All-in-one shortcuts (Makefile) ──────────────────────────────────
-make test       # run all 3 test suites
-make test-core  # core unit tests only
-make test-api   # API tests only
-make test-cli   # CLI tests only
-make api        # launch API with hot reload
-make cli        # launch CLI
-make lint       # ruff check
-make format     # ruff format
-make ty         # type check marquise-core
-
-# ── Manual equivalents ────────────────────────────────────────────────
-# Unit tests (no DB required)
-uv run --package marquise-core pytest packages/marquise-core/tests/unit_tests/ -q
-
-# Unit tests with coverage
-uv run --package marquise-core pytest packages/marquise-core/tests/unit_tests/ --cov=marquise --cov-report=term-missing -q
-
-# API tests
-uv run --package marquise-api pytest apps/marquise-api/tests -q
-
-# CLI tests
-uv run --package marquise-cli pytest apps/marquise-cli/tests -q
-
-# Lint (workspace-wide, shared root config)
-uv run ruff check .
-
-# Type check (non-blocking in CI for now — see #34)
-uv run ty check packages/marquise-core/src
-
-# Format
-uv run ruff format .
-
-# Check formatting (CI mode)
-uv run ruff format --check .
-
-# CLI
-uv run --package marquise-cli marquise-cli --help
-uv run --package marquise-cli marquise-cli cinema --help
-uv run --package marquise-cli marquise-cli source --help
-
-# Add a runtime dependency to marquise-core
-uv add --package marquise-core <package>
-
-# Add a dev dependency (shared, root-level group)
-uv add --dev <package>
-
-# Sync after pyproject.toml changes (always from repo root — see §9.1)
-uv sync
-```
+- Use case that imports a DB driver, HTTP client, or reads env vars directly
+- Application-layer test that hits a real database or network
+- Module-level mutable container or cache
+- Hard-coded dependency construction inside a use case or adapter
+- Library component that fetches directly (no injected client or props)
 
 ---
 
-## 8. Process Guidelines
+### Python
 
-### Branch naming
+- Complete type hints everywhere; `str | None` not `Optional`
+- Entity / use-case conventions → [docs/python.md](docs/python.md)
+- Ruff required before commit → [CONTRIBUTING.md](CONTRIBUTING.md)
 
-- `feature/short-description`
-- `fix/issue-description`
-- `refactor/scope-description`
-- `docs/scope-description`
+### Web (TypeScript / React)
 
-### Commit messages
-
-Format: `type(scope): concise description`  
-Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
-
-### Pull request process
-
-1. Rebase on main: `git pull origin main --rebase`
-2. Run quality gates: `ruff format --check`, `ruff check`, `uv run --package marquise-core pytest packages/marquise-core/tests/unit_tests/`
-3. Ensure coverage did not drop below 70%
-4. Add `CHANGELOG.md` entry under the current date (or create a new date heading), noting which package(s) were affected. Bump version only in the affected package's `pyproject.toml` (`packages/marquise-core/pyproject.toml`, `apps/marquise-api/pyproject.toml`, or `apps/marquise-cli/pyproject.toml`). The root `pyproject.toml` is virtual and has no version of its own.
-5. Reference the issue: `Closes #N`
-6. Self-review the diff before requesting review
-
-### Work incrementally
-
-One focused task per commit. If a change touches >5 files or >2 layers, split it.
-
-### Releasing
-
-1. **Bump version** in the affected package's `pyproject.toml`.
-2. **Add CHANGELOG entry** under the current date (or create a new date heading).
-3. **Commit**: `chore(<pkg>): bump to vX.Y.Z`
-4. **Tag**: `git tag marquise-core-vX.Y.Z` (or `marquise-api`, `marquise-cli`)
-5. **Push**: `git push origin main --tags`
-6. **CI** builds, publishes to PyPI, and creates a GitHub Release.
+- Strict TypeScript; no `any` without a comment explaining why
+- Prefer **props and injected dependencies** over module-level singletons (mirrors backend DI)
+- Colocate tests next to source (`*.test.ts` / `*.test.tsx`); Testing Library — behaviour, not implementation
+- Apps are thin: routing, inject real client, pass props to library components
+- Full web rules → [docs/architecture.md#modular-web-packages](docs/architecture.md#modular-web-packages)
 
 ---
 
-## 9. Frequently Confused Points
+## Violations checklist
 
-### 9.1 Workspace layout
+Reject changes that:
 
-Marquise is a `uv` workspace (`[tool.uv.workspace] members = ["packages/*", "apps/*"]`), with runnable applications under `apps/*` and shared libraries under `packages/*`. Root `pyproject.toml` is **virtual** — no `[project]`/`[build-system]` table, not a distributable package. It holds workspace config, the shared `dev` dependency group, and shared `ruff`/`ty` config only. `packages/marquise-core` is the sole member today; it owns its own `pyproject.toml`, runtime dependencies, the `marquise` console script, and `pytest`/coverage config.
+- Break clean arch to save lines (skip injection, merge layers, domain types in delivery)
+- Put business logic in delivery or controller
+- Expose domain entities in infrastructure or delivery signatures
+- Put SQL or HTTP in a use case or repository adapter
+- Use non-injectable dependencies (constructed inside, global singleton)
+- Require a live external service to test application logic
+- Return raw dicts from repositories
+- Import internal library layers from a delivery app
+- **Web:** package importing from an app; deep-importing another package's internals; live API calls in unit tests; shipping dev-only demo code in library `dist`
+- **Web:** library component fetching without injected client; app duplicating library UI instead of composing exports; client implementation outside a dedicated client package, or coupled to app routing or env
 
-When running pytest, target `packages/marquise-core/tests`, not a root-level `tests/` (it no longer exists). When running `ruff`/`ty`, invoke from repo root — those tools are shared/workspace-wide.
-
-**One lockfile rule**: only run `uv sync` / `uv lock` from the repo root, never from inside `packages/marquise-core/` or any other member directory.
-
-**InputData vs OutputData validation**: `InputData` validates because it represents external input. `OutputData` validates fields that are computed or transformed — skip re-validating values copied directly from already-validated entities.
-
-**Controller vs use case**: Controllers (in `infrastructure/controllers/`) are thin wiring — `InputData` construction and delegation only. Business decisions go in use cases.
-
-**Gateway vs repository**: Gateways (`infrastructure/<tech>/gateways/`) execute SQL and return plain dicts. Repositories (`interface_adapters/repositories/supabase/`) convert those dicts to domain entities.
+Rationale for each → [docs/architecture.md](docs/architecture.md).
 
 ---
 
-*Last updated: 2026-06-26 — reflects Python 3.13, Supabase/asyncpg, Typer CLI, FastAPI REST API, and bootstrap API with import boundary enforcement.*
+## Detailed guidelines
+
+Repo-specific detail lives in `docs/` — read when the task touches that area:
+
+| Guideline | When to read |
+|-----------|--------------|
+| [docs/architecture.md](docs/architecture.md) | Layer boundaries, DI, testability, web package design |
+| [docs/python.md](docs/python.md) | Domain entities, value objects, use cases |
+| [docs/setup.md](docs/setup.md) | Database setup, schema, Supabase |
+| [docs/sources.md](docs/sources.md) | Scrapers, source adapters, registry |
+| [docs/releasing.md](docs/releasing.md) | Version bumps, tags, releases |
