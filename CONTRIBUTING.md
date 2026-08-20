@@ -315,11 +315,12 @@ Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
 - [ ] App tests pass if an app was touched
 - [ ] Coverage did not drop below 70%
 - [ ] Import boundary not violated
-- [ ] `CHANGELOG.md` entry under current date; version bump in affected package's `pyproject.toml`
+- [ ] Entry under current date in the affected package's `CHANGELOG.md` ([index](CHANGELOG.md)); version bump in affected package's `pyproject.toml`
 
 ### Web changes
 
 - [ ] `pnpm lint`, `pnpm typecheck`, and `pnpm test` pass (from `web/`)
+- [ ] Entry under current date in the affected package's `CHANGELOG.md` if user-facing ([index](CHANGELOG.md))
 - [ ] No deep imports across package boundaries
 - [ ] Dev-only demo code not included in library build output
 
