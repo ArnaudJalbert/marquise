@@ -15,7 +15,7 @@ dependencies = [
 [project.urls]
 Homepage = "https://marquise.ca"
 Repository = "https://github.com/ArnaudJalbert/marquise"
-Changelog = "https://github.com/ArnaudJalbert/marquise/blob/main/CHANGELOG.md"
+Changelog = "https://github.com/ArnaudJalbert/marquise/blob/main/apps/marquise-api/CHANGELOG.md"
 
 [project.scripts]
 marquise-api = "marquise_api.main:run"
