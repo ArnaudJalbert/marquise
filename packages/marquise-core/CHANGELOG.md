@@ -2,6 +2,12 @@
 
 Before 2026-07-15 this package was published as `marquise`.
 
+## 2026-08-21
+
+### v0.2.7
+
+- **Expose update-cinema use case**: `MarquiseFactory.update_cinema_use_case` and top-level `UpdateCinemaUseCase` now provide CLI consumers with configured direct update access. Closes #166.
+
 ## 2026-08-18
 
 ### v0.2.6
