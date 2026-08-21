@@ -7,16 +7,12 @@ import sys
 
 import questionary
 
-from marquise import DeleteCinemaUseCase, MarquiseFactory
+from marquise import CinemaNotFoundError, DeleteCinemaUseCase, MarquiseFactory
 
 
 async def _select_cinema(factory: MarquiseFactory) -> tuple[str, str] | None:
     """List cinemas and interactively select one for deletion."""
-    try:
-        response = await factory.cinema.list_cinemas()
-    except Exception as e:
-        print(f"Failed to list cinemas: {e}", file=sys.stderr)
-        raise SystemExit(1) from e
+    response = await factory.cinema.list_cinemas()
 
     if not response.cinemas:
         print("No cinemas available to delete.")
@@ -66,9 +62,9 @@ async def _delete_cinema(factory: MarquiseFactory, cinema_id: str) -> None:
         await factory.delete_cinema_use_case.execute(
             DeleteCinemaUseCase.InputData(cinema_id=cinema_id)
         )
-    except Exception as e:
-        print(f"Failed to delete cinema: {e}", file=sys.stderr)
-        raise SystemExit(1) from e
+    except (CinemaNotFoundError, ValueError) as error:
+        print(f"Failed to delete cinema: {error}", file=sys.stderr)
+        raise SystemExit(1) from error
 
 
 def delete() -> None:
@@ -86,10 +82,4 @@ def delete() -> None:
             await _delete_cinema(factory, cinema_id)
             print(f'Cinema "{cinema_name}" (ID: {cinema_id}) deleted.')
 
-    try:
-        asyncio.run(_run())
-    except SystemExit:
-        raise
-    except Exception as e:
-        print(f"Failed to delete cinema: {e}", file=sys.stderr)
-        raise SystemExit(1) from e
+    asyncio.run(_run())
