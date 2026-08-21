@@ -11,12 +11,14 @@ import questionary
 from marquise import CinemaNotFoundError, MarquiseFactory, UpdateCinemaUseCase
 
 
-def _cinema_choices(cinemas: list[object]) -> list[questionary.Choice]:
+def _cinema_choices(
+    cinemas: list[dict[str, str | None]],
+) -> list[questionary.Choice]:
     """Build cinema choices with an exit option."""
     choices = [
         questionary.Choice(
-            title=f"{cinema.name} — {cinema.address or 'No address'}, "
-            f"{cinema.city or 'No city'}",
+            title=f"{cinema['name']} — {cinema['address'] or 'No address'}, "
+            f"{cinema['city'] or 'No city'}",
             value=cinema,
         )
         for cinema in cinemas
@@ -28,17 +30,29 @@ def _cinema_choices(cinemas: list[object]) -> list[questionary.Choice]:
 async def _select_cinema(factory: MarquiseFactory) -> dict[str, str | None] | None:
     """List cinemas and prompt for one to update."""
     response = await factory.cinema.list_cinemas()
-    if not response.cinemas:
+    cinemas = [asdict(cinema) for cinema in response.cinemas]
+    if not cinemas:
         print("No cinemas available to update.")
         return None
 
     selected = await questionary.select(
-        "Select a cinema to update:", choices=_cinema_choices(response.cinemas)
+        "Select a cinema to update:", choices=_cinema_choices(cinemas)
     ).ask_async()
     if selected is None or selected == "__exit__":
         print("Cancelled.")
         return None
-    return asdict(selected)
+    return selected
+
+
+def _field_choices(cinema: dict[str, str | None]) -> list[questionary.Choice]:
+    """Build field choices with current values."""
+    return [
+        questionary.Choice(
+            title=f"{field.upper()} [{cinema[field] or 'not set'}]",
+            value=field,
+        )
+        for field in ("name", "address", "city", "website")
+    ]
 
 
 async def _collect_value(field: str, current: str | None) -> str | None:
@@ -55,13 +69,7 @@ async def _collect_updates(
     """Prompt for fields and replacement values."""
     fields = await questionary.checkbox(
         "Which fields would you like to change?",
-        choices=[
-            questionary.Choice(
-                title=f"{field.upper()} [{cinema[field] or 'not set'}]",
-                value=field,
-            )
-            for field in ("name", "address", "city", "website")
-        ],
+        choices=_field_choices(cinema),
     ).ask_async()
     if not fields:
         print("No fields selected. Cancelled.")

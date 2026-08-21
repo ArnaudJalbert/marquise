@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import redirect_stderr, redirect_stdout
+from dataclasses import asdict
 from io import StringIO
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
@@ -705,7 +706,7 @@ def _update_setup(
     mock_cinema_controller_for_update: MagicMock,
     mock_update_use_case: MagicMock,
     cinema: ListCinemasUseCase.CinemaData | None = None,
-) -> ListCinemasUseCase.CinemaData:
+) -> dict[str, str | None]:
     """Wire update command collaborators with one cinema."""
     cinema = cinema or _make_cinema_data()
     mock_cinema_controller_for_update.list_cinemas.return_value = (
@@ -713,7 +714,7 @@ def _update_setup(
     )
     mock_factory.cinema = mock_cinema_controller_for_update
     mock_factory.update_cinema_use_case = mock_update_use_case
-    return cinema
+    return asdict(cinema)
 
 
 def test_cinema_update_success(
