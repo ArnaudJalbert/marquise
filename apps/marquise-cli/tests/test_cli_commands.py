@@ -396,7 +396,9 @@ def test_cinema_delete_list_failure(
     mock_factory.__aexit__.assert_awaited_once()
 
 
+@pytest.mark.parametrize("selection", [None, "__exit__"])
 def test_cinema_delete_cancelled_at_select(
+    selection: str | None,
     mock_factory: MagicMock,
     mock_cinema_controller_for_delete: MagicMock,
     mock_delete_use_case: MagicMock,
@@ -415,7 +417,7 @@ def test_cinema_delete_cancelled_at_select(
         ),
         patch("marquise_cli.cinema_commands.delete_command.questionary") as mock_q,
     ):
-        mock_q.select.return_value.ask_async = AsyncMock(return_value="__exit__")
+        mock_q.select.return_value.ask_async = AsyncMock(return_value=selection)
         result = invoke(["cinema", "delete"])
 
     assert result.exit_code == 0
