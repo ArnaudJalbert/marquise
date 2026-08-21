@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
 from marquise.application.use_cases.get_cinema import GetCinemaUseCase
 from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
 from marquise.application.use_cases.get_cinema_screenings import (
@@ -15,7 +14,7 @@ from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 
 
 class CinemaController:
-    """Handles cinema creation, listing, and deletion flows.
+    """Handles cinema listing and read/update flows.
 
     All dependencies are injected — no settings, database, or use case wiring
     lives here.  The caller is responsible for initializing and shutting down
@@ -24,14 +23,12 @@ class CinemaController:
 
     def __init__(
         self,
-        delete_cinema_use_case: DeleteCinemaUseCase,
         get_cinema_use_case: GetCinemaUseCase,
         get_cinema_movies_use_case: GetCinemaMoviesUseCase,
         get_cinema_screenings_use_case: GetCinemaScreeningsUseCase,
         list_cinemas_use_case: ListCinemasUseCase,
         update_cinema_use_case: UpdateCinemaUseCase,
     ) -> None:
-        self._delete_use_case = delete_cinema_use_case
         self._get_use_case = get_cinema_use_case
         self._get_movies_use_case = get_cinema_movies_use_case
         self._get_screenings_use_case = get_cinema_screenings_use_case
@@ -54,23 +51,6 @@ class CinemaController:
         """
         request = ListCinemasUseCase.InputData(name=name_filter)
         return await self._list_use_case.execute(request)
-
-    async def delete(self, cinema_id: str) -> DeleteCinemaUseCase.OutputData:
-        """Delete a cinema by its ID.
-
-        Delegates to the delete-cinema use case.
-
-        Args:
-            cinema_id: The ID of the cinema to delete.
-
-        Returns:
-            The output data from the use case.
-
-        Raises:
-            CinemaNotFoundError: If no cinema with the given ID exists.
-        """
-        request = DeleteCinemaUseCase.InputData(cinema_id=cinema_id)
-        return await self._delete_use_case.execute(request)
 
     async def update(
         self,
