@@ -7,7 +7,15 @@ import sys
 
 import questionary
 
-from marquise import CreateCinemaUseCase, MarquiseFactory
+from marquise import (
+    CinemaAlreadyExistsError,
+    CinemaIdAlreadyExistsError,
+    CinemaNotFoundError,
+    CinemaSourceAssignmentAlreadyExistsError,
+    CreateCinemaUseCase,
+    MarquiseFactory,
+    SourceNotFoundError,
+)
 from marquise_cli.helpers import select_source
 
 
@@ -79,23 +87,31 @@ def create(
 
     async def _run() -> None:
         async with factory:
-            response = await _create_cinema(
-                factory,
-                name=name,
-                address=address_val,
-                city=city_val,
-                website=website_val,
-            )
+            try:
+                response = await _create_cinema(
+                    factory,
+                    name=name,
+                    address=address_val,
+                    city=city_val,
+                    website=website_val,
+                )
+            except (
+                CinemaAlreadyExistsError,
+                CinemaIdAlreadyExistsError,
+                ValueError,
+            ) as error:
+                print(f"Failed to create cinema: {error}", file=sys.stderr)
+                raise SystemExit(1) from error
+
             try:
                 await _assign_source(factory, response.id)
-            except Exception as e:
-                print(f"Failed to assign source: {e}", file=sys.stderr)
-                raise SystemExit(1) from e
+            except (
+                CinemaNotFoundError,
+                CinemaSourceAssignmentAlreadyExistsError,
+                SourceNotFoundError,
+                ValueError,
+            ) as error:
+                print(f"Failed to assign source: {error}", file=sys.stderr)
+                raise SystemExit(1) from error
 
-    try:
-        asyncio.run(_run())
-    except SystemExit:
-        raise
-    except Exception as e:
-        print(f"Failed to create cinema: {e}", file=sys.stderr)
-        raise SystemExit(1) from e
+    asyncio.run(_run())
