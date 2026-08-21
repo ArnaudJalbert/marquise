@@ -1,0 +1,27 @@
+# Changelog
+
+## 2026-08-10
+
+### Deployment
+
+- **Shared HTTP and mock clients**: one client stack now powers both listings and movie details, with bounded request caching.
+
+## 2026-08-08
+
+### Changes
+
+- **Movie detail data clients**: added HTTP and deterministic mock detail clients, movie IDs throughout the grid model, and shared date/showtime behavior between grid and detail views.
+
+## 2026-08-05
+
+### Changes
+
+- **Data client for the REST API**: `HttpMovieGridClient` implements `MovieGridClient` — lists the upcoming days with screenings, paginates a date's screenings, bulk-fetches movie metadata (posters, genres, directors, duration) in chunks of 100, and resolves cinema websites for clickable cinema names. Empty base URL targets a same-origin API (dev proxy).
+- **`MockMovieGridClient`**: deterministic seeded demo data (12-film catalogue, 4 Montréal cinemas) so the UI runs with zero backend.
+- **Contract ownership moved out of `marquise-components`**: `Cinema`, `CinemaShowtime`, `MovieCardData`, `MovieCardGridItem` and `MovieGridClient` now live here; the components package re-exports them (dependency direction is now components → client).
+
+## 2026-07-17
+
+### Changes
+
+- **Add `MoviesResource.getByIds`**: goes through `list()` with `ids` set and `size` forced to `ids.length` (satisfying the backend's `ids count <= size` constraint), unwrapping `.items` from the returned `Page`. `buildQuery` now serializes `string[]` values as repeated query params (`ids=a&ids=b`) to support it, and `ListMoviesParams` gained an `ids` field.

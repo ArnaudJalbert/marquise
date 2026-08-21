@@ -14,7 +14,7 @@ dependencies = [
 [project.urls]
 Homepage = "https://marquise.ca"
 Repository = "https://github.com/ArnaudJalbert/marquise"
-Changelog = "https://github.com/ArnaudJalbert/marquise/blob/main/CHANGELOG.md"
+Changelog = "https://github.com/ArnaudJalbert/marquise/blob/main/packages/marquise-core/CHANGELOG.md"
 
 [build-system]
 requires = ["hatchling"]
