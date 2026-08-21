@@ -10,7 +10,7 @@ Version bumps and PyPI releases for workspace packages.
    - `packages/marquise-core/`
    - `apps/marquise-api/`
    - `apps/marquise-cli/`
-2. Add a [CHANGELOG.md](../CHANGELOG.md) entry under the current date.
+2. Add an entry under the current date in the affected package's `CHANGELOG.md` (see the [package changelog index](../CHANGELOG.md)).
 3. Commit: `chore(<pkg>): bump to vX.Y.Z`
 4. Tag: `marquise-core-vX.Y.Z` (or `marquise-api-vX.Y.Z`, `marquise-cli-vX.Y.Z`)
 5. Push: `git push origin main --tags`

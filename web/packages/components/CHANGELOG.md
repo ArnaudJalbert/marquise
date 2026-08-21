@@ -1,0 +1,55 @@
+# Changelog
+
+## 2026-08-10
+
+### Deployment
+
+- **UI primitives**: native selects and Radix primitives replace custom calendar, popover, and hover behavior; duplicate demos and unused UI primitives removed.
+
+## 2026-08-08
+
+### Changes
+
+- **Screenings grid controls and cards**: display controls moved below the grid with details on the left, pagination centered, and card size on the right. Cards retain centered titles when details are hidden, use consistent row sizing, and show an accessible bordered showtimes expansion with a close button.
+- **Montréal-aware filtering**: today's time range starts at the current hour, future dates reset to all day, and returning to today reapplies the current-hour filter.
+
+## 2026-08-05
+
+### Changes
+
+- **Interactive movie grid filters**: `MovieFilterPanel` (date picker, cinema/genre/language chip groups, start/end time-range slider, optional card-size slider and details toggle), `useMovieFilters` (fetches dates + one selected date, filters applied locally), and pure `movie-grid-filter.ts` logic wired together by `MovieGridController`.
+- **Per-date movie detail page**: `MovieDetailPage` renders one showtime column per date; columns slide left/right, adapt to the container width, and each date's showtimes are fetched lazily as its column comes into view. Adds a `Popover` UI primitive and the `movie-detail-client` / `movie-grid-client` data-source protocols.
+- **Card presentation options**: `MovieCard` poster-only mode (`hideDetails`) and a card-size auto-fit path in `MovieCardGrid` (up to 6 columns default; 8 with an explicit `cardSize`).
+- **Robustness fixes from code review**: stale in-flight showtimes no longer overwrite the cache after a movie change; the fetch-error banner clears once a failed date recovers; per-date Retry no longer reloads the dates list; and a collapsed time-range slider can now be expanded by dragging its start thumb. 126 tests passing.
+
+## 2026-08-04
+
+### v0.1.0 (new)
+
+- **Component library**: pnpm workspace package (`marquise-components`) ships a prebuilt CSS bundle (`dist/index.css`) so consumers do not need their own Tailwind install.
+- **`MovieCard`**: poster, title, meta, flat showtime chips and a cinema-grouped all-showtimes view shared between a hover popover and an inline widget (single HoverCard root, no DOM duplication or hover flicker). `MoviePoster` lazy-loads images at low priority with a loading bar and graceful error fallback.
+- **`MovieCardGrid`**: responsive grid with numeric or `"auto"` pagination; auto mode measures its container (ResizeObserver) and row height (max across the first row), re-measuring on any resize, and pages so nothing overflows a bounded-height parent.
+- **`CinemaShowtimeGroups` + `groupByCinema`**: single-pass, O(n) grouping reused across the popover, the inline widget, and the grid.
+- **Accessibility**: `aria-expanded`/`aria-controls`, `aria-live` page indicator, keyboard paging on a focusable grid, crossed-out started showtimes, hover-card enter/exit animations.
+- **Tooling**: Vite 8 library build with all runtime deps externalized, TypeScript strict (`noUncheckedIndexedAccess`), oxlint, Vitest 4 + Testing Library (43 tests), and a dev-only demo page (`make web-demo`).
+
+## 2026-07-29
+
+### v0.2.0
+
+- **Move detail views into the library**: `MovieDetailDrawer`, `MovieDetailPage`, `detailTypes`, `detailUtils`, and `timezone` moved from `marquise-interface` for reusability. Components accept API functions as props with no dependency on `react-router-dom`.
+- **Date picker arrows**: `<` and `>` buttons next to the calendar icon for quick day-to-day navigation.
+- **Past-showtime strikethrough**: showtimes in the past (`showtime` ISO datetime) are rendered with `line-through` and reduced opacity in detail views.
+- **Default time range to current hour**: the time-range slider starts at the current hour (`new Date().getHours()`) for today, and resets to `0–24` (full day) when navigating to a future or past date.
+- **Disable past dates in calendar**: calendar cells for dates before today are visually muted and unclickable.
+- **Midnight–midnight range**: time range slider spans `0–24` instead of `8–24` to cover late-night screenings.
+- **Replace "Multiple" with "Single" mode**: the date picker now offers Single / Range instead of Multiple / Range. Single mode replaces the selection on click (no toggle).
+
+## 2026-07-15
+
+### Changes
+
+- **Move `filterMovies` filter/sort/dedup logic into the library**: extracted `filterMovies.ts` from `marquise-interface` so the AND-filter semantics (cinema, genre, date, language, time range, search text) and `mergeByTitle` cross-cinema dedup can be reused — and tested — in one place.
+- **Add `addDaysToDateKey`**: shared date-key arithmetic replaces an identically implemented private function in the interface app.
+- **Fix `PosterImage` render-time side effect**: replaced a `useState` + render-time mutation pattern with a canonical `useEffect` that resets the error state when `src` changes.
+- **Add test infrastructure**: `vitest`, `jsdom`, and `@testing-library/react`; 30 unit tests across 5 test files.
