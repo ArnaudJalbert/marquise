@@ -112,6 +112,37 @@ async def test_delete_cinema_use_case_after_initialize() -> None:
 
 
 @pytest.mark.asyncio
+async def test_update_cinema_use_case_requires_initialize() -> None:
+    """Verify update_cinema_use_case raises before pool initialization."""
+    with patch(
+        "marquise.infrastructure.di.container.Database",
+        return_value=AsyncMock(),
+    ):
+        container = Container()
+        with pytest.raises(RuntimeError, match="Database pool not available"):
+            _ = container.update_cinema_use_case
+
+
+@pytest.mark.asyncio
+async def test_update_cinema_use_case_after_initialize() -> None:
+    """Verify update_cinema_use_case uses the initialized database pool."""
+    from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
+
+    mock_database = AsyncMock()
+    mock_database.pool = AsyncMock()
+
+    with patch(
+        "marquise.infrastructure.di.container.Database", return_value=mock_database
+    ):
+        container = Container()
+        await container.initialize()
+        use_case = container.update_cinema_use_case
+        assert isinstance(use_case, UpdateCinemaUseCase)
+        assert use_case.cinema_repository._gateway._pool is mock_database.pool
+        await container.shutdown()
+
+
+@pytest.mark.asyncio
 async def test_get_cinema_use_case_requires_initialize() -> None:
     """Verify get_cinema_use_case raises RuntimeError if pool not initialized."""
     with patch(

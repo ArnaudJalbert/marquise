@@ -455,6 +455,11 @@ class Container:
         return self._delete_cinema_use_case
 
     @property
+    def update_cinema_use_case(self) -> UpdateCinemaUseCase:
+        """Public update-cinema use case."""
+        return self._update_cinema_use_case
+
+    @property
     def list_cinemas_use_case(self) -> ListCinemasUseCase:
         """Public list-cinemas use case (no authentication required)."""
         return self._list_cinemas_use_case
