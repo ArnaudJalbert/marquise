@@ -4,6 +4,10 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-08-18
 
+### v0.2.6
+
+- **Remove cinema deletion from `CinemaController`**: deletion is now exposed only through `DeleteCinemaUseCase`, allowing delivery code to invoke it directly. Closes #165.
+
 ### v0.2.5
 
 - **Expose delete-cinema use case**: `MarquiseFactory.delete_cinema_use_case` and top-level `DeleteCinemaUseCase` now provide CLI consumers with configured direct deletion access. Closes #164.

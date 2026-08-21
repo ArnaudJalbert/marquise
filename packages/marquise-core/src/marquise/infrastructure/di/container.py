@@ -506,7 +506,6 @@ class Container:
     @property
     def cinema_controller(self) -> CinemaController:
         return CinemaController(
-            delete_cinema_use_case=self._delete_cinema_use_case,
             get_cinema_use_case=self._get_cinema_use_case,
             get_cinema_movies_use_case=self._get_cinema_movies_use_case,
             get_cinema_screenings_use_case=self._get_cinema_screenings_use_case,
