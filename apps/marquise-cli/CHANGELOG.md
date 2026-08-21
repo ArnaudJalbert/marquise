@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-21
+
+### v0.1.5
+
+- **Migrate cinema update to direct use-case execution**: `marquise cinema update` now executes `UpdateCinemaUseCase` directly after focused selection, field collection, update, and output steps. Closes #167.
+
 ## 2026-08-18
 
 ### v0.1.4

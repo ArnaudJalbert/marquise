@@ -515,7 +515,6 @@ class Container:
             get_cinema_movies_use_case=self._get_cinema_movies_use_case,
             get_cinema_screenings_use_case=self._get_cinema_screenings_use_case,
             list_cinemas_use_case=self._list_cinemas_use_case,
-            update_cinema_use_case=self._update_cinema_use_case,
         )
 
     @property
