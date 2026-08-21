@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from dataclasses import asdict
 
 import questionary
 
@@ -25,26 +26,32 @@ async def _create_cinema(
     address: str | None,
     city: str | None,
     website: str | None,
-) -> CreateCinemaUseCase.OutputData:
+) -> dict[str, str | None]:
     """Create a cinema and display its details."""
-    response = await factory.create_cinema_use_case.execute(
-        CreateCinemaUseCase.InputData(
-            name=name,
-            address=address,
-            city=city,
-            website=website,
+    try:
+        response = await factory.create_cinema_use_case.execute(
+            CreateCinemaUseCase.InputData(
+                name=name,
+                address=address,
+                city=city,
+                website=website,
+            )
         )
-    )
+    except (CinemaAlreadyExistsError, CinemaIdAlreadyExistsError, ValueError) as error:
+        print(f"There was an error when creating the cinema: {error}", file=sys.stderr)
+        raise SystemExit(1) from error
+
+    cinema = asdict(response)
     print("Cinema created:")
-    print(f"  ID:      {response.id}")
-    print(f"  Name:    {response.name}")
-    if response.address:
-        print(f"  Address: {response.address}")
-    if response.city:
-        print(f"  City:    {response.city}")
-    if response.website:
-        print(f"  Website: {response.website}")
-    return response
+    print(f"  ID:      {cinema['id']}")
+    print(f"  Name:    {cinema['name']}")
+    if cinema["address"]:
+        print(f"  Address: {cinema['address']}")
+    if cinema["city"]:
+        print(f"  City:    {cinema['city']}")
+    if cinema["website"]:
+        print(f"  Website: {cinema['website']}")
+    return cinema
 
 
 async def _assign_source(factory: MarquiseFactory, cinema_id: str) -> None:
@@ -59,10 +66,22 @@ async def _assign_source(factory: MarquiseFactory, cinema_id: str) -> None:
     if source_name is None:
         return
 
-    assignment = await factory.source.assign_source(
-        cinema_id=cinema_id,
-        source_name=source_name,
-    )
+    try:
+        assignment = await factory.source.assign_source(
+            cinema_id=cinema_id,
+            source_name=source_name,
+        )
+    except (
+        CinemaNotFoundError,
+        CinemaSourceAssignmentAlreadyExistsError,
+        SourceNotFoundError,
+        ValueError,
+    ) as error:
+        print(
+            f"There was an error when assigning the source to the cinema: {error}",
+            file=sys.stderr,
+        )
+        raise SystemExit(1) from error
     print("Source assigned:")
     print(f"  Cinema:      {assignment.cinema_id}")
     print(f"  Source:      {assignment.source_name}")
@@ -74,7 +93,14 @@ def create(
     city: str | None = None,
     website: str | None = None,
 ) -> None:
-    """Create a new cinema."""
+    """Create a cinema from arguments or interactive prompts.
+
+    Args:
+        name: Cinema name, prompted when omitted.
+        address: Cinema street address, prompted when omitted.
+        city: Cinema city, prompted when omitted.
+        website: Cinema website URL, prompted when omitted.
+    """
     name = name or input("Cinema name: ")
     address = address if address is not None else input("Cinema street address: ")
     city = city if city is not None else input("City where cinema is located: ")
@@ -87,31 +113,13 @@ def create(
 
     async def _run() -> None:
         async with factory:
-            try:
-                response = await _create_cinema(
-                    factory,
-                    name=name,
-                    address=address_val,
-                    city=city_val,
-                    website=website_val,
-                )
-            except (
-                CinemaAlreadyExistsError,
-                CinemaIdAlreadyExistsError,
-                ValueError,
-            ) as error:
-                print(f"Failed to create cinema: {error}", file=sys.stderr)
-                raise SystemExit(1) from error
-
-            try:
-                await _assign_source(factory, response.id)
-            except (
-                CinemaNotFoundError,
-                CinemaSourceAssignmentAlreadyExistsError,
-                SourceNotFoundError,
-                ValueError,
-            ) as error:
-                print(f"Failed to assign source: {error}", file=sys.stderr)
-                raise SystemExit(1) from error
+            cinema = await _create_cinema(
+                factory,
+                name=name,
+                address=address_val,
+                city=city_val,
+                website=website_val,
+            )
+            await _assign_source(factory, cinema["id"] or "")
 
     asyncio.run(_run())
