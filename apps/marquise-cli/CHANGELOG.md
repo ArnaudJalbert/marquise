@@ -2,6 +2,11 @@
 
 ## 2026-08-18
 
+### v0.1.4
+
+- **Migrate cinema deletion to direct use-case execution**: `marquise cinema delete` now executes `DeleteCinemaUseCase` directly and always shuts down its factory. Closes #165.
+- **Split cinema commands and narrow error handling**: commands now live in dedicated modules, deletion passes only ID and name between steps, and commands catch documented errors only at matching use-case calls.
+
 ### v0.1.3
 
 - **Migrate cinema creation to direct use-case execution**: `marquise cinema create` now executes `CreateCinemaUseCase` directly and optionally assigns a source after creation. Closes #163.
