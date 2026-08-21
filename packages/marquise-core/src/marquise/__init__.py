@@ -38,6 +38,7 @@ from marquise.application.exceptions import (
 )
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
+from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.bootstrap import (
@@ -60,6 +61,7 @@ __all__ = [
     "CinemaSourceAssignmentNotFoundError",
     "CreateCinemaUseCase",
     "DeleteCinemaUseCase",
+    "GetCinemaSourceUseCase",
     "create_factory",
     "create_factory_session",
     "ListCinemasUseCase",
