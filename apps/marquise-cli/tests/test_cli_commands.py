@@ -18,6 +18,7 @@ from marquise import (
     DeleteCinemaUseCase,
     ListCinemasUseCase,
     SourceController,
+    UpdateCinemaUseCase,
 )
 from marquise_cli.app import main
 
@@ -308,10 +309,9 @@ def mock_delete_use_case() -> MagicMock:
 
 @pytest.fixture
 def mock_cinema_controller_for_update() -> MagicMock:
-    """Provide a mocked CinemaController with list/update methods."""
+    """Provide a mocked CinemaController with cinema listing."""
     controller = create_autospec(CinemaController, instance=True)
     controller.list_cinemas = AsyncMock()
-    controller.update = AsyncMock()
     return controller
 
 
@@ -692,27 +692,42 @@ def test_cinema_list_with_name_filter(
 # ---------------------------------------------------------------------------
 
 
-def test_cinema_update_success(
+@pytest.fixture
+def mock_update_use_case() -> MagicMock:
+    """Provide a mocked UpdateCinemaUseCase."""
+    use_case = create_autospec(UpdateCinemaUseCase, instance=True)
+    use_case.execute = AsyncMock()
+    return use_case
+
+
+def _update_setup(
     mock_factory: MagicMock,
     mock_cinema_controller_for_update: MagicMock,
-) -> None:
-    """Verify cinema update succeeds when selecting fields and providing values."""
-
-    cinema = _make_cinema_data()
+    mock_update_use_case: MagicMock,
+    cinema: ListCinemasUseCase.CinemaData | None = None,
+) -> ListCinemasUseCase.CinemaData:
+    """Wire update command collaborators with one cinema."""
+    cinema = cinema or _make_cinema_data()
     mock_cinema_controller_for_update.list_cinemas.return_value = (
         ListCinemasUseCase.OutputData(cinemas=[cinema], total=1)
     )
-    mock_cinema_controller_for_update.update.return_value = SimpleNamespace(
-        id="cin-001",
-        name="Updated Name",
-        address="456 New Ave",
-        city="Montreal",
-        website="https://example.com",
-    )
     mock_factory.cinema = mock_cinema_controller_for_update
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
+    mock_factory.update_cinema_use_case = mock_update_use_case
+    return cinema
 
+
+def test_cinema_update_success(
+    mock_factory: MagicMock,
+    mock_cinema_controller_for_update: MagicMock,
+    mock_update_use_case: MagicMock,
+) -> None:
+    """Verify cinema update executes use case with selected replacements."""
+    cinema = _update_setup(
+        mock_factory, mock_cinema_controller_for_update, mock_update_use_case
+    )
+    mock_update_use_case.execute.return_value = UpdateCinemaUseCase.OutputData(
+        "cin-001", "Updated Name", "456 New Ave", "Montreal", "https://example.com"
+    )
     with (
         patch(
             "marquise_cli.cinema_commands.update_command.MarquiseFactory",
@@ -727,92 +742,30 @@ def test_cinema_update_success(
         mock_q.text.return_value.ask_async = AsyncMock(
             side_effect=["Updated Name", "456 New Ave"]
         )
-
         result = invoke(["cinema", "update"])
-
     assert result.exit_code == 0
     assert "Cinema updated:" in result.stdout
-    assert "Updated Name" in result.stdout
-    assert "456 New Ave" in result.stdout
+    mock_update_use_case.execute.assert_awaited_once_with(
+        UpdateCinemaUseCase.InputData(
+            "cin-001", "Updated Name", "456 New Ave", "Montreal", "https://example.com"
+        )
+    )
     mock_factory.__aenter__.assert_awaited_once()
     mock_factory.__aexit__.assert_awaited_once()
-    mock_cinema_controller_for_update.update.assert_awaited_once_with(
-        cinema_id="cin-001",
-        name="Updated Name",
-        address="456 New Ave",
-        city="Montreal",
-        website="https://example.com",
-    )
-
-
-def test_cinema_update_single_field(
-    mock_factory: MagicMock,
-    mock_cinema_controller_for_update: MagicMock,
-) -> None:
-    """Verify cinema update only changes the selected fields."""
-
-    cinema = _make_cinema_data()
-    mock_cinema_controller_for_update.list_cinemas.return_value = (
-        ListCinemasUseCase.OutputData(cinemas=[cinema], total=1)
-    )
-    mock_cinema_controller_for_update.update.return_value = SimpleNamespace(
-        id="cin-001",
-        name="Renamed",
-        address="123 Test St",
-        city="Montreal",
-        website="https://example.com",
-    )
-    mock_factory.cinema = mock_cinema_controller_for_update
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
-
-    with (
-        patch(
-            "marquise_cli.cinema_commands.update_command.MarquiseFactory",
-            return_value=mock_factory,
-        ),
-        patch("marquise_cli.cinema_commands.update_command.questionary") as mock_q,
-    ):
-        mock_q.select.return_value.ask_async = AsyncMock(return_value=cinema)
-        mock_q.checkbox.return_value.ask_async = AsyncMock(return_value=["name"])
-        mock_q.text.return_value.ask_async = AsyncMock(return_value="Renamed")
-
-        result = invoke(["cinema", "update"])
-
-    assert result.exit_code == 0
-    assert "Cinema updated:" in result.stdout
-    mock_factory.__aenter__.assert_awaited_once()
-    mock_factory.__aexit__.assert_awaited_once()
-    mock_cinema_controller_for_update.update.assert_awaited_once_with(
-        cinema_id="cin-001",
-        name="Renamed",
-        address="123 Test St",
-        city="Montreal",
-        website="https://example.com",
-    )
 
 
 def test_cinema_update_clear_optional_field(
     mock_factory: MagicMock,
     mock_cinema_controller_for_update: MagicMock,
+    mock_update_use_case: MagicMock,
 ) -> None:
-    """Verify cinema update allows clearing an optional field to None."""
-
-    cinema = _make_cinema_data()
-    mock_cinema_controller_for_update.list_cinemas.return_value = (
-        ListCinemasUseCase.OutputData(cinemas=[cinema], total=1)
+    """Verify cinema update supports clearing optional fields."""
+    cinema = _update_setup(
+        mock_factory, mock_cinema_controller_for_update, mock_update_use_case
     )
-    mock_cinema_controller_for_update.update.return_value = SimpleNamespace(
-        id="cin-001",
-        name="Test Cinema",
-        address=None,
-        city="Montreal",
-        website="https://example.com",
+    mock_update_use_case.execute.return_value = UpdateCinemaUseCase.OutputData(
+        "cin-001", "Test Cinema"
     )
-    mock_factory.cinema = mock_cinema_controller_for_update
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
-
     with (
         patch(
             "marquise_cli.cinema_commands.update_command.MarquiseFactory",
@@ -823,55 +776,24 @@ def test_cinema_update_clear_optional_field(
         mock_q.select.return_value.ask_async = AsyncMock(return_value=cinema)
         mock_q.checkbox.return_value.ask_async = AsyncMock(return_value=["address"])
         mock_q.text.return_value.ask_async = AsyncMock(return_value="")
-
         result = invoke(["cinema", "update"])
-
     assert result.exit_code == 0
-    assert "Cinema updated:" in result.stdout
-    mock_cinema_controller_for_update.update.assert_awaited_once_with(
-        cinema_id="cin-001",
-        name="Test Cinema",
-        address=None,
-        city="Montreal",
-        website="https://example.com",
+    mock_update_use_case.execute.assert_awaited_once_with(
+        UpdateCinemaUseCase.InputData(
+            "cin-001", "Test Cinema", None, "Montreal", "https://example.com"
+        )
     )
 
 
-def test_cinema_update_no_cinemas(
-    mock_factory: MagicMock,
-    mock_cinema_controller_for_update: MagicMock,
-) -> None:
-    """Verify cinema update shows message when no cinemas exist."""
-    mock_cinema_controller_for_update.list_cinemas.return_value = (
-        ListCinemasUseCase.OutputData(cinemas=[], total=0)
-    )
-    mock_factory.cinema = mock_cinema_controller_for_update
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
-
-    with patch(
-        "marquise_cli.cinema_commands.update_command.MarquiseFactory",
-        return_value=mock_factory,
-    ):
-        result = invoke(["cinema", "update"])
-
-    assert result.exit_code == 0
-    assert "No cinemas available to update." in result.stdout
-    mock_cinema_controller_for_update.update.assert_not_awaited()
-
-
+@pytest.mark.parametrize("selection", [None, "__exit__"])
 def test_cinema_update_cancelled_at_select(
+    selection: str | None,
     mock_factory: MagicMock,
     mock_cinema_controller_for_update: MagicMock,
+    mock_update_use_case: MagicMock,
 ) -> None:
-    """Verify cinema update handles cancellation at the selection prompt."""
-    mock_cinema_controller_for_update.list_cinemas.return_value = (
-        ListCinemasUseCase.OutputData(cinemas=[_make_cinema_data()], total=1)
-    )
-    mock_factory.cinema = mock_cinema_controller_for_update
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
-
+    """Verify cinema selection cancellation performs no update."""
+    _update_setup(mock_factory, mock_cinema_controller_for_update, mock_update_use_case)
     with (
         patch(
             "marquise_cli.cinema_commands.update_command.MarquiseFactory",
@@ -879,29 +801,24 @@ def test_cinema_update_cancelled_at_select(
         ),
         patch("marquise_cli.cinema_commands.update_command.questionary") as mock_q,
     ):
-        mock_q.select.return_value.ask_async = AsyncMock(return_value="__exit__")
-
+        mock_q.select.return_value.ask_async = AsyncMock(return_value=selection)
         result = invoke(["cinema", "update"])
-
     assert result.exit_code == 0
     assert "Cancelled." in result.stdout
-    mock_cinema_controller_for_update.update.assert_not_awaited()
+    mock_update_use_case.execute.assert_not_awaited()
 
 
+@pytest.mark.parametrize("fields", [None, []])
 def test_cinema_update_cancelled_at_fields(
+    fields: list[str] | None,
     mock_factory: MagicMock,
     mock_cinema_controller_for_update: MagicMock,
+    mock_update_use_case: MagicMock,
 ) -> None:
-    """Verify cinema update handles cancellation at the fields checkbox."""
-
-    cinema = _make_cinema_data()
-    mock_cinema_controller_for_update.list_cinemas.return_value = (
-        ListCinemasUseCase.OutputData(cinemas=[cinema], total=1)
+    """Verify empty field selection performs no update."""
+    cinema = _update_setup(
+        mock_factory, mock_cinema_controller_for_update, mock_update_use_case
     )
-    mock_factory.cinema = mock_cinema_controller_for_update
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
-
     with (
         patch(
             "marquise_cli.cinema_commands.update_command.MarquiseFactory",
@@ -910,38 +827,74 @@ def test_cinema_update_cancelled_at_fields(
         patch("marquise_cli.cinema_commands.update_command.questionary") as mock_q,
     ):
         mock_q.select.return_value.ask_async = AsyncMock(return_value=cinema)
-        mock_q.checkbox.return_value.ask_async = AsyncMock(return_value=[])
-
+        mock_q.checkbox.return_value.ask_async = AsyncMock(return_value=fields)
         result = invoke(["cinema", "update"])
-
     assert result.exit_code == 0
     assert "No fields selected. Cancelled." in result.stdout
-    mock_cinema_controller_for_update.update.assert_not_awaited()
+    mock_update_use_case.execute.assert_not_awaited()
+
+
+def test_cinema_update_cancelled_at_value(
+    mock_factory: MagicMock,
+    mock_cinema_controller_for_update: MagicMock,
+    mock_update_use_case: MagicMock,
+) -> None:
+    """Verify field-value cancellation performs no update."""
+    cinema = _update_setup(
+        mock_factory, mock_cinema_controller_for_update, mock_update_use_case
+    )
+    with (
+        patch(
+            "marquise_cli.cinema_commands.update_command.MarquiseFactory",
+            return_value=mock_factory,
+        ),
+        patch("marquise_cli.cinema_commands.update_command.questionary") as mock_q,
+    ):
+        mock_q.select.return_value.ask_async = AsyncMock(return_value=cinema)
+        mock_q.checkbox.return_value.ask_async = AsyncMock(return_value=["name"])
+        mock_q.text.return_value.ask_async = AsyncMock(return_value=None)
+        result = invoke(["cinema", "update"])
+    assert result.exit_code == 0
+    assert "Cancelled." in result.stdout
+    mock_update_use_case.execute.assert_not_awaited()
+
+
+def test_cinema_update_no_cinemas(
+    mock_factory: MagicMock,
+    mock_cinema_controller_for_update: MagicMock,
+    mock_update_use_case: MagicMock,
+) -> None:
+    """Verify empty cinema list is reported clearly."""
+    mock_cinema_controller_for_update.list_cinemas.return_value = (
+        ListCinemasUseCase.OutputData(cinemas=[], total=0)
+    )
+    mock_factory.cinema = mock_cinema_controller_for_update
+    mock_factory.update_cinema_use_case = mock_update_use_case
+    with patch(
+        "marquise_cli.cinema_commands.update_command.MarquiseFactory",
+        return_value=mock_factory,
+    ):
+        result = invoke(["cinema", "update"])
+    assert result.exit_code == 0
+    assert "No cinemas available to update." in result.stdout
+    mock_update_use_case.execute.assert_not_awaited()
 
 
 @pytest.mark.parametrize(
     "error",
-    [
-        ValueError("name must not be empty"),
-        CinemaNotFoundError("cinema was not found"),
-    ],
+    [ValueError("name must not be empty"), CinemaNotFoundError("cinema was not found")],
 )
 def test_cinema_update_failure(
+    error: Exception,
     mock_factory: MagicMock,
     mock_cinema_controller_for_update: MagicMock,
-    error: Exception,
+    mock_update_use_case: MagicMock,
 ) -> None:
-    """Every update use-case error is shown and exits unsuccessfully."""
-
-    cinema = _make_cinema_data()
-    mock_cinema_controller_for_update.list_cinemas.return_value = (
-        ListCinemasUseCase.OutputData(cinemas=[cinema], total=1)
+    """Verify documented update errors reach stderr with exit code one."""
+    cinema = _update_setup(
+        mock_factory, mock_cinema_controller_for_update, mock_update_use_case
     )
-    mock_cinema_controller_for_update.update.side_effect = error
-    mock_factory.cinema = mock_cinema_controller_for_update
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
-
+    mock_update_use_case.execute.side_effect = error
     with (
         patch(
             "marquise_cli.cinema_commands.update_command.MarquiseFactory",
@@ -952,28 +905,21 @@ def test_cinema_update_failure(
         mock_q.select.return_value.ask_async = AsyncMock(return_value=cinema)
         mock_q.checkbox.return_value.ask_async = AsyncMock(return_value=["name"])
         mock_q.text.return_value.ask_async = AsyncMock(return_value="New Name")
-
         result = invoke(["cinema", "update"])
-
     assert result.exit_code == 1
-    assert "Failed to update cinema" in result.stderr
-    assert str(error) in result.stderr
+    assert f"Failed to update cinema: {error}" in result.stderr
 
 
 def test_cinema_update_unexpected_failure_propagates(
     mock_factory: MagicMock,
     mock_cinema_controller_for_update: MagicMock,
+    mock_update_use_case: MagicMock,
 ) -> None:
-    """Unexpected update failures propagate after factory cleanup."""
-    cinema = _make_cinema_data()
-    mock_cinema_controller_for_update.list_cinemas.return_value = (
-        ListCinemasUseCase.OutputData(cinemas=[cinema], total=1)
+    """Verify unexpected update failures propagate after factory cleanup."""
+    cinema = _update_setup(
+        mock_factory, mock_cinema_controller_for_update, mock_update_use_case
     )
-    mock_cinema_controller_for_update.update.side_effect = RuntimeError(
-        "database unavailable"
-    )
-    mock_factory.cinema = mock_cinema_controller_for_update
-
+    mock_update_use_case.execute.side_effect = RuntimeError("database unavailable")
     with (
         patch(
             "marquise_cli.cinema_commands.update_command.MarquiseFactory",
@@ -986,7 +932,6 @@ def test_cinema_update_unexpected_failure_propagates(
         mock_q.checkbox.return_value.ask_async = AsyncMock(return_value=["name"])
         mock_q.text.return_value.ask_async = AsyncMock(return_value="New Name")
         invoke(["cinema", "update"])
-
     mock_factory.__aexit__.assert_awaited_once()
 
 

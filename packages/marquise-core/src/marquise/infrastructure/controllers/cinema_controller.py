@@ -10,11 +10,10 @@ from marquise.application.use_cases.get_cinema_screenings import (
     GetCinemaScreeningsUseCase,
 )
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
-from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 
 
 class CinemaController:
-    """Handles cinema listing and read/update flows.
+    """Handles cinema listing and read flows.
 
     All dependencies are injected — no settings, database, or use case wiring
     lives here.  The caller is responsible for initializing and shutting down
@@ -27,13 +26,11 @@ class CinemaController:
         get_cinema_movies_use_case: GetCinemaMoviesUseCase,
         get_cinema_screenings_use_case: GetCinemaScreeningsUseCase,
         list_cinemas_use_case: ListCinemasUseCase,
-        update_cinema_use_case: UpdateCinemaUseCase,
     ) -> None:
         self._get_use_case = get_cinema_use_case
         self._get_movies_use_case = get_cinema_movies_use_case
         self._get_screenings_use_case = get_cinema_screenings_use_case
         self._list_use_case = list_cinemas_use_case
-        self._update_use_case = update_cinema_use_case
 
     async def list_cinemas(
         self,
@@ -51,40 +48,6 @@ class CinemaController:
         """
         request = ListCinemasUseCase.InputData(name=name_filter)
         return await self._list_use_case.execute(request)
-
-    async def update(
-        self,
-        cinema_id: str,
-        name: str,
-        address: str | None = None,
-        city: str | None = None,
-        website: str | None = None,
-    ) -> UpdateCinemaUseCase.OutputData:
-        """Update an existing cinema.
-
-        Delegates to the update-cinema use case.
-
-        Args:
-            cinema_id: The ID of the cinema to update.
-            name: New cinema name.
-            address: New street address (optional).
-            city: New city (optional).
-            website: New website URL (optional).
-
-        Returns:
-            The output data from the use case.
-
-        Raises:
-            CinemaNotFoundError: If no cinema with the given ID exists.
-        """
-        request = UpdateCinemaUseCase.InputData(
-            cinema_id=cinema_id,
-            name=name,
-            address=address,
-            city=city,
-            website=website,
-        )
-        return await self._update_use_case.execute(request)
 
     async def list(
         self,
