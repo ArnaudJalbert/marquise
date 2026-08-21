@@ -12,6 +12,7 @@ import pytest
 from marquise import (
     CinemaController,
     CreateCinemaUseCase,
+    DeleteCinemaUseCase,
     ListCinemasUseCase,
     SourceController,
 )
@@ -248,11 +249,18 @@ def _make_cinema_data(
 
 @pytest.fixture
 def mock_cinema_controller_for_delete() -> MagicMock:
-    """Provide a mocked CinemaController with list/delete methods."""
+    """Provide a mocked CinemaController with list methods."""
     controller = create_autospec(CinemaController, instance=True)
     controller.list_cinemas = AsyncMock()
-    controller.delete = AsyncMock()
     return controller
+
+
+@pytest.fixture
+def mock_delete_use_case() -> MagicMock:
+    """Provide a mocked DeleteCinemaUseCase."""
+    use_case = create_autospec(DeleteCinemaUseCase, instance=True)
+    use_case.execute = AsyncMock()
+    return use_case
 
 
 @pytest.fixture
@@ -267,58 +275,50 @@ def mock_cinema_controller_for_update() -> MagicMock:
 def test_cinema_delete_success(
     mock_factory: MagicMock,
     mock_cinema_controller_for_delete: MagicMock,
+    mock_delete_use_case: MagicMock,
 ) -> None:
-    """Verify cinema delete succeeds with valid selection and name confirmation."""
-
+    """Verify cinema delete uses direct use-case execution after confirmation."""
     cinema = _make_cinema_data()
     mock_cinema_controller_for_delete.list_cinemas.return_value = (
         ListCinemasUseCase.OutputData(cinemas=[cinema], total=1)
     )
-    mock_cinema_controller_for_delete.delete.return_value = SimpleNamespace(
-        cinema_id="cin-001"
-    )
     mock_factory.cinema = mock_cinema_controller_for_delete
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
+    mock_factory.delete_cinema_use_case = mock_delete_use_case
 
     with (
         patch(
-            "marquise_cli.cinema_commands.MarquiseFactory",
-            return_value=mock_factory,
+            "marquise_cli.cinema_commands.MarquiseFactory", return_value=mock_factory
         ),
         patch("marquise_cli.cinema_commands.questionary") as mock_q,
     ):
         mock_q.select.return_value.ask_async = AsyncMock(return_value=cinema)
         mock_q.text.return_value.ask_async = AsyncMock(return_value="Test Cinema")
-
         result = invoke(["cinema", "delete"])
 
     assert result.exit_code == 0
     assert 'Cinema "Test Cinema" (ID: cin-001) deleted.' in result.stdout
-    mock_factory.initialize.assert_called_once()
-    mock_factory.shutdown.assert_called_once()
-    mock_cinema_controller_for_delete.delete.assert_awaited_once_with(
-        cinema_id="cin-001",
+    mock_delete_use_case.execute.assert_awaited_once_with(
+        DeleteCinemaUseCase.InputData(cinema_id="cin-001")
     )
+    mock_factory.__aenter__.assert_awaited_once()
+    mock_factory.__aexit__.assert_awaited_once()
 
 
 def test_cinema_delete_name_mismatch(
     mock_factory: MagicMock,
     mock_cinema_controller_for_delete: MagicMock,
+    mock_delete_use_case: MagicMock,
 ) -> None:
     """Verify cinema delete aborts when confirmation name does not match."""
-
     mock_cinema_controller_for_delete.list_cinemas.return_value = (
         ListCinemasUseCase.OutputData(cinemas=[_make_cinema_data()], total=1)
     )
     mock_factory.cinema = mock_cinema_controller_for_delete
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
+    mock_factory.delete_cinema_use_case = mock_delete_use_case
 
     with (
         patch(
-            "marquise_cli.cinema_commands.MarquiseFactory",
-            return_value=mock_factory,
+            "marquise_cli.cinema_commands.MarquiseFactory", return_value=mock_factory
         ),
         patch("marquise_cli.cinema_commands.questionary") as mock_q,
     ):
@@ -326,85 +326,102 @@ def test_cinema_delete_name_mismatch(
             return_value=_make_cinema_data()
         )
         mock_q.text.return_value.ask_async = AsyncMock(return_value="Wrong Name")
-
         result = invoke(["cinema", "delete"])
 
     assert result.exit_code == 1
     assert 'Name mismatch: expected "Test Cinema", got "Wrong Name"' in result.stderr
-    mock_cinema_controller_for_delete.delete.assert_not_awaited()
-    mock_factory.shutdown.assert_called_once()
+    mock_delete_use_case.execute.assert_not_awaited()
+    mock_factory.__aexit__.assert_awaited_once()
 
 
 def test_cinema_delete_no_cinemas(
     mock_factory: MagicMock,
     mock_cinema_controller_for_delete: MagicMock,
+    mock_delete_use_case: MagicMock,
 ) -> None:
-    """Verify cinema delete shows message when no cinemas exist."""
-
+    """Verify cinema delete handles an empty cinema list."""
     mock_cinema_controller_for_delete.list_cinemas.return_value = (
         ListCinemasUseCase.OutputData(cinemas=[], total=0)
     )
     mock_factory.cinema = mock_cinema_controller_for_delete
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
+    mock_factory.delete_cinema_use_case = mock_delete_use_case
 
     with patch(
-        "marquise_cli.cinema_commands.MarquiseFactory",
-        return_value=mock_factory,
+        "marquise_cli.cinema_commands.MarquiseFactory", return_value=mock_factory
     ):
         result = invoke(["cinema", "delete"])
 
     assert result.exit_code == 0
     assert "No cinemas available to delete." in result.stdout
-    mock_cinema_controller_for_delete.delete.assert_not_awaited()
+    mock_delete_use_case.execute.assert_not_awaited()
+    mock_factory.__aexit__.assert_awaited_once()
+
+
+def test_cinema_delete_list_failure(
+    mock_factory: MagicMock,
+    mock_cinema_controller_for_delete: MagicMock,
+    mock_delete_use_case: MagicMock,
+) -> None:
+    """Verify cinema delete reports listing errors and closes the factory."""
+    mock_cinema_controller_for_delete.list_cinemas.side_effect = ValueError(
+        "Database unavailable"
+    )
+    mock_factory.cinema = mock_cinema_controller_for_delete
+    mock_factory.delete_cinema_use_case = mock_delete_use_case
+
+    with patch(
+        "marquise_cli.cinema_commands.MarquiseFactory", return_value=mock_factory
+    ):
+        result = invoke(["cinema", "delete"])
+
+    assert result.exit_code == 1
+    assert "Failed to list cinemas: Database unavailable" in result.stderr
+    mock_delete_use_case.execute.assert_not_awaited()
+    mock_factory.__aexit__.assert_awaited_once()
 
 
 def test_cinema_delete_cancelled_at_select(
     mock_factory: MagicMock,
     mock_cinema_controller_for_delete: MagicMock,
+    mock_delete_use_case: MagicMock,
 ) -> None:
-    """Verify cinema delete handles cancellation at the selection prompt."""
-
+    """Verify cinema delete handles selection cancellation."""
     mock_cinema_controller_for_delete.list_cinemas.return_value = (
         ListCinemasUseCase.OutputData(cinemas=[_make_cinema_data()], total=1)
     )
     mock_factory.cinema = mock_cinema_controller_for_delete
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
+    mock_factory.delete_cinema_use_case = mock_delete_use_case
 
     with (
         patch(
-            "marquise_cli.cinema_commands.MarquiseFactory",
-            return_value=mock_factory,
+            "marquise_cli.cinema_commands.MarquiseFactory", return_value=mock_factory
         ),
         patch("marquise_cli.cinema_commands.questionary") as mock_q,
     ):
         mock_q.select.return_value.ask_async = AsyncMock(return_value="__exit__")
-
         result = invoke(["cinema", "delete"])
 
     assert result.exit_code == 0
     assert "Cancelled." in result.stdout
-    mock_cinema_controller_for_delete.delete.assert_not_awaited()
+    mock_delete_use_case.execute.assert_not_awaited()
+    mock_factory.__aexit__.assert_awaited_once()
 
 
 def test_cinema_delete_cancelled_at_confirmation(
     mock_factory: MagicMock,
     mock_cinema_controller_for_delete: MagicMock,
+    mock_delete_use_case: MagicMock,
 ) -> None:
-    """Verify cinema delete handles cancellation at the confirmation prompt."""
-
+    """Verify cinema delete handles confirmation cancellation."""
     mock_cinema_controller_for_delete.list_cinemas.return_value = (
         ListCinemasUseCase.OutputData(cinemas=[_make_cinema_data()], total=1)
     )
     mock_factory.cinema = mock_cinema_controller_for_delete
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
+    mock_factory.delete_cinema_use_case = mock_delete_use_case
 
     with (
         patch(
-            "marquise_cli.cinema_commands.MarquiseFactory",
-            return_value=mock_factory,
+            "marquise_cli.cinema_commands.MarquiseFactory", return_value=mock_factory
         ),
         patch("marquise_cli.cinema_commands.questionary") as mock_q,
     ):
@@ -412,34 +429,30 @@ def test_cinema_delete_cancelled_at_confirmation(
             return_value=_make_cinema_data()
         )
         mock_q.text.return_value.ask_async = AsyncMock(return_value=None)
-
         result = invoke(["cinema", "delete"])
 
     assert result.exit_code == 0
     assert "Cancelled." in result.stdout
-    mock_cinema_controller_for_delete.delete.assert_not_awaited()
+    mock_delete_use_case.execute.assert_not_awaited()
+    mock_factory.__aexit__.assert_awaited_once()
 
 
 def test_cinema_delete_failure(
     mock_factory: MagicMock,
     mock_cinema_controller_for_delete: MagicMock,
+    mock_delete_use_case: MagicMock,
 ) -> None:
-    """Verify cinema delete shows error when the use case fails."""
-
+    """Verify cinema delete reports use-case errors."""
     mock_cinema_controller_for_delete.list_cinemas.return_value = (
         ListCinemasUseCase.OutputData(cinemas=[_make_cinema_data()], total=1)
     )
-    mock_cinema_controller_for_delete.delete = AsyncMock(
-        side_effect=ValueError("Something went wrong"),
-    )
+    mock_delete_use_case.execute.side_effect = ValueError("Something went wrong")
     mock_factory.cinema = mock_cinema_controller_for_delete
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
+    mock_factory.delete_cinema_use_case = mock_delete_use_case
 
     with (
         patch(
-            "marquise_cli.cinema_commands.MarquiseFactory",
-            return_value=mock_factory,
+            "marquise_cli.cinema_commands.MarquiseFactory", return_value=mock_factory
         ),
         patch("marquise_cli.cinema_commands.questionary") as mock_q,
     ):
@@ -447,11 +460,11 @@ def test_cinema_delete_failure(
             return_value=_make_cinema_data()
         )
         mock_q.text.return_value.ask_async = AsyncMock(return_value="Test Cinema")
-
         result = invoke(["cinema", "delete"])
 
     assert result.exit_code == 1
     assert "Failed to delete cinema: Something went wrong" in result.stderr
+    mock_factory.__aexit__.assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------
