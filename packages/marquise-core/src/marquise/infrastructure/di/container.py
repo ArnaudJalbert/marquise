@@ -1,7 +1,7 @@
 """Dependency injection container.
 
-Central registry for all application dependencies.  Only controllers are
-exposed as public properties — everything else is private to the container.
+Central registry for all application dependencies. Controllers and supported
+use cases are exposed as public properties; everything else is private.
 """
 
 from __future__ import annotations
@@ -448,6 +448,11 @@ class Container:
     def create_cinema_use_case(self) -> CreateCinemaUseCase:
         """Public create-cinema use case."""
         return self._create_cinema_use_case
+
+    @property
+    def delete_cinema_use_case(self) -> DeleteCinemaUseCase:
+        """Public delete-cinema use case."""
+        return self._delete_cinema_use_case
 
     @property
     def list_cinemas_use_case(self) -> ListCinemasUseCase:
