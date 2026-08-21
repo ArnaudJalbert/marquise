@@ -7,7 +7,113 @@ import sys
 
 import questionary
 
-from marquise import CinemaNotFoundError, MarquiseFactory
+from marquise import (
+    CinemaNotFoundError,
+    ListCinemasUseCase,
+    MarquiseFactory,
+    UpdateCinemaUseCase,
+)
+
+_FIELD_LABELS = {
+    "name": "Name",
+    "address": "Address",
+    "city": "City",
+    "website": "Website",
+}
+
+
+async def _select_cinema(
+    factory: MarquiseFactory,
+) -> ListCinemasUseCase.CinemaData | None:
+    """List cinemas and prompt for one to update."""
+    response = await factory.cinema.list_cinemas()
+    if not response.cinemas:
+        print("No cinemas available to update.")
+        return None
+
+    choices = [
+        questionary.Choice(
+            title=f"{cinema.name} — {cinema.address or 'No address'}, "
+            f"{cinema.city or 'No city'}",
+            value=cinema,
+        )
+        for cinema in response.cinemas
+    ]
+    choices.append(questionary.Choice(title="← exit", value="__exit__"))
+    selected = await questionary.select(
+        "Select a cinema to update:", choices=choices
+    ).ask_async()
+
+    if selected is None or selected == "__exit__":
+        print("Cancelled.")
+        return None
+    return selected
+
+
+async def _collect_updates(
+    cinema: ListCinemasUseCase.CinemaData,
+) -> dict[str, str | None] | None:
+    """Prompt for fields and replacement values."""
+    fields = await questionary.checkbox(
+        "Which fields would you like to change?",
+        choices=[
+            questionary.Choice(
+                title=f"{label} [{getattr(cinema, field) or 'not set'}]",
+                value=field,
+            )
+            for field, label in _FIELD_LABELS.items()
+        ],
+    ).ask_async()
+    if not fields:
+        print("No fields selected. Cancelled.")
+        return None
+
+    updates: dict[str, str | None] = {}
+    for field in fields:
+        current = getattr(cinema, field) or ""
+        value = await questionary.text(
+            f"{_FIELD_LABELS[field]} (current: {current or 'not set'}):",
+            default=current,
+        ).ask_async()
+        if value is None:
+            print("Cancelled.")
+            return None
+        updates[field] = value.strip() or None
+    return updates
+
+
+async def _update_cinema(
+    factory: MarquiseFactory,
+    cinema: ListCinemasUseCase.CinemaData,
+    updates: dict[str, str | None],
+) -> UpdateCinemaUseCase.OutputData:
+    """Execute update use case and report expected failures."""
+    try:
+        return await factory.update_cinema_use_case.execute(
+            UpdateCinemaUseCase.InputData(
+                cinema_id=cinema.id,
+                name=updates.get("name", cinema.name),
+                address=updates.get("address", cinema.address),
+                city=updates.get("city", cinema.city),
+                website=updates.get("website", cinema.website),
+            )
+        )
+    except (CinemaNotFoundError, ValueError) as error:
+        print(f"Failed to update cinema: {error}", file=sys.stderr)
+        raise SystemExit(1) from error
+
+
+def _print_cinema(cinema: UpdateCinemaUseCase.OutputData) -> None:
+    """Print updated cinema details."""
+    print("Cinema updated:")
+    print(f"  ID:      {cinema.id}")
+    print(f"  Name:    {cinema.name}")
+    if cinema.address:
+        print(f"  Address: {cinema.address}")
+    if cinema.city:
+        print(f"  City:    {cinema.city}")
+    if cinema.website:
+        print(f"  Website: {cinema.website}")
 
 
 def update() -> None:
@@ -16,89 +122,12 @@ def update() -> None:
 
     async def _run() -> None:
         async with factory:
-            response = await factory.cinema.list_cinemas()
-
-            if not response.cinemas:
-                print("No cinemas available to update.")
+            cinema = await _select_cinema(factory)
+            if cinema is None:
                 return
-
-            choices = [
-                questionary.Choice(
-                    title=(
-                        f"{c.name} — {c.address or 'No address'}, {c.city or 'No city'}"
-                    ),
-                    value=c,
-                )
-                for c in response.cinemas
-            ]
-            choices.append(questionary.Choice(title="← exit", value="__exit__"))
-
-            selected = await questionary.select(
-                "Select a cinema to update:",
-                choices=choices,
-            ).ask_async()
-
-            if selected is None or selected == "__exit__":
-                print("Cancelled.")
+            updates = await _collect_updates(cinema)
+            if updates is None:
                 return
-
-            field_labels = {
-                "name": "Name",
-                "address": "Address",
-                "city": "City",
-                "website": "Website",
-            }
-            selected_fields = await questionary.checkbox(
-                "Which fields would you like to change?",
-                choices=[
-                    questionary.Choice(
-                        title=f"{label} [{getattr(selected, field) or 'not set'}]",
-                        value=field,
-                    )
-                    for field, label in field_labels.items()
-                ],
-            ).ask_async()
-
-            if selected_fields is None or not selected_fields:
-                print("No fields selected. Cancelled.")
-                return
-
-            updates: dict[str, str | None] = {}
-            for field in selected_fields:
-                label = field_labels[field]
-                current = getattr(selected, field) or ""
-                new_value = await questionary.text(
-                    f"{label} (current: {current or 'not set'}):",
-                    default=current,
-                ).ask_async()
-
-                if new_value is None:
-                    print("Cancelled.")
-                    return
-
-                trimmed = new_value.strip()
-                updates[field] = trimmed if trimmed else None
-
-            try:
-                result = await factory.cinema.update(
-                    cinema_id=selected.id,
-                    name=updates.get("name", selected.name),
-                    address=updates.get("address", selected.address),
-                    city=updates.get("city", selected.city),
-                    website=updates.get("website", selected.website),
-                )
-            except (CinemaNotFoundError, ValueError) as error:
-                print(f"Failed to update cinema: {error}", file=sys.stderr)
-                raise SystemExit(1) from error
-
-            print("Cinema updated:")
-            print(f"  ID:      {result.id}")
-            print(f"  Name:    {result.name}")
-            if result.address:
-                print(f"  Address: {result.address}")
-            if result.city:
-                print(f"  City:    {result.city}")
-            if result.website:
-                print(f"  Website: {result.website}")
+            _print_cinema(await _update_cinema(factory, cinema, updates))
 
     asyncio.run(_run())
