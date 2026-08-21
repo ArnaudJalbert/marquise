@@ -6,7 +6,7 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ### v0.2.9
 
-- **Expose get-cinema-source use case**: `MarquiseFactory.get_cinema_source_use_case` and top-level `GetCinemaSourceUseCase` now provide CLI consumers with configured direct assignment lookups.
+- **Expose cinema-source assignment list use case**: `MarquiseFactory.list_cinema_source_assignments_use_case` and top-level `ListCinemaSourceAssignmentsUseCase` provide bulk assignment lookups.
 
 ### v0.2.8
 

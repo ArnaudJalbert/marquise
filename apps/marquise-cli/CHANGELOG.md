@@ -2,13 +2,11 @@
 
 ## 2026-08-21
 
-### v0.1.7
-
-- **Remove redundant source assignment list**: `marquise source list-assignments` has been removed; use `marquise cinema list --verbose` instead.
-
 ### v0.1.6
 
 - **Display cinemas in a colored grid**: `marquise cinema list` now renders cinema and city in a Rich table with row dividers. `--verbose` adds address, clickable website label, assigned source, and ID, while showing loading status.
+- **Bulk-load cinema source assignments**: `marquise cinema list --verbose` now fetches all assignments in one query.
+- **Remove redundant source assignment list**: `marquise source list-assignments` has been removed; use `marquise cinema list --verbose` instead.
 
 ### v0.1.5
 

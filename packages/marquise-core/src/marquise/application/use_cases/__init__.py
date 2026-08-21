@@ -18,6 +18,9 @@ from marquise.application.use_cases.fetch_screenings_from_source import (
 )
 from marquise.application.use_cases.get_cinema import GetCinemaUseCase
 from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
+from marquise.application.use_cases.list_cinema_source_assignments import (
+    ListCinemaSourceAssignmentsUseCase,
+)
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
@@ -39,6 +42,7 @@ __all__ = [
     "GetCinemaSourceUseCase",
     "ImportedScreeningData",
     "ImportScreeningsSummary",
+    "ListCinemaSourceAssignmentsUseCase",
     "ListCinemasUseCase",
     "ListRegistrySourcesUseCase",
     "ListSourcesUseCase",

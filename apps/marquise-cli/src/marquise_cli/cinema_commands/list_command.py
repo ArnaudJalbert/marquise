@@ -10,8 +10,7 @@ from rich.table import Table
 from rich.text import Text
 
 from marquise import (
-    CinemaSourceAssignmentNotFoundError,
-    GetCinemaSourceUseCase,
+    ListCinemaSourceAssignmentsUseCase,
     MarquiseFactory,
 )
 from marquise_cli.helpers import run_spinner
@@ -39,6 +38,19 @@ def list_cinemas(
                 print("No cinemas found.")
                 return
 
+            source_names: dict[str, str] = {}
+            if verbose:
+                assignments = await run_spinner(
+                    factory.list_cinema_source_assignments_use_case.execute(
+                        ListCinemaSourceAssignmentsUseCase.InputData()
+                    ),
+                    description="Fetching source assignments...",
+                )
+                source_names = {
+                    assignment.cinema_id: assignment.source_display_name
+                    for assignment in assignments.assignments
+                }
+
             table = Table(
                 title="Available cinemas",
                 box=box.ROUNDED,
@@ -59,21 +71,11 @@ def list_cinemas(
                     website = Text("Website", style="blue underline")
                     if cinema.website:
                         website.stylize(f"link {cinema.website}")
-                    try:
-                        # ponytail: per-cinema lookup; bulk lookup for long lists.
-                        source = await run_spinner(
-                            factory.get_cinema_source_use_case.execute(
-                                GetCinemaSourceUseCase.InputData(cinema_id=cinema.id)
-                            ),
-                            description=f"Fetching source for {cinema.name}...",
-                        )
-                    except CinemaSourceAssignmentNotFoundError:
-                        source = None
                     row.extend(
                         [
                             cinema.address or "-",
                             website if cinema.website else "-",
-                            source.source_display_name if source else "",
+                            source_names.get(cinema.id, ""),
                             cinema.id,
                         ]
                     )
