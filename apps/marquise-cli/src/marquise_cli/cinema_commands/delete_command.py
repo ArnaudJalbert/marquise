@@ -7,12 +7,10 @@ import sys
 
 import questionary
 
-from marquise import DeleteCinemaUseCase, ListCinemasUseCase, MarquiseFactory
+from marquise import DeleteCinemaUseCase, MarquiseFactory
 
 
-async def _select_cinema(
-    factory: MarquiseFactory,
-) -> ListCinemasUseCase.CinemaData | None:
+async def _select_cinema(factory: MarquiseFactory) -> tuple[str, str] | None:
     """List cinemas and interactively select one for deletion."""
     try:
         response = await factory.cinema.list_cinemas()
@@ -40,22 +38,22 @@ async def _select_cinema(
     if selected is None or selected == "__exit__":
         print("Cancelled.")
         return None
-    return selected
+    return selected.id, selected.name
 
 
-async def _confirm_deletion(cinema: ListCinemasUseCase.CinemaData) -> bool:
+async def _confirm_deletion(cinema_name: str) -> bool:
     """Confirm deletion by requiring the cinema name."""
     confirmed_name = await questionary.text(
-        f'Type "{cinema.name}" to confirm deletion:',
+        f'Type "{cinema_name}" to confirm deletion:',
     ).ask_async()
 
     if confirmed_name is None:
         print("Cancelled.")
         return False
 
-    if confirmed_name.strip() != cinema.name:
+    if confirmed_name.strip() != cinema_name:
         print(
-            (f'Name mismatch: expected "{cinema.name}", got "{confirmed_name}"'),
+            (f'Name mismatch: expected "{cinema_name}", got "{confirmed_name}"'),
             file=sys.stderr,
         )
         raise SystemExit(1)
@@ -80,10 +78,13 @@ def delete() -> None:
     async def _run() -> None:
         async with factory:
             selected = await _select_cinema(factory)
-            if selected is None or not await _confirm_deletion(selected):
+            if selected is None:
                 return
-            await _delete_cinema(factory, selected.id)
-            print(f'Cinema "{selected.name}" (ID: {selected.id}) deleted.')
+            cinema_id, cinema_name = selected
+            if not await _confirm_deletion(cinema_name):
+                return
+            await _delete_cinema(factory, cinema_id)
+            print(f'Cinema "{cinema_name}" (ID: {cinema_id}) deleted.')
 
     try:
         asyncio.run(_run())
