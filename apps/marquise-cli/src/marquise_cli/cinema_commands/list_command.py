@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import sys
 
 from marquise import MarquiseFactory
 
@@ -45,8 +44,4 @@ def list_cinemas(
             for c in cinemas:
                 print(f"  {c.name}")
 
-    try:
-        asyncio.run(_run())
-    except Exception as e:
-        print(f"Failed to list cinemas: {e}", file=sys.stderr)
-        raise SystemExit(1) from e
+    asyncio.run(_run())

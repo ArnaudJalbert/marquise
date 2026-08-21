@@ -7,7 +7,28 @@ import sys
 
 import questionary
 
-from marquise import CinemaNotFoundError, DeleteCinemaUseCase, MarquiseFactory
+from marquise import (
+    CinemaNotFoundError,
+    DeleteCinemaUseCase,
+    ListCinemasUseCase,
+    MarquiseFactory,
+)
+
+
+def _cinema_choices(
+    cinemas: list[ListCinemasUseCase.CinemaData],
+) -> list[questionary.Choice]:
+    """Build deletion choices with an exit option."""
+    choices = [
+        questionary.Choice(
+            title=f"{cinema.name} — {cinema.address or 'No address'}, "
+            f"{cinema.city or 'No city'}",
+            value=cinema,
+        )
+        for cinema in cinemas
+    ]
+    choices.append(questionary.Choice(title="← exit", value="__exit__"))
+    return choices
 
 
 async def _select_cinema(factory: MarquiseFactory) -> tuple[str, str] | None:
@@ -18,17 +39,9 @@ async def _select_cinema(factory: MarquiseFactory) -> tuple[str, str] | None:
         print("No cinemas available to delete.")
         return None
 
-    choices = [
-        questionary.Choice(
-            title=f"{c.name} — {c.address or 'No address'}, {c.city or 'No city'}",
-            value=c,
-        )
-        for c in response.cinemas
-    ]
-    choices.append(questionary.Choice(title="← exit", value="__exit__"))
     selected = await questionary.select(
         "Select a cinema to delete:",
-        choices=choices,
+        choices=_cinema_choices(response.cinemas),
     ).ask_async()
 
     if selected is None or selected == "__exit__":
@@ -68,7 +81,11 @@ async def _delete_cinema(factory: MarquiseFactory, cinema_id: str) -> None:
 
 
 def delete() -> None:
-    """Delete a cinema after interactive selection and confirmation."""
+    """Delete selected cinema after typed-name confirmation.
+
+    Lists cinemas, exits without changes on cancellation, and requires exact
+    cinema-name confirmation before deletion.
+    """
     factory = MarquiseFactory()
 
     async def _run() -> None:

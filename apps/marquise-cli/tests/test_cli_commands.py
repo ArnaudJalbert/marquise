@@ -72,9 +72,9 @@ def _mock_create_use_case(
     return use_case
 
 
-def _created_cinema() -> SimpleNamespace:
+def _created_cinema() -> CreateCinemaUseCase.OutputData:
     """Provide cinema output for create command tests."""
-    return SimpleNamespace(
+    return CreateCinemaUseCase.OutputData(
         id="cin-001",
         name="Test Cinema",
         address="123 Test St",
@@ -216,7 +216,9 @@ def test_cinema_create_assignment_failure(mock_factory: MagicMock) -> None:
         result = invoke(["cinema", "create"], input="Test Cinema\n\n\n\n")
 
     assert result.exit_code == 1
-    assert "Failed to assign source: Source unavailable" in result.stderr
+    assert (
+        "There was an error when assigning the source to the cinema: Source unavailable"
+    ) in result.stderr
     mock_factory.__aexit__.assert_awaited_once()
 
 
@@ -243,7 +245,7 @@ def test_cinema_create_failure(mock_factory: MagicMock, error: Exception) -> Non
         )
 
     assert result.exit_code == 1
-    assert f"Failed to create cinema: {error}" in result.stderr
+    assert f"There was an error when creating the cinema: {error}" in result.stderr
     assert "Created" not in result.stdout
     mock_factory.__aexit__.assert_awaited_once()
 
@@ -607,7 +609,7 @@ def test_cinema_list_empty(
 def test_cinema_list_failure(
     mock_factory: MagicMock,
 ) -> None:
-    """Verify cinema list shows error on failure."""
+    """Unexpected list failures propagate after factory shutdown."""
     mock_cinema_controller = create_autospec(CinemaController, instance=True)
     mock_cinema_controller.list = AsyncMock(
         side_effect=ValueError("Something went wrong")
@@ -616,14 +618,15 @@ def test_cinema_list_failure(
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
-    with patch(
-        "marquise_cli.cinema_commands.list_command.MarquiseFactory",
-        return_value=mock_factory,
+    with (
+        patch(
+            "marquise_cli.cinema_commands.list_command.MarquiseFactory",
+            return_value=mock_factory,
+        ),
+        pytest.raises(ValueError, match="Something went wrong"),
     ):
-        result = invoke(["cinema", "list"])
+        invoke(["cinema", "list"])
 
-    assert result.exit_code == 1
-    assert "Failed to list cinemas: Something went wrong" in result.stderr
     mock_factory.initialize.assert_called_once()
     mock_factory.shutdown.assert_called_once()
 
