@@ -66,11 +66,17 @@ class DeleteCinemaUseCase:
             CinemaNotFoundError: If no cinema with the given ID exists.
         """
         cinema_id = CinemaId(value=request.cinema_id)
-        deleted = await self.cinema_repository.delete(cinema_id)
+        await self._delete_cinema(cinema_id, request.cinema_id)
+        return self._build_output(request.cinema_id)
 
+    async def _delete_cinema(self, cinema_id: CinemaId, raw_cinema_id: str) -> None:
+        """Delete cinema or raise when repository finds no matching row."""
+        deleted = await self.cinema_repository.delete(cinema_id)
         if not deleted:
             raise CinemaNotFoundError(
-                f"A cinema with ID '{request.cinema_id}' was not found"
+                f"A cinema with ID '{raw_cinema_id}' was not found"
             )
 
-        return self.OutputData(cinema_id=request.cinema_id)
+    def _build_output(self, cinema_id: str) -> OutputData:
+        """Build successful deletion output."""
+        return self.OutputData(cinema_id=cinema_id)
