@@ -39,6 +39,7 @@ from marquise.application.exceptions import (
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
+from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.bootstrap import (
     MarquiseFactory,
     create_factory,
@@ -72,4 +73,5 @@ __all__ = [
     "SourceController",
     "SourceNotFoundError",
     "TooManyMovieIdsError",
+    "UpdateCinemaUseCase",
 ]

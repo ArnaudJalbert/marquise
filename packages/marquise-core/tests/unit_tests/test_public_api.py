@@ -32,6 +32,7 @@ EXPECTED_PUBLIC_SURFACE: set[str] = {
     "SourceController",
     "SourceNotFoundError",
     "TooManyMovieIdsError",
+    "UpdateCinemaUseCase",
 }
 
 
