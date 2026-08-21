@@ -120,6 +120,6 @@ def create(
                 city=city_val,
                 website=website_val,
             )
-            await _assign_source(factory, cinema["id"] or "")
+            await _assign_source(factory, cinema["id"])
 
     asyncio.run(_run())
