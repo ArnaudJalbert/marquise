@@ -4,64 +4,63 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from dataclasses import asdict
 
 import questionary
 
-from marquise import (
-    CinemaNotFoundError,
-    ListCinemasUseCase,
-    MarquiseFactory,
-    UpdateCinemaUseCase,
-)
-
-_FIELD_LABELS = {
-    "name": "Name",
-    "address": "Address",
-    "city": "City",
-    "website": "Website",
-}
+from marquise import CinemaNotFoundError, MarquiseFactory, UpdateCinemaUseCase
 
 
-async def _select_cinema(
-    factory: MarquiseFactory,
-) -> ListCinemasUseCase.CinemaData | None:
-    """List cinemas and prompt for one to update."""
-    response = await factory.cinema.list_cinemas()
-    if not response.cinemas:
-        print("No cinemas available to update.")
-        return None
-
+def _cinema_choices(cinemas: list[object]) -> list[questionary.Choice]:
+    """Build cinema choices with an exit option."""
     choices = [
         questionary.Choice(
             title=f"{cinema.name} — {cinema.address or 'No address'}, "
             f"{cinema.city or 'No city'}",
             value=cinema,
         )
-        for cinema in response.cinemas
+        for cinema in cinemas
     ]
     choices.append(questionary.Choice(title="← exit", value="__exit__"))
-    selected = await questionary.select(
-        "Select a cinema to update:", choices=choices
-    ).ask_async()
+    return choices
 
+
+async def _select_cinema(factory: MarquiseFactory) -> dict[str, str | None] | None:
+    """List cinemas and prompt for one to update."""
+    response = await factory.cinema.list_cinemas()
+    if not response.cinemas:
+        print("No cinemas available to update.")
+        return None
+
+    selected = await questionary.select(
+        "Select a cinema to update:", choices=_cinema_choices(response.cinemas)
+    ).ask_async()
     if selected is None or selected == "__exit__":
         print("Cancelled.")
         return None
-    return selected
+    return asdict(selected)
+
+
+async def _collect_value(field: str, current: str | None) -> str | None:
+    """Prompt for one field's replacement value."""
+    return await questionary.text(
+        f"{field.upper()} (current: {current or 'not set'}):",
+        default=current or "",
+    ).ask_async()
 
 
 async def _collect_updates(
-    cinema: ListCinemasUseCase.CinemaData,
+    cinema: dict[str, str | None],
 ) -> dict[str, str | None] | None:
     """Prompt for fields and replacement values."""
     fields = await questionary.checkbox(
         "Which fields would you like to change?",
         choices=[
             questionary.Choice(
-                title=f"{label} [{getattr(cinema, field) or 'not set'}]",
+                title=f"{field.upper()} [{cinema[field] or 'not set'}]",
                 value=field,
             )
-            for field, label in _FIELD_LABELS.items()
+            for field in ("name", "address", "city", "website")
         ],
     ).ask_async()
     if not fields:
@@ -70,11 +69,7 @@ async def _collect_updates(
 
     updates: dict[str, str | None] = {}
     for field in fields:
-        current = getattr(cinema, field) or ""
-        value = await questionary.text(
-            f"{_FIELD_LABELS[field]} (current: {current or 'not set'}):",
-            default=current,
-        ).ask_async()
+        value = await _collect_value(field, cinema[field])
         if value is None:
             print("Cancelled.")
             return None
@@ -84,36 +79,34 @@ async def _collect_updates(
 
 async def _update_cinema(
     factory: MarquiseFactory,
-    cinema: ListCinemasUseCase.CinemaData,
-    updates: dict[str, str | None],
-) -> UpdateCinemaUseCase.OutputData:
+    cinema_id: str,
+    name: str,
+    address: str | None,
+    city: str | None,
+    website: str | None,
+) -> dict[str, str | None]:
     """Execute update use case and report expected failures."""
     try:
-        return await factory.update_cinema_use_case.execute(
-            UpdateCinemaUseCase.InputData(
-                cinema_id=cinema.id,
-                name=updates.get("name", cinema.name),
-                address=updates.get("address", cinema.address),
-                city=updates.get("city", cinema.city),
-                website=updates.get("website", cinema.website),
-            )
+        response = await factory.update_cinema_use_case.execute(
+            UpdateCinemaUseCase.InputData(cinema_id, name, address, city, website)
         )
     except (CinemaNotFoundError, ValueError) as error:
         print(f"Failed to update cinema: {error}", file=sys.stderr)
         raise SystemExit(1) from error
+    return asdict(response)
 
 
-def _print_cinema(cinema: UpdateCinemaUseCase.OutputData) -> None:
+def _print_cinema(cinema: dict[str, str | None]) -> None:
     """Print updated cinema details."""
     print("Cinema updated:")
-    print(f"  ID:      {cinema.id}")
-    print(f"  Name:    {cinema.name}")
-    if cinema.address:
-        print(f"  Address: {cinema.address}")
-    if cinema.city:
-        print(f"  City:    {cinema.city}")
-    if cinema.website:
-        print(f"  Website: {cinema.website}")
+    print(f"  ID:      {cinema['id']}")
+    print(f"  Name:    {cinema['name']}")
+    if cinema["address"]:
+        print(f"  Address: {cinema['address']}")
+    if cinema["city"]:
+        print(f"  City:    {cinema['city']}")
+    if cinema["website"]:
+        print(f"  Website: {cinema['website']}")
 
 
 def update() -> None:
@@ -128,6 +121,15 @@ def update() -> None:
             updates = await _collect_updates(cinema)
             if updates is None:
                 return
-            _print_cinema(await _update_cinema(factory, cinema, updates))
+            _print_cinema(
+                await _update_cinema(
+                    factory,
+                    cinema["id"] or "",
+                    updates.get("name", cinema["name"]) or "",
+                    updates.get("address", cinema["address"]),
+                    updates.get("city", cinema["city"]),
+                    updates.get("website", cinema["website"]),
+                )
+            )
 
     asyncio.run(_run())
