@@ -14,6 +14,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
+from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
 from marquise.infrastructure.controllers.cinema_controller import CinemaController
 from marquise.infrastructure.controllers.movie_controller import MovieController
 from marquise.infrastructure.controllers.screening_controller import ScreeningController
@@ -79,6 +80,11 @@ class MarquiseFactory:
     def create_cinema_use_case(self) -> CreateCinemaUseCase:
         """Configured use case for creating cinemas."""
         return self._container.create_cinema_use_case
+
+    @property
+    def delete_cinema_use_case(self) -> DeleteCinemaUseCase:
+        """Configured use case for deleting cinemas."""
+        return self._container.delete_cinema_use_case
 
     @property
     def cinema(self) -> CinemaController:
