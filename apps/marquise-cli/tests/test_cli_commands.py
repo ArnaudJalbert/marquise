@@ -287,9 +287,10 @@ def test_cinema_delete_success(
 
     with (
         patch(
-            "marquise_cli.cinema_commands.MarquiseFactory", return_value=mock_factory
+            "marquise_cli.cinema_commands.delete_command.MarquiseFactory",
+            return_value=mock_factory,
         ),
-        patch("marquise_cli.cinema_commands.questionary") as mock_q,
+        patch("marquise_cli.cinema_commands.delete_command.questionary") as mock_q,
     ):
         mock_q.select.return_value.ask_async = AsyncMock(return_value=cinema)
         mock_q.text.return_value.ask_async = AsyncMock(return_value="Test Cinema")
@@ -318,9 +319,10 @@ def test_cinema_delete_name_mismatch(
 
     with (
         patch(
-            "marquise_cli.cinema_commands.MarquiseFactory", return_value=mock_factory
+            "marquise_cli.cinema_commands.delete_command.MarquiseFactory",
+            return_value=mock_factory,
         ),
-        patch("marquise_cli.cinema_commands.questionary") as mock_q,
+        patch("marquise_cli.cinema_commands.delete_command.questionary") as mock_q,
     ):
         mock_q.select.return_value.ask_async = AsyncMock(
             return_value=_make_cinema_data()
@@ -347,7 +349,8 @@ def test_cinema_delete_no_cinemas(
     mock_factory.delete_cinema_use_case = mock_delete_use_case
 
     with patch(
-        "marquise_cli.cinema_commands.MarquiseFactory", return_value=mock_factory
+        "marquise_cli.cinema_commands.delete_command.MarquiseFactory",
+        return_value=mock_factory,
     ):
         result = invoke(["cinema", "delete"])
 
@@ -370,7 +373,8 @@ def test_cinema_delete_list_failure(
     mock_factory.delete_cinema_use_case = mock_delete_use_case
 
     with patch(
-        "marquise_cli.cinema_commands.MarquiseFactory", return_value=mock_factory
+        "marquise_cli.cinema_commands.delete_command.MarquiseFactory",
+        return_value=mock_factory,
     ):
         result = invoke(["cinema", "delete"])
 
@@ -394,9 +398,10 @@ def test_cinema_delete_cancelled_at_select(
 
     with (
         patch(
-            "marquise_cli.cinema_commands.MarquiseFactory", return_value=mock_factory
+            "marquise_cli.cinema_commands.delete_command.MarquiseFactory",
+            return_value=mock_factory,
         ),
-        patch("marquise_cli.cinema_commands.questionary") as mock_q,
+        patch("marquise_cli.cinema_commands.delete_command.questionary") as mock_q,
     ):
         mock_q.select.return_value.ask_async = AsyncMock(return_value="__exit__")
         result = invoke(["cinema", "delete"])
@@ -421,9 +426,10 @@ def test_cinema_delete_cancelled_at_confirmation(
 
     with (
         patch(
-            "marquise_cli.cinema_commands.MarquiseFactory", return_value=mock_factory
+            "marquise_cli.cinema_commands.delete_command.MarquiseFactory",
+            return_value=mock_factory,
         ),
-        patch("marquise_cli.cinema_commands.questionary") as mock_q,
+        patch("marquise_cli.cinema_commands.delete_command.questionary") as mock_q,
     ):
         mock_q.select.return_value.ask_async = AsyncMock(
             return_value=_make_cinema_data()
@@ -452,9 +458,10 @@ def test_cinema_delete_failure(
 
     with (
         patch(
-            "marquise_cli.cinema_commands.MarquiseFactory", return_value=mock_factory
+            "marquise_cli.cinema_commands.delete_command.MarquiseFactory",
+            return_value=mock_factory,
         ),
-        patch("marquise_cli.cinema_commands.questionary") as mock_q,
+        patch("marquise_cli.cinema_commands.delete_command.questionary") as mock_q,
     ):
         mock_q.select.return_value.ask_async = AsyncMock(
             return_value=_make_cinema_data()
