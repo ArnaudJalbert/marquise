@@ -87,9 +87,12 @@ def test_cinema_create_success(mock_factory: MagicMock) -> None:
 
     with (
         patch(
-            "marquise_cli.cinema_commands.MarquiseFactory", return_value=mock_factory
+            "marquise_cli.cinema_commands.create_command.MarquiseFactory",
+            return_value=mock_factory,
         ),
-        patch("marquise_cli.cinema_commands.questionary.confirm") as confirm,
+        patch(
+            "marquise_cli.cinema_commands.create_command.questionary.confirm"
+        ) as confirm,
     ):
         confirm.return_value.ask_async = AsyncMock(return_value=False)
         result = invoke(
@@ -124,11 +127,14 @@ def test_cinema_create_assigns_source_after_success(mock_factory: MagicMock) -> 
 
     with (
         patch(
-            "marquise_cli.cinema_commands.MarquiseFactory", return_value=mock_factory
+            "marquise_cli.cinema_commands.create_command.MarquiseFactory",
+            return_value=mock_factory,
         ),
-        patch("marquise_cli.cinema_commands.questionary.confirm") as confirm,
         patch(
-            "marquise_cli.cinema_commands.select_source",
+            "marquise_cli.cinema_commands.create_command.questionary.confirm"
+        ) as confirm,
+        patch(
+            "marquise_cli.cinema_commands.create_command.select_source",
             new=AsyncMock(return_value="cineplex"),
         ),
     ):
@@ -161,11 +167,14 @@ def test_cinema_create_declines_source_assignment(mock_factory: MagicMock) -> No
 
     with (
         patch(
-            "marquise_cli.cinema_commands.MarquiseFactory", return_value=mock_factory
+            "marquise_cli.cinema_commands.create_command.MarquiseFactory",
+            return_value=mock_factory,
         ),
-        patch("marquise_cli.cinema_commands.questionary.confirm") as confirm,
         patch(
-            "marquise_cli.cinema_commands.select_source",
+            "marquise_cli.cinema_commands.create_command.questionary.confirm"
+        ) as confirm,
+        patch(
+            "marquise_cli.cinema_commands.create_command.select_source",
             new=AsyncMock(),
         ) as select_source,
     ):
@@ -189,11 +198,14 @@ def test_cinema_create_assignment_failure(mock_factory: MagicMock) -> None:
 
     with (
         patch(
-            "marquise_cli.cinema_commands.MarquiseFactory", return_value=mock_factory
+            "marquise_cli.cinema_commands.create_command.MarquiseFactory",
+            return_value=mock_factory,
         ),
-        patch("marquise_cli.cinema_commands.questionary.confirm") as confirm,
         patch(
-            "marquise_cli.cinema_commands.select_source",
+            "marquise_cli.cinema_commands.create_command.questionary.confirm"
+        ) as confirm,
+        patch(
+            "marquise_cli.cinema_commands.create_command.select_source",
             new=AsyncMock(return_value="cineplex"),
         ),
     ):
@@ -211,7 +223,7 @@ def test_cinema_create_failure(mock_factory: MagicMock) -> None:
     mock_factory.create_cinema_use_case = use_case
 
     with patch(
-        "marquise_cli.cinema_commands.MarquiseFactory",
+        "marquise_cli.cinema_commands.create_command.MarquiseFactory",
         return_value=mock_factory,
     ):
         result = invoke(
@@ -514,7 +526,7 @@ def test_cinema_list_success(
     mock_factory.shutdown = AsyncMock()
 
     with patch(
-        "marquise_cli.cinema_commands.MarquiseFactory",
+        "marquise_cli.cinema_commands.list_command.MarquiseFactory",
         return_value=mock_factory,
     ):
         result = invoke(["cinema", "list"])
@@ -541,7 +553,7 @@ def test_cinema_list_empty(
     mock_factory.shutdown = AsyncMock()
 
     with patch(
-        "marquise_cli.cinema_commands.MarquiseFactory",
+        "marquise_cli.cinema_commands.list_command.MarquiseFactory",
         return_value=mock_factory,
     ):
         result = invoke(["cinema", "list"])
@@ -565,7 +577,7 @@ def test_cinema_list_failure(
     mock_factory.shutdown = AsyncMock()
 
     with patch(
-        "marquise_cli.cinema_commands.MarquiseFactory",
+        "marquise_cli.cinema_commands.list_command.MarquiseFactory",
         return_value=mock_factory,
     ):
         result = invoke(["cinema", "list"])
@@ -591,7 +603,7 @@ def test_cinema_list_verbose(
     mock_factory.shutdown = AsyncMock()
 
     with patch(
-        "marquise_cli.cinema_commands.MarquiseFactory",
+        "marquise_cli.cinema_commands.list_command.MarquiseFactory",
         return_value=mock_factory,
     ):
         result = invoke(["cinema", "list", "--verbose"])
@@ -621,7 +633,7 @@ def test_cinema_list_with_name_filter(
     mock_factory.shutdown = AsyncMock()
 
     with patch(
-        "marquise_cli.cinema_commands.MarquiseFactory",
+        "marquise_cli.cinema_commands.list_command.MarquiseFactory",
         return_value=mock_factory,
     ):
         result = invoke(["cinema", "list", "--name", "Parc"])
@@ -660,10 +672,10 @@ def test_cinema_update_success(
 
     with (
         patch(
-            "marquise_cli.cinema_commands.MarquiseFactory",
+            "marquise_cli.cinema_commands.update_command.MarquiseFactory",
             return_value=mock_factory,
         ),
-        patch("marquise_cli.cinema_commands.questionary") as mock_q,
+        patch("marquise_cli.cinema_commands.update_command.questionary") as mock_q,
     ):
         mock_q.select.return_value.ask_async = AsyncMock(return_value=cinema)
         mock_q.checkbox.return_value.ask_async = AsyncMock(
@@ -713,10 +725,10 @@ def test_cinema_update_single_field(
 
     with (
         patch(
-            "marquise_cli.cinema_commands.MarquiseFactory",
+            "marquise_cli.cinema_commands.update_command.MarquiseFactory",
             return_value=mock_factory,
         ),
-        patch("marquise_cli.cinema_commands.questionary") as mock_q,
+        patch("marquise_cli.cinema_commands.update_command.questionary") as mock_q,
     ):
         mock_q.select.return_value.ask_async = AsyncMock(return_value=cinema)
         mock_q.checkbox.return_value.ask_async = AsyncMock(return_value=["name"])
@@ -760,10 +772,10 @@ def test_cinema_update_clear_optional_field(
 
     with (
         patch(
-            "marquise_cli.cinema_commands.MarquiseFactory",
+            "marquise_cli.cinema_commands.update_command.MarquiseFactory",
             return_value=mock_factory,
         ),
-        patch("marquise_cli.cinema_commands.questionary") as mock_q,
+        patch("marquise_cli.cinema_commands.update_command.questionary") as mock_q,
     ):
         mock_q.select.return_value.ask_async = AsyncMock(return_value=cinema)
         mock_q.checkbox.return_value.ask_async = AsyncMock(return_value=["address"])
@@ -795,7 +807,7 @@ def test_cinema_update_no_cinemas(
     mock_factory.shutdown = AsyncMock()
 
     with patch(
-        "marquise_cli.cinema_commands.MarquiseFactory",
+        "marquise_cli.cinema_commands.update_command.MarquiseFactory",
         return_value=mock_factory,
     ):
         result = invoke(["cinema", "update"])
@@ -819,10 +831,10 @@ def test_cinema_update_cancelled_at_select(
 
     with (
         patch(
-            "marquise_cli.cinema_commands.MarquiseFactory",
+            "marquise_cli.cinema_commands.update_command.MarquiseFactory",
             return_value=mock_factory,
         ),
-        patch("marquise_cli.cinema_commands.questionary") as mock_q,
+        patch("marquise_cli.cinema_commands.update_command.questionary") as mock_q,
     ):
         mock_q.select.return_value.ask_async = AsyncMock(return_value="__exit__")
 
@@ -849,10 +861,10 @@ def test_cinema_update_cancelled_at_fields(
 
     with (
         patch(
-            "marquise_cli.cinema_commands.MarquiseFactory",
+            "marquise_cli.cinema_commands.update_command.MarquiseFactory",
             return_value=mock_factory,
         ),
-        patch("marquise_cli.cinema_commands.questionary") as mock_q,
+        patch("marquise_cli.cinema_commands.update_command.questionary") as mock_q,
     ):
         mock_q.select.return_value.ask_async = AsyncMock(return_value=cinema)
         mock_q.checkbox.return_value.ask_async = AsyncMock(return_value=[])
@@ -883,10 +895,10 @@ def test_cinema_update_failure(
 
     with (
         patch(
-            "marquise_cli.cinema_commands.MarquiseFactory",
+            "marquise_cli.cinema_commands.update_command.MarquiseFactory",
             return_value=mock_factory,
         ),
-        patch("marquise_cli.cinema_commands.questionary") as mock_q,
+        patch("marquise_cli.cinema_commands.update_command.questionary") as mock_q,
     ):
         mock_q.select.return_value.ask_async = AsyncMock(return_value=cinema)
         mock_q.checkbox.return_value.ask_async = AsyncMock(return_value=["name"])
