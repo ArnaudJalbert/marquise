@@ -6,7 +6,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from dataclasses import asdict
 from io import StringIO
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, call, create_autospec, patch
+from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 
 import pytest
 
@@ -15,10 +15,9 @@ from marquise import (
     CinemaController,
     CinemaIdAlreadyExistsError,
     CinemaNotFoundError,
-    CinemaSourceAssignmentNotFoundError,
     CreateCinemaUseCase,
     DeleteCinemaUseCase,
-    GetCinemaSourceUseCase,
+    ListCinemaSourceAssignmentsUseCase,
     ListCinemasUseCase,
     SourceController,
     UpdateCinemaUseCase,
@@ -647,19 +646,21 @@ def test_cinema_list_verbose(
     mock_cinema_controller.list = AsyncMock(
         return_value=ListCinemasUseCase.OutputData(cinemas=cinemas, total=len(cinemas))
     )
-    mock_source_use_case = create_autospec(GetCinemaSourceUseCase, instance=True)
-    mock_source_use_case.execute = AsyncMock(
-        side_effect=[
-            GetCinemaSourceUseCase.OutputData(
-                cinema_id="cin-001",
-                source_name="cinemacinema",
-                source_display_name="Cinéma Cinéma",
-            ),
-            CinemaSourceAssignmentNotFoundError("no source"),
-        ]
+    mock_assignment_use_case = create_autospec(
+        ListCinemaSourceAssignmentsUseCase, instance=True
+    )
+    mock_assignment_use_case.execute = AsyncMock(
+        return_value=ListCinemaSourceAssignmentsUseCase.OutputData(
+            assignments=[
+                ListCinemaSourceAssignmentsUseCase.AssignmentData(
+                    cinema_id="cin-001",
+                    source_display_name="Cinéma Cinéma",
+                )
+            ]
+        )
     )
     mock_factory.cinema = mock_cinema_controller
-    mock_factory.get_cinema_source_use_case = mock_source_use_case
+    mock_factory.list_cinema_source_assignments_use_case = mock_assignment_use_case
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
@@ -683,11 +684,8 @@ def test_cinema_list_verbose(
     assert "345" in result.stdout
     assert "Ontario" in result.stdout
     assert "https://cinemaduparc.ca" not in result.stdout
-    mock_source_use_case.execute.assert_has_awaits(
-        [
-            call(GetCinemaSourceUseCase.InputData(cinema_id="cin-001")),
-            call(GetCinemaSourceUseCase.InputData(cinema_id="cin-002")),
-        ]
+    mock_assignment_use_case.execute.assert_awaited_once_with(
+        ListCinemaSourceAssignmentsUseCase.InputData()
     )
     mock_factory.initialize.assert_called_once()
     mock_factory.shutdown.assert_called_once()

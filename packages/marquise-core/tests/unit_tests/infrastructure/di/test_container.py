@@ -143,21 +143,23 @@ async def test_update_cinema_use_case_after_initialize() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_cinema_source_use_case_requires_initialize() -> None:
-    """Verify source use case raises before pool initialization."""
+async def test_list_cinema_source_assignments_use_case_requires_initialize() -> None:
+    """Verify assignment-list use case raises before pool initialization."""
     with patch(
         "marquise.infrastructure.di.container.Database",
         return_value=AsyncMock(),
     ):
         container = Container()
         with pytest.raises(RuntimeError, match="Database pool not available"):
-            _ = container.get_cinema_source_use_case
+            _ = container.list_cinema_source_assignments_use_case
 
 
 @pytest.mark.asyncio
-async def test_get_cinema_source_use_case_after_initialize() -> None:
-    """Verify source use case uses initialized database pool."""
-    from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
+async def test_list_cinema_source_assignments_use_case_after_initialize() -> None:
+    """Verify assignment-list use case uses initialized database pool."""
+    from marquise.application.use_cases.list_cinema_source_assignments import (
+        ListCinemaSourceAssignmentsUseCase,
+    )
 
     mock_database = AsyncMock()
     mock_database.pool = AsyncMock()
@@ -167,8 +169,8 @@ async def test_get_cinema_source_use_case_after_initialize() -> None:
     ):
         container = Container()
         await container.initialize()
-        use_case = container.get_cinema_source_use_case
-        assert isinstance(use_case, GetCinemaSourceUseCase)
+        use_case = container.list_cinema_source_assignments_use_case
+        assert isinstance(use_case, ListCinemaSourceAssignmentsUseCase)
         assert use_case.assignment_repository._gateway._pool is mock_database.pool
         await container.shutdown()
 

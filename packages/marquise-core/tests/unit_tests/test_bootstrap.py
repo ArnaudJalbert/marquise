@@ -8,7 +8,9 @@ import pytest
 
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
-from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
+from marquise.application.use_cases.list_cinema_source_assignments import (
+    ListCinemaSourceAssignmentsUseCase,
+)
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.bootstrap import MarquiseFactory, create_factory, create_factory_session
 from marquise.infrastructure.controllers.cinema_controller import CinemaController
@@ -155,17 +157,17 @@ async def test_update_cinema_use_case_returns_configured_use_case() -> None:
         await factory.shutdown()
 
 
-def test_get_cinema_source_use_case_requires_initialize() -> None:
-    """Verify source use case retains factory's pre-init failure behavior."""
+def test_list_cinema_source_assignments_use_case_requires_initialize() -> None:
+    """Verify assignment-list use case retains pre-init failure behavior."""
     factory = MarquiseFactory()
 
     with pytest.raises(RuntimeError, match="Database pool not available"):
-        _ = factory.get_cinema_source_use_case
+        _ = factory.list_cinema_source_assignments_use_case
 
 
 @pytest.mark.asyncio
-async def test_get_cinema_source_use_case_returns_configured_use_case() -> None:
-    """Verify factory returns source use case wired to initialized pool."""
+async def test_list_assignments_use_case_returns_configured_use_case() -> None:
+    """Verify factory returns assignment-list use case wired to database pool."""
     mock_database = AsyncMock()
     mock_database.pool = AsyncMock()
 
@@ -175,8 +177,8 @@ async def test_get_cinema_source_use_case_returns_configured_use_case() -> None:
         factory = MarquiseFactory()
         await factory.initialize()
 
-        use_case = factory.get_cinema_source_use_case
-        assert isinstance(use_case, GetCinemaSourceUseCase)
+        use_case = factory.list_cinema_source_assignments_use_case
+        assert isinstance(use_case, ListCinemaSourceAssignmentsUseCase)
         assert use_case.assignment_repository._gateway._pool is mock_database.pool
 
         await factory.shutdown()
