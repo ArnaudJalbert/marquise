@@ -460,6 +460,11 @@ class Container:
         return self._update_cinema_use_case
 
     @property
+    def get_cinema_source_use_case(self) -> GetCinemaSourceUseCase:
+        """Public get-cinema-source use case."""
+        return self._get_cinema_source_use_case
+
+    @property
     def list_cinemas_use_case(self) -> ListCinemasUseCase:
         """Public list-cinemas use case (no authentication required)."""
         return self._list_cinemas_use_case

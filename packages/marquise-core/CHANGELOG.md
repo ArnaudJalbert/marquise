@@ -4,6 +4,10 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-08-21
 
+### v0.2.9
+
+- **Expose get-cinema-source use case**: `MarquiseFactory.get_cinema_source_use_case` and top-level `GetCinemaSourceUseCase` now provide CLI consumers with configured direct assignment lookups.
+
 ### v0.2.8
 
 - **Remove cinema update from `CinemaController`**: delivery consumers now use the public `UpdateCinemaUseCase` directly. Closes #167.
