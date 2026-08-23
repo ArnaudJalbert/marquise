@@ -95,9 +95,9 @@ async def _update_cinema(
 ) -> dict[str, str | None]:
     """Execute update use case and report expected failures."""
     try:
-        use_case = factory.update_cinema_use_case
-        response = await use_case.execute(
-            use_case.InputData(cinema_id, name, address, city, website)
+        update_cinema_use_case = factory.update_cinema_use_case
+        response = await update_cinema_use_case.execute(
+            update_cinema_use_case.InputData(cinema_id, name, address, city, website)
         )
     except (CinemaNotFoundError, ValueError) as error:
         print(f"Failed to update cinema: {error}", file=sys.stderr)
