@@ -13,7 +13,6 @@ from marquise import (
     CinemaIdAlreadyExistsError,
     CinemaNotFoundError,
     CinemaSourceAssignmentAlreadyExistsError,
-    CreateCinemaUseCase,
     MarquiseFactory,
     SourceNotFoundError,
 )
@@ -29,8 +28,9 @@ async def _create_cinema(
 ) -> dict[str, str | None]:
     """Create a cinema and display its details."""
     try:
-        response = await factory.create_cinema_use_case.execute(
-            CreateCinemaUseCase.InputData(
+        create_cinema_use_case = factory.create_cinema_use_case
+        response = await create_cinema_use_case.execute(
+            create_cinema_use_case.InputData(
                 name=name,
                 address=address,
                 city=city,

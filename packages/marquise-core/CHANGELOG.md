@@ -4,6 +4,10 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-08-21
 
+### v0.2.9
+
+- **Expose cinema-source assignment query**: `MarquiseFactory.list_cinema_source_assignments_query` and top-level `ListCinemaSourceAssignmentsQuery` provide bulk assignment lookups without constructing domain entities.
+
 ### v0.2.8
 
 - **Remove cinema update from `CinemaController`**: delivery consumers now use the public `UpdateCinemaUseCase` directly. Closes #167.

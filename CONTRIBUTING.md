@@ -61,6 +61,9 @@ runtime dependencies, and pytest config.
 **One lockfile rule**: only run `uv sync` / `uv lock` from the repo root, never
 from inside a member directory.
 
+**One version bump per package per PR**: combine all changes to an affected
+package into one version increment and one changelog section.
+
 ### Bootstrap API
 
 Apps in `apps/` access core through the public bootstrap API in

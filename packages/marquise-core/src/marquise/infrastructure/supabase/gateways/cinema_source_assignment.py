@@ -109,22 +109,3 @@ class SupabaseCinemaSourceAssignmentGateway:
                 cinema_id,
             )
         return dict(row) if row is not None else None
-
-    async def find_all(self) -> list[dict]:
-        """Retrieve all cinema-source assignments.
-
-        Returns:
-            A list of dicts with joined cinema and source definition data.
-        """
-        async with self._pool.acquire() as conn:
-            rows = await conn.fetch(
-                f"""
-                SELECT {_JOINED_COLUMNS}
-                FROM "{self._schema}".cinema_source_assignments a
-                JOIN "{self._schema}".cinemas c ON a.cinema_id = c.id
-                JOIN "{self._schema}".source_definitions sd
-                    ON a.source_name = sd.name
-                ORDER BY a.cinema_id
-                """
-            )
-        return [dict(r) for r in rows]

@@ -39,6 +39,7 @@ def test_root_help_lists_command_groups(capsys: pytest.CaptureFixture[str]) -> N
         (["unknown"], "invalid choice"),
         (["cinema"], "the following arguments are required"),
         (["cinema", "unknown"], "invalid choice"),
+        (["source", "list-assignments"], "invalid choice"),
         (["import", "all", "--days", "0"], "must be greater than zero"),
     ],
 )
