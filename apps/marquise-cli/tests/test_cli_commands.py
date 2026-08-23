@@ -1010,95 +1010,11 @@ def test_cinema_update_unexpected_failure_propagates(
     mock_factory.__aexit__.assert_awaited_once()
 
 
-# ---------------------------------------------------------------------------
-# source registry
-# ---------------------------------------------------------------------------
-
-
 def _make_registry_source_entry(
     name: str = "cinemacinema",
 ) -> SimpleNamespace:
-    """Helper to build a SourceEntry for test setup."""
-
-    return SimpleNamespace(
-        name=name,
-    )
-
-
-def test_source_registry_show_sources(
-    mock_factory: MagicMock,
-) -> None:
-    """Verify source registry command lists available sources with status."""
-    mock_source_controller = create_autospec(SourceController, instance=True)
-    mock_source_controller.list_registry_sources = AsyncMock(
-        return_value=SimpleNamespace(sources=[_make_registry_source_entry()])
-    )
-    mock_source_controller.list_sources = AsyncMock(
-        return_value=SimpleNamespace(sources=[])
-    )
-    mock_factory.source = mock_source_controller
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
-
-    with patch(
-        "marquise_cli.source_commands.MarquiseFactory",
-        return_value=mock_factory,
-    ):
-        result = invoke(["source", "list-available"])
-
-    assert result.exit_code == 0
-    assert "cinemacinema" in result.stdout
-    assert "—" in result.stdout
-    mock_source_controller.list_registry_sources.assert_awaited_once()
-    mock_factory.initialize.assert_called_once()
-    mock_factory.shutdown.assert_called_once()
-
-
-def test_source_registry_empty(
-    mock_factory: MagicMock,
-) -> None:
-    """Verify source registry shows empty message when no sources."""
-    mock_source_controller = create_autospec(SourceController, instance=True)
-    mock_source_controller.list_registry_sources = AsyncMock(
-        return_value=SimpleNamespace(sources=[])
-    )
-    mock_factory.source = mock_source_controller
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
-
-    with patch(
-        "marquise_cli.source_commands.MarquiseFactory",
-        return_value=mock_factory,
-    ):
-        result = invoke(["source", "list-available"])
-
-    assert result.exit_code == 0
-    assert "No sources registered in the registry." in result.stdout
-    mock_source_controller.list_registry_sources.assert_awaited_once()
-    mock_factory.initialize.assert_called_once()
-    mock_factory.shutdown.assert_called_once()
-
-
-def test_source_registry_failure(
-    mock_factory: MagicMock,
-) -> None:
-    """Verify source registry shows error on failure."""
-    mock_source_controller = create_autospec(SourceController, instance=True)
-    mock_source_controller.list_registry_sources = AsyncMock(
-        side_effect=ValueError("Something went wrong")
-    )
-    mock_factory.source = mock_source_controller
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
-
-    with patch(
-        "marquise_cli.source_commands.MarquiseFactory",
-        return_value=mock_factory,
-    ):
-        result = invoke(["source", "list-available"])
-
-    assert result.exit_code == 1
-    assert "Failed to list registry sources: Something went wrong" in result.stderr
+    """Build a source registry entry for test setup."""
+    return SimpleNamespace(name=name)
 
 
 # ---------------------------------------------------------------------------

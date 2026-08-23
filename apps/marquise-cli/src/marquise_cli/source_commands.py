@@ -128,61 +128,6 @@ def unassign() -> None:
 
 
 # ---------------------------------------------------------------------------
-# source registry — list sources available in the code-level registry
-# ---------------------------------------------------------------------------
-
-
-def list_available_sources() -> None:
-    """List showtime sources available in the code-level registry.
-
-    Shows which sources are available and whether they are already
-    registered in the database.  No database connection required for the
-    registry list, but one is needed to check registration status.
-    """
-    factory = MarquiseFactory()
-
-    async def _run() -> None:
-        await run_spinner(factory.initialize(), description="Connecting...")
-        try:
-            registry_response = await run_spinner(
-                factory.source.list_registry_sources(),
-                description="Fetching available sources...",
-            )
-
-            if not registry_response.sources:
-                print("No sources registered in the registry.")
-                return
-
-            db_names: set[str] = set()
-            try:
-                db_response = await run_spinner(
-                    factory.source.list_sources(),
-                    description="Checking registrations...",
-                )
-                db_names = {s.name for s in db_response.sources}
-            except Exception:
-                pass
-
-            table = Table(title="Available sources")
-            table.add_column("Name", style="cyan")
-            table.add_column("Registered")
-
-            for entry in registry_response.sources:
-                registered = "✓" if entry.name in db_names else "—"
-                table.add_row(entry.name, registered)
-
-            _console.print(table)
-        finally:
-            await factory.shutdown()
-
-    try:
-        asyncio.run(_run())
-    except Exception as e:
-        print(f"Failed to list registry sources: {e}", file=sys.stderr)
-        raise SystemExit(1) from e
-
-
-# ---------------------------------------------------------------------------
 # source register — sync registry sources to the database
 # ---------------------------------------------------------------------------
 
@@ -378,7 +323,7 @@ def unregister_sources() -> None:
 
 
 # ---------------------------------------------------------------------------
-# source import — fetch and save showtimes for a cinema
+# import cinema — fetch and save showtimes for a cinema
 # ---------------------------------------------------------------------------
 
 
