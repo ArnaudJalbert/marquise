@@ -39,7 +39,7 @@ from marquise.application.exceptions import (
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
 from marquise.application.use_cases.list_cinema_source_assignments import (
-    ListCinemaSourceAssignmentsUseCase,
+    ListCinemaSourceAssignmentsQuery,
 )
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
@@ -65,7 +65,7 @@ __all__ = [
     "DeleteCinemaUseCase",
     "create_factory",
     "create_factory_session",
-    "ListCinemaSourceAssignmentsUseCase",
+    "ListCinemaSourceAssignmentsQuery",
     "ListCinemasUseCase",
     "MarquiseFactory",
     "MovieController",

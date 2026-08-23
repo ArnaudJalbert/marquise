@@ -9,7 +9,7 @@ import pytest
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
 from marquise.application.use_cases.list_cinema_source_assignments import (
-    ListCinemaSourceAssignmentsUseCase,
+    ListCinemaSourceAssignmentsQuery,
 )
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.bootstrap import MarquiseFactory, create_factory, create_factory_session
@@ -157,17 +157,17 @@ async def test_update_cinema_use_case_returns_configured_use_case() -> None:
         await factory.shutdown()
 
 
-def test_list_cinema_source_assignments_use_case_requires_initialize() -> None:
-    """Verify assignment-list use case retains pre-init failure behavior."""
+def test_list_cinema_source_assignments_query_requires_initialize() -> None:
+    """Verify assignment query retains pre-init failure behavior."""
     factory = MarquiseFactory()
 
     with pytest.raises(RuntimeError, match="Database pool not available"):
-        _ = factory.list_cinema_source_assignments_use_case
+        _ = factory.list_cinema_source_assignments_query
 
 
 @pytest.mark.asyncio
-async def test_list_assignments_use_case_returns_configured_use_case() -> None:
-    """Verify factory returns assignment-list use case wired to database pool."""
+async def test_list_assignments_query_returns_configured_query() -> None:
+    """Verify factory returns assignment query wired to database pool."""
     mock_database = AsyncMock()
     mock_database.pool = AsyncMock()
 
@@ -177,9 +177,9 @@ async def test_list_assignments_use_case_returns_configured_use_case() -> None:
         factory = MarquiseFactory()
         await factory.initialize()
 
-        use_case = factory.list_cinema_source_assignments_use_case
-        assert isinstance(use_case, ListCinemaSourceAssignmentsUseCase)
-        assert use_case.assignment_repository._gateway._pool is mock_database.pool
+        query = factory.list_cinema_source_assignments_query
+        assert isinstance(query, ListCinemaSourceAssignmentsQuery)
+        assert query._reader._pool is mock_database.pool
 
         await factory.shutdown()
 

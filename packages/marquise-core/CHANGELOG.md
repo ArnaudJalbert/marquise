@@ -6,7 +6,7 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ### v0.2.9
 
-- **Expose cinema-source assignment list use case**: `MarquiseFactory.list_cinema_source_assignments_use_case` and top-level `ListCinemaSourceAssignmentsUseCase` provide bulk assignment lookups.
+- **Expose cinema-source assignment query**: `MarquiseFactory.list_cinema_source_assignments_query` and top-level `ListCinemaSourceAssignmentsQuery` provide bulk assignment lookups without constructing domain entities.
 
 ### v0.2.8
 

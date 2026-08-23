@@ -3,19 +3,75 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Sequence
+from typing import Protocol
+from urllib.parse import urlsplit
 
 from rich import box
 from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
-from marquise import (
-    ListCinemaSourceAssignmentsUseCase,
-    MarquiseFactory,
-)
+from marquise import MarquiseFactory
 from marquise_cli.helpers import run_spinner
 
-_console = Console()
+_console = Console(markup=False)
+
+
+class CinemaRow(Protocol):
+    """Cinema display fields used by the list table."""
+
+    id: str
+    name: str
+    address: str | None
+    city: str | None
+    website: str | None
+
+
+def _website_text(website: str) -> Text:
+    """Return a safe website hyperlink or invalid URL label."""
+    if any(ord(character) < 32 or ord(character) == 127 for character in website):
+        return Text("Invalid URL", style="dim")
+    try:
+        parsed = urlsplit(website)
+    except ValueError:
+        return Text("Invalid URL", style="dim")
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return Text("Invalid URL", style="dim")
+    return Text(website, style=f"blue underline link {website}")
+
+
+def _build_table(
+    cinemas: Sequence[CinemaRow], source_names: dict[str, str], verbose: bool
+) -> Table:
+    """Build cinema list table."""
+    table = Table(
+        title="Available cinemas",
+        box=box.ROUNDED,
+        header_style="bold",
+        show_lines=True,
+    )
+    table.add_column("Cinema", style="cyan", no_wrap=True)
+    table.add_column("City", style="magenta")
+    if verbose:
+        table.add_column("Address", style="green", overflow="fold")
+        table.add_column("Website", style="blue underline", overflow="fold")
+        table.add_column("Source", style="yellow", overflow="fold")
+        table.add_column("ID", style="dim")
+
+    for cinema in cinemas:
+        row: list[str | Text] = [cinema.name, cinema.city or "-"]
+        if verbose:
+            row.extend(
+                [
+                    cinema.address or "-",
+                    _website_text(cinema.website) if cinema.website else "-",
+                    source_names.get(cinema.id, ""),
+                    cinema.id,
+                ]
+            )
+        table.add_row(*row)
+    return table
 
 
 def list_cinemas(
@@ -32,18 +88,15 @@ def list_cinemas(
             response = await run_spinner(
                 factory.cinema.list(name=name), description="Fetching cinemas..."
             )
-            cinemas = response.cinemas
-
-            if not cinemas:
+            if not response.cinemas:
                 print("No cinemas found.")
                 return
 
             source_names: dict[str, str] = {}
             if verbose:
+                query = factory.list_cinema_source_assignments_query
                 assignments = await run_spinner(
-                    factory.list_cinema_source_assignments_use_case.execute(
-                        ListCinemaSourceAssignmentsUseCase.InputData()
-                    ),
+                    query.execute(query.InputData()),
                     description="Fetching source assignments...",
                 )
                 source_names = {
@@ -51,37 +104,7 @@ def list_cinemas(
                     for assignment in assignments.assignments
                 }
 
-            table = Table(
-                title="Available cinemas",
-                box=box.ROUNDED,
-                header_style="bold",
-                show_lines=True,
-            )
-            table.add_column("Cinema", style="cyan", no_wrap=True)
-            table.add_column("City", style="magenta")
-            if verbose:
-                table.add_column("Address", style="green", overflow="fold")
-                table.add_column("Website", style="blue underline", overflow="fold")
-                table.add_column("Source", style="yellow", overflow="fold")
-                table.add_column("ID", style="dim")
-
-            for cinema in cinemas:
-                row: list[str | Text] = [cinema.name, cinema.city or "-"]
-                if verbose:
-                    website = Text("Website", style="blue underline")
-                    if cinema.website:
-                        website.stylize(f"link {cinema.website}")
-                    row.extend(
-                        [
-                            cinema.address or "-",
-                            website if cinema.website else "-",
-                            source_names.get(cinema.id, ""),
-                            cinema.id,
-                        ]
-                    )
-                table.add_row(*row)
-
-            _console.print(table)
+            _console.print(_build_table(response.cinemas, source_names, verbose))
         finally:
             await factory.shutdown()
 

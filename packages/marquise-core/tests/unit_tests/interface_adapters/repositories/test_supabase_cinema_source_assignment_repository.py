@@ -59,21 +59,6 @@ def _gateway_row() -> dict:
     }
 
 
-def _gateway_row_2() -> dict:
-    return {
-        "cinema_id": "cin-002",
-        "source_name": "cinema_du_parc",
-        "cinema__id": "cin-002",
-        "cinema__name": "Cinema Du Parc",
-        "cinema__address": None,
-        "cinema__city": None,
-        "cinema__website": None,
-        "source__name": "cinema_du_parc",
-        "source__display_name": "Cinema du Parc",
-        "source__description": None,
-    }
-
-
 @pytest.mark.asyncio
 async def test_assign(
     repo: SupabaseCinemaSourceAssignmentRepository,
@@ -160,31 +145,3 @@ async def test_find_by_cinema_id_missing(
 
     result = await repo.find_by_cinema_id(CinemaId(value="missing"))
     assert result is None
-
-
-@pytest.mark.asyncio
-async def test_find_all(
-    repo: SupabaseCinemaSourceAssignmentRepository, mock_gateway: AsyncMock
-) -> None:
-    """Verify find_all returns all mapped assignments."""
-    mock_gateway.find_all.return_value = [
-        _gateway_row(),
-        _gateway_row_2(),
-    ]
-
-    result = await repo.find_all()
-    assert len(result) == 2
-    assert result[0].cinema.id == CinemaId(value="cin-001")
-    assert result[1].source.name == SourceName(value="cinema_du_parc")
-    mock_gateway.find_all.assert_awaited_once()
-
-
-@pytest.mark.asyncio
-async def test_find_all_empty(
-    repo: SupabaseCinemaSourceAssignmentRepository, mock_gateway: AsyncMock
-) -> None:
-    """Verify find_all returns empty list when no assignments exist."""
-    mock_gateway.find_all.return_value = []
-
-    result = await repo.find_all()
-    assert result == []
