@@ -15,6 +15,9 @@ from contextlib import asynccontextmanager
 
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
+from marquise.application.use_cases.list_cinema_source_assignments import (
+    ListCinemaSourceAssignmentsQuery,
+)
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.infrastructure.controllers.cinema_controller import CinemaController
 from marquise.infrastructure.controllers.movie_controller import MovieController
@@ -91,6 +94,13 @@ class MarquiseFactory:
     def update_cinema_use_case(self) -> UpdateCinemaUseCase:
         """Configured use case for updating cinemas."""
         return self._container.update_cinema_use_case
+
+    @property
+    def list_cinema_source_assignments_query(
+        self,
+    ) -> ListCinemaSourceAssignmentsQuery:
+        """Configured query for cinema-source assignments."""
+        return self._container.list_cinema_source_assignments_query
 
     @property
     def cinema(self) -> CinemaController:

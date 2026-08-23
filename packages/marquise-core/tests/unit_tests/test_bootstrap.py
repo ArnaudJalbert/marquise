@@ -8,6 +8,9 @@ import pytest
 
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
+from marquise.application.use_cases.list_cinema_source_assignments import (
+    ListCinemaSourceAssignmentsQuery,
+)
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.bootstrap import MarquiseFactory, create_factory, create_factory_session
 from marquise.infrastructure.controllers.cinema_controller import CinemaController
@@ -150,6 +153,33 @@ async def test_update_cinema_use_case_returns_configured_use_case() -> None:
         use_case = factory.update_cinema_use_case
         assert isinstance(use_case, UpdateCinemaUseCase)
         assert use_case.cinema_repository._gateway._pool is mock_database.pool
+
+        await factory.shutdown()
+
+
+def test_list_cinema_source_assignments_query_requires_initialize() -> None:
+    """Verify assignment query retains pre-init failure behavior."""
+    factory = MarquiseFactory()
+
+    with pytest.raises(RuntimeError, match="Database pool not available"):
+        _ = factory.list_cinema_source_assignments_query
+
+
+@pytest.mark.asyncio
+async def test_list_assignments_query_returns_configured_query() -> None:
+    """Verify factory returns assignment query wired to database pool."""
+    mock_database = AsyncMock()
+    mock_database.pool = AsyncMock()
+
+    with patch(
+        "marquise.infrastructure.di.container.Database", return_value=mock_database
+    ):
+        factory = MarquiseFactory()
+        await factory.initialize()
+
+        query = factory.list_cinema_source_assignments_query
+        assert isinstance(query, ListCinemaSourceAssignmentsQuery)
+        assert query._reader._pool is mock_database.pool
 
         await factory.shutdown()
 

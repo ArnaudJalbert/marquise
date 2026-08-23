@@ -48,11 +48,3 @@ class CinemaSourceAssignmentGateway(Protocol):
             A dict with keys ``cinema_id`` and ``source_name``, or None.
         """
         ...
-
-    async def find_all(self) -> list[dict]:
-        """Retrieve all cinema-source assignments.
-
-        Returns:
-            A list of dicts with keys ``cinema_id`` and ``source_name``.
-        """
-        ...

@@ -101,15 +101,6 @@ class SupabaseCinemaSourceAssignmentRepository(CinemaSourceAssignmentRepository)
         data = await self._gateway.find_by_cinema_id(cinema_id=str(cinema_id))
         return self._to_entity(data) if data is not None else None
 
-    async def find_all(self) -> list[CinemaSourceAssignment]:
-        """Retrieve all cinema-source assignments.
-
-        Returns:
-            A list of all assignment entities.
-        """
-        rows = await self._gateway.find_all()
-        return [self._to_entity(row) for row in rows]
-
     @staticmethod
     def _to_entity(data: dict) -> CinemaSourceAssignment:
         """Map a raw gateway dict to a CinemaSourceAssignment domain entity.

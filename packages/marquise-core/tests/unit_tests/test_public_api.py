@@ -19,6 +19,7 @@ EXPECTED_PUBLIC_SURFACE: set[str] = {
     "CinemaSourceAssignmentNotFoundError",
     "CreateCinemaUseCase",
     "DeleteCinemaUseCase",
+    "ListCinemaSourceAssignmentsQuery",
     "create_factory",
     "create_factory_session",
     "ListCinemasUseCase",

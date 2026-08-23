@@ -50,12 +50,3 @@ class CinemaSourceAssignmentRepository(ABC):
             The matching assignment, or None if not found.
         """
         ...
-
-    @abstractmethod
-    async def find_all(self) -> list[CinemaSourceAssignment]:
-        """Retrieve all cinema-source assignments.
-
-        Returns:
-            A list of all assignments.
-        """
-        ...

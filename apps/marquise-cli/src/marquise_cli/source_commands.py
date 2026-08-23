@@ -12,11 +12,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
-from marquise import (
-    CinemaSourceAssignmentNotFoundError,
-    ListCinemasUseCase,
-    MarquiseFactory,
-)
+from marquise import ListCinemasUseCase, MarquiseFactory
 from marquise_cli.helpers import run_spinner, select_source
 
 _console = Console()
@@ -128,56 +124,6 @@ def unassign() -> None:
         raise
     except Exception as e:
         print(f"Failed to unassign source: {e}", file=sys.stderr)
-        raise SystemExit(1) from e
-
-
-def list_assignments() -> None:
-    """Display which showtime source is assigned to each cinema.
-
-    This is a public operation — no authentication required.
-    """
-    factory = MarquiseFactory()
-
-    async def _run() -> None:
-        await run_spinner(factory.initialize(), description="Connecting...")
-        try:
-            cinemas_response = await run_spinner(
-                factory.cinema.list(),
-                description="Fetching cinemas...",
-            )
-
-            if not cinemas_response.cinemas:
-                print("No cinemas found.")
-                return
-
-            table = Table(title="Cinema source assignments")
-            table.add_column("Cinema", style="cyan")
-            table.add_column("Source")
-            table.add_column("Source Display Name")
-
-            for cinema in cinemas_response.cinemas:
-                try:
-                    assignment = await factory.source.get_cinema_source(
-                        cinema_id=cinema.id,
-                    )
-                    table.add_row(
-                        cinema.name,
-                        assignment.source_name,
-                        assignment.source_display_name,
-                    )
-                except CinemaSourceAssignmentNotFoundError:
-                    table.add_row(cinema.name, "—", "—")
-
-            _console.print(table)
-        finally:
-            await factory.shutdown()
-
-    try:
-        asyncio.run(_run())
-    except SystemExit:
-        raise
-    except Exception as e:
-        print(f"Failed to list assignments: {e}", file=sys.stderr)
         raise SystemExit(1) from e
 
 

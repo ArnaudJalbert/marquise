@@ -32,6 +32,9 @@ from marquise.application.use_cases.get_movie_screenings import (
     GetMovieScreeningsUseCase,
 )
 from marquise.application.use_cases.get_screening import GetScreeningUseCase
+from marquise.application.use_cases.list_cinema_source_assignments import (
+    ListCinemaSourceAssignmentsQuery,
+)
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.application.use_cases.list_movies import ListMoviesUseCase
 from marquise.application.use_cases.list_registry_sources import (
@@ -75,6 +78,9 @@ from marquise.infrastructure.supabase.gateways.screening import (
 )
 from marquise.infrastructure.supabase.gateways.source_definition import (
     SupabaseSourceDefinitionGateway,
+)
+from marquise.interface_adapters.readers.cinema_source_assignment_reader import (
+    SupabaseCinemaSourceAssignmentReader,
 )
 from marquise.interface_adapters.repositories.source_adapters.cinemacinema import (
     CinemaCinemaAdapter,
@@ -237,6 +243,12 @@ class Container:
         )
 
     @property
+    def _cinema_source_assignment_reader(self) -> SupabaseCinemaSourceAssignmentReader:
+        return SupabaseCinemaSourceAssignmentReader(
+            pool=self._pool_property, schema=self._schema
+        )
+
+    @property
     def _screening_gateway(self) -> SupabaseScreeningGateway:
         return SupabaseScreeningGateway(pool=self._pool_property, schema=self._schema)
 
@@ -372,6 +384,14 @@ class Container:
         )
 
     @property
+    def _list_cinema_source_assignments_query(
+        self,
+    ) -> ListCinemaSourceAssignmentsQuery:
+        return ListCinemaSourceAssignmentsQuery(
+            reader=self._cinema_source_assignment_reader,
+        )
+
+    @property
     def _fetch_screenings_use_case(self) -> FetchScreeningsFromSourceQuery:
         return FetchScreeningsFromSourceQuery(
             cinema_repository=self._cinema_repository,
@@ -458,6 +478,13 @@ class Container:
     def update_cinema_use_case(self) -> UpdateCinemaUseCase:
         """Public update-cinema use case."""
         return self._update_cinema_use_case
+
+    @property
+    def list_cinema_source_assignments_query(
+        self,
+    ) -> ListCinemaSourceAssignmentsQuery:
+        """Public cinema-source assignment query."""
+        return self._list_cinema_source_assignments_query
 
     @property
     def list_cinemas_use_case(self) -> ListCinemasUseCase:

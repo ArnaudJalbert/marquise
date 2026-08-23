@@ -10,7 +10,6 @@ from marquise_cli.import_commands import import_all
 from marquise_cli.source_commands import (
     assign,
     import_screenings,
-    list_assignments,
     list_available_sources,
     list_registered_sources,
     register_sources,
@@ -87,12 +86,6 @@ def create_parser() -> argparse.ArgumentParser:
     )
     _command(source_commands, "assign", assign, "Assign source to cinema.")
     _command(source_commands, "unassign", unassign, "Unassign source from cinema.")
-    _command(
-        source_commands,
-        "list-assignments",
-        list_assignments,
-        "List cinema source assignments.",
-    )
     _command(
         source_commands,
         "list-available",

@@ -17,6 +17,7 @@ from marquise import (
     CinemaNotFoundError,
     CreateCinemaUseCase,
     DeleteCinemaUseCase,
+    ListCinemaSourceAssignmentsQuery,
     ListCinemasUseCase,
     SourceController,
     UpdateCinemaUseCase,
@@ -71,6 +72,7 @@ def _mock_create_use_case(
     """Provide a mocked create-cinema use case."""
     use_case = create_autospec(CreateCinemaUseCase, instance=True)
     use_case.execute = AsyncMock(side_effect=error, return_value=response)
+    use_case.InputData = CreateCinemaUseCase.InputData
     return use_case
 
 
@@ -305,6 +307,7 @@ def mock_delete_use_case() -> MagicMock:
     """Provide a mocked DeleteCinemaUseCase."""
     use_case = create_autospec(DeleteCinemaUseCase, instance=True)
     use_case.execute = AsyncMock()
+    use_case.InputData = DeleteCinemaUseCase.InputData
     return use_case
 
 
@@ -575,9 +578,12 @@ def test_cinema_list_success(
         result = invoke(["cinema", "list"])
 
     assert result.exit_code == 0
-    assert "Available cinemas:" in result.stdout
+    assert "Available cinemas" in result.stdout
+    assert "Cinema" in result.stdout
+    assert "City" in result.stdout
     assert "Cinema du Parc" in result.stdout
     assert "Quartier Latin" in result.stdout
+    assert "Montreal" in result.stdout
     mock_factory.initialize.assert_called_once()
     mock_factory.shutdown.assert_called_once()
 
@@ -642,7 +648,22 @@ def test_cinema_list_verbose(
     mock_cinema_controller.list = AsyncMock(
         return_value=ListCinemasUseCase.OutputData(cinemas=cinemas, total=len(cinemas))
     )
+    mock_assignment_query = create_autospec(
+        ListCinemaSourceAssignmentsQuery, instance=True
+    )
+    mock_assignment_query.InputData = ListCinemaSourceAssignmentsQuery.InputData
+    mock_assignment_query.execute = AsyncMock(
+        return_value=ListCinemaSourceAssignmentsQuery.OutputData(
+            assignments=[
+                SimpleNamespace(
+                    cinema_id="cin-001",
+                    source_display_name="Cinéma Cinéma",
+                )
+            ]
+        )
+    )
     mock_factory.cinema = mock_cinema_controller
+    mock_factory.list_cinema_source_assignments_query = mock_assignment_query
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
@@ -653,14 +674,66 @@ def test_cinema_list_verbose(
         result = invoke(["cinema", "list", "--verbose"])
 
     assert result.exit_code == 0
-    assert "Available cinemas:" in result.stdout
+    assert "Available cinemas" in result.stdout
+    assert "Address" in result.stdout
+    assert "Website" in result.stdout
+    assert "Source" in result.stdout
+    assert "Cinéma" in result.stdout
+    assert "ID" in result.stdout
     assert "cin-001" in result.stdout
-    assert "123 Rue du Parc" in result.stdout
+    assert "123" in result.stdout
+    assert "Parc" in result.stdout
     assert "cin-002" in result.stdout
-    assert "345 Rue Ontario" in result.stdout
-    assert "cinemaduparc" in result.stdout
+    assert "345" in result.stdout
+    assert "Ontario" in result.stdout
+    assert "cinem" in result.stdout
+    mock_assignment_query.execute.assert_awaited_once_with(
+        ListCinemaSourceAssignmentsQuery.InputData()
+    )
     mock_factory.initialize.assert_called_once()
     mock_factory.shutdown.assert_called_once()
+
+
+def test_cinema_list_renders_markup_like_cinema_name(
+    mock_factory: MagicMock,
+) -> None:
+    """Verify cinema names containing Rich markup render literally."""
+    mock_cinema_controller = create_autospec(CinemaController, instance=True)
+    mock_cinema_controller.list = AsyncMock(
+        return_value=ListCinemasUseCase.OutputData(
+            cinemas=[_make_cinema_data(name="[/bold]")], total=1
+        )
+    )
+    mock_factory.cinema = mock_cinema_controller
+    mock_factory.initialize = AsyncMock()
+    mock_factory.shutdown = AsyncMock()
+
+    with patch(
+        "marquise_cli.cinema_commands.list_command.MarquiseFactory",
+        return_value=mock_factory,
+    ):
+        result = invoke(["cinema", "list"])
+
+    assert result.exit_code == 0
+    assert "[/bold]" in result.stdout
+
+
+@pytest.mark.parametrize(
+    ("website", "expected"),
+    [
+        ("https://example.com", "https://example.com"),
+        ("javascript:alert(1)", "Invalid URL"),
+        ("https://example.com/\x1b[2J", "Invalid URL"),
+    ],
+)
+def test_cinema_list_renders_safe_website_text(website: str, expected: str) -> None:
+    """Verify only safe HTTP(S) websites are rendered as link destinations."""
+    from marquise_cli.cinema_commands.list_command import _website_text
+
+    text = _website_text(website)
+
+    assert text.plain == expected
+    assert ("link " in text.style) is (expected == website)
 
 
 def test_cinema_list_with_name_filter(
@@ -698,6 +771,7 @@ def mock_update_use_case() -> MagicMock:
     """Provide a mocked UpdateCinemaUseCase."""
     use_case = create_autospec(UpdateCinemaUseCase, instance=True)
     use_case.execute = AsyncMock()
+    use_case.InputData = UpdateCinemaUseCase.InputData
     return use_case
 
 
