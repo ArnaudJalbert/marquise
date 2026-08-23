@@ -106,6 +106,20 @@ async def run_import_all(
     )
 
 
+def _print_totals(
+    imported: list[CinemaImportResult],
+    skipped: list[CinemaImportResult],
+    failed: list[CinemaImportResult],
+) -> None:
+    """Print aggregate bulk-import counts."""
+    total_new = sum(result.imported_count for result in imported)
+    total_updated = sum(result.updated_count for result in imported)
+    print(
+        f"Done: {len(imported)} imported, {len(skipped)} skipped, "
+        f"{len(failed)} failed — {total_new} new, {total_updated} updated."
+    )
+
+
 def _print_results(results: list[CinemaImportResult]) -> int:
     """Print bulk-import results and return failure count."""
     imported = [result for result in results if result.status == "imported"]
@@ -128,12 +142,7 @@ def _print_results(results: list[CinemaImportResult]) -> int:
     for result in failed:
         print(f"  [failed]  {result.cinema_name}: {result.detail}", file=sys.stderr)
 
-    total_new = sum(result.imported_count for result in imported)
-    total_updated = sum(result.updated_count for result in imported)
-    print(
-        f"Done: {len(imported)} imported, {len(skipped)} skipped, "
-        f"{len(failed)} failed — {total_new} new, {total_updated} updated."
-    )
+    _print_totals(imported, skipped, failed)
     return len(failed)
 
 

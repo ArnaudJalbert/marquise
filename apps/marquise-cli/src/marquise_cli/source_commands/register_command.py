@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from collections.abc import Iterable
+from typing import Protocol
 
 import questionary
 from rich.console import Console
@@ -15,7 +17,15 @@ from marquise_cli.helpers import run_spinner
 _console = Console()
 
 
-def _build_table(registry_sources: object, registered_names: set[str]) -> Table:
+class NamedSource(Protocol):
+    """Source registry data."""
+
+    name: str
+
+
+def _build_table(
+    registry_sources: Iterable[NamedSource], registered_names: set[str]
+) -> Table:
     """Build registry registration-status table."""
     table = Table(title="Sources available in registry")
     table.add_column("Name", style="cyan")
@@ -41,8 +51,10 @@ async def _source_details() -> tuple[str, str | None] | None:
     return display_name, description if description.strip() else None
 
 
-async def _register_sources(factory: MarquiseFactory) -> None:
-    """Register every source missing from persistent source definitions."""
+async def _load_sources(
+    factory: MarquiseFactory,
+) -> tuple[list[NamedSource], list[NamedSource]]:
+    """Load registry and registered source definitions."""
     registry_response = await run_spinner(
         factory.source.list_registry_sources(),
         description="Fetching available sources...",
@@ -50,38 +62,49 @@ async def _register_sources(factory: MarquiseFactory) -> None:
     registered_response = await run_spinner(
         factory.source.list_sources(), description="Fetching registered sources..."
     )
-    registered_names = {source.name for source in registered_response.sources}
+    return registry_response.sources, registered_response.sources
+
+
+async def _register_source(factory: MarquiseFactory, source: NamedSource) -> bool:
+    """Prompt for and register one source definition."""
+    print(f"\n--- Registering: {source.name} ---")
+    details = await _source_details()
+    if details is None:
+        return False
+    display_name, description = details
+    try:
+        result = await run_spinner(
+            factory.source.create_source(
+                name=source.name, display_name=display_name, description=description
+            ),
+            description=f"Registering {source.name}...",
+        )
+        print(f"  Created: {result.name}")
+    except Exception as error:
+        print(f"  Failed: {error}", file=sys.stderr)
+    return True
+
+
+async def _register_sources(factory: MarquiseFactory) -> None:
+    """Register every source missing from persistent source definitions."""
+    registry_sources, registered_sources = await _load_sources(factory)
+    registered_names = {source.name for source in registered_sources}
     new_sources = [
-        source
-        for source in registry_response.sources
-        if source.name not in registered_names
+        source for source in registry_sources if source.name not in registered_names
     ]
-    if not registry_response.sources:
+    if not registry_sources:
         print("No sources available in the registry.")
         return
 
-    _console.print(_build_table(registry_response.sources, registered_names))
+    _console.print(_build_table(registry_sources, registered_names))
     if not new_sources:
         print("All registry sources are already in the database.")
         return
 
     print(f"{len(new_sources)} source(s) can be registered.")
     for source in new_sources:
-        print(f"\n--- Registering: {source.name} ---")
-        details = await _source_details()
-        if details is None:
+        if not await _register_source(factory, source):
             return
-        display_name, description = details
-        try:
-            result = await run_spinner(
-                factory.source.create_source(
-                    name=source.name, display_name=display_name, description=description
-                ),
-                description=f"Registering {source.name}...",
-            )
-            print(f"  Created: {result.name}")
-        except Exception as error:
-            print(f"  Failed: {error}", file=sys.stderr)
 
 
 def register_sources() -> None:

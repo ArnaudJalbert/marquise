@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from dataclasses import asdict
 from datetime import date, datetime, timedelta
+from typing import TypedDict
 from zoneinfo import ZoneInfo
 
 import questionary
@@ -17,6 +19,26 @@ from marquise_cli.helpers import run_spinner, select_cinema
 
 _console = Console()
 _MONTREAL_TZ = ZoneInfo("America/Toronto")
+
+
+class ScreeningData(TypedDict):
+    """Screening data formatted by cinema import."""
+
+    movie_title: str
+    showtime: str
+    imported: bool
+
+
+class ImportResultData(TypedDict):
+    """Import summary formatted by cinema import."""
+
+    cinema_name: str
+    source_name: str
+    screenings: list[ScreeningData]
+    total_count: int
+    imported_count: int
+    updated_count: int
+    skipped_count: int
 
 
 async def _select_date_range() -> tuple[date, date] | None:
@@ -55,44 +77,49 @@ async def _select_date_range() -> tuple[date, date] | None:
 
 async def _import_screenings(
     factory: MarquiseFactory, cinema_id: str, start_date: date, end_date: date
-) -> object:
-    """Import one cinema date range."""
-    return await run_spinner(
+) -> ImportResultData:
+    """Import one cinema date range as formatting data."""
+    result = await run_spinner(
         factory.source.import_screenings(
             cinema_id=cinema_id, start_date=start_date, end_date=end_date
         ),
         description="Importing screenings...",
     )
+    return ImportResultData(**asdict(result))
 
 
-def _screenings_table(result: object) -> Table:
+def _screenings_table(result: ImportResultData) -> Table:
     """Build imported-screenings table."""
     table = Table(
-        title=f"Imported screenings for {result.cinema_name} ({result.source_name})"
-    )  # type: ignore[attr-defined]
+        title=(
+            f"Imported screenings for {result['cinema_name']} ({result['source_name']})"
+        )
+    )
     table.add_column("Movie", style="cyan")
     table.add_column("Showtime")
     table.add_column("Status")
-    for screening in result.screenings:  # type: ignore[attr-defined]
-        local_time = datetime.fromisoformat(screening.showtime).astimezone(_MONTREAL_TZ)
+    for screening in result["screenings"]:
+        local_time = datetime.fromisoformat(screening["showtime"]).astimezone(
+            _MONTREAL_TZ
+        )
         table.add_row(
-            screening.movie_title,
+            screening["movie_title"],
             local_time.strftime("%Y-%m-%d %H:%M"),
-            "imported" if screening.imported else "updated",
+            "imported" if screening["imported"] else "updated",
         )
     return table
 
 
-def _summary(result: object) -> Text:
+def _summary(result: ImportResultData) -> Text:
     """Build imported-screenings summary."""
-    summary = Text(f"{result.total_count} total  |  ")  # type: ignore[attr-defined]
-    summary.append(f"{result.imported_count}", style="green")  # type: ignore[attr-defined]
+    summary = Text(f"{result['total_count']} total  |  ")
+    summary.append(f"{result['imported_count']}", style="green")
     summary.append(" new  |  ")
-    summary.append(f"{result.updated_count}", style="yellow")  # type: ignore[attr-defined]
+    summary.append(f"{result['updated_count']}", style="yellow")
     summary.append(" updated")
-    if result.skipped_count:  # type: ignore[attr-defined]
+    if result["skipped_count"]:
         summary.append("  |  ")
-        summary.append(f"{result.skipped_count}", style="red")
+        summary.append(f"{result['skipped_count']}", style="red")
         summary.append(" skipped")
     return summary
 
