@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Iterable
-from typing import Protocol
 
 from rich.console import Console
 from rich.table import Table
@@ -15,15 +13,7 @@ from marquise_cli.helpers import run_spinner
 _console = Console()
 
 
-class RegisteredSource(Protocol):
-    """Registered source display data."""
-
-    name: str
-    display_name: str
-    description: str | None
-
-
-def _build_table(sources: Iterable[RegisteredSource]) -> Table:
+def _build_table(sources: list) -> Table:
     """Build registered-source table."""
     table = Table(title="Registered sources")
     table.add_column("Name", style="cyan")

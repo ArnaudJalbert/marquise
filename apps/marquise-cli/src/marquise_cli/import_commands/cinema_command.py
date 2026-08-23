@@ -6,7 +6,6 @@ import asyncio
 import sys
 from dataclasses import asdict
 from datetime import date, datetime, timedelta
-from typing import TypedDict
 from zoneinfo import ZoneInfo
 
 import questionary
@@ -19,26 +18,6 @@ from marquise_cli.helpers import run_spinner, select_cinema
 
 _console = Console()
 _MONTREAL_TZ = ZoneInfo("America/Toronto")
-
-
-class ScreeningData(TypedDict):
-    """Screening data formatted by cinema import."""
-
-    movie_title: str
-    showtime: str
-    imported: bool
-
-
-class ImportResultData(TypedDict):
-    """Import summary formatted by cinema import."""
-
-    cinema_name: str
-    source_name: str
-    screenings: list[ScreeningData]
-    total_count: int
-    imported_count: int
-    updated_count: int
-    skipped_count: int
 
 
 async def _select_date_range() -> tuple[date, date] | None:
@@ -77,7 +56,7 @@ async def _select_date_range() -> tuple[date, date] | None:
 
 async def _import_screenings(
     factory: MarquiseFactory, cinema_id: str, start_date: date, end_date: date
-) -> ImportResultData:
+) -> dict:
     """Import one cinema date range as formatting data."""
     result = await run_spinner(
         factory.source.import_screenings(
@@ -85,10 +64,10 @@ async def _import_screenings(
         ),
         description="Importing screenings...",
     )
-    return ImportResultData(**asdict(result))
+    return asdict(result)
 
 
-def _screenings_table(result: ImportResultData) -> Table:
+def _screenings_table(result: dict) -> Table:
     """Build imported-screenings table."""
     table = Table(
         title=(
@@ -110,7 +89,7 @@ def _screenings_table(result: ImportResultData) -> Table:
     return table
 
 
-def _summary(result: ImportResultData) -> Text:
+def _summary(result: dict) -> Text:
     """Build imported-screenings summary."""
     summary = Text(f"{result['total_count']} total  |  ")
     summary.append(f"{result['imported_count']}", style="green")

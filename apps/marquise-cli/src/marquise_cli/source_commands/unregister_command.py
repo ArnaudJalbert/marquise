@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from collections.abc import Iterable
-from typing import Protocol
 
 import questionary
 from rich.console import Console
@@ -17,16 +15,7 @@ from marquise_cli.helpers import run_spinner
 _console = Console()
 
 
-class RegisteredSource(Protocol):
-    """Registered source display data."""
-
-    name: str
-    display_name: str
-
-
-def _build_table(
-    sources: Iterable[RegisteredSource], registry_names: set[str]
-) -> Table:
+def _build_table(sources: list, registry_names: set[str]) -> Table:
     """Build persistent-source status table."""
     table = Table(title="Sources in database")
     table.add_column("Name", style="cyan")
@@ -39,9 +28,7 @@ def _build_table(
     return table
 
 
-async def _select_sources(
-    sources: Iterable[RegisteredSource],
-) -> list[str] | None:
+async def _select_sources(sources: list) -> list[str] | None:
     """Select source names to unregister."""
     selected = await questionary.checkbox(
         "Select sources to unregister:",
