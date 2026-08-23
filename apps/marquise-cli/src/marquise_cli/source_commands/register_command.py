@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from dataclasses import asdict, is_dataclass
+from dataclasses import asdict
 
 import questionary
 from rich.console import Console
@@ -54,14 +54,8 @@ async def _load_sources(
         factory.source.list_sources(), description="Fetching registered sources..."
     )
     return (
-        [
-            asdict(source) if is_dataclass(source) else vars(source)
-            for source in registry_response.sources
-        ],
-        [
-            asdict(source) if is_dataclass(source) else vars(source)
-            for source in registered_response.sources
-        ],
+        [asdict(source) for source in registry_response.sources],
+        [asdict(source) for source in registered_response.sources],
     )
 
 

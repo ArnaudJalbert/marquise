@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from contextlib import redirect_stderr, redirect_stdout
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from io import StringIO
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
@@ -1010,11 +1010,15 @@ def test_cinema_update_unexpected_failure_propagates(
     mock_factory.__aexit__.assert_awaited_once()
 
 
-def _make_registry_source_entry(
-    name: str = "cinemacinema",
-) -> SimpleNamespace:
+@dataclass(frozen=True, slots=True)
+class _SourceEntry:
+    name: str
+    display_name: str = "Cinéma Cinéma"
+
+
+def _make_registry_source_entry(name: str = "cinemacinema") -> _SourceEntry:
     """Build a source registry entry for test setup."""
-    return SimpleNamespace(name=name)
+    return _SourceEntry(name)
 
 
 # ---------------------------------------------------------------------------
@@ -1082,14 +1086,7 @@ def test_source_register_all_existing(
         return_value=SimpleNamespace(sources=[_make_registry_source_entry()])
     )
     mock_source_controller.list_sources = AsyncMock(
-        return_value=SimpleNamespace(
-            sources=[
-                SimpleNamespace(
-                    name="cinemacinema",
-                    display_name="Cinéma Cinéma",
-                )
-            ]
-        )
+        return_value=SimpleNamespace(sources=[_SourceEntry("cinemacinema")])
     )
     mock_factory.source = mock_source_controller
     mock_factory.initialize = AsyncMock()
