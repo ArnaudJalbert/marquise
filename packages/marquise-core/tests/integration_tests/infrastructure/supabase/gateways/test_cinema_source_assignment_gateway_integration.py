@@ -96,21 +96,3 @@ async def test_find_by_cinema_id_missing(
     """Verify find_by_cinema_id returns None when no match."""
     result = await assignment_gateway.find_by_cinema_id("nonexistent")
     assert result is None
-
-
-@pytest.mark.asyncio
-async def test_find_all(
-    assignment_gateway: SupabaseCinemaSourceAssignmentGateway,
-    gateway: SupabaseCinemaGateway,
-    source_definition_gateway: SupabaseSourceDefinitionGateway,
-) -> None:
-    """Verify find_all returns all assignments."""
-    await _seed_parents(gateway, source_definition_gateway)
-    g = assignment_gateway
-    await g.assign(cinema_id="cin-001", source_name="cineplex")
-    await g.assign(cinema_id="cin-002", source_name="cinema_du_parc")
-    results = await g.find_all()
-    assert len(results) >= 2
-    ids = [r["cinema_id"] for r in results]
-    assert "cin-001" in ids
-    assert "cin-002" in ids

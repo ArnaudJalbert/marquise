@@ -41,12 +41,15 @@ No databases, HTTP, or framework imports.
 (ABCs) and application exceptions live here. Imports domain only.
 
 **Interface adapters** — Repository implementations map between domain entities
-and external data shapes. External-source adapters normalise fetched rows.
-Imports application and domain — never infrastructure.
+and external data shapes. Read adapters may execute a purpose-built query through
+an injected client or pool and return application read models directly; use this
+instead of a gateway-plus-repository chain when no domain entity or business rule
+is involved. External-source adapters normalise fetched rows. Imports application
+and domain — never infrastructure.
 
-**Infrastructure** — The only layer that executes SQL, network calls, and other
-I/O directly. Gateways return plain data structures. DI wiring and controllers
-live here. Controllers delegate to use cases — no business logic.
+**Infrastructure** — Owns DI wiring, controllers, and gateways used by domain
+repositories. Gateways return plain data structures. Controllers delegate to use
+cases — no business logic.
 
 **Delivery** — CLI, API, and UI applications. Thin wiring only. Import the
 published library facade — never internal library modules.
@@ -60,6 +63,7 @@ published library facade — never internal library modules.
 | Entity / value object | Invariants, domain logic | Persistence, HTTP, frameworks |
 | Use case | Business orchestration | SQL, HTTP, UI concerns |
 | Repository (adapter) | Entity ↔ store mapping | SQL, driver-specific types |
+| Read adapter | Read-only projection through injected client/pool | Domain entities, business rules |
 | Gateway | I/O with external systems; plain data out | Domain entities |
 | Controller | Input DTO → use case → output DTO | Business logic, domain types in signature |
 | Delivery entrypoint | Wire request to controller or factory | Business logic |
@@ -82,15 +86,17 @@ or factory) — never constructed internally, never read from globals.
 |-------|-----------|--------------|
 | Domain | Unit | None |
 | Application | Unit | None — mock repository ABCs |
-| Interface adapters | Unit | None — mock gateway protocols |
+| Interface adapters | Unit | None — mock injected gateway, client, or pool |
 | Infrastructure (gateways, scrapers) | Integration | Real DB / network **only here** |
 | Delivery apps | Unit | None — mock factory / controllers |
 
 Everything **up to and including interface adapters** must be testable in
-isolation with injected mocks — no database, no HTTP, no filesystem.
+isolation with injected mocks — no database, no HTTP, no filesystem. A read
+adapter that receives a database pool imports its driver only under `TYPE_CHECKING`
+and is unit-tested with a mocked pool.
 
-Infrastructure owns all side effects. If a test needs a real database or network,
-it is an integration test and belongs with infrastructure tests.
+If a gateway test needs a real database or network, it is an integration test and
+belongs with infrastructure tests.
 
 ---
 
@@ -108,8 +114,12 @@ it is an integration test and belongs with infrastructure tests.
 
 ## Key patterns
 
-**Gateway → repository → use case** — I/O at the edge, entity mapping in the
-middle, business logic at the center.
+**Gateway → repository → use case** — Use for operations that need domain
+entities and business rules.
+
+**Read adapter → query** — Use an injected, purpose-built read adapter returning
+application read models for a read-only projection. Do not construct domain
+entities or add a gateway/repository chain solely to serve display data.
 
 **External source adapter + registry** — Pluggable fetchers normalised to a
 common row shape; registry selects implementation at runtime.
