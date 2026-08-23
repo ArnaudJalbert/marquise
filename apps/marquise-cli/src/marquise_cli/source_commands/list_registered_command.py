@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import sys
 
 from rich.console import Console
 from rich.table import Table
@@ -12,6 +11,17 @@ from marquise import MarquiseFactory
 from marquise_cli.helpers import run_spinner
 
 _console = Console()
+
+
+def _build_table(sources: object) -> Table:
+    """Build registered-source table."""
+    table = Table(title="Registered sources")
+    table.add_column("Name", style="cyan")
+    table.add_column("Display Name")
+    table.add_column("Description")
+    for source in sources:
+        table.add_row(source.name, source.display_name, source.description or "")
+    return table
 
 
 def list_registered_sources() -> None:
@@ -32,16 +42,6 @@ def list_registered_sources() -> None:
             print("No sources registered.")
             return
 
-        table = Table(title="Registered sources")
-        table.add_column("Name", style="cyan")
-        table.add_column("Display Name")
-        table.add_column("Description")
-        for source in response.sources:
-            table.add_row(source.name, source.display_name, source.description or "")
-        _console.print(table)
+        _console.print(_build_table(response.sources))
 
-    try:
-        asyncio.run(_run())
-    except Exception as error:
-        print(f"Failed to list sources: {error}", file=sys.stderr)
-        raise SystemExit(1) from error
+    asyncio.run(_run())

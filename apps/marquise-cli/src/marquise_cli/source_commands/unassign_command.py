@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import sys
 
 from marquise import MarquiseFactory
 from marquise_cli.helpers import run_spinner, select_cinema
@@ -30,10 +29,4 @@ def unassign() -> None:
         finally:
             await factory.shutdown()
 
-    try:
-        asyncio.run(_run())
-    except SystemExit:
-        raise
-    except Exception as error:
-        print(f"Failed to unassign source: {error}", file=sys.stderr)
-        raise SystemExit(1) from error
+    asyncio.run(_run())
