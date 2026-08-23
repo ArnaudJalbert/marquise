@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Sequence
-from typing import Protocol
+from dataclasses import asdict
 from urllib.parse import urlsplit
 
 from rich import box
@@ -12,20 +11,10 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
-from marquise import MarquiseFactory
+from marquise import ListCinemasUseCase, MarquiseFactory
 from marquise_cli.helpers import run_spinner
 
 _console = Console(markup=False)
-
-
-class CinemaRow(Protocol):
-    """Cinema display fields used by the list table."""
-
-    id: str
-    name: str
-    address: str | None
-    city: str | None
-    website: str | None
 
 
 def _website_text(website: str) -> Text:
@@ -42,7 +31,9 @@ def _website_text(website: str) -> Text:
 
 
 def _build_table(
-    cinemas: Sequence[CinemaRow], source_names: dict[str, str], verbose: bool
+    response: ListCinemasUseCase.OutputData,
+    source_names: dict[str, str],
+    verbose: bool,
 ) -> Table:
     """Build cinema list table."""
     table = Table(
@@ -59,15 +50,15 @@ def _build_table(
         table.add_column("Source", style="yellow", overflow="fold")
         table.add_column("ID", style="dim")
 
-    for cinema in cinemas:
-        row: list[str | Text] = [cinema.name, cinema.city or "-"]
+    for cinema in map(asdict, response.cinemas):
+        row: list[str | Text] = [cinema["name"], cinema["city"] or "-"]
         if verbose:
             row.extend(
                 [
-                    cinema.address or "-",
-                    _website_text(cinema.website) if cinema.website else "-",
-                    source_names.get(cinema.id, ""),
-                    cinema.id,
+                    cinema["address"] or "-",
+                    _website_text(cinema["website"]) if cinema["website"] else "-",
+                    source_names.get(cinema["id"], ""),
+                    cinema["id"],
                 ]
             )
         table.add_row(*row)
@@ -104,7 +95,7 @@ def list_cinemas(
                     for assignment in assignments.assignments
                 }
 
-            _console.print(_build_table(response.cinemas, source_names, verbose))
+            _console.print(_build_table(response, source_names, verbose))
         finally:
             await factory.shutdown()
 

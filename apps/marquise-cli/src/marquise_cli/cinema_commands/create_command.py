@@ -28,9 +28,9 @@ async def _create_cinema(
 ) -> dict[str, str | None]:
     """Create a cinema and display its details."""
     try:
-        use_case = factory.create_cinema_use_case
-        response = await use_case.execute(
-            use_case.InputData(
+        create_cinema_use_case = factory.create_cinema_use_case
+        response = await create_cinema_use_case.execute(
+            create_cinema_use_case.InputData(
                 name=name,
                 address=address,
                 city=city,
