@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from contextlib import redirect_stderr, redirect_stdout
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from io import StringIO
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
@@ -1010,95 +1010,15 @@ def test_cinema_update_unexpected_failure_propagates(
     mock_factory.__aexit__.assert_awaited_once()
 
 
-# ---------------------------------------------------------------------------
-# source registry
-# ---------------------------------------------------------------------------
+@dataclass(frozen=True, slots=True)
+class _SourceEntry:
+    name: str
+    display_name: str = "Cinéma Cinéma"
 
 
-def _make_registry_source_entry(
-    name: str = "cinemacinema",
-) -> SimpleNamespace:
-    """Helper to build a SourceEntry for test setup."""
-
-    return SimpleNamespace(
-        name=name,
-    )
-
-
-def test_source_registry_show_sources(
-    mock_factory: MagicMock,
-) -> None:
-    """Verify source registry command lists available sources with status."""
-    mock_source_controller = create_autospec(SourceController, instance=True)
-    mock_source_controller.list_registry_sources = AsyncMock(
-        return_value=SimpleNamespace(sources=[_make_registry_source_entry()])
-    )
-    mock_source_controller.list_sources = AsyncMock(
-        return_value=SimpleNamespace(sources=[])
-    )
-    mock_factory.source = mock_source_controller
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
-
-    with patch(
-        "marquise_cli.source_commands.MarquiseFactory",
-        return_value=mock_factory,
-    ):
-        result = invoke(["source", "list-available"])
-
-    assert result.exit_code == 0
-    assert "cinemacinema" in result.stdout
-    assert "—" in result.stdout
-    mock_source_controller.list_registry_sources.assert_awaited_once()
-    mock_factory.initialize.assert_called_once()
-    mock_factory.shutdown.assert_called_once()
-
-
-def test_source_registry_empty(
-    mock_factory: MagicMock,
-) -> None:
-    """Verify source registry shows empty message when no sources."""
-    mock_source_controller = create_autospec(SourceController, instance=True)
-    mock_source_controller.list_registry_sources = AsyncMock(
-        return_value=SimpleNamespace(sources=[])
-    )
-    mock_factory.source = mock_source_controller
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
-
-    with patch(
-        "marquise_cli.source_commands.MarquiseFactory",
-        return_value=mock_factory,
-    ):
-        result = invoke(["source", "list-available"])
-
-    assert result.exit_code == 0
-    assert "No sources registered in the registry." in result.stdout
-    mock_source_controller.list_registry_sources.assert_awaited_once()
-    mock_factory.initialize.assert_called_once()
-    mock_factory.shutdown.assert_called_once()
-
-
-def test_source_registry_failure(
-    mock_factory: MagicMock,
-) -> None:
-    """Verify source registry shows error on failure."""
-    mock_source_controller = create_autospec(SourceController, instance=True)
-    mock_source_controller.list_registry_sources = AsyncMock(
-        side_effect=ValueError("Something went wrong")
-    )
-    mock_factory.source = mock_source_controller
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
-
-    with patch(
-        "marquise_cli.source_commands.MarquiseFactory",
-        return_value=mock_factory,
-    ):
-        result = invoke(["source", "list-available"])
-
-    assert result.exit_code == 1
-    assert "Failed to list registry sources: Something went wrong" in result.stderr
+def _make_registry_source_entry(name: str = "cinemacinema") -> _SourceEntry:
+    """Build a source registry entry for test setup."""
+    return _SourceEntry(name)
 
 
 # ---------------------------------------------------------------------------
@@ -1130,10 +1050,10 @@ def test_source_register_new_source(
 
     with (
         patch(
-            "marquise_cli.source_commands.MarquiseFactory",
+            "marquise_cli.source_commands.register_command.MarquiseFactory",
             return_value=mock_factory,
         ),
-        patch("marquise_cli.source_commands.questionary") as mock_q,
+        patch("marquise_cli.source_commands.register_command.questionary") as mock_q,
     ):
         mock_q.text.return_value.ask_async = AsyncMock(
             side_effect=[
@@ -1166,21 +1086,14 @@ def test_source_register_all_existing(
         return_value=SimpleNamespace(sources=[_make_registry_source_entry()])
     )
     mock_source_controller.list_sources = AsyncMock(
-        return_value=SimpleNamespace(
-            sources=[
-                SimpleNamespace(
-                    name="cinemacinema",
-                    display_name="Cinéma Cinéma",
-                )
-            ]
-        )
+        return_value=SimpleNamespace(sources=[_SourceEntry("cinemacinema")])
     )
     mock_factory.source = mock_source_controller
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
     with patch(
-        "marquise_cli.source_commands.MarquiseFactory",
+        "marquise_cli.source_commands.register_command.MarquiseFactory",
         return_value=mock_factory,
     ):
         result = invoke(["source", "register"])
@@ -1213,10 +1126,10 @@ def test_source_register_failure(
 
     with (
         patch(
-            "marquise_cli.source_commands.MarquiseFactory",
+            "marquise_cli.source_commands.register_command.MarquiseFactory",
             return_value=mock_factory,
         ),
-        patch("marquise_cli.source_commands.questionary") as mock_q,
+        patch("marquise_cli.source_commands.register_command.questionary") as mock_q,
     ):
         mock_q.text.return_value.ask_async = AsyncMock(
             side_effect=["Cinéma Cinéma", "Showtimes description"]
@@ -1261,10 +1174,10 @@ def test_source_unregister_success(
 
     with (
         patch(
-            "marquise_cli.source_commands.MarquiseFactory",
+            "marquise_cli.source_commands.unregister_command.MarquiseFactory",
             return_value=mock_factory,
         ),
-        patch("marquise_cli.source_commands.questionary") as mock_q,
+        patch("marquise_cli.source_commands.unregister_command.questionary") as mock_q,
     ):
         mock_q.checkbox.return_value.ask_async = AsyncMock(
             return_value=["cinemacinema"]
@@ -1307,10 +1220,10 @@ def test_source_unregister_no_selection(
 
     with (
         patch(
-            "marquise_cli.source_commands.MarquiseFactory",
+            "marquise_cli.source_commands.unregister_command.MarquiseFactory",
             return_value=mock_factory,
         ),
-        patch("marquise_cli.source_commands.questionary") as mock_q,
+        patch("marquise_cli.source_commands.unregister_command.questionary") as mock_q,
     ):
         mock_q.checkbox.return_value.ask_async = AsyncMock(return_value=[])
 
@@ -1334,7 +1247,7 @@ def test_source_unregister_empty_db(
     mock_factory.shutdown = AsyncMock()
 
     with patch(
-        "marquise_cli.source_commands.MarquiseFactory",
+        "marquise_cli.source_commands.unregister_command.MarquiseFactory",
         return_value=mock_factory,
     ):
         result = invoke(["source", "unregister"])
@@ -1368,10 +1281,10 @@ def test_source_unregister_cancelled_at_confirm(
 
     with (
         patch(
-            "marquise_cli.source_commands.MarquiseFactory",
+            "marquise_cli.source_commands.unregister_command.MarquiseFactory",
             return_value=mock_factory,
         ),
-        patch("marquise_cli.source_commands.questionary") as mock_q,
+        patch("marquise_cli.source_commands.unregister_command.questionary") as mock_q,
     ):
         mock_q.checkbox.return_value.ask_async = AsyncMock(
             return_value=["cinemacinema"]
@@ -1412,10 +1325,10 @@ def test_source_unregister_partial_failure(
 
     with (
         patch(
-            "marquise_cli.source_commands.MarquiseFactory",
+            "marquise_cli.source_commands.unregister_command.MarquiseFactory",
             return_value=mock_factory,
         ),
-        patch("marquise_cli.source_commands.questionary") as mock_q,
+        patch("marquise_cli.source_commands.unregister_command.questionary") as mock_q,
     ):
         mock_q.checkbox.return_value.ask_async = AsyncMock(
             return_value=["cinemacinema"]

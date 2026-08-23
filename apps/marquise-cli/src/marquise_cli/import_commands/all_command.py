@@ -106,6 +106,46 @@ async def run_import_all(
     )
 
 
+def _print_totals(
+    imported: list[CinemaImportResult],
+    skipped: list[CinemaImportResult],
+    failed: list[CinemaImportResult],
+) -> None:
+    """Print aggregate bulk-import counts."""
+    total_new = sum(result.imported_count for result in imported)
+    total_updated = sum(result.updated_count for result in imported)
+    print(
+        f"Done: {len(imported)} imported, {len(skipped)} skipped, "
+        f"{len(failed)} failed — {total_new} new, {total_updated} updated."
+    )
+
+
+def _print_results(results: list[CinemaImportResult]) -> int:
+    """Print bulk-import results and return failure count."""
+    imported = [result for result in results if result.status == "imported"]
+    skipped = [result for result in results if result.status == "skipped"]
+    failed = [result for result in results if result.status == "failed"]
+
+    print("\nResults:")
+    for result in imported:
+        suffix = (
+            f", {result.skipped_screenings_count} skipped"
+            if result.skipped_screenings_count
+            else ""
+        )
+        print(
+            f"  [ok]      {result.cinema_name}: "
+            f"{result.imported_count} new, {result.updated_count} updated{suffix}"
+        )
+    for result in skipped:
+        print(f"  [skipped] {result.cinema_name}: {result.detail}")
+    for result in failed:
+        print(f"  [failed]  {result.cinema_name}: {result.detail}", file=sys.stderr)
+
+    _print_totals(imported, skipped, failed)
+    return len(failed)
+
+
 def import_all(days: int) -> None:
     """Import showtimes for every cinema that has a source assignment."""
     factory = MarquiseFactory()
@@ -129,32 +169,5 @@ def import_all(days: int) -> None:
         )
         raise SystemExit(1) from e
 
-    imported = [r for r in results if r.status == "imported"]
-    skipped = [r for r in results if r.status == "skipped"]
-    failed = [r for r in results if r.status == "failed"]
-
-    print("\nResults:")
-    for r in imported:
-        suffix = (
-            f", {r.skipped_screenings_count} skipped"
-            if r.skipped_screenings_count
-            else ""
-        )
-        print(
-            f"  [ok]      {r.cinema_name}: "
-            f"{r.imported_count} new, {r.updated_count} updated{suffix}"
-        )
-    for r in skipped:
-        print(f"  [skipped] {r.cinema_name}: {r.detail}")
-    for r in failed:
-        print(f"  [failed]  {r.cinema_name}: {r.detail}", file=sys.stderr)
-
-    total_new = sum(r.imported_count for r in imported)
-    total_updated = sum(r.updated_count for r in imported)
-    print(
-        f"Done: {len(imported)} imported, {len(skipped)} skipped, "
-        f"{len(failed)} failed — {total_new} new, {total_updated} updated."
-    )
-
-    if failed:
+    if _print_results(results):
         raise SystemExit(1)

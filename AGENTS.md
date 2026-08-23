@@ -119,6 +119,7 @@ Concrete test paths → [CONTRIBUTING.md#testability-in-this-repo](CONTRIBUTING.
 ### Python
 
 - Complete type hints everywhere; `str | None` not `Optional`
+- Never use `object`, `TypedDict`, or `Protocol` type hints; use plain `dict` at delivery formatting boundaries
 - Entity / use-case conventions → [docs/python.md](docs/python.md)
 - Ruff required before commit → [CONTRIBUTING.md](CONTRIBUTING.md)
 

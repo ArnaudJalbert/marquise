@@ -7,6 +7,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from marquise_cli.import_commands import import_cinema
 from marquise_cli.routing import create_parser, dispatch
 
 
@@ -18,6 +19,13 @@ def test_group_help(group: str, capsys: pytest.CaptureFixture[str]) -> None:
 
     assert error.value.code == 0
     assert f"usage: marquise {group}" in capsys.readouterr().out
+
+
+def test_import_cinema_routes_to_single_cinema_handler() -> None:
+    """Interactive cinema import is nested under the import command group."""
+    namespace = create_parser().parse_args(["import", "cinema"])
+
+    assert namespace.handler is import_cinema
 
 
 def test_root_help_lists_command_groups(capsys: pytest.CaptureFixture[str]) -> None:
@@ -40,6 +48,7 @@ def test_root_help_lists_command_groups(capsys: pytest.CaptureFixture[str]) -> N
         (["cinema"], "the following arguments are required"),
         (["cinema", "unknown"], "invalid choice"),
         (["source", "list-assignments"], "invalid choice"),
+        (["source", "import"], "invalid choice"),
         (["import", "all", "--days", "0"], "must be greater than zero"),
     ],
 )

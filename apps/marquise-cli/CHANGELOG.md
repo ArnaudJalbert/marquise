@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-08-23
+
+### v0.1.8
+
+- **Move single-cinema import**: interactive import is now `marquise import cinema`; `marquise source import` has been removed.
+- **Split CLI handlers**: source and import handlers now live in focused command modules.
+
+### v0.1.7
+
+- **Remove redundant source availability list**: `marquise source list-available` has been removed; `marquise source register` shows same registry status before registering sources.
+
 ## 2026-08-21
 
 ### v0.1.6
