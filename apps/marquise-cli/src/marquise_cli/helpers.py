@@ -7,7 +7,7 @@ from collections.abc import Awaitable
 import questionary
 from rich.console import Console
 
-from marquise import MarquiseFactory
+from marquise import ListCinemasUseCase, MarquiseFactory
 
 _console = Console()
 
@@ -29,6 +29,33 @@ async def select_source(factory: MarquiseFactory, prompt: str) -> str | None:
     choices.append(questionary.Choice(title="← exit", value="__exit__"))
 
     selected = await questionary.select(prompt, choices=choices).ask_async()
+    if selected is None or selected == "__exit__":
+        print("Cancelled.")
+        return None
+    return selected
+
+
+async def select_cinema(
+    factory: MarquiseFactory,
+    prompt: str,
+) -> ListCinemasUseCase.CinemaData | None:
+    """Let user select a cinema, or cancel."""
+    response = await factory.cinema.list_cinemas()
+    if not response.cinemas:
+        print("No cinemas available.")
+        return None
+
+    choices = [
+        questionary.Choice(
+            title=f"{cinema.name} — {cinema.address or 'No address'}, "
+            f"{cinema.city or 'No city'}",
+            value=cinema,
+        )
+        for cinema in response.cinemas
+    ]
+    choices.append(questionary.Choice(title="← exit", value="__exit__"))
+    selected = await questionary.select(prompt, choices=choices).ask_async()
+
     if selected is None or selected == "__exit__":
         print("Cancelled.")
         return None

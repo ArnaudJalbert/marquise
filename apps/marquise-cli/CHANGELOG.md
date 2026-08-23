@@ -5,6 +5,7 @@
 ### v0.1.8
 
 - **Move single-cinema import**: interactive import is now `marquise import cinema`; `marquise source import` has been removed.
+- **Split CLI handlers**: source and import handlers now live in focused command modules.
 
 ### v0.1.7
 

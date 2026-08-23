@@ -7,8 +7,8 @@ from unittest.mock import Mock
 
 import pytest
 
+from marquise_cli.import_commands import import_cinema
 from marquise_cli.routing import create_parser, dispatch
-from marquise_cli.source_commands import import_screenings
 
 
 @pytest.mark.parametrize("group", ["cinema", "source", "import"])
@@ -25,7 +25,7 @@ def test_import_cinema_routes_to_single_cinema_handler() -> None:
     """Interactive cinema import is nested under the import command group."""
     namespace = create_parser().parse_args(["import", "cinema"])
 
-    assert namespace.handler is import_screenings
+    assert namespace.handler is import_cinema
 
 
 def test_root_help_lists_command_groups(capsys: pytest.CaptureFixture[str]) -> None:
