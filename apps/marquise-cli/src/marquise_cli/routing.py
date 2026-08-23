@@ -6,11 +6,9 @@ import argparse
 from collections.abc import Callable, Sequence
 
 from marquise_cli.cinema_commands import create, delete, list_cinemas, update
-from marquise_cli.import_commands import import_all
+from marquise_cli.import_commands import import_all, import_cinema
 from marquise_cli.source_commands import (
     assign,
-    import_screenings,
-    list_available_sources,
     list_registered_sources,
     register_sources,
     unassign,
@@ -86,18 +84,17 @@ def create_parser() -> argparse.ArgumentParser:
     )
     _command(source_commands, "assign", assign, "Assign source to cinema.")
     _command(source_commands, "unassign", unassign, "Unassign source from cinema.")
-    _command(
-        source_commands,
-        "list-available",
-        list_available_sources,
-        "List available sources.",
-    )
     _command(source_commands, "register", register_sources, "Register sources.")
     _command(source_commands, "unregister", unregister_sources, "Unregister sources.")
-    _command(source_commands, "import", import_screenings, "Import cinema screenings.")
 
-    import_group = groups.add_parser("import", help="Bulk import showtimes")
+    import_group = groups.add_parser("import", help="Import showtimes")
     import_commands = import_group.add_subparsers(required=True, title="commands")
+    _command(
+        import_commands,
+        "cinema",
+        import_cinema,
+        "Import showtimes for one cinema.",
+    )
     import_command = _command(
         import_commands,
         "all",
