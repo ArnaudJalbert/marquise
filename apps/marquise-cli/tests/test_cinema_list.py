@@ -16,9 +16,13 @@ from marquise import (
 from marquise_cli.cinema_commands.list_command import run_list_cinemas
 
 
-def _make_list_mock_cinemas() -> list[ListCinemasUseCase.CinemaData]:
-    """Build sample cinema data for list tests."""
-    return [
+@pytest.mark.asyncio
+async def test_cinema_list_success(
+    mock_factory: MagicMock,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Verify cinema list prints cinema names."""
+    cinemas = [
         make_cinema_data(
             cinema_id="cin-001",
             name="Cinema du Parc",
@@ -34,15 +38,6 @@ def _make_list_mock_cinemas() -> list[ListCinemasUseCase.CinemaData]:
             website=None,
         ),
     ]
-
-
-@pytest.mark.asyncio
-async def test_cinema_list_success(
-    mock_factory: MagicMock,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """Verify cinema list prints cinema names."""
-    cinemas = _make_list_mock_cinemas()
     mock_cinema_controller = create_autospec(CinemaController, instance=True)
     mock_cinema_controller.list = AsyncMock(
         return_value=ListCinemasUseCase.OutputData(cinemas=cinemas, total=len(cinemas))
@@ -112,7 +107,22 @@ async def test_cinema_list_verbose(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Verify cinema list --verbose shows detailed table."""
-    cinemas = _make_list_mock_cinemas()
+    cinemas = [
+        make_cinema_data(
+            cinema_id="cin-001",
+            name="Cinema du Parc",
+            address="123 Rue du Parc",
+            city="Montreal",
+            website="https://cinemaduparc.ca",
+        ),
+        make_cinema_data(
+            cinema_id="cin-002",
+            name="Quartier Latin",
+            address="345 Rue Ontario",
+            city="Montreal",
+            website=None,
+        ),
+    ]
     mock_cinema_controller = create_autospec(CinemaController, instance=True)
     mock_cinema_controller.list = AsyncMock(
         return_value=ListCinemasUseCase.OutputData(cinemas=cinemas, total=len(cinemas))

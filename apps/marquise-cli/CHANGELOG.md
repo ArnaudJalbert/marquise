@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-08-24
+
+### v0.1.9
+
+- **Injectable CLI command runners**: cinema, source, and import handlers expose `run_*` helpers with factory lifecycle inside; tests inject `mock_factory` directly instead of patching `MarquiseFactory`.
+- **Split cinema CLI tests**: create, delete, list, and update tests live in focused modules with shared fixtures.
+
 ## 2026-08-23
 
 ### v0.1.8
