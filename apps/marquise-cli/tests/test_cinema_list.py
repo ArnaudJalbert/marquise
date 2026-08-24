@@ -3,16 +3,17 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
+from unittest.mock import AsyncMock, MagicMock, create_autospec
 
 import pytest
 
-from conftest import invoke, make_cinema_data
+from conftest import make_cinema_data
 from marquise import (
     CinemaController,
     ListCinemaSourceAssignmentsQuery,
     ListCinemasUseCase,
 )
+from marquise_cli.cinema_commands.list_command import run_list_cinemas
 
 
 def _make_list_mock_cinemas() -> list[ListCinemasUseCase.CinemaData]:
@@ -35,8 +36,10 @@ def _make_list_mock_cinemas() -> list[ListCinemasUseCase.CinemaData]:
     ]
 
 
-def test_cinema_list_success(
+@pytest.mark.asyncio
+async def test_cinema_list_success(
     mock_factory: MagicMock,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Verify cinema list prints cinema names."""
     cinemas = _make_list_mock_cinemas()
@@ -48,25 +51,23 @@ def test_cinema_list_success(
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
-    with patch(
-        "marquise_cli.cinema_commands.list_command.MarquiseFactory",
-        return_value=mock_factory,
-    ):
-        result = invoke(["cinema", "list"])
+    await run_list_cinemas(mock_factory)
 
-    assert result.exit_code == 0
-    assert "Available cinemas" in result.stdout
-    assert "Cinema" in result.stdout
-    assert "City" in result.stdout
-    assert "Cinema du Parc" in result.stdout
-    assert "Quartier Latin" in result.stdout
-    assert "Montreal" in result.stdout
+    captured = capsys.readouterr()
+    assert "Available cinemas" in captured.out
+    assert "Cinema" in captured.out
+    assert "City" in captured.out
+    assert "Cinema du Parc" in captured.out
+    assert "Quartier Latin" in captured.out
+    assert "Montreal" in captured.out
     mock_factory.initialize.assert_called_once()
     mock_factory.shutdown.assert_called_once()
 
 
-def test_cinema_list_empty(
+@pytest.mark.asyncio
+async def test_cinema_list_empty(
     mock_factory: MagicMock,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Verify cinema list shows 'No cinemas found' when empty."""
     mock_cinema_controller = create_autospec(CinemaController, instance=True)
@@ -77,19 +78,16 @@ def test_cinema_list_empty(
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
-    with patch(
-        "marquise_cli.cinema_commands.list_command.MarquiseFactory",
-        return_value=mock_factory,
-    ):
-        result = invoke(["cinema", "list"])
+    await run_list_cinemas(mock_factory)
 
-    assert result.exit_code == 0
-    assert "No cinemas found." in result.stdout
+    captured = capsys.readouterr()
+    assert "No cinemas found." in captured.out
     mock_factory.initialize.assert_called_once()
     mock_factory.shutdown.assert_called_once()
 
 
-def test_cinema_list_failure(
+@pytest.mark.asyncio
+async def test_cinema_list_failure(
     mock_factory: MagicMock,
 ) -> None:
     """Unexpected list failures propagate after factory shutdown."""
@@ -101,21 +99,17 @@ def test_cinema_list_failure(
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
-    with (
-        patch(
-            "marquise_cli.cinema_commands.list_command.MarquiseFactory",
-            return_value=mock_factory,
-        ),
-        pytest.raises(ValueError, match="Something went wrong"),
-    ):
-        invoke(["cinema", "list"])
+    with pytest.raises(ValueError, match="Something went wrong"):
+        await run_list_cinemas(mock_factory)
 
     mock_factory.initialize.assert_called_once()
     mock_factory.shutdown.assert_called_once()
 
 
-def test_cinema_list_verbose(
+@pytest.mark.asyncio
+async def test_cinema_list_verbose(
     mock_factory: MagicMock,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Verify cinema list --verbose shows detailed table."""
     cinemas = _make_list_mock_cinemas()
@@ -142,26 +136,22 @@ def test_cinema_list_verbose(
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
-    with patch(
-        "marquise_cli.cinema_commands.list_command.MarquiseFactory",
-        return_value=mock_factory,
-    ):
-        result = invoke(["cinema", "list", "--verbose"])
+    await run_list_cinemas(mock_factory, verbose=True)
 
-    assert result.exit_code == 0
-    assert "Available cinemas" in result.stdout
-    assert "Address" in result.stdout
-    assert "Website" in result.stdout
-    assert "Source" in result.stdout
-    assert "Cinéma" in result.stdout
-    assert "ID" in result.stdout
-    assert "cin-001" in result.stdout
-    assert "123" in result.stdout
-    assert "Parc" in result.stdout
-    assert "cin-002" in result.stdout
-    assert "345" in result.stdout
-    assert "Ontario" in result.stdout
-    assert "cinem" in result.stdout
+    captured = capsys.readouterr()
+    assert "Available cinemas" in captured.out
+    assert "Address" in captured.out
+    assert "Website" in captured.out
+    assert "Source" in captured.out
+    assert "Cinéma" in captured.out
+    assert "ID" in captured.out
+    assert "cin-001" in captured.out
+    assert "123" in captured.out
+    assert "Parc" in captured.out
+    assert "cin-002" in captured.out
+    assert "345" in captured.out
+    assert "Ontario" in captured.out
+    assert "cinem" in captured.out
     mock_assignment_query.execute.assert_awaited_once_with(
         ListCinemaSourceAssignmentsQuery.InputData()
     )
@@ -169,8 +159,10 @@ def test_cinema_list_verbose(
     mock_factory.shutdown.assert_called_once()
 
 
-def test_cinema_list_renders_markup_like_cinema_name(
+@pytest.mark.asyncio
+async def test_cinema_list_renders_markup_like_cinema_name(
     mock_factory: MagicMock,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Verify cinema names containing Rich markup render literally."""
     mock_cinema_controller = create_autospec(CinemaController, instance=True)
@@ -183,14 +175,10 @@ def test_cinema_list_renders_markup_like_cinema_name(
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
-    with patch(
-        "marquise_cli.cinema_commands.list_command.MarquiseFactory",
-        return_value=mock_factory,
-    ):
-        result = invoke(["cinema", "list"])
+    await run_list_cinemas(mock_factory)
 
-    assert result.exit_code == 0
-    assert "[/bold]" in result.stdout
+    captured = capsys.readouterr()
+    assert "[/bold]" in captured.out
 
 
 @pytest.mark.parametrize(
@@ -211,7 +199,8 @@ def test_cinema_list_renders_safe_website_text(website: str, expected: str) -> N
     assert ("link " in text.style) is (expected == website)
 
 
-def test_cinema_list_with_name_filter(
+@pytest.mark.asyncio
+async def test_cinema_list_with_name_filter(
     mock_factory: MagicMock,
 ) -> None:
     """Verify cinema list --name passes filter to controller."""
@@ -223,13 +212,8 @@ def test_cinema_list_with_name_filter(
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
-    with patch(
-        "marquise_cli.cinema_commands.list_command.MarquiseFactory",
-        return_value=mock_factory,
-    ):
-        result = invoke(["cinema", "list", "--name", "Parc"])
+    await run_list_cinemas(mock_factory, name="Parc")
 
-    assert result.exit_code == 0
     mock_cinema_controller.list.assert_called_once_with(name="Parc")
     mock_factory.initialize.assert_called_once()
     mock_factory.shutdown.assert_called_once()

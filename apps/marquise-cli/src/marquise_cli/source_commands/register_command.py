@@ -79,7 +79,7 @@ async def _register_source(factory: MarquiseFactory, source: dict) -> bool:
     return True
 
 
-async def _register_sources(factory: MarquiseFactory) -> None:
+async def run_register_sources(factory: MarquiseFactory) -> None:
     """Register every source missing from persistent source definitions."""
     registry_sources, registered_sources = await _load_sources(factory)
     registered_names = {source["name"] for source in registered_sources}
@@ -108,7 +108,7 @@ def register_sources() -> None:
     async def _run() -> None:
         await run_spinner(factory.initialize(), description="Connecting...")
         try:
-            await _register_sources(factory)
+            await run_register_sources(factory)
         finally:
             await factory.shutdown()
 

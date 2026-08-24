@@ -6,8 +6,11 @@ from dataclasses import dataclass
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 
-from conftest import invoke
+import pytest
+
 from marquise import SourceController
+from marquise_cli.source_commands.register_command import run_register_sources
+from marquise_cli.source_commands.unregister_command import run_unregister_sources
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,8 +24,10 @@ def _make_registry_source_entry(name: str = "cinemacinema") -> _SourceEntry:
     return _SourceEntry(name)
 
 
-def test_source_register_new_source(
+@pytest.mark.asyncio
+async def test_source_register_new_source(
     mock_factory: MagicMock,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Verify source register creates a new source after prompting."""
     mock_source_controller = create_autospec(SourceController, instance=True)
@@ -40,31 +45,20 @@ def test_source_register_new_source(
         )
     )
     mock_factory.source = mock_source_controller
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
 
-    with (
-        patch(
-            "marquise_cli.source_commands.register_command.MarquiseFactory",
-            return_value=mock_factory,
-        ),
-        patch("marquise_cli.source_commands.register_command.questionary") as mock_q,
-    ):
+    with patch("marquise_cli.source_commands.register_command.questionary") as mock_q:
         mock_q.text.return_value.ask_async = AsyncMock(
             side_effect=[
                 "Cinéma Cinéma",
                 "Showtimes for Beaubien, du Parc, and du Musée",
             ]
         )
+        await run_register_sources(mock_factory)
 
-        result = invoke(["source", "register"])
-
-    assert result.exit_code == 0
-    assert "cinemacinema" in result.stdout
-    assert "new" in result.stdout
-    assert "Created: cinemacinema" in result.stdout
-    mock_factory.initialize.assert_called_once()
-    mock_factory.shutdown.assert_called_once()
+    captured = capsys.readouterr()
+    assert "cinemacinema" in captured.out
+    assert "new" in captured.out
+    assert "Created: cinemacinema" in captured.out
     mock_source_controller.create_source.assert_awaited_once_with(
         name="cinemacinema",
         display_name="Cinéma Cinéma",
@@ -72,8 +66,10 @@ def test_source_register_new_source(
     )
 
 
-def test_source_register_all_existing(
+@pytest.mark.asyncio
+async def test_source_register_all_existing(
     mock_factory: MagicMock,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Verify source register shows all done when nothing new to add."""
     mock_source_controller = create_autospec(SourceController, instance=True)
@@ -84,25 +80,19 @@ def test_source_register_all_existing(
         return_value=SimpleNamespace(sources=[_SourceEntry("cinemacinema")])
     )
     mock_factory.source = mock_source_controller
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
 
-    with patch(
-        "marquise_cli.source_commands.register_command.MarquiseFactory",
-        return_value=mock_factory,
-    ):
-        result = invoke(["source", "register"])
+    await run_register_sources(mock_factory)
 
-    assert result.exit_code == 0
-    assert "already registered" in result.stdout
-    assert "All registry sources are already" in result.stdout
+    captured = capsys.readouterr()
+    assert "already registered" in captured.out
+    assert "All registry sources are already" in captured.out
     mock_source_controller.create_source.assert_not_awaited()
-    mock_factory.initialize.assert_called_once()
-    mock_factory.shutdown.assert_called_once()
 
 
-def test_source_register_failure(
+@pytest.mark.asyncio
+async def test_source_register_failure(
     mock_factory: MagicMock,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Verify source register shows error when create_source fails."""
     mock_source_controller = create_autospec(SourceController, instance=True)
@@ -116,29 +106,22 @@ def test_source_register_failure(
         side_effect=ValueError("SourceAlreadyExistsError")
     )
     mock_factory.source = mock_source_controller
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
 
-    with (
-        patch(
-            "marquise_cli.source_commands.register_command.MarquiseFactory",
-            return_value=mock_factory,
-        ),
-        patch("marquise_cli.source_commands.register_command.questionary") as mock_q,
-    ):
+    with patch("marquise_cli.source_commands.register_command.questionary") as mock_q:
         mock_q.text.return_value.ask_async = AsyncMock(
             side_effect=["Cinéma Cinéma", "Showtimes description"]
         )
+        await run_register_sources(mock_factory)
 
-        result = invoke(["source", "register"])
-
-    assert result.exit_code == 0
-    assert "Failed: SourceAlreadyExistsError" in result.stderr
-    assert "  Failed: SourceAlreadyExistsError" in result.stderr
+    captured = capsys.readouterr()
+    assert "Failed: SourceAlreadyExistsError" in captured.err
+    assert "  Failed: SourceAlreadyExistsError" in captured.err
 
 
-def test_source_unregister_success(
+@pytest.mark.asyncio
+async def test_source_unregister_success(
     mock_factory: MagicMock,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Verify source unregister removes selected sources after confirmation."""
     mock_source_controller = create_autospec(SourceController, instance=True)
@@ -159,35 +142,26 @@ def test_source_unregister_success(
         return_value=SimpleNamespace(source_name="cinemacinema")
     )
     mock_factory.source = mock_source_controller
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
 
-    with (
-        patch(
-            "marquise_cli.source_commands.unregister_command.MarquiseFactory",
-            return_value=mock_factory,
-        ),
-        patch("marquise_cli.source_commands.unregister_command.questionary") as mock_q,
-    ):
+    with patch("marquise_cli.source_commands.unregister_command.questionary") as mock_q:
         mock_q.checkbox.return_value.ask_async = AsyncMock(
             return_value=["cinemacinema"]
         )
         mock_q.confirm.return_value.ask_async = AsyncMock(return_value=True)
+        await run_unregister_sources(mock_factory)
 
-        result = invoke(["source", "unregister"])
-
-    assert result.exit_code == 0
-    assert "in registry" in result.stdout
-    assert "Removed: cinemacinema" in result.stdout
-    mock_factory.initialize.assert_called_once()
-    mock_factory.shutdown.assert_called_once()
+    captured = capsys.readouterr()
+    assert "in registry" in captured.out
+    assert "Removed: cinemacinema" in captured.out
     mock_source_controller.delete_source.assert_awaited_once_with(
         source_name="cinemacinema",
     )
 
 
-def test_source_unregister_no_selection(
+@pytest.mark.asyncio
+async def test_source_unregister_no_selection(
     mock_factory: MagicMock,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Verify source unregister bails when no sources are selected."""
     mock_source_controller = create_autospec(SourceController, instance=True)
@@ -205,27 +179,20 @@ def test_source_unregister_no_selection(
         )
     )
     mock_factory.source = mock_source_controller
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
 
-    with (
-        patch(
-            "marquise_cli.source_commands.unregister_command.MarquiseFactory",
-            return_value=mock_factory,
-        ),
-        patch("marquise_cli.source_commands.unregister_command.questionary") as mock_q,
-    ):
+    with patch("marquise_cli.source_commands.unregister_command.questionary") as mock_q:
         mock_q.checkbox.return_value.ask_async = AsyncMock(return_value=[])
+        await run_unregister_sources(mock_factory)
 
-        result = invoke(["source", "unregister"])
-
-    assert result.exit_code == 0
-    assert "No sources selected." in result.stdout
+    captured = capsys.readouterr()
+    assert "No sources selected." in captured.out
     mock_source_controller.delete_source.assert_not_awaited()
 
 
-def test_source_unregister_empty_db(
+@pytest.mark.asyncio
+async def test_source_unregister_empty_db(
     mock_factory: MagicMock,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Verify source unregister bails when database has no sources."""
     mock_source_controller = create_autospec(SourceController, instance=True)
@@ -233,22 +200,18 @@ def test_source_unregister_empty_db(
         return_value=SimpleNamespace(sources=[])
     )
     mock_factory.source = mock_source_controller
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
 
-    with patch(
-        "marquise_cli.source_commands.unregister_command.MarquiseFactory",
-        return_value=mock_factory,
-    ):
-        result = invoke(["source", "unregister"])
+    await run_unregister_sources(mock_factory)
 
-    assert result.exit_code == 0
-    assert "No sources registered in the database." in result.stdout
+    captured = capsys.readouterr()
+    assert "No sources registered in the database." in captured.out
     mock_source_controller.delete_source.assert_not_awaited()
 
 
-def test_source_unregister_cancelled_at_confirm(
+@pytest.mark.asyncio
+async def test_source_unregister_cancelled_at_confirm(
     mock_factory: MagicMock,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Verify source unregister bails when user declines confirmation."""
     mock_source_controller = create_autospec(SourceController, instance=True)
@@ -266,30 +229,23 @@ def test_source_unregister_cancelled_at_confirm(
         )
     )
     mock_factory.source = mock_source_controller
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
 
-    with (
-        patch(
-            "marquise_cli.source_commands.unregister_command.MarquiseFactory",
-            return_value=mock_factory,
-        ),
-        patch("marquise_cli.source_commands.unregister_command.questionary") as mock_q,
-    ):
+    with patch("marquise_cli.source_commands.unregister_command.questionary") as mock_q:
         mock_q.checkbox.return_value.ask_async = AsyncMock(
             return_value=["cinemacinema"]
         )
         mock_q.confirm.return_value.ask_async = AsyncMock(return_value=False)
+        await run_unregister_sources(mock_factory)
 
-        result = invoke(["source", "unregister"])
-
-    assert result.exit_code == 0
-    assert "Cancelled." in result.stdout
+    captured = capsys.readouterr()
+    assert "Cancelled." in captured.out
     mock_source_controller.delete_source.assert_not_awaited()
 
 
-def test_source_unregister_partial_failure(
+@pytest.mark.asyncio
+async def test_source_unregister_partial_failure(
     mock_factory: MagicMock,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Verify source unregister shows per-source errors on failure."""
     mock_source_controller = create_autospec(SourceController, instance=True)
@@ -310,22 +266,13 @@ def test_source_unregister_partial_failure(
         side_effect=ValueError("Something went wrong")
     )
     mock_factory.source = mock_source_controller
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
 
-    with (
-        patch(
-            "marquise_cli.source_commands.unregister_command.MarquiseFactory",
-            return_value=mock_factory,
-        ),
-        patch("marquise_cli.source_commands.unregister_command.questionary") as mock_q,
-    ):
+    with patch("marquise_cli.source_commands.unregister_command.questionary") as mock_q:
         mock_q.checkbox.return_value.ask_async = AsyncMock(
             return_value=["cinemacinema"]
         )
         mock_q.confirm.return_value.ask_async = AsyncMock(return_value=True)
+        await run_unregister_sources(mock_factory)
 
-        result = invoke(["source", "unregister"])
-
-    assert result.exit_code == 0
-    assert "Failed: Something went wrong" in result.stderr
+    captured = capsys.readouterr()
+    assert "Failed: Something went wrong" in captured.err
