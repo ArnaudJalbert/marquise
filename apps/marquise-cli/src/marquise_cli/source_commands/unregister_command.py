@@ -64,7 +64,7 @@ async def _delete_sources(factory: MarquiseFactory, source_names: list[str]) -> 
             print(f"  Failed: {error}", file=sys.stderr)
 
 
-async def _unregister_sources(factory: MarquiseFactory) -> None:
+async def run_unregister_sources(factory: MarquiseFactory) -> None:
     """Select and remove persistent source definitions."""
     registry_response = await run_spinner(
         factory.source.list_registry_sources(),
@@ -90,7 +90,7 @@ def unregister_sources() -> None:
     async def _run() -> None:
         await run_spinner(factory.initialize(), description="Connecting...")
         try:
-            await _unregister_sources(factory)
+            await run_unregister_sources(factory)
         finally:
             await factory.shutdown()
 

@@ -7,13 +7,13 @@ from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 
 import pytest
 
-from conftest import invoke
 from marquise import (
     CinemaAlreadyExistsError,
     CinemaIdAlreadyExistsError,
     CreateCinemaUseCase,
     SourceController,
 )
+from marquise_cli.cinema_commands.create_command import run_create
 
 
 def _mock_create_use_case(
@@ -38,30 +38,30 @@ def _created_cinema() -> CreateCinemaUseCase.OutputData:
     )
 
 
-def test_cinema_create_success(mock_factory: MagicMock) -> None:
+@pytest.mark.asyncio
+async def test_cinema_create_success(
+    mock_factory: MagicMock, capsys: pytest.CaptureFixture[str]
+) -> None:
     """Verify cinema create uses the direct use case and prints details."""
     use_case = _mock_create_use_case(response=_created_cinema())
     mock_factory.create_cinema_use_case = use_case
 
-    with (
-        patch(
-            "marquise_cli.cinema_commands.create_command.MarquiseFactory",
-            return_value=mock_factory,
-        ),
-        patch(
-            "marquise_cli.cinema_commands.create_command.questionary.confirm"
-        ) as confirm,
-    ):
+    with patch(
+        "marquise_cli.cinema_commands.create_command.questionary.confirm"
+    ) as confirm:
         confirm.return_value.ask_async = AsyncMock(return_value=False)
-        result = invoke(
-            ["cinema", "create"],
-            input="Test Cinema\n123 Test St\nMontreal\nhttps://example.com\n",
+        await run_create(
+            mock_factory,
+            name="Test Cinema",
+            address="123 Test St",
+            city="Montreal",
+            website="https://example.com",
         )
 
-    assert result.exit_code == 0
-    assert "Cinema created:" in result.stdout
-    assert "cin-001" in result.stdout
-    assert "Test Cinema" in result.stdout
+    captured = capsys.readouterr()
+    assert "Cinema created:" in captured.out
+    assert "cin-001" in captured.out
+    assert "Test Cinema" in captured.out
     use_case.execute.assert_awaited_once()
     request = use_case.execute.call_args.args[0]
     assert isinstance(request, CreateCinemaUseCase.InputData)
@@ -73,7 +73,10 @@ def test_cinema_create_success(mock_factory: MagicMock) -> None:
     mock_factory.__aexit__.assert_awaited_once()
 
 
-def test_cinema_create_assigns_source_after_success(mock_factory: MagicMock) -> None:
+@pytest.mark.asyncio
+async def test_cinema_create_assigns_source_after_success(
+    mock_factory: MagicMock, capsys: pytest.CaptureFixture[str]
+) -> None:
     """Verify successful creation can assign a selected source."""
     use_case = _mock_create_use_case(response=_created_cinema())
     source = create_autospec(SourceController, instance=True)
@@ -85,10 +88,6 @@ def test_cinema_create_assigns_source_after_success(mock_factory: MagicMock) -> 
 
     with (
         patch(
-            "marquise_cli.cinema_commands.create_command.MarquiseFactory",
-            return_value=mock_factory,
-        ),
-        patch(
             "marquise_cli.cinema_commands.create_command.questionary.confirm"
         ) as confirm,
         patch(
@@ -97,15 +96,18 @@ def test_cinema_create_assigns_source_after_success(mock_factory: MagicMock) -> 
         ),
     ):
         confirm.return_value.ask_async = AsyncMock(return_value=True)
-        result = invoke(
-            ["cinema", "create"],
-            input="Test Cinema\n\n\n\n",
+        await run_create(
+            mock_factory,
+            name="Test Cinema",
+            address=None,
+            city=None,
+            website=None,
         )
 
-    assert result.exit_code == 0
+    captured = capsys.readouterr()
     mock_factory.__aenter__.assert_awaited_once()
     mock_factory.__aexit__.assert_awaited_once()
-    assert "Source assigned:" in result.stdout
+    assert "Source assigned:" in captured.out
     request = use_case.execute.call_args.args[0]
     assert request.address is None
     assert request.city is None
@@ -115,7 +117,10 @@ def test_cinema_create_assigns_source_after_success(mock_factory: MagicMock) -> 
     )
 
 
-def test_cinema_create_declines_source_assignment(mock_factory: MagicMock) -> None:
+@pytest.mark.asyncio
+async def test_cinema_create_declines_source_assignment(
+    mock_factory: MagicMock,
+) -> None:
     """Verify declining source assignment leaves cinema created."""
     use_case = _mock_create_use_case(response=_created_cinema())
     source = create_autospec(SourceController, instance=True)
@@ -125,10 +130,6 @@ def test_cinema_create_declines_source_assignment(mock_factory: MagicMock) -> No
 
     with (
         patch(
-            "marquise_cli.cinema_commands.create_command.MarquiseFactory",
-            return_value=mock_factory,
-        ),
-        patch(
             "marquise_cli.cinema_commands.create_command.questionary.confirm"
         ) as confirm,
         patch(
@@ -137,16 +138,24 @@ def test_cinema_create_declines_source_assignment(mock_factory: MagicMock) -> No
         ) as select_source,
     ):
         confirm.return_value.ask_async = AsyncMock(return_value=False)
-        result = invoke(["cinema", "create"], input="Test Cinema\n\n\n\n")
+        await run_create(
+            mock_factory,
+            name="Test Cinema",
+            address=None,
+            city=None,
+            website=None,
+        )
 
-    assert result.exit_code == 0
     mock_factory.__aenter__.assert_awaited_once()
     mock_factory.__aexit__.assert_awaited_once()
     select_source.assert_not_awaited()
     source.assign_source.assert_not_awaited()
 
 
-def test_cinema_create_assignment_failure(mock_factory: MagicMock) -> None:
+@pytest.mark.asyncio
+async def test_cinema_create_assignment_failure(
+    mock_factory: MagicMock, capsys: pytest.CaptureFixture[str]
+) -> None:
     """Verify source assignment errors are reported after creation."""
     use_case = _mock_create_use_case(response=_created_cinema())
     source = create_autospec(SourceController, instance=True)
@@ -156,24 +165,27 @@ def test_cinema_create_assignment_failure(mock_factory: MagicMock) -> None:
 
     with (
         patch(
-            "marquise_cli.cinema_commands.create_command.MarquiseFactory",
-            return_value=mock_factory,
-        ),
-        patch(
             "marquise_cli.cinema_commands.create_command.questionary.confirm"
         ) as confirm,
         patch(
             "marquise_cli.cinema_commands.create_command.select_source",
             new=AsyncMock(return_value="cineplex"),
         ),
+        pytest.raises(SystemExit),
     ):
         confirm.return_value.ask_async = AsyncMock(return_value=True)
-        result = invoke(["cinema", "create"], input="Test Cinema\n\n\n\n")
+        await run_create(
+            mock_factory,
+            name="Test Cinema",
+            address=None,
+            city=None,
+            website=None,
+        )
 
-    assert result.exit_code == 1
+    captured = capsys.readouterr()
     assert (
         "There was an error when assigning the source to the cinema: Source unavailable"
-    ) in result.stderr
+    ) in captured.err
     mock_factory.__aexit__.assert_awaited_once()
 
 
@@ -185,39 +197,47 @@ def test_cinema_create_assignment_failure(mock_factory: MagicMock) -> None:
         CinemaIdAlreadyExistsError("cinema ID already exists"),
     ],
 )
-def test_cinema_create_failure(mock_factory: MagicMock, error: Exception) -> None:
+@pytest.mark.asyncio
+async def test_cinema_create_failure(
+    mock_factory: MagicMock,
+    error: Exception,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """Every create use-case error is shown and exits unsuccessfully."""
     use_case = _mock_create_use_case(error=error)
     mock_factory.create_cinema_use_case = use_case
 
-    with patch(
-        "marquise_cli.cinema_commands.create_command.MarquiseFactory",
-        return_value=mock_factory,
-    ):
-        result = invoke(
-            ["cinema", "create"],
-            input="Test Cinema\n123 Test St\nMontreal\nhttps://example.com\n",
+    with pytest.raises(SystemExit):
+        await run_create(
+            mock_factory,
+            name="Test Cinema",
+            address="123 Test St",
+            city="Montreal",
+            website="https://example.com",
         )
 
-    assert result.exit_code == 1
-    assert f"There was an error when creating the cinema: {error}" in result.stderr
-    assert "Created" not in result.stdout
+    captured = capsys.readouterr()
+    assert f"There was an error when creating the cinema: {error}" in captured.err
+    assert "Created" not in captured.out
     mock_factory.__aexit__.assert_awaited_once()
 
 
-def test_cinema_create_unexpected_failure_propagates(mock_factory: MagicMock) -> None:
+@pytest.mark.asyncio
+async def test_cinema_create_unexpected_failure_propagates(
+    mock_factory: MagicMock,
+) -> None:
     """Unexpected create failures propagate after factory cleanup."""
     mock_factory.create_cinema_use_case = _mock_create_use_case(
         error=RuntimeError("database unavailable")
     )
 
-    with (
-        patch(
-            "marquise_cli.cinema_commands.create_command.MarquiseFactory",
-            return_value=mock_factory,
-        ),
-        pytest.raises(RuntimeError, match="database unavailable"),
-    ):
-        invoke(["cinema", "create"], input="Test Cinema\n\n\n\n")
+    with pytest.raises(RuntimeError, match="database unavailable"):
+        await run_create(
+            mock_factory,
+            name="Test Cinema",
+            address=None,
+            city=None,
+            website=None,
+        )
 
     mock_factory.__aexit__.assert_awaited_once()

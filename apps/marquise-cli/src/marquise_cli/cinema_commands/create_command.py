@@ -87,6 +87,26 @@ async def _assign_source(factory: MarquiseFactory, cinema_id: str) -> None:
     print(f"  Source:      {assignment.source_name}")
 
 
+async def run_create(
+    factory: MarquiseFactory,
+    *,
+    name: str,
+    address: str | None,
+    city: str | None,
+    website: str | None,
+) -> None:
+    """Create a cinema and optionally assign a source."""
+    async with factory:
+        cinema = await _create_cinema(
+            factory,
+            name=name,
+            address=address,
+            city=city,
+            website=website,
+        )
+        await _assign_source(factory, cinema["id"])
+
+
 def create(
     name: str | None = None,
     address: str | None = None,
@@ -109,17 +129,12 @@ def create(
     city_val = city if city and city.strip() else None
     website_val = website if website and website.strip() else None
 
-    factory = MarquiseFactory()
-
-    async def _run() -> None:
-        async with factory:
-            cinema = await _create_cinema(
-                factory,
-                name=name,
-                address=address_val,
-                city=city_val,
-                website=website_val,
-            )
-            await _assign_source(factory, cinema["id"])
-
-    asyncio.run(_run())
+    asyncio.run(
+        run_create(
+            MarquiseFactory(),
+            name=name,
+            address=address_val,
+            city=city_val,
+            website=website_val,
+        )
+    )
