@@ -2,35 +2,11 @@
 
 from __future__ import annotations
 
-from contextlib import redirect_stderr, redirect_stdout
-from io import StringIO
-from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from marquise import ListCinemasUseCase
-from marquise_cli.app import main
-
-
-def invoke(args: list[str], input: str = "") -> SimpleNamespace:
-    """Run CLI and capture process result."""
-    stdout = StringIO()
-    stderr = StringIO()
-    with (
-        patch("builtins.input", side_effect=input.splitlines()),
-        redirect_stdout(stdout),
-        redirect_stderr(stderr),
-    ):
-        try:
-            exit_code = main(args)
-        except SystemExit as error:
-            exit_code = error.code or 0
-    return SimpleNamespace(
-        exit_code=exit_code,
-        stdout=stdout.getvalue(),
-        stderr=stderr.getvalue(),
-    )
 
 
 @pytest.fixture(autouse=True)
