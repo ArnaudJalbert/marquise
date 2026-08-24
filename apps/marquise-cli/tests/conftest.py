@@ -45,6 +45,8 @@ def mock_factory() -> MagicMock:
     factory = MagicMock()
     factory.__aenter__ = AsyncMock(return_value=factory)
     factory.__aexit__ = AsyncMock(return_value=False)
+    factory.initialize = AsyncMock()
+    factory.shutdown = AsyncMock()
     return factory
 
 

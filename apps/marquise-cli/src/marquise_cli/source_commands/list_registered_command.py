@@ -24,24 +24,24 @@ def _build_table(sources: list) -> Table:
     return table
 
 
+async def run_list_registered_sources(factory: MarquiseFactory) -> None:
+    """List registered showtime sources in database."""
+    await run_spinner(factory.initialize(), description="Connecting...")
+    try:
+        response = await run_spinner(
+            factory.source.list_sources(),
+            description="Fetching registered sources...",
+        )
+    finally:
+        await factory.shutdown()
+
+    if not response.sources:
+        print("No sources registered.")
+        return
+
+    _console.print(_build_table(response.sources))
+
+
 def list_registered_sources() -> None:
     """List registered showtime sources in database."""
-    factory = MarquiseFactory()
-
-    async def _run() -> None:
-        await run_spinner(factory.initialize(), description="Connecting...")
-        try:
-            response = await run_spinner(
-                factory.source.list_sources(),
-                description="Fetching registered sources...",
-            )
-        finally:
-            await factory.shutdown()
-
-        if not response.sources:
-            print("No sources registered.")
-            return
-
-        _console.print(_build_table(response.sources))
-
-    asyncio.run(_run())
+    asyncio.run(run_list_registered_sources(MarquiseFactory()))

@@ -16,6 +16,8 @@ def _make_factory(
 ) -> MagicMock:
     """Build a fake MarquiseFactory with mocked cinema/source controllers."""
     factory = MagicMock()
+    factory.initialize = AsyncMock()
+    factory.shutdown = AsyncMock()
     factory.cinema.list = AsyncMock(return_value=SimpleNamespace(cinemas=cinemas))
     factory.source.import_screenings = AsyncMock(side_effect=import_side_effect)
     return factory

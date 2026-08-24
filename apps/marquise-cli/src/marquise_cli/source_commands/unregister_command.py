@@ -66,32 +66,27 @@ async def _delete_sources(factory: MarquiseFactory, source_names: list[str]) -> 
 
 async def run_unregister_sources(factory: MarquiseFactory) -> None:
     """Select and remove persistent source definitions."""
-    registry_response = await run_spinner(
-        factory.source.list_registry_sources(),
-        description="Fetching available sources...",
-    )
-    registered_response = await run_spinner(
-        factory.source.list_sources(), description="Fetching registered sources..."
-    )
-    if not registered_response.sources:
-        print("No sources registered in the database.")
-        return
-    registry_names = {source.name for source in registry_response.sources}
-    _console.print(_build_table(registered_response.sources, registry_names))
-    selected = await _select_sources(registered_response.sources)
-    if selected is not None:
-        await _delete_sources(factory, selected)
+    await run_spinner(factory.initialize(), description="Connecting...")
+    try:
+        registry_response = await run_spinner(
+            factory.source.list_registry_sources(),
+            description="Fetching available sources...",
+        )
+        registered_response = await run_spinner(
+            factory.source.list_sources(), description="Fetching registered sources..."
+        )
+        if not registered_response.sources:
+            print("No sources registered in the database.")
+            return
+        registry_names = {source.name for source in registry_response.sources}
+        _console.print(_build_table(registered_response.sources, registry_names))
+        selected = await _select_sources(registered_response.sources)
+        if selected is not None:
+            await _delete_sources(factory, selected)
+    finally:
+        await factory.shutdown()
 
 
 def unregister_sources() -> None:
     """Remove selected showtime sources from database."""
-    factory = MarquiseFactory()
-
-    async def _run() -> None:
-        await run_spinner(factory.initialize(), description="Connecting...")
-        try:
-            await run_unregister_sources(factory)
-        finally:
-            await factory.shutdown()
-
-    asyncio.run(_run())
+    asyncio.run(run_unregister_sources(MarquiseFactory()))
