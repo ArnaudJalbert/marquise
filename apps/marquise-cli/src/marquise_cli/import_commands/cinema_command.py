@@ -103,28 +103,28 @@ def _summary(result: dict) -> Text:
     return summary
 
 
+async def run_import_cinema(factory: MarquiseFactory) -> None:
+    """Fetch showtimes from one cinema source and save them to database."""
+    await run_spinner(factory.initialize(), description="Connecting...")
+    try:
+        cinema = await select_cinema(
+            factory, "Select a cinema to import showtimes for:"
+        )
+        if cinema is None:
+            return
+        assignment = await factory.source.get_cinema_source(cinema_id=cinema.id)
+        print(f"  Cinema:        {cinema.name}")
+        print(f"  Assigned source: {assignment.source_display_name}")
+        date_range = await _select_date_range()
+        if date_range is None:
+            return
+        result = await _import_screenings(factory, cinema.id, *date_range)
+        _console.print(_screenings_table(result))
+        _console.print(_summary(result))
+    finally:
+        await factory.shutdown()
+
+
 def import_cinema() -> None:
     """Fetch showtimes from one cinema source and save them to database."""
-    factory = MarquiseFactory()
-
-    async def _run() -> None:
-        await run_spinner(factory.initialize(), description="Connecting...")
-        try:
-            cinema = await select_cinema(
-                factory, "Select a cinema to import showtimes for:"
-            )
-            if cinema is None:
-                return
-            assignment = await factory.source.get_cinema_source(cinema_id=cinema.id)
-            print(f"  Cinema:        {cinema.name}")
-            print(f"  Assigned source: {assignment.source_display_name}")
-            date_range = await _select_date_range()
-            if date_range is None:
-                return
-            result = await _import_screenings(factory, cinema.id, *date_range)
-            _console.print(_screenings_table(result))
-            _console.print(_summary(result))
-        finally:
-            await factory.shutdown()
-
-    asyncio.run(_run())
+    asyncio.run(run_import_cinema(MarquiseFactory()))
