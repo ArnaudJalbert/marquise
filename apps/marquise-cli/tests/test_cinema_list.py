@@ -15,21 +15,22 @@ from marquise import (
 )
 
 
-def _make_list_mock_cinemas() -> list:
+def _make_list_mock_cinemas() -> list[ListCinemasUseCase.CinemaData]:
     """Build sample cinema data for list tests."""
     return [
-        ListCinemasUseCase.CinemaData(
-            id="cin-001",
+        make_cinema_data(
+            cinema_id="cin-001",
             name="Cinema du Parc",
             address="123 Rue du Parc",
             city="Montreal",
             website="https://cinemaduparc.ca",
         ),
-        ListCinemasUseCase.CinemaData(
-            id="cin-002",
+        make_cinema_data(
+            cinema_id="cin-002",
             name="Quartier Latin",
             address="345 Rue Ontario",
             city="Montreal",
+            website=None,
         ),
     ]
 
