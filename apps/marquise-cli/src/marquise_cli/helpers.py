@@ -7,14 +7,15 @@ from collections.abc import Awaitable
 import questionary
 from rich.console import Console
 
-from marquise import ListCinemasUseCase, MarquiseFactory
+from marquise import ListCinemasUseCase, ListSourcesUseCase, MarquiseFactory
 
 _console = Console()
 
 
 async def select_source(factory: MarquiseFactory, prompt: str) -> str | None:
     """Let the user pick a source interactively from a list."""
-    response = await factory.source.list_sources()
+    use_case = factory.list_sources_use_case
+    response = await use_case.execute(ListSourcesUseCase.InputData())
     if not response.sources:
         print("No sources available.")
         return None

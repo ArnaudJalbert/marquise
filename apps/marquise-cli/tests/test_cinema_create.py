@@ -8,10 +8,10 @@ from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 import pytest
 
 from marquise import (
+    AssignSourceUseCase,
     CinemaAlreadyExistsError,
     CinemaIdAlreadyExistsError,
     CreateCinemaUseCase,
-    SourceController,
 )
 from marquise_cli.cinema_commands.create_command import run_create
 
@@ -79,12 +79,12 @@ async def test_cinema_create_assigns_source_after_success(
 ) -> None:
     """Verify successful creation can assign a selected source."""
     use_case = _mock_create_use_case(response=_created_cinema())
-    source = create_autospec(SourceController, instance=True)
-    source.assign_source = AsyncMock(
+    assign_use_case = create_autospec(AssignSourceUseCase, instance=True)
+    assign_use_case.execute = AsyncMock(
         return_value=SimpleNamespace(cinema_id="cin-001", source_name="cineplex")
     )
     mock_factory.create_cinema_use_case = use_case
-    mock_factory.source = source
+    mock_factory.assign_source_use_case = assign_use_case
 
     with (
         patch(
@@ -112,8 +112,8 @@ async def test_cinema_create_assigns_source_after_success(
     assert request.address is None
     assert request.city is None
     assert request.website is None
-    source.assign_source.assert_awaited_once_with(
-        cinema_id="cin-001", source_name="cineplex"
+    assign_use_case.execute.assert_awaited_once_with(
+        AssignSourceUseCase.InputData(cinema_id="cin-001", source_name="cineplex")
     )
 
 
@@ -123,10 +123,9 @@ async def test_cinema_create_declines_source_assignment(
 ) -> None:
     """Verify declining source assignment leaves cinema created."""
     use_case = _mock_create_use_case(response=_created_cinema())
-    source = create_autospec(SourceController, instance=True)
-    source.assign_source = AsyncMock()
+    assign_use_case = create_autospec(AssignSourceUseCase, instance=True)
     mock_factory.create_cinema_use_case = use_case
-    mock_factory.source = source
+    mock_factory.assign_source_use_case = assign_use_case
 
     with (
         patch(
@@ -149,7 +148,7 @@ async def test_cinema_create_declines_source_assignment(
     mock_factory.__aenter__.assert_awaited_once()
     mock_factory.__aexit__.assert_awaited_once()
     select_source.assert_not_awaited()
-    source.assign_source.assert_not_awaited()
+    assign_use_case.execute.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -158,10 +157,10 @@ async def test_cinema_create_assignment_failure(
 ) -> None:
     """Verify source assignment errors are reported after creation."""
     use_case = _mock_create_use_case(response=_created_cinema())
-    source = create_autospec(SourceController, instance=True)
-    source.assign_source = AsyncMock(side_effect=ValueError("Source unavailable"))
+    assign_use_case = create_autospec(AssignSourceUseCase, instance=True)
+    assign_use_case.execute = AsyncMock(side_effect=ValueError("Source unavailable"))
     mock_factory.create_cinema_use_case = use_case
-    mock_factory.source = source
+    mock_factory.assign_source_use_case = assign_use_case
 
     with (
         patch(

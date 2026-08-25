@@ -10,7 +10,12 @@ import questionary
 from rich.console import Console
 from rich.table import Table
 
-from marquise import MarquiseFactory
+from marquise import (
+    CreateSourceUseCase,
+    ListRegistrySourcesUseCase,
+    ListSourcesUseCase,
+    MarquiseFactory,
+)
 from marquise_cli.helpers import run_spinner
 
 _console = Console()
@@ -46,12 +51,15 @@ async def _load_sources(
     factory: MarquiseFactory,
 ) -> tuple[list, list]:
     """Load registry and registered source definitions."""
+    registry_use_case = factory.list_registry_sources_use_case
     registry_response = await run_spinner(
-        factory.source.list_registry_sources(),
+        registry_use_case.execute(ListRegistrySourcesUseCase.InputData()),
         description="Fetching available sources...",
     )
+    list_use_case = factory.list_sources_use_case
     registered_response = await run_spinner(
-        factory.source.list_sources(), description="Fetching registered sources..."
+        list_use_case.execute(ListSourcesUseCase.InputData()),
+        description="Fetching registered sources...",
     )
     return (
         [asdict(source) for source in registry_response.sources],
@@ -67,9 +75,14 @@ async def _register_source(factory: MarquiseFactory, source: dict) -> bool:
         return False
     display_name, description = details
     try:
+        use_case = factory.create_source_use_case
         result = await run_spinner(
-            factory.source.create_source(
-                name=source["name"], display_name=display_name, description=description
+            use_case.execute(
+                CreateSourceUseCase.InputData(
+                    name=source["name"],
+                    display_name=display_name,
+                    description=description,
+                )
             ),
             description=f"Registering {source['name']}...",
         )
