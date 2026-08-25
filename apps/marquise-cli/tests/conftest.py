@@ -2,27 +2,19 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 
-from marquise import ListCinemasUseCase
-
-
-@pytest.fixture(autouse=True)
-def _mock_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Set required environment variables for MarquiseFactory creation."""
-    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:5432/db")
+from marquise import ListCinemasUseCase, MarquiseFactory
 
 
 @pytest.fixture
 def mock_factory() -> MagicMock:
     """Provide a mocked MarquiseFactory."""
-    factory = MagicMock()
-    factory.__aenter__ = AsyncMock(return_value=factory)
-    factory.__aexit__ = AsyncMock(return_value=False)
-    factory.initialize = AsyncMock()
-    factory.shutdown = AsyncMock()
+    factory = create_autospec(MarquiseFactory, instance=True)
+    factory.__aenter__.return_value = factory
+    factory.__aexit__.return_value = False
     return factory
 
 
