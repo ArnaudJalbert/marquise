@@ -75,9 +75,9 @@ async def _register_source(factory: MarquiseFactory, source: dict) -> bool:
         return False
     display_name, description = details
     try:
-        use_case = factory.create_source_use_case
+        create_source_use_case = factory.create_source_use_case
         result = await run_spinner(
-            use_case.execute(
+            create_source_use_case.execute(
                 CreateSourceUseCase.InputData(
                     name=source["name"],
                     display_name=display_name,
