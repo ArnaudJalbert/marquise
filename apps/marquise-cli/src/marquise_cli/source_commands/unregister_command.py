@@ -60,9 +60,9 @@ async def _delete_sources(factory: MarquiseFactory, source_names: list[str]) -> 
     """Delete selected persistent source definitions."""
     for source_name in source_names:
         try:
-            use_case = factory.delete_source_use_case
+            delete_source_use_case = factory.delete_source_use_case
             await run_spinner(
-                use_case.execute(
+                delete_source_use_case.execute(
                     DeleteSourceUseCase.InputData(source_name=source_name)
                 ),
                 description=f"Removing {source_name}...",

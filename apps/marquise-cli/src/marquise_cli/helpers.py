@@ -14,8 +14,8 @@ _console = Console()
 
 async def select_source(factory: MarquiseFactory, prompt: str) -> str | None:
     """Let the user pick a source interactively from a list."""
-    use_case = factory.list_sources_use_case
-    response = await use_case.execute(ListSourcesUseCase.InputData())
+    list_sources_use_case = factory.list_sources_use_case
+    response = await list_sources_use_case.execute(ListSourcesUseCase.InputData())
     if not response.sources:
         print("No sources available.")
         return None

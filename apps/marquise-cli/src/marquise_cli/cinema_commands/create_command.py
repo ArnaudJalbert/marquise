@@ -68,8 +68,8 @@ async def _assign_source(factory: MarquiseFactory, cinema_id: str) -> None:
         return
 
     try:
-        use_case = factory.assign_source_use_case
-        assignment = await use_case.execute(
+        assign_source_use_case = factory.assign_source_use_case
+        assignment = await assign_source_use_case.execute(
             AssignSourceUseCase.InputData(
                 cinema_id=cinema_id,
                 source_name=source_name,
