@@ -53,57 +53,61 @@ async def run_import_all(
     abort the whole run.
 
     Args:
-        factory: The initialized factory providing controllers.
+        factory: The factory providing controllers.
         days: Size of the rolling import window in days (today inclusive).
 
     Returns:
         One ``CinemaImportResult`` per cinema processed.
     """
-    today = date.today()
-    end_date = today + timedelta(days=days - 1)
+    await factory.initialize()
+    try:
+        today = date.today()
+        end_date = today + timedelta(days=days - 1)
 
-    cinemas_response = await factory.cinema.list()
+        cinemas_response = await factory.cinema.list()
 
-    async def _import_cinema(
-        cinema: ListCinemasUseCase.CinemaData,
-    ) -> CinemaImportResult:
-        print(f"  Importing {cinema.name}...")
-        try:
-            output = await factory.source.import_screenings(
-                cinema_id=cinema.id,
-                start_date=today,
-                end_date=end_date,
-            )
-        except CinemaSourceAssignmentNotFoundError:
-            return CinemaImportResult(
-                cinema_name=cinema.name,
-                status="skipped",
-                detail="no source assigned",
-            )
-        except CinemaNotFoundError as exc:
-            return CinemaImportResult(
-                cinema_name=cinema.name,
-                status="failed",
-                detail=str(exc),
-            )
-        except Exception as exc:
-            return CinemaImportResult(
-                cinema_name=cinema.name,
-                status="failed",
-                detail=f"{type(exc).__name__}: {exc}",
-            )
-        else:
-            return CinemaImportResult(
-                cinema_name=cinema.name,
-                status="imported",
-                imported_count=output.imported_count,
-                updated_count=output.updated_count,
-                skipped_screenings_count=output.skipped_count,
-            )
+        async def _import_cinema(
+            cinema: ListCinemasUseCase.CinemaData,
+        ) -> CinemaImportResult:
+            print(f"  Importing {cinema.name}...")
+            try:
+                output = await factory.source.import_screenings(
+                    cinema_id=cinema.id,
+                    start_date=today,
+                    end_date=end_date,
+                )
+            except CinemaSourceAssignmentNotFoundError:
+                return CinemaImportResult(
+                    cinema_name=cinema.name,
+                    status="skipped",
+                    detail="no source assigned",
+                )
+            except CinemaNotFoundError as exc:
+                return CinemaImportResult(
+                    cinema_name=cinema.name,
+                    status="failed",
+                    detail=str(exc),
+                )
+            except Exception as exc:
+                return CinemaImportResult(
+                    cinema_name=cinema.name,
+                    status="failed",
+                    detail=f"{type(exc).__name__}: {exc}",
+                )
+            else:
+                return CinemaImportResult(
+                    cinema_name=cinema.name,
+                    status="imported",
+                    imported_count=output.imported_count,
+                    updated_count=output.updated_count,
+                    skipped_screenings_count=output.skipped_count,
+                )
 
-    return list(
-        await asyncio.gather(*[_import_cinema(c) for c in cinemas_response.cinemas])
-    )
+        return list(
+            await asyncio.gather(*[_import_cinema(c) for c in cinemas_response.cinemas])
+        )
+    finally:
+        await factory.shutdown()
 
 
 def _print_totals(
@@ -148,26 +152,11 @@ def _print_results(results: list[CinemaImportResult]) -> int:
 
 def import_all(days: int) -> None:
     """Import showtimes for every cinema that has a source assignment."""
-    factory = MarquiseFactory()
     today = date.today()
     end_date = today + timedelta(days=days - 1)
     print(f"Starting bulk import: {today} → {end_date} ({days} days)")
 
-    async def _run() -> list[CinemaImportResult]:
-        await factory.initialize()
-        try:
-            return await run_import_all(factory, days)
-        finally:
-            await factory.shutdown()
-
-    try:
-        results = asyncio.run(_run())
-    except Exception as e:
-        print(
-            f"Bulk import failed during initialization: {type(e).__name__}: {e}",
-            file=sys.stderr,
-        )
-        raise SystemExit(1) from e
+    results = asyncio.run(run_import_all(MarquiseFactory(), days))
 
     if _print_results(results):
         raise SystemExit(1)

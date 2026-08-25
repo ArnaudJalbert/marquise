@@ -118,27 +118,27 @@ def _print_cinema(cinema: dict[str, str | None]) -> None:
         print(f"  Website: {cinema['website']}")
 
 
+async def run_update(factory: MarquiseFactory) -> None:
+    """Update an existing cinema after interactive field selection."""
+    async with factory:
+        cinema = await _select_cinema(factory)
+        if cinema is None:
+            return
+        updates = await _collect_updates(cinema)
+        if updates is None:
+            return
+        _print_cinema(
+            await _update_cinema(
+                factory,
+                cinema["id"] or "",
+                updates.get("name", cinema["name"]) or "",
+                updates.get("address", cinema["address"]),
+                updates.get("city", cinema["city"]),
+                updates.get("website", cinema["website"]),
+            )
+        )
+
+
 def update() -> None:
     """Update an existing cinema after interactive field selection."""
-    factory = MarquiseFactory()
-
-    async def _run() -> None:
-        async with factory:
-            cinema = await _select_cinema(factory)
-            if cinema is None:
-                return
-            updates = await _collect_updates(cinema)
-            if updates is None:
-                return
-            _print_cinema(
-                await _update_cinema(
-                    factory,
-                    cinema["id"] or "",
-                    updates.get("name", cinema["name"]) or "",
-                    updates.get("address", cinema["address"]),
-                    updates.get("city", cinema["city"]),
-                    updates.get("website", cinema["website"]),
-                )
-            )
-
-    asyncio.run(_run())
+    asyncio.run(run_update(MarquiseFactory()))

@@ -80,23 +80,23 @@ async def _delete_cinema(factory: MarquiseFactory, cinema_id: str) -> None:
         raise SystemExit(1) from error
 
 
+async def run_delete(factory: MarquiseFactory) -> None:
+    """Delete selected cinema after typed-name confirmation."""
+    async with factory:
+        selected = await _select_cinema(factory)
+        if selected is None:
+            return
+        cinema_id, cinema_name = selected
+        if not await _confirm_deletion(cinema_name):
+            return
+        await _delete_cinema(factory, cinema_id)
+        print(f'Cinema "{cinema_name}" (ID: {cinema_id}) deleted.')
+
+
 def delete() -> None:
     """Delete selected cinema after typed-name confirmation.
 
     Lists cinemas, exits without changes on cancellation, and requires exact
     cinema-name confirmation before deletion.
     """
-    factory = MarquiseFactory()
-
-    async def _run() -> None:
-        async with factory:
-            selected = await _select_cinema(factory)
-            if selected is None:
-                return
-            cinema_id, cinema_name = selected
-            if not await _confirm_deletion(cinema_name):
-                return
-            await _delete_cinema(factory, cinema_id)
-            print(f'Cinema "{cinema_name}" (ID: {cinema_id}) deleted.')
-
-    asyncio.run(_run())
+    asyncio.run(run_delete(MarquiseFactory()))

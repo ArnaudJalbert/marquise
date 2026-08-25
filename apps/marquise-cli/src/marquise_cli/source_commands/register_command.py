@@ -79,37 +79,34 @@ async def _register_source(factory: MarquiseFactory, source: dict) -> bool:
     return True
 
 
-async def _register_sources(factory: MarquiseFactory) -> None:
+async def run_register_sources(factory: MarquiseFactory) -> None:
     """Register every source missing from persistent source definitions."""
-    registry_sources, registered_sources = await _load_sources(factory)
-    registered_names = {source["name"] for source in registered_sources}
-    new_sources = [
-        source for source in registry_sources if source["name"] not in registered_names
-    ]
-    if not registry_sources:
-        print("No sources available in the registry.")
-        return
-
-    _console.print(_build_table(registry_sources, registered_names))
-    if not new_sources:
-        print("All registry sources are already in the database.")
-        return
-
-    print(f"{len(new_sources)} source(s) can be registered.")
-    for source in new_sources:
-        if not await _register_source(factory, source):
+    await run_spinner(factory.initialize(), description="Connecting...")
+    try:
+        registry_sources, registered_sources = await _load_sources(factory)
+        registered_names = {source["name"] for source in registered_sources}
+        new_sources = [
+            source
+            for source in registry_sources
+            if source["name"] not in registered_names
+        ]
+        if not registry_sources:
+            print("No sources available in the registry.")
             return
+
+        _console.print(_build_table(registry_sources, registered_names))
+        if not new_sources:
+            print("All registry sources are already in the database.")
+            return
+
+        print(f"{len(new_sources)} source(s) can be registered.")
+        for source in new_sources:
+            if not await _register_source(factory, source):
+                return
+    finally:
+        await factory.shutdown()
 
 
 def register_sources() -> None:
     """Register new showtime sources from registry into database."""
-    factory = MarquiseFactory()
-
-    async def _run() -> None:
-        await run_spinner(factory.initialize(), description="Connecting...")
-        try:
-            await _register_sources(factory)
-        finally:
-            await factory.shutdown()
-
-    asyncio.run(_run())
+    asyncio.run(run_register_sources(MarquiseFactory()))
