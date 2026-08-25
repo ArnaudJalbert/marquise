@@ -6,15 +6,30 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
+from marquise.application.use_cases.create_missing_movies import (
+    CreateMissingMoviesCommand,
+)
+from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
+from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
+from marquise.application.use_cases.delete_source import DeleteSourceUseCase
+from marquise.application.use_cases.fetch_screenings_from_source import (
+    FetchScreeningsFromSourceQuery,
+)
+from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
 from marquise.application.use_cases.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
+from marquise.application.use_cases.list_registry_sources import (
+    ListRegistrySourcesUseCase,
+)
+from marquise.application.use_cases.list_sources import ListSourcesUseCase
+from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.bootstrap import MarquiseFactory, create_factory, create_factory_session
 from marquise.infrastructure.controllers.cinema_controller import CinemaController
-from marquise.infrastructure.controllers.source_controller import SourceController
 
 
 @pytest.fixture(autouse=True)
@@ -199,9 +214,50 @@ async def test_cinema_property_returns_cinema_controller() -> None:
         await factory.shutdown()
 
 
+@pytest.mark.parametrize(
+    "property_name",
+    [
+        "create_source_use_case",
+        "list_sources_use_case",
+        "delete_source_use_case",
+        "assign_source_use_case",
+        "unassign_source_use_case",
+        "get_cinema_source_use_case",
+        "list_registry_sources_use_case",
+        "fetch_screenings_use_case",
+        "create_movies_use_case",
+        "create_screenings_use_case",
+    ],
+)
+def test_source_use_cases_require_initialize(property_name: str) -> None:
+    """Verify source use cases retain factory's pre-init failure behavior."""
+    factory = MarquiseFactory()
+
+    with pytest.raises(RuntimeError, match="Database pool not available"):
+        _ = getattr(factory, property_name)
+
+
 @pytest.mark.asyncio
-async def test_source_property_returns_source_controller() -> None:
-    """Verify source property returns a SourceController after init."""
+@pytest.mark.parametrize(
+    ("property_name", "use_case_type"),
+    [
+        ("create_source_use_case", CreateSourceUseCase),
+        ("list_sources_use_case", ListSourcesUseCase),
+        ("delete_source_use_case", DeleteSourceUseCase),
+        ("assign_source_use_case", AssignSourceUseCase),
+        ("unassign_source_use_case", UnassignSourceUseCase),
+        ("get_cinema_source_use_case", GetCinemaSourceUseCase),
+        ("list_registry_sources_use_case", ListRegistrySourcesUseCase),
+        ("fetch_screenings_use_case", FetchScreeningsFromSourceQuery),
+        ("create_movies_use_case", CreateMissingMoviesCommand),
+        ("create_screenings_use_case", CreateScreeningsCommand),
+    ],
+)
+async def test_source_use_cases_return_configured_use_cases(
+    property_name: str,
+    use_case_type: type,
+) -> None:
+    """Verify every source use case is available after factory initialization."""
     mock_database = AsyncMock()
     mock_database.pool = AsyncMock()
 
@@ -210,7 +266,7 @@ async def test_source_property_returns_source_controller() -> None:
     ):
         factory = MarquiseFactory()
         await factory.initialize()
-        assert isinstance(factory.source, SourceController)
+        assert isinstance(getattr(factory, property_name), use_case_type)
         await factory.shutdown()
 
 

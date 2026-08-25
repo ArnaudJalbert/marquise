@@ -2,6 +2,12 @@
 
 Before 2026-07-15 this package was published as `marquise`.
 
+## 2026-08-25
+
+### v0.2.10
+
+- **Remove `SourceController`**: source use cases are exposed through `MarquiseFactory` and public `marquise` API; controller wiring and export are removed. Closes #184.
+
 ## 2026-08-21
 
 ### v0.2.9

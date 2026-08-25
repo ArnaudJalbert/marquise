@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-25
+
+### v0.1.10
+
+- **Execute source use cases directly**: source commands, cinema source assignment, and imports no longer use `SourceController`. Closes #184.
+
 ## 2026-08-24
 
 ### v0.1.9
