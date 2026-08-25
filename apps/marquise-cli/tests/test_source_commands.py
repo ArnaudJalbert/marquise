@@ -8,13 +8,22 @@ from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 
 import pytest
 
+from conftest import make_cinema_data
 from marquise import (
+    AssignSourceUseCase,
     CreateSourceUseCase,
     DeleteSourceUseCase,
     ListRegistrySourcesUseCase,
     ListSourcesUseCase,
+    UnassignSourceUseCase,
+)
+from marquise_cli.helpers import select_source
+from marquise_cli.source_commands.assign_command import run_assign
+from marquise_cli.source_commands.list_registered_command import (
+    run_list_registered_sources,
 )
 from marquise_cli.source_commands.register_command import run_register_sources
+from marquise_cli.source_commands.unassign_command import run_unassign
 from marquise_cli.source_commands.unregister_command import run_unregister_sources
 
 
@@ -22,6 +31,7 @@ from marquise_cli.source_commands.unregister_command import run_unregister_sourc
 class _SourceEntry:
     name: str
     display_name: str = "Cinéma Cinéma"
+    description: str | None = None
 
 
 def _registry_use_case(sources: list[_SourceEntry]) -> MagicMock:
@@ -36,6 +46,109 @@ def _list_use_case(sources: list[_SourceEntry]) -> MagicMock:
     use_case = create_autospec(ListSourcesUseCase, instance=True)
     use_case.execute = AsyncMock(return_value=SimpleNamespace(sources=sources))
     return use_case
+
+
+@pytest.mark.asyncio
+async def test_select_source_executes_list_use_case_and_handles_cancellation(
+    mock_factory: MagicMock,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Verify source selection lists sources directly and preserves cancellation."""
+    list_sources_use_case = _list_use_case([_SourceEntry("cinemacinema")])
+    mock_factory.list_sources_use_case = list_sources_use_case
+
+    with patch("marquise_cli.helpers.questionary.select") as select:
+        select.return_value.ask_async = AsyncMock(return_value="__exit__")
+        selected = await select_source(mock_factory, "Select a source:")
+
+    assert selected is None
+    assert "Cancelled." in capsys.readouterr().out
+    list_sources_use_case.execute.assert_awaited_once_with(
+        ListSourcesUseCase.InputData()
+    )
+
+
+@pytest.mark.asyncio
+async def test_source_list_executes_list_use_case(
+    mock_factory: MagicMock,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Verify source listing executes direct use case and cleans up factory."""
+    list_sources_use_case = _list_use_case([_SourceEntry("cinemacinema")])
+    mock_factory.list_sources_use_case = list_sources_use_case
+
+    await run_list_registered_sources(mock_factory)
+
+    assert "cinemacinema" in capsys.readouterr().out
+    list_sources_use_case.execute.assert_awaited_once_with(
+        ListSourcesUseCase.InputData()
+    )
+    mock_factory.initialize.assert_awaited_once()
+    mock_factory.shutdown.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_source_assign_executes_assign_use_case(
+    mock_factory: MagicMock,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Verify source assignment sends selected values and cleans up factory."""
+    assign_source_use_case = create_autospec(AssignSourceUseCase, instance=True)
+    assign_source_use_case.execute = AsyncMock(
+        return_value=AssignSourceUseCase.OutputData(
+            cinema_id="cin-001",
+            source_name="cinemacinema",
+        )
+    )
+    mock_factory.assign_source_use_case = assign_source_use_case
+
+    with (
+        patch(
+            "marquise_cli.source_commands.assign_command.select_cinema",
+            new=AsyncMock(return_value=make_cinema_data()),
+        ),
+        patch(
+            "marquise_cli.source_commands.assign_command.select_source",
+            new=AsyncMock(return_value="cinemacinema"),
+        ),
+    ):
+        await run_assign(mock_factory)
+
+    assert "Source assigned:" in capsys.readouterr().out
+    assign_source_use_case.execute.assert_awaited_once_with(
+        AssignSourceUseCase.InputData(
+            cinema_id="cin-001",
+            source_name="cinemacinema",
+        )
+    )
+    mock_factory.initialize.assert_awaited_once()
+    mock_factory.shutdown.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_source_unassign_executes_unassign_use_case(
+    mock_factory: MagicMock,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Verify source unassignment sends cinema ID and cleans up factory."""
+    unassign_source_use_case = create_autospec(UnassignSourceUseCase, instance=True)
+    unassign_source_use_case.execute = AsyncMock(
+        return_value=UnassignSourceUseCase.OutputData(cinema_id="cin-001")
+    )
+    mock_factory.unassign_source_use_case = unassign_source_use_case
+
+    with patch(
+        "marquise_cli.source_commands.unassign_command.select_cinema",
+        new=AsyncMock(return_value=make_cinema_data()),
+    ):
+        await run_unassign(mock_factory)
+
+    assert "Source unassigned from cinema cin-001." in capsys.readouterr().out
+    unassign_source_use_case.execute.assert_awaited_once_with(
+        UnassignSourceUseCase.InputData(cinema_id="cin-001")
+    )
+    mock_factory.initialize.assert_awaited_once()
+    mock_factory.shutdown.assert_awaited_once()
 
 
 @pytest.mark.asyncio

@@ -4,20 +4,26 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, create_autospec
+from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 
 import pytest
 
+from conftest import make_cinema_data
 from marquise import (
     CinemaNotFoundError,
     CinemaSourceAssignmentNotFoundError,
     CreateMissingMoviesCommand,
     CreateScreeningsCommand,
     FetchScreeningsFromSourceQuery,
+    GetCinemaSourceUseCase,
     MarquiseFactory,
 )
+from marquise_cli.helpers import run_spinner
 from marquise_cli.import_commands import run_import_all
-from marquise_cli.import_commands.cinema_command import _import_screenings
+from marquise_cli.import_commands.cinema_command import (
+    _import_screenings,
+    run_import_cinema,
+)
 
 
 def _fetched(
@@ -125,6 +131,65 @@ async def test_import_screenings_executes_direct_use_case_sequence() -> None:
     screening_request = screenings_use_case.execute.call_args.args[0]
     assert screening_request.screenings[0].movie_id == "movie-1"
     assert screening_request.screenings[0].movie_title == " Movie  One "
+
+
+@pytest.mark.asyncio
+async def test_run_import_cinema_looks_up_source_and_spins_full_import(
+    mock_factory: MagicMock,
+) -> None:
+    """Verify source lookup and full import retain direct DTOs, spinner, and cleanup."""
+    get_source_use_case = create_autospec(GetCinemaSourceUseCase, instance=True)
+    get_source_use_case.execute = AsyncMock(
+        return_value=GetCinemaSourceUseCase.OutputData(
+            cinema_id="cin-001",
+            source_name="cinemacinema",
+            source_display_name="Cinéma Cinéma",
+        )
+    )
+    mock_factory.get_cinema_source_use_case = get_source_use_case
+    import_result = {
+        "cinema_name": "Test Cinema",
+        "source_name": "cinemacinema",
+        "screenings": (),
+        "total_count": 0,
+        "imported_count": 0,
+        "updated_count": 0,
+        "skipped_count": 0,
+    }
+
+    with (
+        patch(
+            "marquise_cli.import_commands.cinema_command.select_cinema",
+            new=AsyncMock(return_value=make_cinema_data()),
+        ),
+        patch(
+            "marquise_cli.import_commands.cinema_command._select_date_range",
+            new=AsyncMock(return_value=(date(2026, 8, 25), date(2026, 8, 26))),
+        ),
+        patch(
+            "marquise_cli.import_commands.cinema_command._import_screenings",
+            new=AsyncMock(return_value=import_result),
+        ) as import_screenings,
+        patch(
+            "marquise_cli.import_commands.cinema_command.run_spinner",
+            wraps=run_spinner,
+        ) as spinner,
+    ):
+        await run_import_cinema(mock_factory)
+
+    get_source_use_case.execute.assert_awaited_once_with(
+        GetCinemaSourceUseCase.InputData(cinema_id="cin-001")
+    )
+    import_screenings.assert_awaited_once_with(
+        mock_factory,
+        "cin-001",
+        date(2026, 8, 25),
+        date(2026, 8, 26),
+    )
+    assert spinner.await_args_list[1].kwargs == {
+        "description": "Importing screenings..."
+    }
+    mock_factory.shutdown.assert_awaited_once()
 
 
 @pytest.mark.asyncio
