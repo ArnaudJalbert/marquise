@@ -23,9 +23,12 @@ jobs:
               - 'packages/marquise-core/**'
               - 'pyproject.toml'
               - 'uv.lock'
+              - 'Makefile'
+              - '.dockerignore'
               - '.github/workflows/fly-deploy.yml'
             interface:
               - 'web/**'
+              - 'Makefile'
               - '.github/workflows/fly-deploy.yml'
 
   deploy-api:
