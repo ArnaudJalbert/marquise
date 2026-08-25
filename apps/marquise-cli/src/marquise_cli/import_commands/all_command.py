@@ -156,14 +156,7 @@ def import_all(days: int) -> None:
     end_date = today + timedelta(days=days - 1)
     print(f"Starting bulk import: {today} → {end_date} ({days} days)")
 
-    try:
-        results = asyncio.run(run_import_all(MarquiseFactory(), days))
-    except Exception as e:
-        print(
-            f"Bulk import failed during initialization: {type(e).__name__}: {e}",
-            file=sys.stderr,
-        )
-        raise SystemExit(1) from e
+    results = asyncio.run(run_import_all(MarquiseFactory(), days))
 
     if _print_results(results):
         raise SystemExit(1)

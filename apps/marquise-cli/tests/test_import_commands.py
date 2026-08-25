@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, create_autospec
 
 import pytest
 
-from marquise import CinemaNotFoundError, CinemaSourceAssignmentNotFoundError
+from marquise import (
+    CinemaNotFoundError,
+    CinemaSourceAssignmentNotFoundError,
+    MarquiseFactory,
+)
 from marquise_cli.import_commands import run_import_all
 
 
@@ -15,9 +19,7 @@ def _make_factory(
     cinemas: list[SimpleNamespace], import_side_effect: object
 ) -> MagicMock:
     """Build a fake MarquiseFactory with mocked cinema/source controllers."""
-    factory = MagicMock()
-    factory.initialize = AsyncMock()
-    factory.shutdown = AsyncMock()
+    factory = create_autospec(MarquiseFactory, instance=True)
     factory.cinema.list = AsyncMock(return_value=SimpleNamespace(cinemas=cinemas))
     factory.source.import_screenings = AsyncMock(side_effect=import_side_effect)
     return factory
