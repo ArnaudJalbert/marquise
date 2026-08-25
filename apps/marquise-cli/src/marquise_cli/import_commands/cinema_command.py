@@ -65,15 +65,12 @@ async def _import_screenings(
 ) -> dict:
     """Import one cinema date range as formatting data."""
     fetch_use_case = factory.fetch_screenings_use_case
-    fetched = await run_spinner(
-        fetch_use_case.execute(
-            FetchScreeningsFromSourceQuery.InputData(
-                cinema_id=cinema_id,
-                start_date=start_date,
-                end_date=end_date,
-            )
-        ),
-        description="Importing screenings...",
+    fetched = await fetch_use_case.execute(
+        FetchScreeningsFromSourceQuery.InputData(
+            cinema_id=cinema_id,
+            start_date=start_date,
+            end_date=end_date,
+        )
     )
     movies_use_case = factory.create_movies_use_case
     movies = await movies_use_case.execute(
@@ -179,7 +176,10 @@ async def run_import_cinema(factory: MarquiseFactory) -> None:
         date_range = await _select_date_range()
         if date_range is None:
             return
-        result = await _import_screenings(factory, cinema.id, *date_range)
+        result = await run_spinner(
+            _import_screenings(factory, cinema.id, *date_range),
+            description="Importing screenings...",
+        )
         _console.print(_screenings_table(result))
         _console.print(_summary(result))
     finally:
