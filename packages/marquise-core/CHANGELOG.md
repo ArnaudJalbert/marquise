@@ -4,6 +4,10 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-08-26
 
+### v0.2.13
+
+- **Normalize movie title matching**: reuses titles that differ only by case, punctuation, or a leading article without matching contained titles; ambiguous or conflicting release-year matches create a new movie.
+
 ### v0.2.12
 
 - **Add Cine Starz showtime source**: imports Cine Starz Côte-des-Neiges and Cine Starz Deluxe Cavendish schedules, stable ticket performance IDs, ticket URLs, and optional JSON-LD movie metadata. Closes #88.

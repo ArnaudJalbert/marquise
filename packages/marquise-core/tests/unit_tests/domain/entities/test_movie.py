@@ -34,6 +34,11 @@ def test_movie_creation() -> None:
     assert movie.genres == ("Sci-Fi", "Action")
 
 
+def test_movie_title_key_ignores_case_articles_and_punctuation() -> None:
+    """Verify title variants share one canonical key."""
+    assert Movie.title_key("The Odyssey: Part One") == "odyssey part one"
+
+
 def test_movie_rejects_empty_title() -> None:
     """Verify that creating a Movie with an empty title raises ValueError."""
     with pytest.raises(ValueError, match="Movie title cannot be empty"):
