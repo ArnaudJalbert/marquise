@@ -102,6 +102,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.13
+
       - name: Fetch base branch
         run: git fetch origin ${{ github.base_ref }}
 
@@ -111,10 +118,13 @@ jobs:
           filters: |
             core:
               - 'packages/marquise-core/src/**'
+              - 'packages/marquise-core/pyproject.toml'
             api:
               - 'apps/marquise-api/src/**'
+              - 'apps/marquise-api/pyproject.toml'
             cli:
               - 'apps/marquise-cli/src/**'
+              - 'apps/marquise-cli/pyproject.toml'
 
       - name: Check marquise-core version bump
         if: steps.filter.outputs.core == 'true'
@@ -176,9 +186,37 @@ jobs:
           }
           echo '✓ CHANGELOG entry found'
 
+      - name: Build and verify changed package distributions
+        run: |
+          set -euo pipefail
+
+          PYTHON=$(uv python find 3.13)
+          for target in \
+            'marquise-core|packages/marquise-core|marquise_core|${{ steps.filter.outputs.core }}' \
+            'marquise-api|apps/marquise-api|marquise_api|${{ steps.filter.outputs.api }}' \
+            'marquise-cli|apps/marquise-cli|marquise_cli|${{ steps.filter.outputs.cli }}'; do
+            IFS='|' read -r PACKAGE DIRECTORY DISTRIBUTION CHANGED <<< "$target"
+            [[ "$CHANGED" == true ]] || continue
+
+            VERSION=$("$PYTHON" - "$DIRECTORY/pyproject.toml" <<'PY'
+          import sys
+          import tomllib
+
+          with open(sys.argv[1], "rb") as file:
+              print(tomllib.load(file)["project"]["version"])
+          PY
+            )
+            OUTPUT_DIR="$RUNNER_TEMP/release-dist-$PACKAGE"
+            uv build --package "$PACKAGE" --out-dir "$OUTPUT_DIR" --clear --no-create-gitignore
+
+            [[ -f "$OUTPUT_DIR/$DISTRIBUTION-$VERSION.tar.gz" ]]
+            [[ -f "$OUTPUT_DIR/$DISTRIBUTION-$VERSION-py3-none-any.whl" ]]
+            [[ $(find "$OUTPUT_DIR" -maxdepth 1 -type f | wc -l) -eq 2 ]]
+          done
+
       - name: Nothing to check
         if: >
           steps.filter.outputs.core != 'true' &&
           steps.filter.outputs.api != 'true' &&
           steps.filter.outputs.cli != 'true'
-        run: echo 'No src/ changes detected — no release checks needed'
+        run: echo 'No package source or pyproject.toml changes detected'
