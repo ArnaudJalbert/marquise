@@ -37,7 +37,6 @@ class _SourceEntry:
 def _registry_use_case(sources: list[_SourceEntry]) -> MagicMock:
     """Build configured registry-source use-case mock."""
     use_case = create_autospec(ListRegistrySourcesUseCase, instance=True)
-    use_case.InputData.side_effect = ListRegistrySourcesUseCase.InputData
     use_case.execute = AsyncMock(return_value=SimpleNamespace(sources=sources))
     return use_case
 
@@ -45,7 +44,6 @@ def _registry_use_case(sources: list[_SourceEntry]) -> MagicMock:
 def _list_use_case(sources: list[_SourceEntry]) -> MagicMock:
     """Build configured registered-source use-case mock."""
     use_case = create_autospec(ListSourcesUseCase, instance=True)
-    use_case.InputData.side_effect = ListSourcesUseCase.InputData
     use_case.execute = AsyncMock(return_value=SimpleNamespace(sources=sources))
     return use_case
 
@@ -65,9 +63,8 @@ async def test_select_source_executes_list_use_case_and_handles_cancellation(
 
     assert selected is None
     assert "Cancelled." in capsys.readouterr().out
-    list_sources_use_case.execute.assert_awaited_once_with(
-        ListSourcesUseCase.InputData()
-    )
+    list_sources_use_case.InputData.assert_called_once_with()
+    list_sources_use_case.execute.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -82,9 +79,8 @@ async def test_source_list_executes_list_use_case(
     await run_list_registered_sources(mock_factory)
 
     assert "cinemacinema" in capsys.readouterr().out
-    list_sources_use_case.execute.assert_awaited_once_with(
-        ListSourcesUseCase.InputData()
-    )
+    list_sources_use_case.InputData.assert_called_once_with()
+    list_sources_use_case.execute.assert_awaited_once()
     mock_factory.initialize.assert_awaited_once()
     mock_factory.shutdown.assert_awaited_once()
 
@@ -96,7 +92,6 @@ async def test_source_assign_executes_assign_use_case(
 ) -> None:
     """Verify source assignment sends selected values and cleans up factory."""
     assign_source_use_case = create_autospec(AssignSourceUseCase, instance=True)
-    assign_source_use_case.InputData.side_effect = AssignSourceUseCase.InputData
     assign_source_use_case.execute = AsyncMock(
         return_value=AssignSourceUseCase.OutputData(
             cinema_id="cin-001",
@@ -118,12 +113,10 @@ async def test_source_assign_executes_assign_use_case(
         await run_assign(mock_factory)
 
     assert "Source assigned:" in capsys.readouterr().out
-    assign_source_use_case.execute.assert_awaited_once_with(
-        AssignSourceUseCase.InputData(
-            cinema_id="cin-001",
-            source_name="cinemacinema",
-        )
+    assign_source_use_case.InputData.assert_called_once_with(
+        cinema_id="cin-001", source_name="cinemacinema"
     )
+    assign_source_use_case.execute.assert_awaited_once()
     mock_factory.initialize.assert_awaited_once()
     mock_factory.shutdown.assert_awaited_once()
 
@@ -135,7 +128,6 @@ async def test_source_unassign_executes_unassign_use_case(
 ) -> None:
     """Verify source unassignment sends cinema ID and cleans up factory."""
     unassign_source_use_case = create_autospec(UnassignSourceUseCase, instance=True)
-    unassign_source_use_case.InputData.side_effect = UnassignSourceUseCase.InputData
     unassign_source_use_case.execute = AsyncMock(
         return_value=UnassignSourceUseCase.OutputData(cinema_id="cin-001")
     )
@@ -148,9 +140,8 @@ async def test_source_unassign_executes_unassign_use_case(
         await run_unassign(mock_factory)
 
     assert "Source unassigned from cinema cin-001." in capsys.readouterr().out
-    unassign_source_use_case.execute.assert_awaited_once_with(
-        UnassignSourceUseCase.InputData(cinema_id="cin-001")
-    )
+    unassign_source_use_case.InputData.assert_called_once_with(cinema_id="cin-001")
+    unassign_source_use_case.execute.assert_awaited_once()
     mock_factory.initialize.assert_awaited_once()
     mock_factory.shutdown.assert_awaited_once()
 
@@ -161,7 +152,6 @@ async def test_source_register_new_source(
 ) -> None:
     """Verify source register executes create use case after prompting."""
     create_use_case = create_autospec(CreateSourceUseCase, instance=True)
-    create_use_case.InputData.side_effect = CreateSourceUseCase.InputData
     create_use_case.execute = AsyncMock(
         return_value=SimpleNamespace(name="cinemacinema")
     )
@@ -178,13 +168,12 @@ async def test_source_register_new_source(
         await run_register_sources(mock_factory)
 
     assert "Created: cinemacinema" in capsys.readouterr().out
-    create_use_case.execute.assert_awaited_once_with(
-        CreateSourceUseCase.InputData(
-            name="cinemacinema",
-            display_name="Cinéma Cinéma",
-            description="Showtimes for Beaubien",
-        )
+    create_use_case.InputData.assert_called_once_with(
+        name="cinemacinema",
+        display_name="Cinéma Cinéma",
+        description="Showtimes for Beaubien",
     )
+    create_use_case.execute.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -233,7 +222,6 @@ async def test_source_unregister_success(
 ) -> None:
     """Verify source unregister executes delete use case after confirmation."""
     delete_use_case = create_autospec(DeleteSourceUseCase, instance=True)
-    delete_use_case.InputData.side_effect = DeleteSourceUseCase.InputData
     delete_use_case.execute = AsyncMock()
     mock_factory.list_registry_sources_use_case = _registry_use_case(
         [_SourceEntry("cinemacinema")]
@@ -249,9 +237,8 @@ async def test_source_unregister_success(
         await run_unregister_sources(mock_factory)
 
     assert "Removed: cinemacinema" in capsys.readouterr().out
-    delete_use_case.execute.assert_awaited_once_with(
-        DeleteSourceUseCase.InputData(source_name="cinemacinema")
-    )
+    delete_use_case.InputData.assert_called_once_with(source_name="cinemacinema")
+    delete_use_case.execute.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -319,7 +306,6 @@ async def test_source_unregister_partial_failure(
 ) -> None:
     """Verify source unregister reports each delete use-case failure."""
     delete_use_case = create_autospec(DeleteSourceUseCase, instance=True)
-    delete_use_case.InputData.side_effect = DeleteSourceUseCase.InputData
     delete_use_case.execute = AsyncMock(side_effect=ValueError("Something went wrong"))
     mock_factory.list_registry_sources_use_case = _registry_use_case(
         [_SourceEntry("cinemacinema")]
