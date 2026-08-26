@@ -22,10 +22,13 @@ async def run_assign(factory: MarquiseFactory) -> None:
         if source_name is None:
             return
 
+        assign_source_use_case = factory.assign_source_use_case
         response = await run_spinner(
-            factory.source.assign_source(
-                cinema_id=selected.id,
-                source_name=source_name,
+            assign_source_use_case.execute(
+                assign_source_use_case.InputData(
+                    cinema_id=selected.id,
+                    source_name=source_name,
+                )
             ),
             description="Assigning source...",
         )

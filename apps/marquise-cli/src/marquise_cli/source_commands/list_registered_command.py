@@ -28,8 +28,9 @@ async def run_list_registered_sources(factory: MarquiseFactory) -> None:
     """List registered showtime sources in database."""
     await run_spinner(factory.initialize(), description="Connecting...")
     try:
+        list_sources_use_case = factory.list_sources_use_case
         response = await run_spinner(
-            factory.source.list_sources(),
+            list_sources_use_case.execute(list_sources_use_case.InputData()),
             description="Fetching registered sources...",
         )
     finally:

@@ -11,6 +11,7 @@ import marquise
 
 EXPECTED_PUBLIC_SURFACE: set[str] = {
     "ApplicationError",
+    "AssignSourceUseCase",
     "CinemaAlreadyExistsError",
     "CinemaController",
     "CinemaIdAlreadyExistsError",
@@ -18,11 +19,19 @@ EXPECTED_PUBLIC_SURFACE: set[str] = {
     "CinemaSourceAssignmentAlreadyExistsError",
     "CinemaSourceAssignmentNotFoundError",
     "CreateCinemaUseCase",
+    "CreateMissingMoviesCommand",
+    "CreateScreeningsCommand",
+    "CreateSourceUseCase",
     "DeleteCinemaUseCase",
+    "DeleteSourceUseCase",
+    "FetchScreeningsFromSourceQuery",
+    "GetCinemaSourceUseCase",
     "ListCinemaSourceAssignmentsQuery",
     "create_factory",
     "create_factory_session",
     "ListCinemasUseCase",
+    "ListRegistrySourcesUseCase",
+    "ListSourcesUseCase",
     "MarquiseFactory",
     "MovieController",
     "MovieNotFoundError",
@@ -30,9 +39,9 @@ EXPECTED_PUBLIC_SURFACE: set[str] = {
     "ScreeningController",
     "ScreeningNotFoundError",
     "SourceAlreadyExistsError",
-    "SourceController",
     "SourceNotFoundError",
     "TooManyMovieIdsError",
+    "UnassignSourceUseCase",
     "UpdateCinemaUseCase",
 }
 

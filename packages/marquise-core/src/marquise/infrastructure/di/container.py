@@ -47,7 +47,6 @@ from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.infrastructure.controllers.cinema_controller import CinemaController
 from marquise.infrastructure.controllers.movie_controller import MovieController
 from marquise.infrastructure.controllers.screening_controller import ScreeningController
-from marquise.infrastructure.controllers.source_controller import SourceController
 from marquise.infrastructure.sources.cinemacinema.gateways.source import (
     CinemaCinemaSource,
 )
@@ -487,6 +486,57 @@ class Container:
         return self._list_cinema_source_assignments_query
 
     @property
+    def create_source_use_case(self) -> CreateSourceUseCase:
+        """Public create-source use case."""
+        return self._create_source_use_case
+
+    @property
+    def list_sources_use_case(self) -> ListSourcesUseCase:
+        """Public list-sources use case."""
+        return self._list_sources_use_case
+
+    @property
+    def delete_source_use_case(self) -> DeleteSourceUseCase:
+        """Public delete-source use case."""
+        return self._delete_source_use_case
+
+    @property
+    def assign_source_use_case(self) -> AssignSourceUseCase:
+        """Public assign-source use case."""
+        return self._assign_source_use_case
+
+    @property
+    def unassign_source_use_case(self) -> UnassignSourceUseCase:
+        """Public unassign-source use case."""
+        return self._unassign_source_use_case
+
+    @property
+    def get_cinema_source_use_case(self) -> GetCinemaSourceUseCase:
+        """Public get-cinema-source use case."""
+        return self._get_cinema_source_use_case
+
+    @property
+    def list_registry_sources_use_case(self) -> ListRegistrySourcesUseCase:
+        """Public list-registry-sources use case."""
+        _ = self._pool_property
+        return self._list_registry_sources_use_case
+
+    @property
+    def fetch_screenings_use_case(self) -> FetchScreeningsFromSourceQuery:
+        """Public fetch-screenings query."""
+        return self._fetch_screenings_use_case
+
+    @property
+    def create_movies_use_case(self) -> CreateMissingMoviesCommand:
+        """Public create-missing-movies command."""
+        return self._create_movies_use_case
+
+    @property
+    def create_screenings_use_case(self) -> CreateScreeningsCommand:
+        """Public create-screenings command."""
+        return self._create_screenings_use_case
+
+    @property
     def list_cinemas_use_case(self) -> ListCinemasUseCase:
         """Public list-cinemas use case (no authentication required)."""
         return self._list_cinemas_use_case
@@ -557,19 +607,4 @@ class Container:
         return ScreeningController(
             get_screening_use_case=self._get_screening_use_case,
             search_screenings_use_case=self._search_screenings_use_case,
-        )
-
-    @property
-    def source_controller(self) -> SourceController:
-        return SourceController(
-            create_source_use_case=self._create_source_use_case,
-            list_sources_use_case=self._list_sources_use_case,
-            delete_source_use_case=self._delete_source_use_case,
-            assign_source_use_case=self._assign_source_use_case,
-            unassign_source_use_case=self._unassign_source_use_case,
-            get_cinema_source_use_case=self._get_cinema_source_use_case,
-            list_registry_sources_use_case=self._list_registry_sources_use_case,
-            fetch_screenings_use_case=self._fetch_screenings_use_case,
-            create_movies_use_case=self._create_movies_use_case,
-            create_screenings_use_case=self._create_screenings_use_case,
         )

@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 
 import pytest
 
-from conftest import make_cinema_data
+from conftest import make_cinema_data, mock_use_case
 from marquise import (
     CinemaController,
     CinemaNotFoundError,
@@ -28,10 +28,7 @@ def mock_cinema_controller_for_update() -> MagicMock:
 @pytest.fixture
 def mock_update_use_case() -> MagicMock:
     """Provide a mocked UpdateCinemaUseCase."""
-    use_case = create_autospec(UpdateCinemaUseCase, instance=True)
-    use_case.execute = AsyncMock()
-    use_case.InputData = UpdateCinemaUseCase.InputData
-    return use_case
+    return mock_use_case(UpdateCinemaUseCase)
 
 
 def _update_setup(
