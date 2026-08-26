@@ -61,19 +61,12 @@ def _make_factory(
     factory = create_autospec(MarquiseFactory, instance=True)
     factory.cinema.list = AsyncMock(return_value=SimpleNamespace(cinemas=cinemas))
     fetch_use_case = create_autospec(FetchScreeningsFromSourceQuery, instance=True)
-    fetch_use_case.InputData.side_effect = FetchScreeningsFromSourceQuery.InputData
     fetch_use_case.execute = AsyncMock(side_effect=fetch_side_effect)
     movies_use_case = create_autospec(CreateMissingMoviesCommand, instance=True)
-    movies_use_case.InputData.side_effect = CreateMissingMoviesCommand.InputData
-    movies_use_case.MovieInput.side_effect = CreateMissingMoviesCommand.MovieInput
     movies_use_case.execute = AsyncMock(
         return_value=CreateMissingMoviesCommand.OutputData(movies=())
     )
     screenings_use_case = create_autospec(CreateScreeningsCommand, instance=True)
-    screenings_use_case.InputData.side_effect = CreateScreeningsCommand.InputData
-    screenings_use_case.ScreeningInput.side_effect = (
-        CreateScreeningsCommand.ScreeningInput
-    )
     screenings_use_case.execute = AsyncMock(
         side_effect=[
             _screenings_output(3, 1),
@@ -91,7 +84,6 @@ async def test_import_screenings_executes_direct_use_case_sequence() -> None:
     """Single-cinema import fetches, creates movies, then creates screenings."""
     factory = create_autospec(MarquiseFactory, instance=True)
     fetch_use_case = create_autospec(FetchScreeningsFromSourceQuery, instance=True)
-    fetch_use_case.InputData.side_effect = FetchScreeningsFromSourceQuery.InputData
     fetch_use_case.execute = AsyncMock(
         return_value=FetchScreeningsFromSourceQuery.OutputData(
             cinema_id="cin-1",
@@ -109,8 +101,6 @@ async def test_import_screenings_executes_direct_use_case_sequence() -> None:
         )
     )
     movies_use_case = create_autospec(CreateMissingMoviesCommand, instance=True)
-    movies_use_case.InputData.side_effect = CreateMissingMoviesCommand.InputData
-    movies_use_case.MovieInput.side_effect = CreateMissingMoviesCommand.MovieInput
     movies_use_case.execute = AsyncMock(
         return_value=CreateMissingMoviesCommand.OutputData(
             movies=(
@@ -119,10 +109,6 @@ async def test_import_screenings_executes_direct_use_case_sequence() -> None:
         )
     )
     screenings_use_case = create_autospec(CreateScreeningsCommand, instance=True)
-    screenings_use_case.InputData.side_effect = CreateScreeningsCommand.InputData
-    screenings_use_case.ScreeningInput.side_effect = (
-        CreateScreeningsCommand.ScreeningInput
-    )
     screenings_use_case.execute = AsyncMock(return_value=_screenings_output(1, 0))
     factory.fetch_screenings_use_case = fetch_use_case
     factory.create_movies_use_case = movies_use_case
@@ -133,18 +119,19 @@ async def test_import_screenings_executes_direct_use_case_sequence() -> None:
     )
 
     assert result["source_name"] == "cineplex"
-    fetch_use_case.execute.assert_awaited_once_with(
-        FetchScreeningsFromSourceQuery.InputData(
-            cinema_id="cin-1",
-            start_date=date(2026, 8, 25),
-            end_date=date(2026, 8, 26),
-        )
+    fetch_use_case.InputData.assert_called_once_with(
+        cinema_id="cin-1",
+        start_date=date(2026, 8, 25),
+        end_date=date(2026, 8, 26),
     )
-    movie_request = movies_use_case.execute.call_args.args[0]
-    assert movie_request.movies[0].title == "Movie One"
-    screening_request = screenings_use_case.execute.call_args.args[0]
-    assert screening_request.screenings[0].movie_id == "movie-1"
-    assert screening_request.screenings[0].movie_title == " Movie  One "
+    movies_use_case.InputData.assert_called_once()
+    movies_use_case.MovieInput.assert_called_once()
+    assert movies_use_case.MovieInput.call_args.kwargs["title"] == "Movie One"
+    screenings_use_case.InputData.assert_called_once()
+    screenings_use_case.ScreeningInput.assert_called_once()
+    screening_input = screenings_use_case.ScreeningInput.call_args.kwargs
+    assert screening_input["movie_id"] == "movie-1"
+    assert screening_input["movie_title"] == " Movie  One "
 
 
 @pytest.mark.asyncio
@@ -153,7 +140,6 @@ async def test_run_import_cinema_looks_up_source_and_spins_full_import(
 ) -> None:
     """Verify source lookup and full import retain direct DTOs, spinner, and cleanup."""
     get_source_use_case = create_autospec(GetCinemaSourceUseCase, instance=True)
-    get_source_use_case.InputData.side_effect = GetCinemaSourceUseCase.InputData
     get_source_use_case.execute = AsyncMock(
         return_value=GetCinemaSourceUseCase.OutputData(
             cinema_id="cin-001",
@@ -192,9 +178,8 @@ async def test_run_import_cinema_looks_up_source_and_spins_full_import(
     ):
         await run_import_cinema(mock_factory)
 
-    get_source_use_case.execute.assert_awaited_once_with(
-        GetCinemaSourceUseCase.InputData(cinema_id="cin-001")
-    )
+    get_source_use_case.InputData.assert_called_once_with(cinema_id="cin-001")
+    get_source_use_case.execute.assert_awaited_once()
     import_screenings.assert_awaited_once_with(
         mock_factory,
         "cin-001",
@@ -279,6 +264,5 @@ async def test_run_import_all_passes_inclusive_date_window() -> None:
 
     await run_import_all(factory, days=3)
 
-    request = factory.fetch_screenings_use_case.execute.call_args.args[0]
-    assert isinstance(request, FetchScreeningsFromSourceQuery.InputData)
-    assert (request.end_date - request.start_date).days == 2
+    request = factory.fetch_screenings_use_case.InputData.call_args.kwargs
+    assert (request["end_date"] - request["start_date"]).days == 2
