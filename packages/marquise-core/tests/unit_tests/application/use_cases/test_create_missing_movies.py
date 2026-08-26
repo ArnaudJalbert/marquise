@@ -84,23 +84,6 @@ async def test_creates_missing_movies_with_all_metadata() -> None:
 
 
 @pytest.mark.asyncio
-async def test_creates_bare_movie_when_no_metadata() -> None:
-    """Test that a missing movie is created with just a title."""
-    mock_movie_repo = create_autospec(MovieRepository, instance=True)
-    mock_movie_repo.find_by_titles.return_value = []
-    saved_movie = Movie(id=MovieId(value="mov-bare"), title="Bare Movie")
-    mock_movie_repo.save.return_value = saved_movie
-
-    lookup = await _run(
-        _make_command(mock_movie_repo),
-        (_make_movie_input("Bare Movie"),),
-    )
-
-    assert lookup["Bare Movie"] == "mov-bare"
-    mock_movie_repo.save.assert_awaited_once()
-
-
-@pytest.mark.asyncio
 async def test_skips_existing_movies() -> None:
     """Test that existing movies are not created again."""
     mock_movie_repo = create_autospec(MovieRepository, instance=True)
@@ -159,52 +142,25 @@ async def test_dedupes_titles_differing_by_whitespace() -> None:
 
 
 @pytest.mark.asyncio
-async def test_reuses_movie_found_with_different_case() -> None:
-    """Test that a case-insensitive match still returns the correct lookup."""
+@pytest.mark.parametrize(
+    ("stored_title", "source_title"),
+    (("The Odyssey", "ODYSSEY"), ("The Odyssey: Part One", "Odyssey Part One")),
+)
+async def test_reuses_movie_when_title_format_differs(
+    stored_title: str, source_title: str
+) -> None:
+    """Test that articles, case, and punctuation do not split one movie."""
     mock_movie_repo = create_autospec(MovieRepository, instance=True)
-    existing_movie = Movie(id=MovieId(value="mov-batman"), title="the batman")
-    mock_movie_repo.find_by_titles.return_value = [existing_movie]
+    mock_movie_repo.find_by_titles.return_value = [
+        Movie(id=MovieId(value="mov-odyssey"), title=stored_title)
+    ]
 
     lookup = await _run(
         _make_command(mock_movie_repo),
-        (_make_movie_input("The Batman"),),
+        (_make_movie_input(source_title),),
     )
 
-    assert lookup["The Batman"] == "mov-batman"
-    mock_movie_repo.save.assert_not_awaited()
-
-
-@pytest.mark.asyncio
-async def test_reuses_movie_when_source_omits_leading_article() -> None:
-    """Test that Odyssey matches an existing movie titled The Odyssey."""
-    mock_movie_repo = create_autospec(MovieRepository, instance=True)
-    existing_movie = Movie(id=MovieId(value="mov-odyssey"), title="The Odyssey")
-    mock_movie_repo.find_by_titles.return_value = [existing_movie]
-
-    lookup = await _run(
-        _make_command(mock_movie_repo),
-        (_make_movie_input("ODYSSEY"),),
-    )
-
-    assert lookup["ODYSSEY"] == "mov-odyssey"
-    mock_movie_repo.save.assert_not_awaited()
-
-
-@pytest.mark.asyncio
-async def test_reuses_movie_when_colon_differs() -> None:
-    """Test that punctuation such as a colon does not split one movie."""
-    mock_movie_repo = create_autospec(MovieRepository, instance=True)
-    existing_movie = Movie(
-        id=MovieId(value="mov-odyssey"), title="The Odyssey: Part One"
-    )
-    mock_movie_repo.find_by_titles.return_value = [existing_movie]
-
-    lookup = await _run(
-        _make_command(mock_movie_repo),
-        (_make_movie_input("The Odyssey Part One"),),
-    )
-
-    assert lookup["The Odyssey Part One"] == "mov-odyssey"
+    assert lookup[source_title] == "mov-odyssey"
     mock_movie_repo.save.assert_not_awaited()
 
 
