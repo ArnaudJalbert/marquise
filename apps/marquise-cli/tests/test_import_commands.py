@@ -16,6 +16,7 @@ from marquise import (
     CreateScreeningsCommand,
     FetchScreeningsFromSourceQuery,
     GetCinemaSourceUseCase,
+    ListCinemasUseCase,
     MarquiseFactory,
 )
 from marquise_cli.helpers import run_spinner
@@ -59,7 +60,12 @@ def _make_factory(
 ) -> MagicMock:
     """Build fake factory with direct import use cases."""
     factory = create_autospec(MarquiseFactory, instance=True)
-    factory.cinema.list = AsyncMock(return_value=SimpleNamespace(cinemas=cinemas))
+    list_cinemas_use_case = create_autospec(ListCinemasUseCase, instance=True)
+    list_cinemas_use_case.InputData.side_effect = ListCinemasUseCase.InputData
+    list_cinemas_use_case.execute = AsyncMock(
+        return_value=SimpleNamespace(cinemas=cinemas)
+    )
+    factory.list_cinemas_use_case = list_cinemas_use_case
     fetch_use_case = create_autospec(FetchScreeningsFromSourceQuery, instance=True)
     fetch_use_case.execute = AsyncMock(side_effect=fetch_side_effect)
     movies_use_case = create_autospec(CreateMissingMoviesCommand, instance=True)
@@ -212,6 +218,10 @@ async def test_run_import_all_imports_each_cinema() -> None:
     assert [result.status for result in results] == ["imported", "imported"]
     assert results[0].imported_count == 3
     assert results[1].updated_count == 5
+    factory.list_cinemas_use_case.InputData.assert_called_once_with()
+    factory.list_cinemas_use_case.execute.assert_awaited_once_with(
+        ListCinemasUseCase.InputData()
+    )
     factory.fetch_screenings_use_case.execute.assert_awaited()
     assert factory.create_movies_use_case.execute.await_count == 2
     assert factory.create_screenings_use_case.execute.await_count == 2

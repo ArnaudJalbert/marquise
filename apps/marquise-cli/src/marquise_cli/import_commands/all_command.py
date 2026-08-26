@@ -64,7 +64,10 @@ async def run_import_all(
         today = date.today()
         end_date = today + timedelta(days=days - 1)
 
-        cinemas_response = await factory.cinema.list()
+        list_cinemas_use_case = factory.list_cinemas_use_case
+        cinemas_response = await list_cinemas_use_case.execute(
+            list_cinemas_use_case.InputData()
+        )
 
         async def _import_cinema(
             cinema: ListCinemasUseCase.CinemaData,

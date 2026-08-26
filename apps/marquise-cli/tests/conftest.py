@@ -13,7 +13,7 @@ from marquise import (
     UpdateCinemaUseCase,
 )
 
-UseCaseType = type[DeleteCinemaUseCase | UpdateCinemaUseCase]
+UseCaseType = type[DeleteCinemaUseCase | ListCinemasUseCase | UpdateCinemaUseCase]
 
 
 @pytest.fixture
@@ -31,6 +31,12 @@ def mock_use_case(use_case_type: UseCaseType) -> MagicMock:
     use_case.execute = AsyncMock()
     use_case.InputData = use_case_type.InputData
     return use_case
+
+
+@pytest.fixture
+def mock_list_cinemas_use_case() -> MagicMock:
+    """Provide a mocked ListCinemasUseCase."""
+    return mock_use_case(ListCinemasUseCase)
 
 
 def make_cinema_data(
