@@ -93,14 +93,13 @@ class MovieGateway(Protocol):
         ...
 
     async def find_by_titles(self, titles: list[str]) -> list[dict]:
-        """Find movies by a list of titles, case-insensitively.
+        """Find candidate movies containing any title term, case-insensitively.
 
         Args:
-            titles: The movie titles to look up.
+            titles: The title terms to search for.
 
         Returns:
-            A dict per matching row. Titles with no match are silently
-            omitted — the returned list may be shorter than ``titles``.
+            A dict per matching row. Terms with no match are silently omitted.
         """
         ...
 

@@ -94,13 +94,13 @@ class SupabaseMovieRepository(MovieRepository):
         return self._to_entity(data) if data is not None else None
 
     async def find_by_titles(self, titles: list[str]) -> list[Movie]:
-        """Find movies by a list of titles, case-insensitively.
+        """Find candidate movies containing any title term, case-insensitively.
 
         Args:
-            titles: The movie titles to look up.
+            titles: The title terms to search for.
 
         Returns:
-            A list of matching Movie entities.
+            A list of candidate Movie entities.
         """
         data = await self._gateway.find_by_titles(titles)
         return [self._to_entity(row) for row in data]
