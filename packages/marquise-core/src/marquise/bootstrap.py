@@ -29,6 +29,7 @@ from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseC
 from marquise.application.use_cases.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
+from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
@@ -109,6 +110,11 @@ class MarquiseFactory:
     def update_cinema_use_case(self) -> UpdateCinemaUseCase:
         """Configured use case for updating cinemas."""
         return self._container.update_cinema_use_case
+
+    @property
+    def list_cinemas_use_case(self) -> ListCinemasUseCase:
+        """Configured use case for listing cinemas."""
+        return self._container.list_cinemas_use_case
 
     @property
     def list_cinema_source_assignments_query(
