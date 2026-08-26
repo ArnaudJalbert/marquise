@@ -1,20 +1,28 @@
 # Releasing
 
-Version bumps and PyPI releases for workspace packages.
+Workspace packages release automatically after their version bump merges to `main`.
 
----
+## Release a package
 
-## Steps
-
-1. Bump version in the affected package's `pyproject.toml`:
+1. Bump version in affected package's `pyproject.toml`:
    - `packages/marquise-core/`
    - `apps/marquise-api/`
    - `apps/marquise-cli/`
-2. Add an entry under the current date in the affected package's `CHANGELOG.md` (see the [package changelog index](../CHANGELOG.md)).
-3. Commit: `chore(<pkg>): bump to vX.Y.Z`
-4. Tag: `marquise-core-vX.Y.Z` (or `marquise-api-vX.Y.Z`, `marquise-cli-vX.Y.Z`)
-5. Push: `git push origin main --tags`
+2. Add entry under current date in affected package's `CHANGELOG.md` (see [package changelog index](../CHANGELOG.md)).
+3. Merge pull request.
 
-CI builds, publishes to PyPI, and creates a GitHub Release.
+Release workflow validates every changed package version, builds only that package,
+and creates matching tag and private GitHub Release:
 
-Root `pyproject.toml` is virtual — it has no version of its own.
+- `marquise-core-vX.Y.Z`
+- `marquise-api-vX.Y.Z`
+- `marquise-cli-vX.Y.Z`
+
+Versions must be numeric `X.Y.Z` bumps. Release assets contain selected package's
+wheel and source distribution. Repository access controls keep them private. No
+packages are published to PyPI.
+
+Pull-request CI runs same version and build checks without creating tags, releases,
+or uploading assets.
+
+Root `pyproject.toml` is virtual: it has no version of its own.
