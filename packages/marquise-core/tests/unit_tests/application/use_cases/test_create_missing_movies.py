@@ -172,3 +172,37 @@ async def test_reuses_movie_found_with_different_case() -> None:
 
     assert lookup["The Batman"] == "mov-batman"
     mock_movie_repo.save.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_reuses_movie_when_source_omits_leading_article() -> None:
+    """Test that Odyssey matches an existing movie titled The Odyssey."""
+    mock_movie_repo = create_autospec(MovieRepository, instance=True)
+    existing_movie = Movie(id=MovieId(value="mov-odyssey"), title="The Odyssey")
+    mock_movie_repo.find_by_titles.return_value = [existing_movie]
+
+    lookup = await _run(
+        _make_command(mock_movie_repo),
+        (_make_movie_input("ODYSSEY"),),
+    )
+
+    assert lookup["ODYSSEY"] == "mov-odyssey"
+    mock_movie_repo.save.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_dedupes_titles_after_ignoring_articles_and_punctuation() -> None:
+    """Test that equivalent source titles create one movie."""
+    mock_movie_repo = create_autospec(MovieRepository, instance=True)
+    mock_movie_repo.find_by_titles.return_value = []
+    mock_movie_repo.save.side_effect = [
+        Movie(id=MovieId(value="mov-odyssey"), title="ODYSSEY")
+    ]
+
+    lookup = await _run(
+        _make_command(mock_movie_repo),
+        (_make_movie_input("The Odyssey"), _make_movie_input("ODYSSEY!")),
+    )
+
+    mock_movie_repo.save.assert_awaited_once()
+    assert lookup["ODYSSEY!"] == "mov-odyssey"
