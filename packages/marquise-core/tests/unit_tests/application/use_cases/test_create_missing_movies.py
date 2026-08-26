@@ -191,6 +191,24 @@ async def test_reuses_movie_when_source_omits_leading_article() -> None:
 
 
 @pytest.mark.asyncio
+async def test_reuses_movie_when_colon_differs() -> None:
+    """Test that punctuation such as a colon does not split one movie."""
+    mock_movie_repo = create_autospec(MovieRepository, instance=True)
+    existing_movie = Movie(
+        id=MovieId(value="mov-odyssey"), title="The Odyssey: Part One"
+    )
+    mock_movie_repo.find_by_titles.return_value = [existing_movie]
+
+    lookup = await _run(
+        _make_command(mock_movie_repo),
+        (_make_movie_input("The Odyssey Part One"),),
+    )
+
+    assert lookup["The Odyssey Part One"] == "mov-odyssey"
+    mock_movie_repo.save.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_dedupes_titles_after_ignoring_articles_and_punctuation() -> None:
     """Test that equivalent source titles create one movie."""
     mock_movie_repo = create_autospec(MovieRepository, instance=True)
