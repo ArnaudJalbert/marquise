@@ -16,12 +16,17 @@ from marquise.infrastructure.sources.cinestarz.gateways.source import (
 )
 
 
-def _schedule_html(*, title: str = "Movie One", performance_id: str = "123") -> str:
+def _schedule_html(
+    *,
+    venue_key: str = "CotedesNeiges",
+    title: str = "Movie One",
+    performance_id: str = "123",
+) -> str:
     """Build minimal Cine Starz schedule fragment."""
-    ticket_path = "/movies/CotedesNeiges/MOVIE-ONE"
+    ticket_path = f"/movies/{venue_key}/MOVIE-ONE"
     return (
         f'<div class="nowPlaying__item"><a class="nowPlaying__movieLink" '
-        f'href="/movie/CotedesNeiges/MOVIE-ONE">{title}</a>'
+        f'href="/movie/{venue_key}/MOVIE-ONE">{title}</a>'
         '<div class="performance__item"><div class="button button--showtime '
         'button--disabled"><span>11:00 AM</span></div></div>'
         '<div class="performance__item"><a class="button button--showtime" '
@@ -91,7 +96,10 @@ def test_fetch_showtimes_fetches_each_date_and_keeps_venue_isolated() -> None:
     def fake_fetch(url: str) -> str:
         """Record request URL and return one venue-specific schedule."""
         calls.append(url)
-        return _schedule_html(title="Cavendish Movie")
+        return _schedule_html(
+            venue_key="DeluxeCavendish",
+            title="Cavendish Movie",
+        )
 
     with patch(
         "marquise.infrastructure.sources.cinestarz.gateways.source._fetch",
@@ -107,6 +115,8 @@ def test_fetch_showtimes_fetches_each_date_and_keeps_venue_isolated() -> None:
     ]
     assert len(rows) == 2
     assert {row["movie_title"] for row in rows} == {"Cavendish Movie"}
+    assert all("/DeluxeCavendish/" in row["identifier"] for row in rows)
+    assert all("/DeluxeCavendish/" in row["ticket_url"] for row in rows)
 
 
 def test_fetch_showtimes_skips_failed_dates() -> None:
@@ -169,3 +179,15 @@ async def test_source_fetch_movie_detail_returns_none_when_page_has_no_metadata(
             )
             is None
         )
+
+
+@pytest.mark.asyncio
+async def test_source_fetch_movie_detail_returns_none_on_http_error() -> None:
+    """A failed movie-detail request is treated as no enrichment."""
+    identifier = "https://cinestarz.ca/movie/CotedesNeiges/MISSING"
+
+    with patch(
+        "marquise.infrastructure.sources.cinestarz.gateways.source._fetch",
+        side_effect=HTTPError(identifier, 404, "Not Found", {}, None),  # type: ignore[arg-type]
+    ):
+        assert await CineStarzSource().fetch_movie_detail(identifier) is None
