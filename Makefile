@@ -1,4 +1,4 @@
-.PHONY: test test-core test-api api cli lint format ty web web-live web-demo
+.PHONY: test test-core test-api api cli lint format ty deploy-api deploy-interface web web-live web-demo
 
 test: test-core test-api test-cli
 
@@ -28,6 +28,12 @@ format:
 
 ty:
 	uv run ty check packages/marquise-core/src
+
+deploy-api:
+	flyctl deploy . --config apps/marquise-api/fly.toml --remote-only
+
+deploy-interface:
+	cd web && flyctl deploy . --config apps/marquise-interface/fly.toml --remote-only
 
 # Start the marquise-components demo page (dev-only) → http://localhost:5173
 web-demo:
