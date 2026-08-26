@@ -30,6 +30,7 @@ Use cases call the registry — they never import scrapers directly.
 | `cineplex` | `infrastructure/sources/cineplex/` | `source_adapters/cineplex.py` |
 | `cinemacinema` | `infrastructure/sources/cinemacinema/` | `source_adapters/cinemacinema.py` |
 | `cinemapublic` | `infrastructure/sources/cinemapublic/` | `source_adapters/cinemapublic.py` |
+| `cinestarz` | `infrastructure/sources/cinestarz/` | `source_adapters/cinestarz.py` |
 | `cinemamoderne` | `infrastructure/sources/cinemamoderne/` | `source_adapters/cinemamoderne.py` |
 | `cinematheque` | `infrastructure/sources/cinematheque/` | `source_adapters/cinematheque.py` |
 | `outremont` | `infrastructure/sources/outremont/` | `source_adapters/outremont.py` |
