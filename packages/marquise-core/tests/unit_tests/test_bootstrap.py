@@ -22,6 +22,7 @@ from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseC
 from marquise.application.use_cases.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
+from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
@@ -167,6 +168,33 @@ async def test_update_cinema_use_case_returns_configured_use_case() -> None:
 
         use_case = factory.update_cinema_use_case
         assert isinstance(use_case, UpdateCinemaUseCase)
+        assert use_case.cinema_repository._gateway._pool is mock_database.pool
+
+        await factory.shutdown()
+
+
+def test_list_cinemas_use_case_requires_initialize() -> None:
+    """Verify list use case retains factory's pre-init failure behavior."""
+    factory = MarquiseFactory()
+
+    with pytest.raises(RuntimeError, match="Database pool not available"):
+        _ = factory.list_cinemas_use_case
+
+
+@pytest.mark.asyncio
+async def test_list_cinemas_use_case_returns_configured_use_case() -> None:
+    """Verify factory returns list use case wired to initialized pool."""
+    mock_database = AsyncMock()
+    mock_database.pool = AsyncMock()
+
+    with patch(
+        "marquise.infrastructure.di.container.Database", return_value=mock_database
+    ):
+        factory = MarquiseFactory()
+        await factory.initialize()
+
+        use_case = factory.list_cinemas_use_case
+        assert isinstance(use_case, ListCinemasUseCase)
         assert use_case.cinema_repository._gateway._pool is mock_database.pool
 
         await factory.shutdown()

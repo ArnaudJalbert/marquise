@@ -2,6 +2,12 @@
 
 Before 2026-07-15 this package was published as `marquise`.
 
+## 2026-08-26
+
+### v0.2.11
+
+- **Expose cinema listing use case**: `MarquiseFactory.list_cinemas_use_case` provides configured direct listing access for delivery apps. Closes #187.
+
 ## 2026-08-25
 
 ### v0.2.10
