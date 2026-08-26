@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 
-from marquise import AssignSourceUseCase, MarquiseFactory
+from marquise import MarquiseFactory
 from marquise_cli.helpers import run_spinner, select_cinema, select_source
 
 
@@ -25,7 +25,7 @@ async def run_assign(factory: MarquiseFactory) -> None:
         assign_source_use_case = factory.assign_source_use_case
         response = await run_spinner(
             assign_source_use_case.execute(
-                AssignSourceUseCase.InputData(
+                assign_source_use_case.InputData(
                     cinema_id=selected.id,
                     source_name=source_name,
                 )

@@ -13,13 +13,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
-from marquise import (
-    CreateMissingMoviesCommand,
-    CreateScreeningsCommand,
-    FetchScreeningsFromSourceQuery,
-    GetCinemaSourceUseCase,
-    MarquiseFactory,
-)
+from marquise import MarquiseFactory
 from marquise_cli.helpers import run_spinner, select_cinema
 
 _console = Console()
@@ -66,7 +60,7 @@ async def _import_screenings(
     """Import one cinema date range as formatting data."""
     fetch_use_case = factory.fetch_screenings_use_case
     fetched = await fetch_use_case.execute(
-        FetchScreeningsFromSourceQuery.InputData(
+        fetch_use_case.InputData(
             cinema_id=cinema_id,
             start_date=start_date,
             end_date=end_date,
@@ -74,9 +68,9 @@ async def _import_screenings(
     )
     movies_use_case = factory.create_movies_use_case
     movies = await movies_use_case.execute(
-        CreateMissingMoviesCommand.InputData(
+        movies_use_case.InputData(
             movies=tuple(
-                CreateMissingMoviesCommand.MovieInput(
+                movies_use_case.MovieInput(
                     title=movie.title,
                     description=movie.description,
                     directors=movie.directors,
@@ -97,9 +91,9 @@ async def _import_screenings(
     title_to_id = {movie.title: movie.id for movie in movies.movies}
     screenings_use_case = factory.create_screenings_use_case
     screenings = await screenings_use_case.execute(
-        CreateScreeningsCommand.InputData(
+        screenings_use_case.InputData(
             screenings=tuple(
-                CreateScreeningsCommand.ScreeningInput(
+                screenings_use_case.ScreeningInput(
                     movie_id=title_to_id[_normalize_title(screening.movie_title)],
                     movie_title=screening.movie_title,
                     cinema_id=fetched.cinema_id,
@@ -169,7 +163,7 @@ async def run_import_cinema(factory: MarquiseFactory) -> None:
             return
         get_source_use_case = factory.get_cinema_source_use_case
         assignment = await get_source_use_case.execute(
-            GetCinemaSourceUseCase.InputData(cinema_id=cinema.id)
+            get_source_use_case.InputData(cinema_id=cinema.id)
         )
         print(f"  Cinema:        {cinema.name}")
         print(f"  Assigned source: {assignment.source_display_name}")

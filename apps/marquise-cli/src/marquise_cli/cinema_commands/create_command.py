@@ -9,7 +9,6 @@ from dataclasses import asdict
 import questionary
 
 from marquise import (
-    AssignSourceUseCase,
     CinemaAlreadyExistsError,
     CinemaIdAlreadyExistsError,
     CinemaNotFoundError,
@@ -70,7 +69,7 @@ async def _assign_source(factory: MarquiseFactory, cinema_id: str) -> None:
     try:
         assign_source_use_case = factory.assign_source_use_case
         assignment = await assign_source_use_case.execute(
-            AssignSourceUseCase.InputData(
+            assign_source_use_case.InputData(
                 cinema_id=cinema_id,
                 source_name=source_name,
             )

@@ -16,9 +16,6 @@ from datetime import date, timedelta
 from marquise import (
     CinemaNotFoundError,
     CinemaSourceAssignmentNotFoundError,
-    CreateMissingMoviesCommand,
-    CreateScreeningsCommand,
-    FetchScreeningsFromSourceQuery,
     ListCinemasUseCase,
     MarquiseFactory,
 )
@@ -76,7 +73,7 @@ async def run_import_all(
             try:
                 fetch_use_case = factory.fetch_screenings_use_case
                 fetched = await fetch_use_case.execute(
-                    FetchScreeningsFromSourceQuery.InputData(
+                    fetch_use_case.InputData(
                         cinema_id=cinema.id,
                         start_date=today,
                         end_date=end_date,
@@ -84,9 +81,9 @@ async def run_import_all(
                 )
                 movies_use_case = factory.create_movies_use_case
                 movies = await movies_use_case.execute(
-                    CreateMissingMoviesCommand.InputData(
+                    movies_use_case.InputData(
                         movies=tuple(
-                            CreateMissingMoviesCommand.MovieInput(
+                            movies_use_case.MovieInput(
                                 title=movie.title,
                                 description=movie.description,
                                 directors=movie.directors,
@@ -107,9 +104,9 @@ async def run_import_all(
                 title_to_id = {movie.title: movie.id for movie in movies.movies}
                 screenings_use_case = factory.create_screenings_use_case
                 output = await screenings_use_case.execute(
-                    CreateScreeningsCommand.InputData(
+                    screenings_use_case.InputData(
                         screenings=tuple(
-                            CreateScreeningsCommand.ScreeningInput(
+                            screenings_use_case.ScreeningInput(
                                 movie_id=title_to_id[
                                     _normalize_title(screening.movie_title)
                                 ],

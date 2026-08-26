@@ -7,7 +7,7 @@ import asyncio
 from rich.console import Console
 from rich.table import Table
 
-from marquise import ListSourcesUseCase, MarquiseFactory
+from marquise import MarquiseFactory
 from marquise_cli.helpers import run_spinner
 
 _console = Console()
@@ -30,7 +30,7 @@ async def run_list_registered_sources(factory: MarquiseFactory) -> None:
     try:
         list_sources_use_case = factory.list_sources_use_case
         response = await run_spinner(
-            list_sources_use_case.execute(ListSourcesUseCase.InputData()),
+            list_sources_use_case.execute(list_sources_use_case.InputData()),
             description="Fetching registered sources...",
         )
     finally:
