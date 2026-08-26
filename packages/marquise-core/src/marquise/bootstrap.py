@@ -13,16 +13,31 @@ import types
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
+from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
+from marquise.application.use_cases.create_missing_movies import (
+    CreateMissingMoviesCommand,
+)
+from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
+from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
+from marquise.application.use_cases.delete_source import DeleteSourceUseCase
+from marquise.application.use_cases.fetch_screenings_from_source import (
+    FetchScreeningsFromSourceQuery,
+)
+from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
 from marquise.application.use_cases.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
+from marquise.application.use_cases.list_registry_sources import (
+    ListRegistrySourcesUseCase,
+)
+from marquise.application.use_cases.list_sources import ListSourcesUseCase
+from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.infrastructure.controllers.cinema_controller import CinemaController
 from marquise.infrastructure.controllers.movie_controller import MovieController
 from marquise.infrastructure.controllers.screening_controller import ScreeningController
-from marquise.infrastructure.controllers.source_controller import SourceController
 from marquise.infrastructure.di.container import Container
 
 
@@ -103,6 +118,56 @@ class MarquiseFactory:
         return self._container.list_cinema_source_assignments_query
 
     @property
+    def create_source_use_case(self) -> CreateSourceUseCase:
+        """Configured use case for registering sources."""
+        return self._container.create_source_use_case
+
+    @property
+    def list_sources_use_case(self) -> ListSourcesUseCase:
+        """Configured use case for listing registered sources."""
+        return self._container.list_sources_use_case
+
+    @property
+    def delete_source_use_case(self) -> DeleteSourceUseCase:
+        """Configured use case for unregistering sources."""
+        return self._container.delete_source_use_case
+
+    @property
+    def assign_source_use_case(self) -> AssignSourceUseCase:
+        """Configured use case for assigning sources."""
+        return self._container.assign_source_use_case
+
+    @property
+    def unassign_source_use_case(self) -> UnassignSourceUseCase:
+        """Configured use case for unassigning sources."""
+        return self._container.unassign_source_use_case
+
+    @property
+    def get_cinema_source_use_case(self) -> GetCinemaSourceUseCase:
+        """Configured use case for looking up cinema sources."""
+        return self._container.get_cinema_source_use_case
+
+    @property
+    def list_registry_sources_use_case(self) -> ListRegistrySourcesUseCase:
+        """Configured use case for listing registry sources."""
+        return self._container.list_registry_sources_use_case
+
+    @property
+    def fetch_screenings_use_case(self) -> FetchScreeningsFromSourceQuery:
+        """Configured query for fetching source screenings."""
+        return self._container.fetch_screenings_use_case
+
+    @property
+    def create_movies_use_case(self) -> CreateMissingMoviesCommand:
+        """Configured command for creating missing movies."""
+        return self._container.create_movies_use_case
+
+    @property
+    def create_screenings_use_case(self) -> CreateScreeningsCommand:
+        """Configured command for creating screenings."""
+        return self._container.create_screenings_use_case
+
+    @property
     def cinema(self) -> CinemaController:
         """Cinema management controller."""
         return self._container.cinema_controller
@@ -116,11 +181,6 @@ class MarquiseFactory:
     def screening(self) -> ScreeningController:
         """Screening read controller."""
         return self._container.screening_controller
-
-    @property
-    def source(self) -> SourceController:
-        """Source management controller."""
-        return self._container.source_controller
 
     # ------------------------------------------------------------------
     # Async context manager

@@ -84,9 +84,9 @@ async with create_factory_session() as f:
 Defined in `packages/marquise-core/src/marquise/__init__.py` via `__all__`:
 
 - `MarquiseFactory`, `create_factory()`, `create_factory_session()`
-- `CinemaController`, `MovieController`, `ScreeningController`, `SourceController`
+- `CinemaController`, `MovieController`, `ScreeningController`
 - `ApplicationError` and concrete application exception subclasses
-- `ListCinemasUseCase` (and nested `InputData` / `OutputData` / `CinemaData`)
+- Cinema and source use cases required by delivery apps (and their nested DTOs)
 
 Apps may import only from `marquise` (top-level) — never from
 `marquise.domain`, `marquise.application`, `marquise.interface_adapters`, or
