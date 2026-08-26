@@ -7,13 +7,16 @@ from unittest.mock import AsyncMock, MagicMock, create_autospec
 
 import pytest
 
-from conftest import make_cinema_data
-from marquise import (
-    CinemaController,
-    ListCinemaSourceAssignmentsQuery,
-    ListCinemasUseCase,
-)
+from conftest import make_cinema_data, mock_use_case
+from marquise import ListCinemaSourceAssignmentsQuery, ListCinemasUseCase
 from marquise_cli.cinema_commands.list_command import run_list_cinemas
+
+
+def _list_use_case(response: ListCinemasUseCase.OutputData) -> MagicMock:
+    """Build configured cinema-list use-case mock."""
+    use_case = mock_use_case(ListCinemasUseCase)
+    use_case.execute.return_value = response
+    return use_case
 
 
 @pytest.mark.asyncio
@@ -38,11 +41,10 @@ async def test_cinema_list_success(
             website=None,
         ),
     ]
-    mock_cinema_controller = create_autospec(CinemaController, instance=True)
-    mock_cinema_controller.list = AsyncMock(
-        return_value=ListCinemasUseCase.OutputData(cinemas=cinemas, total=len(cinemas))
+    list_cinemas_use_case = _list_use_case(
+        ListCinemasUseCase.OutputData(cinemas=cinemas, total=len(cinemas))
     )
-    mock_factory.cinema = mock_cinema_controller
+    mock_factory.list_cinemas_use_case = list_cinemas_use_case
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
@@ -55,6 +57,9 @@ async def test_cinema_list_success(
     assert "Cinema du Parc" in captured.out
     assert "Quartier Latin" in captured.out
     assert "Montreal" in captured.out
+    list_cinemas_use_case.execute.assert_awaited_once_with(
+        ListCinemasUseCase.InputData()
+    )
     mock_factory.initialize.assert_called_once()
     mock_factory.shutdown.assert_called_once()
 
@@ -65,11 +70,10 @@ async def test_cinema_list_empty(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Verify cinema list shows 'No cinemas found' when empty."""
-    mock_cinema_controller = create_autospec(CinemaController, instance=True)
-    mock_cinema_controller.list = AsyncMock(
-        return_value=ListCinemasUseCase.OutputData(cinemas=[], total=0)
+    list_cinemas_use_case = _list_use_case(
+        ListCinemasUseCase.OutputData(cinemas=[], total=0)
     )
-    mock_factory.cinema = mock_cinema_controller
+    mock_factory.list_cinemas_use_case = list_cinemas_use_case
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
@@ -86,11 +90,11 @@ async def test_cinema_list_failure(
     mock_factory: MagicMock,
 ) -> None:
     """Unexpected list failures propagate after factory shutdown."""
-    mock_cinema_controller = create_autospec(CinemaController, instance=True)
-    mock_cinema_controller.list = AsyncMock(
-        side_effect=ValueError("Something went wrong")
+    list_cinemas_use_case = _list_use_case(
+        ListCinemasUseCase.OutputData(cinemas=[], total=0)
     )
-    mock_factory.cinema = mock_cinema_controller
+    list_cinemas_use_case.execute.side_effect = ValueError("Something went wrong")
+    mock_factory.list_cinemas_use_case = list_cinemas_use_case
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
@@ -123,9 +127,8 @@ async def test_cinema_list_verbose(
             website=None,
         ),
     ]
-    mock_cinema_controller = create_autospec(CinemaController, instance=True)
-    mock_cinema_controller.list = AsyncMock(
-        return_value=ListCinemasUseCase.OutputData(cinemas=cinemas, total=len(cinemas))
+    list_cinemas_use_case = _list_use_case(
+        ListCinemasUseCase.OutputData(cinemas=cinemas, total=len(cinemas))
     )
     mock_assignment_query = create_autospec(
         ListCinemaSourceAssignmentsQuery, instance=True
@@ -141,7 +144,7 @@ async def test_cinema_list_verbose(
             ]
         )
     )
-    mock_factory.cinema = mock_cinema_controller
+    mock_factory.list_cinemas_use_case = list_cinemas_use_case
     mock_factory.list_cinema_source_assignments_query = mock_assignment_query
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
@@ -175,13 +178,12 @@ async def test_cinema_list_renders_markup_like_cinema_name(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Verify cinema names containing Rich markup render literally."""
-    mock_cinema_controller = create_autospec(CinemaController, instance=True)
-    mock_cinema_controller.list = AsyncMock(
-        return_value=ListCinemasUseCase.OutputData(
+    list_cinemas_use_case = _list_use_case(
+        ListCinemasUseCase.OutputData(
             cinemas=[make_cinema_data(name="[/bold]")], total=1
         )
     )
-    mock_factory.cinema = mock_cinema_controller
+    mock_factory.list_cinemas_use_case = list_cinemas_use_case
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
@@ -213,17 +215,18 @@ def test_cinema_list_renders_safe_website_text(website: str, expected: str) -> N
 async def test_cinema_list_with_name_filter(
     mock_factory: MagicMock,
 ) -> None:
-    """Verify cinema list --name passes filter to controller."""
-    mock_cinema_controller = create_autospec(CinemaController, instance=True)
-    mock_cinema_controller.list = AsyncMock(
-        return_value=ListCinemasUseCase.OutputData(cinemas=[], total=0)
+    """Verify cinema list --name passes filter to use case."""
+    list_cinemas_use_case = _list_use_case(
+        ListCinemasUseCase.OutputData(cinemas=[], total=0)
     )
-    mock_factory.cinema = mock_cinema_controller
+    mock_factory.list_cinemas_use_case = list_cinemas_use_case
     mock_factory.initialize = AsyncMock()
     mock_factory.shutdown = AsyncMock()
 
     await run_list_cinemas(mock_factory, name="Parc")
 
-    mock_cinema_controller.list.assert_called_once_with(name="Parc")
+    list_cinemas_use_case.execute.assert_awaited_once_with(
+        ListCinemasUseCase.InputData(name="Parc")
+    )
     mock_factory.initialize.assert_called_once()
     mock_factory.shutdown.assert_called_once()

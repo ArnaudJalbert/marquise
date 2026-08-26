@@ -41,7 +41,8 @@ async def select_cinema(
     prompt: str,
 ) -> ListCinemasUseCase.CinemaData | None:
     """Let user select a cinema, or cancel."""
-    response = await factory.cinema.list_cinemas()
+    list_cinemas_use_case = factory.list_cinemas_use_case
+    response = await list_cinemas_use_case.execute(list_cinemas_use_case.InputData())
     if not response.cinemas:
         print("No cinemas available.")
         return None

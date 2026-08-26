@@ -8,16 +8,17 @@ from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 
 import pytest
 
-from conftest import make_cinema_data
+from conftest import make_cinema_data, mock_use_case
 from marquise import (
     AssignSourceUseCase,
     CreateSourceUseCase,
     DeleteSourceUseCase,
+    ListCinemasUseCase,
     ListRegistrySourcesUseCase,
     ListSourcesUseCase,
     UnassignSourceUseCase,
 )
-from marquise_cli.helpers import select_source
+from marquise_cli.helpers import select_cinema, select_source
 from marquise_cli.source_commands.assign_command import run_assign
 from marquise_cli.source_commands.list_registered_command import (
     run_list_registered_sources,
@@ -65,6 +66,29 @@ async def test_select_source_executes_list_use_case_and_handles_cancellation(
     assert "Cancelled." in capsys.readouterr().out
     list_sources_use_case.InputData.assert_called_once_with()
     list_sources_use_case.execute.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_select_cinema_executes_list_use_case_and_handles_cancellation(
+    mock_factory: MagicMock,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Verify cinema selection lists cinemas directly and preserves cancellation."""
+    list_cinemas_use_case = mock_use_case(ListCinemasUseCase)
+    list_cinemas_use_case.execute.return_value = ListCinemasUseCase.OutputData(
+        cinemas=[make_cinema_data()], total=1
+    )
+    mock_factory.list_cinemas_use_case = list_cinemas_use_case
+
+    with patch("marquise_cli.helpers.questionary.select") as select:
+        select.return_value.ask_async = AsyncMock(return_value="__exit__")
+        selected = await select_cinema(mock_factory, "Select a cinema:")
+
+    assert selected is None
+    assert "Cancelled." in capsys.readouterr().out
+    list_cinemas_use_case.execute.assert_awaited_once_with(
+        ListCinemasUseCase.InputData()
+    )
 
 
 @pytest.mark.asyncio

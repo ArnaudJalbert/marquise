@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-26
+
+### v0.1.11
+
+- **Execute cinema listing use case directly**: cinema selection, delete, update, list, and bulk import no longer use `CinemaController`. Closes #187.
+
 ## 2026-08-25
 
 ### v0.1.10

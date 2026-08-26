@@ -32,7 +32,8 @@ def _cinema_choices(
 
 async def _select_cinema(factory: MarquiseFactory) -> tuple[str, str] | None:
     """List cinemas and interactively select one for deletion."""
-    response = await factory.cinema.list_cinemas()
+    list_cinemas_use_case = factory.list_cinemas_use_case
+    response = await list_cinemas_use_case.execute(list_cinemas_use_case.InputData())
 
     if not response.cinemas:
         print("No cinemas available to delete.")

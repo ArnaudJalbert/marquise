@@ -74,8 +74,10 @@ async def run_list_cinemas(
     """List all available cinemas."""
     await run_spinner(factory.initialize(), description="Connecting...")
     try:
+        list_cinemas_use_case = factory.list_cinemas_use_case
         response = await run_spinner(
-            factory.cinema.list(name=name), description="Fetching cinemas..."
+            list_cinemas_use_case.execute(list_cinemas_use_case.InputData(name=name)),
+            description="Fetching cinemas...",
         )
         if not response.cinemas:
             print("No cinemas found.")
