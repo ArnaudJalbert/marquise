@@ -37,6 +37,7 @@ class _SourceEntry:
 def _registry_use_case(sources: list[_SourceEntry]) -> MagicMock:
     """Build configured registry-source use-case mock."""
     use_case = create_autospec(ListRegistrySourcesUseCase, instance=True)
+    use_case.InputData.side_effect = ListRegistrySourcesUseCase.InputData
     use_case.execute = AsyncMock(return_value=SimpleNamespace(sources=sources))
     return use_case
 
@@ -44,6 +45,7 @@ def _registry_use_case(sources: list[_SourceEntry]) -> MagicMock:
 def _list_use_case(sources: list[_SourceEntry]) -> MagicMock:
     """Build configured registered-source use-case mock."""
     use_case = create_autospec(ListSourcesUseCase, instance=True)
+    use_case.InputData.side_effect = ListSourcesUseCase.InputData
     use_case.execute = AsyncMock(return_value=SimpleNamespace(sources=sources))
     return use_case
 
@@ -94,6 +96,7 @@ async def test_source_assign_executes_assign_use_case(
 ) -> None:
     """Verify source assignment sends selected values and cleans up factory."""
     assign_source_use_case = create_autospec(AssignSourceUseCase, instance=True)
+    assign_source_use_case.InputData.side_effect = AssignSourceUseCase.InputData
     assign_source_use_case.execute = AsyncMock(
         return_value=AssignSourceUseCase.OutputData(
             cinema_id="cin-001",
@@ -132,6 +135,7 @@ async def test_source_unassign_executes_unassign_use_case(
 ) -> None:
     """Verify source unassignment sends cinema ID and cleans up factory."""
     unassign_source_use_case = create_autospec(UnassignSourceUseCase, instance=True)
+    unassign_source_use_case.InputData.side_effect = UnassignSourceUseCase.InputData
     unassign_source_use_case.execute = AsyncMock(
         return_value=UnassignSourceUseCase.OutputData(cinema_id="cin-001")
     )
@@ -157,6 +161,7 @@ async def test_source_register_new_source(
 ) -> None:
     """Verify source register executes create use case after prompting."""
     create_use_case = create_autospec(CreateSourceUseCase, instance=True)
+    create_use_case.InputData.side_effect = CreateSourceUseCase.InputData
     create_use_case.execute = AsyncMock(
         return_value=SimpleNamespace(name="cinemacinema")
     )
@@ -228,6 +233,7 @@ async def test_source_unregister_success(
 ) -> None:
     """Verify source unregister executes delete use case after confirmation."""
     delete_use_case = create_autospec(DeleteSourceUseCase, instance=True)
+    delete_use_case.InputData.side_effect = DeleteSourceUseCase.InputData
     delete_use_case.execute = AsyncMock()
     mock_factory.list_registry_sources_use_case = _registry_use_case(
         [_SourceEntry("cinemacinema")]
@@ -313,6 +319,7 @@ async def test_source_unregister_partial_failure(
 ) -> None:
     """Verify source unregister reports each delete use-case failure."""
     delete_use_case = create_autospec(DeleteSourceUseCase, instance=True)
+    delete_use_case.InputData.side_effect = DeleteSourceUseCase.InputData
     delete_use_case.execute = AsyncMock(side_effect=ValueError("Something went wrong"))
     mock_factory.list_registry_sources_use_case = _registry_use_case(
         [_SourceEntry("cinemacinema")]

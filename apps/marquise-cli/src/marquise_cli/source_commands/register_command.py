@@ -10,12 +10,7 @@ import questionary
 from rich.console import Console
 from rich.table import Table
 
-from marquise import (
-    CreateSourceUseCase,
-    ListRegistrySourcesUseCase,
-    ListSourcesUseCase,
-    MarquiseFactory,
-)
+from marquise import MarquiseFactory
 from marquise_cli.helpers import run_spinner
 
 _console = Console()
@@ -53,12 +48,12 @@ async def _load_sources(
     """Load registry and registered source definitions."""
     registry_use_case = factory.list_registry_sources_use_case
     registry_response = await run_spinner(
-        registry_use_case.execute(ListRegistrySourcesUseCase.InputData()),
+        registry_use_case.execute(registry_use_case.InputData()),
         description="Fetching available sources...",
     )
     list_use_case = factory.list_sources_use_case
     registered_response = await run_spinner(
-        list_use_case.execute(ListSourcesUseCase.InputData()),
+        list_use_case.execute(list_use_case.InputData()),
         description="Fetching registered sources...",
     )
     return (
@@ -78,7 +73,7 @@ async def _register_source(factory: MarquiseFactory, source: dict) -> bool:
         create_source_use_case = factory.create_source_use_case
         result = await run_spinner(
             create_source_use_case.execute(
-                CreateSourceUseCase.InputData(
+                create_source_use_case.InputData(
                     name=source["name"],
                     display_name=display_name,
                     description=description,

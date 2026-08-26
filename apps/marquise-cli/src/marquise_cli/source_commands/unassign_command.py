@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 
-from marquise import MarquiseFactory, UnassignSourceUseCase
+from marquise import MarquiseFactory
 from marquise_cli.helpers import run_spinner, select_cinema
 
 
@@ -21,7 +21,7 @@ async def run_unassign(factory: MarquiseFactory) -> None:
         unassign_source_use_case = factory.unassign_source_use_case
         response = await run_spinner(
             unassign_source_use_case.execute(
-                UnassignSourceUseCase.InputData(cinema_id=selected.id)
+                unassign_source_use_case.InputData(cinema_id=selected.id)
             ),
             description="Removing source assignment...",
         )

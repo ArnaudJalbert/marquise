@@ -9,12 +9,7 @@ import questionary
 from rich.console import Console
 from rich.table import Table
 
-from marquise import (
-    DeleteSourceUseCase,
-    ListRegistrySourcesUseCase,
-    ListSourcesUseCase,
-    MarquiseFactory,
-)
+from marquise import MarquiseFactory
 from marquise_cli.helpers import run_spinner
 
 _console = Console()
@@ -63,7 +58,7 @@ async def _delete_sources(factory: MarquiseFactory, source_names: list[str]) -> 
             delete_source_use_case = factory.delete_source_use_case
             await run_spinner(
                 delete_source_use_case.execute(
-                    DeleteSourceUseCase.InputData(source_name=source_name)
+                    delete_source_use_case.InputData(source_name=source_name)
                 ),
                 description=f"Removing {source_name}...",
             )
@@ -78,12 +73,12 @@ async def run_unregister_sources(factory: MarquiseFactory) -> None:
     try:
         registry_use_case = factory.list_registry_sources_use_case
         registry_response = await run_spinner(
-            registry_use_case.execute(ListRegistrySourcesUseCase.InputData()),
+            registry_use_case.execute(registry_use_case.InputData()),
             description="Fetching available sources...",
         )
         list_use_case = factory.list_sources_use_case
         registered_response = await run_spinner(
-            list_use_case.execute(ListSourcesUseCase.InputData()),
+            list_use_case.execute(list_use_case.InputData()),
             description="Fetching registered sources...",
         )
         if not registered_response.sources:

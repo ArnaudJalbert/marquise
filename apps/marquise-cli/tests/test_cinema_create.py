@@ -80,6 +80,7 @@ async def test_cinema_create_assigns_source_after_success(
     """Verify successful creation can assign a selected source."""
     use_case = _mock_create_use_case(response=_created_cinema())
     assign_use_case = create_autospec(AssignSourceUseCase, instance=True)
+    assign_use_case.InputData.side_effect = AssignSourceUseCase.InputData
     assign_use_case.execute = AsyncMock(
         return_value=SimpleNamespace(cinema_id="cin-001", source_name="cineplex")
     )
@@ -124,6 +125,7 @@ async def test_cinema_create_declines_source_assignment(
     """Verify declining source assignment leaves cinema created."""
     use_case = _mock_create_use_case(response=_created_cinema())
     assign_use_case = create_autospec(AssignSourceUseCase, instance=True)
+    assign_use_case.InputData.side_effect = AssignSourceUseCase.InputData
     mock_factory.create_cinema_use_case = use_case
     mock_factory.assign_source_use_case = assign_use_case
 
@@ -158,6 +160,7 @@ async def test_cinema_create_assignment_failure(
     """Verify source assignment errors are reported after creation."""
     use_case = _mock_create_use_case(response=_created_cinema())
     assign_use_case = create_autospec(AssignSourceUseCase, instance=True)
+    assign_use_case.InputData.side_effect = AssignSourceUseCase.InputData
     assign_use_case.execute = AsyncMock(side_effect=ValueError("Source unavailable"))
     mock_factory.create_cinema_use_case = use_case
     mock_factory.assign_source_use_case = assign_use_case
