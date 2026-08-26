@@ -1,4 +1,4 @@
-name: CI
+name: Release validation
 
 on:
   pull_request:
@@ -9,88 +9,6 @@ permissions:
   pull-requests: read
 
 jobs:
-  quality:
-    name: Lint, format, and unit tests
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-
-      - name: Set up Python
-        run: uv python install 3.13
-
-      - name: Install dependencies
-        run: uv sync --group dev
-
-      - name: Check formatting
-        run: uv run ruff format --check .
-
-      - name: Lint
-        run: uv run ruff check .
-
-      - name: Type check (ty)
-        run: uv run ty check packages/marquise-core/src
-
-      - name: Run unit tests with coverage
-        run: |
-          uv run pytest packages/marquise-core/tests/unit_tests/ \
-            --cov=marquise \
-            --cov-report=xml \
-            --cov-report=term-missing \
-            --cov-fail-under=70
-
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: coverage-report
-          path: coverage.xml
-
-  integration:
-    name: Integration tests
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-
-      - name: Set up Python
-        run: uv python install 3.13
-
-      - name: Install dependencies
-        run: uv sync --group dev
-
-      - name: Verify required secrets are set
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
-        run: |
-          missing=()
-          [[ -z "$DATABASE_URL" ]] && missing+=("DATABASE_URL")
-          [[ -z "$SUPABASE_URL" ]] && missing+=("SUPABASE_URL")
-          [[ -z "$SUPABASE_PUBLISHABLE_KEY" ]] && missing+=("SUPABASE_PUBLISHABLE_KEY")
-          if [[ ${#missing[@]} -gt 0 ]]; then
-            echo "Missing required secrets: ${missing[*]}"
-            exit 1
-          fi
-
-      - name: Run integration tests
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
-        run: uv run pytest packages/marquise-core/tests/integration_tests/ -v
-
   release-checks:
     name: Version bump + CHANGELOG
     runs-on: ubuntu-latest
