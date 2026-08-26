@@ -167,39 +167,20 @@ class SupabaseMovieGateway:
         return dict(row) if row is not None else None
 
     async def find_by_titles(self, titles: list[str]) -> list[dict]:
-        """Find movies by a list of titles, case-insensitively.
+        """Find candidate movies containing any title term, case-insensitively.
 
         Args:
-            titles: The movie titles to look up.
+            titles: The title terms to search for.
 
         Returns:
-            A dict per matching row. Titles with no match are silently
-            omitted — the returned list may be shorter than ``titles``.
+            A dict per matching row. Terms with no match are silently omitted.
         """
         if not titles:
             return []
-        normalized_title = (
-            "regexp_replace("
-            "regexp_replace(lower(title), '[^[:alnum:]]+', ' ', 'g'), "
-            "'^(the|a|an) ', ''"
-            ")"
-        )
-        normalized_inputs = [
-            "regexp_replace("
-            f"regexp_replace(lower(${index}), '[^[:alnum:]]+', ' ', 'g'), "
-            "'^(the|a|an) ', ''"
-            ")"
-            for index in range(1, len(titles) + 1)
-        ]
-        clauses = [
-            f"({normalized_title} LIKE '%' || {normalized_input} || '%' "
-            f"OR {normalized_input} LIKE '%' || {normalized_title} || '%')"
-            for normalized_input in normalized_inputs
-        ]
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(
-                f"SELECT {_COLUMNS} FROM {self._table} WHERE {' OR '.join(clauses)}",
-                *[t.lower() for t in titles],
+                f"SELECT {_COLUMNS} FROM {self._table} WHERE title ILIKE ANY($1)",
+                [f"%{title}%" for title in titles],
             )
         return [dict(r) for r in rows]
 

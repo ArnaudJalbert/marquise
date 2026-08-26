@@ -92,6 +92,30 @@ async def test_find_by_title_missing(movie_gateway: SupabaseMovieGateway) -> Non
 
 
 @pytest.mark.asyncio
+async def test_find_by_titles_returns_case_insensitive_candidates(
+    movie_gateway: SupabaseMovieGateway,
+) -> None:
+    """Verify a title term returns case-insensitive candidate movies."""
+    await movie_gateway.save(movie_id="mov-odyssey", title="The Odyssey: Part One")
+
+    found = await movie_gateway.find_by_titles(["odyssey"])
+
+    assert [row["id"] for row in found] == ["mov-odyssey"]
+
+
+@pytest.mark.asyncio
+async def test_find_by_titles_returns_contained_title_candidate(
+    movie_gateway: SupabaseMovieGateway,
+) -> None:
+    """Verify title candidate search leaves matching decisions to callers."""
+    await movie_gateway.save(movie_id="mov-it-two", title="It: Chapter Two")
+
+    found = await movie_gateway.find_by_titles(["It"])
+
+    assert [row["id"] for row in found] == ["mov-it-two"]
+
+
+@pytest.mark.asyncio
 async def test_save_updates_existing_on_title_conflict(
     movie_gateway: SupabaseMovieGateway,
 ) -> None:

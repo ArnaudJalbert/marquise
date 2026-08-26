@@ -65,82 +65,134 @@ class CreateMissingMoviesCommand:
         self.movie_repository = movie_repository
 
     async def execute(self, request: InputData) -> OutputData:
-        titles = [_normalize_title(m.title) for m in request.movies]
-        found_movies = await self.movie_repository.find_by_titles(titles)
-
-        found_map: dict[str, Movie] = {}
-        for movie in found_movies:
-            found_map[_title_key(movie.title)] = movie
-
-        movies_data: list[CreateMissingMoviesCommand.MovieData] = []
-        to_create: list[Movie] = []
-
-        logger.info(
-            "Processing %d movie inputs, %d already exist",
-            len(request.movies),
-            len(found_movies),
+        found_movies = await self.movie_repository.find_by_titles(
+            self._search_terms(request.movies)
         )
-
-        created_titles: set[str] = set()
-        for movie_input in request.movies:
-            title = _normalize_title(movie_input.title)
-            existing = found_map.get(_title_key(title))
-            if existing is not None:
-                movies_data.append(self.MovieData(title=title, id=existing.id.value))
-            elif _title_key(title) not in created_titles:
-                movie = Movie(
-                    id=MovieId(value=uuid4().hex),
-                    title=title,
-                    description=movie_input.description,
-                    directors=movie_input.directors,
-                    cast=movie_input.cast,
-                    duration_minutes=movie_input.duration_minutes,
-                    release_year=movie_input.release_year,
-                    poster_url=movie_input.poster_url,
-                    trailer_url=movie_input.trailer_url,
-                    genres=movie_input.genres,
-                    original_title=movie_input.original_title,
-                    rating=movie_input.rating,
-                    origin_countries=movie_input.origin_countries,
-                )
-                to_create.append(movie)
-                created_titles.add(_title_key(title))
-
-        if to_create:
-            saved = await asyncio.gather(
-                *[self.movie_repository.save(m) for m in to_create]
-            )
-            created_map = {_title_key(movie.title): movie for movie in saved}
-            for movie_input in request.movies:
-                if _title_key(movie_input.title) not in found_map:
-                    movie = created_map.get(_title_key(movie_input.title))
-                    if movie is not None:
-                        movies_data.append(
-                            self.MovieData(
-                                title=_normalize_title(movie_input.title),
-                                id=movie.id.value,
-                            )
-                        )
+        existing, missing = self._separate_existing(request.movies, found_movies)
+        created = await self._save_missing(missing)
+        movies = existing + self._created_data(request.movies, created)
 
         logger.info(
             "Created %d new movies, found %d existing",
-            len(to_create),
+            len(created),
             len(found_movies),
         )
+        return self.OutputData(movies=tuple(movies))
 
-        return self.OutputData(movies=tuple(movies_data))
+    @staticmethod
+    def _search_terms(movies: tuple[MovieInput, ...]) -> list[str]:
+        """Choose one broad database search term per canonical title."""
+        return [
+            max(key.split(), key=len)
+            for movie in movies
+            if (key := Movie.title_key(movie.title))
+        ]
 
+    @classmethod
+    def _separate_existing(
+        cls,
+        movie_inputs: tuple[MovieInput, ...],
+        found_movies: list[Movie],
+    ) -> tuple[list[MovieData], dict[str, MovieInput]]:
+        """Return existing movie data and one pending input per title key."""
+        candidates = cls._candidates_by_key(found_movies)
+        existing: list[CreateMissingMoviesCommand.MovieData] = []
+        missing: dict[str, CreateMissingMoviesCommand.MovieInput] = {}
 
-def _normalize_title(title: str) -> str:
-    """Strip and collapse internal whitespace in a scraped movie title."""
-    return " ".join(title.strip().split())
+        for movie_input in movie_inputs:
+            title = cls._normalize_title(movie_input.title)
+            key = Movie.title_key(title)
+            movie = cls._find_match(
+                candidates.get(key, []),
+                title=title,
+                release_year=movie_input.release_year,
+            )
+            if movie is not None:
+                existing.append(cls.MovieData(title=title, id=movie.id.value))
+            else:
+                missing.setdefault(key, movie_input)
+        return existing, missing
 
+    async def _save_missing(self, missing: dict[str, MovieInput]) -> dict[str, Movie]:
+        """Persist missing movies and map them back to their title keys."""
+        saved = await asyncio.gather(
+            *(
+                self.movie_repository.save(self._movie(movie))
+                for movie in missing.values()
+            )
+        )
+        return dict(zip(missing, saved, strict=True))
 
-def _title_key(title: str) -> str:
-    """Build a forgiving key for titles from different cinema sources."""
-    words = "".join(
-        char if char.isalnum() else " " for char in title.casefold()
-    ).split()
-    if len(words) > 1 and words[0] in {"a", "an", "the"}:
-        words.pop(0)
-    return " ".join(words)
+    @classmethod
+    def _created_data(
+        cls,
+        movie_inputs: tuple[MovieInput, ...],
+        created: dict[str, Movie],
+    ) -> list[MovieData]:
+        """Build output rows for every input represented by a created movie."""
+        return [
+            cls.MovieData(
+                title=cls._normalize_title(movie_input.title),
+                id=movie.id.value,
+            )
+            for movie_input in movie_inputs
+            if (movie := created.get(Movie.title_key(movie_input.title))) is not None
+        ]
+
+    @staticmethod
+    def _candidates_by_key(found_movies: list[Movie]) -> dict[str, list[Movie]]:
+        """Group database search candidates by canonical title key."""
+        candidates: dict[str, list[Movie]] = {}
+        for movie in found_movies:
+            candidates.setdefault(Movie.title_key(movie.title), []).append(movie)
+        return candidates
+
+    @staticmethod
+    def _movie(movie_input: MovieInput) -> Movie:
+        """Build a new movie entity from one scraped input."""
+        return Movie(
+            id=MovieId(value=uuid4().hex),
+            title=CreateMissingMoviesCommand._normalize_title(movie_input.title),
+            description=movie_input.description,
+            directors=movie_input.directors,
+            cast=movie_input.cast,
+            duration_minutes=movie_input.duration_minutes,
+            release_year=movie_input.release_year,
+            poster_url=movie_input.poster_url,
+            trailer_url=movie_input.trailer_url,
+            genres=movie_input.genres,
+            original_title=movie_input.original_title,
+            rating=movie_input.rating,
+            origin_countries=movie_input.origin_countries,
+        )
+
+    @staticmethod
+    def _normalize_title(title: str) -> str:
+        """Strip and collapse internal whitespace in a scraped movie title."""
+        return " ".join(title.strip().split())
+
+    @classmethod
+    def _find_match(
+        cls,
+        candidates: list[Movie],
+        *,
+        title: str,
+        release_year: int | None,
+    ) -> Movie | None:
+        """Return one compatible movie candidate, or None when ambiguous."""
+        compatible = [
+            movie
+            for movie in candidates
+            if release_year is None
+            or movie.release_year is None
+            or movie.release_year == release_year
+        ]
+        exact = [
+            movie
+            for movie in compatible
+            if cls._normalize_title(movie.title).casefold()
+            == cls._normalize_title(title).casefold()
+        ]
+        if len(exact) == 1:
+            return exact[0]
+        return compatible[0] if len(compatible) == 1 else None
