@@ -26,6 +26,7 @@ from marquise.application.use_cases.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
 from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
+from marquise.application.use_cases.import_screenings import ImportScreeningsCommand
 from marquise.application.use_cases.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
@@ -166,6 +167,11 @@ class MarquiseFactory:
     def create_screenings_use_case(self) -> CreateScreeningsCommand:
         """Configured command for creating screenings."""
         return self._container.create_screenings_use_case
+
+    @property
+    def import_screenings_use_case(self) -> ImportScreeningsCommand:
+        """Configured command for importing screenings."""
+        return self._container.import_screenings_use_case
 
     @property
     def cinema(self) -> CinemaController:

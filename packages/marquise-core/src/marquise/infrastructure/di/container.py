@@ -32,6 +32,7 @@ from marquise.application.use_cases.get_movie_screenings import (
     GetMovieScreeningsUseCase,
 )
 from marquise.application.use_cases.get_screening import GetScreeningUseCase
+from marquise.application.use_cases.import_screenings import ImportScreeningsCommand
 from marquise.application.use_cases.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
@@ -410,6 +411,14 @@ class Container:
             screening_repository=self._screening_repository,
         )
 
+    @property
+    def _import_screenings_use_case(self) -> ImportScreeningsCommand:
+        return ImportScreeningsCommand(
+            fetch_screenings_use_case=self._fetch_screenings_use_case,
+            create_movies_use_case=self._create_movies_use_case,
+            create_screenings_use_case=self._create_screenings_use_case,
+        )
+
     # ------------------------------------------------------------------
     # Use cases — Read-only (public API)
     # ------------------------------------------------------------------
@@ -535,6 +544,11 @@ class Container:
     def create_screenings_use_case(self) -> CreateScreeningsCommand:
         """Public create-screenings command."""
         return self._create_screenings_use_case
+
+    @property
+    def import_screenings_use_case(self) -> ImportScreeningsCommand:
+        """Public import-screenings command."""
+        return self._import_screenings_use_case
 
     @property
     def list_cinemas_use_case(self) -> ListCinemasUseCase:

@@ -19,6 +19,7 @@ from marquise.application.use_cases.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
 from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
+from marquise.application.use_cases.import_screenings import ImportScreeningsCommand
 from marquise.application.use_cases.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
@@ -227,6 +228,7 @@ async def test_cinema_property_returns_cinema_controller() -> None:
         "fetch_screenings_use_case",
         "create_movies_use_case",
         "create_screenings_use_case",
+        "import_screenings_use_case",
     ],
 )
 def test_source_use_cases_require_initialize(property_name: str) -> None:
@@ -251,6 +253,7 @@ def test_source_use_cases_require_initialize(property_name: str) -> None:
         ("fetch_screenings_use_case", FetchScreeningsFromSourceQuery),
         ("create_movies_use_case", CreateMissingMoviesCommand),
         ("create_screenings_use_case", CreateScreeningsCommand),
+        ("import_screenings_use_case", ImportScreeningsCommand),
     ],
 )
 async def test_source_use_cases_return_configured_use_cases(

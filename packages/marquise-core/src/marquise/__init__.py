@@ -49,6 +49,7 @@ from marquise.application.use_cases.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
 from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
+from marquise.application.use_cases.import_screenings import ImportScreeningsCommand
 from marquise.application.use_cases.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
@@ -85,6 +86,7 @@ __all__ = [
     "DeleteSourceUseCase",
     "FetchScreeningsFromSourceQuery",
     "GetCinemaSourceUseCase",
+    "ImportScreeningsCommand",
     "create_factory",
     "create_factory_session",
     "ListCinemaSourceAssignmentsQuery",

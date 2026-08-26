@@ -26,6 +26,7 @@ EXPECTED_PUBLIC_SURFACE: set[str] = {
     "DeleteSourceUseCase",
     "FetchScreeningsFromSourceQuery",
     "GetCinemaSourceUseCase",
+    "ImportScreeningsCommand",
     "ListCinemaSourceAssignmentsQuery",
     "create_factory",
     "create_factory_session",
