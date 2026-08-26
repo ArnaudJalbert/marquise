@@ -70,7 +70,7 @@ class CreateMissingMoviesCommand:
 
         found_map: dict[str, Movie] = {}
         for movie in found_movies:
-            found_map[_normalize_title(movie.title).lower()] = movie
+            found_map[_title_key(movie.title)] = movie
 
         movies_data: list[CreateMissingMoviesCommand.MovieData] = []
         to_create: list[Movie] = []
@@ -84,10 +84,10 @@ class CreateMissingMoviesCommand:
         created_titles: set[str] = set()
         for movie_input in request.movies:
             title = _normalize_title(movie_input.title)
-            existing = found_map.get(title.lower())
+            existing = found_map.get(_title_key(title))
             if existing is not None:
                 movies_data.append(self.MovieData(title=title, id=existing.id.value))
-            elif title not in created_titles:
+            elif _title_key(title) not in created_titles:
                 movie = Movie(
                     id=MovieId(value=uuid4().hex),
                     title=title,
@@ -104,15 +104,23 @@ class CreateMissingMoviesCommand:
                     origin_countries=movie_input.origin_countries,
                 )
                 to_create.append(movie)
-                created_titles.add(title)
+                created_titles.add(_title_key(title))
 
         if to_create:
             saved = await asyncio.gather(
                 *[self.movie_repository.save(m) for m in to_create]
             )
-            for movie in saved:
-                title = _normalize_title(movie.title)
-                movies_data.append(self.MovieData(title=title, id=movie.id.value))
+            created_map = {_title_key(movie.title): movie for movie in saved}
+            for movie_input in request.movies:
+                if _title_key(movie_input.title) not in found_map:
+                    movie = created_map.get(_title_key(movie_input.title))
+                    if movie is not None:
+                        movies_data.append(
+                            self.MovieData(
+                                title=_normalize_title(movie_input.title),
+                                id=movie.id.value,
+                            )
+                        )
 
         logger.info(
             "Created %d new movies, found %d existing",
@@ -126,3 +134,13 @@ class CreateMissingMoviesCommand:
 def _normalize_title(title: str) -> str:
     """Strip and collapse internal whitespace in a scraped movie title."""
     return " ".join(title.strip().split())
+
+
+def _title_key(title: str) -> str:
+    """Build a forgiving key for titles from different cinema sources."""
+    words = "".join(
+        char if char.isalnum() else " " for char in title.casefold()
+    ).split()
+    if len(words) > 1 and words[0] in {"a", "an", "the"}:
+        words.pop(0)
+    return " ".join(words)

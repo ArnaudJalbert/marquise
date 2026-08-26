@@ -178,10 +178,28 @@ class SupabaseMovieGateway:
         """
         if not titles:
             return []
+        normalized_title = (
+            "regexp_replace("
+            "regexp_replace(lower(title), '[^[:alnum:]]+', ' ', 'g'), "
+            "'^(the|a|an) ', ''"
+            ")"
+        )
+        normalized_inputs = [
+            "regexp_replace("
+            f"regexp_replace(lower(${index}), '[^[:alnum:]]+', ' ', 'g'), "
+            "'^(the|a|an) ', ''"
+            ")"
+            for index in range(1, len(titles) + 1)
+        ]
+        clauses = [
+            f"({normalized_title} LIKE '%' || {normalized_input} || '%' "
+            f"OR {normalized_input} LIKE '%' || {normalized_title} || '%')"
+            for normalized_input in normalized_inputs
+        ]
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(
-                f"SELECT {_COLUMNS} FROM {self._table} WHERE LOWER(title) = ANY($1)",
-                [t.lower() for t in titles],
+                f"SELECT {_COLUMNS} FROM {self._table} WHERE {' OR '.join(clauses)}",
+                *[t.lower() for t in titles],
             )
         return [dict(r) for r in rows]
 
