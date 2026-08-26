@@ -167,21 +167,20 @@ class SupabaseMovieGateway:
         return dict(row) if row is not None else None
 
     async def find_by_titles(self, titles: list[str]) -> list[dict]:
-        """Find movies by a list of titles, case-insensitively.
+        """Find candidate movies containing any title term, case-insensitively.
 
         Args:
-            titles: The movie titles to look up.
+            titles: The title terms to search for.
 
         Returns:
-            A dict per matching row. Titles with no match are silently
-            omitted — the returned list may be shorter than ``titles``.
+            A dict per matching row. Terms with no match are silently omitted.
         """
         if not titles:
             return []
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(
-                f"SELECT {_COLUMNS} FROM {self._table} WHERE LOWER(title) = ANY($1)",
-                [t.lower() for t in titles],
+                f"SELECT {_COLUMNS} FROM {self._table} WHERE title ILIKE ANY($1)",
+                [f"%{title}%" for title in titles],
             )
         return [dict(r) for r in rows]
 

@@ -63,14 +63,13 @@ class MovieRepository(ABC):
 
     @abstractmethod
     async def find_by_titles(self, titles: list[str]) -> list[Movie]:
-        """Find movies by a list of titles, case-insensitively.
+        """Find candidate movies containing any title term, case-insensitively.
 
         Args:
-            titles: The movie titles to look up.
+            titles: The title terms to search for.
 
         Returns:
-            A list of matching Movie entities.  Titles with no match are
-            silently omitted.
+            Candidate Movie entities. Terms with no match are silently omitted.
         """
         ...
 

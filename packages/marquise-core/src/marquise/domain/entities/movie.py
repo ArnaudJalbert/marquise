@@ -61,6 +61,16 @@ class Movie:
         if self.release_year is not None and self.release_year <= 0:
             raise ValueError("Movie release year must be positive")
 
+    @classmethod
+    def title_key(cls, title: str) -> str:
+        """Return a canonical key for comparing movie title variants."""
+        words = "".join(
+            char if char.isalnum() else " " for char in title.casefold()
+        ).split()
+        if len(words) > 1 and words[0] in {"a", "an", "the"}:
+            words.pop(0)
+        return " ".join(words)
+
     def is_recent(self, years: int = 1) -> bool:
         """Check if the movie was released within the last specified years.
 
