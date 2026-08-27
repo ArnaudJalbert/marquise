@@ -18,19 +18,30 @@ from marquise.application.use_cases.delete_source import DeleteSourceUseCase
 from marquise.application.use_cases.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
+from marquise.application.use_cases.get_cinema import GetCinemaUseCase
+from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
+from marquise.application.use_cases.get_cinema_screenings import (
+    GetCinemaScreeningsUseCase,
+)
 from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
+from marquise.application.use_cases.get_movie import GetMovieUseCase
+from marquise.application.use_cases.get_movie_screenings import (
+    GetMovieScreeningsUseCase,
+)
+from marquise.application.use_cases.get_screening import GetScreeningUseCase
 from marquise.application.use_cases.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
+from marquise.application.use_cases.list_movies import ListMoviesUseCase
 from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
+from marquise.application.use_cases.search_screenings import SearchScreeningsUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.bootstrap import MarquiseFactory, create_factory, create_factory_session
-from marquise.infrastructure.controllers.cinema_controller import CinemaController
 
 
 @pytest.fixture(autouse=True)
@@ -88,7 +99,7 @@ async def test_initialize_is_idempotent() -> None:
 
 
 # ------------------------------------------------------------------
-# Controller and use-case properties
+# Configured use-case properties
 # ------------------------------------------------------------------
 
 
@@ -227,21 +238,6 @@ async def test_list_assignments_query_returns_configured_query() -> None:
         await factory.shutdown()
 
 
-@pytest.mark.asyncio
-async def test_cinema_property_returns_cinema_controller() -> None:
-    """Verify cinema property returns a CinemaController after init."""
-    mock_database = AsyncMock()
-    mock_database.pool = AsyncMock()
-
-    with patch(
-        "marquise.infrastructure.di.container.Database", return_value=mock_database
-    ):
-        factory = MarquiseFactory()
-        await factory.initialize()
-        assert isinstance(factory.cinema, CinemaController)
-        await factory.shutdown()
-
-
 @pytest.mark.parametrize(
     "property_name",
     [
@@ -255,10 +251,18 @@ async def test_cinema_property_returns_cinema_controller() -> None:
         "fetch_screenings_use_case",
         "create_movies_use_case",
         "create_screenings_use_case",
+        "get_cinema_use_case",
+        "get_cinema_screenings_use_case",
+        "get_cinema_movies_use_case",
+        "list_movies_use_case",
+        "get_movie_use_case",
+        "get_movie_screenings_use_case",
+        "search_screenings_use_case",
+        "get_screening_use_case",
     ],
 )
-def test_source_use_cases_require_initialize(property_name: str) -> None:
-    """Verify source use cases retain factory's pre-init failure behavior."""
+def test_configured_use_cases_require_initialize(property_name: str) -> None:
+    """Verify configured use cases retain pre-init failure behavior."""
     factory = MarquiseFactory()
 
     with pytest.raises(RuntimeError, match="Database pool not available"):
@@ -279,13 +283,21 @@ def test_source_use_cases_require_initialize(property_name: str) -> None:
         ("fetch_screenings_use_case", FetchScreeningsFromSourceQuery),
         ("create_movies_use_case", CreateMissingMoviesCommand),
         ("create_screenings_use_case", CreateScreeningsCommand),
+        ("get_cinema_use_case", GetCinemaUseCase),
+        ("get_cinema_screenings_use_case", GetCinemaScreeningsUseCase),
+        ("get_cinema_movies_use_case", GetCinemaMoviesUseCase),
+        ("list_movies_use_case", ListMoviesUseCase),
+        ("get_movie_use_case", GetMovieUseCase),
+        ("get_movie_screenings_use_case", GetMovieScreeningsUseCase),
+        ("search_screenings_use_case", SearchScreeningsUseCase),
+        ("get_screening_use_case", GetScreeningUseCase),
     ],
 )
-async def test_source_use_cases_return_configured_use_cases(
+async def test_factory_returns_configured_use_cases(
     property_name: str,
     use_case_type: type,
 ) -> None:
-    """Verify every source use case is available after factory initialization."""
+    """Verify every configured use case is available after initialization."""
     mock_database = AsyncMock()
     mock_database.pool = AsyncMock()
 
@@ -344,7 +356,7 @@ async def test_context_manager_lifecycle() -> None:
         "marquise.infrastructure.di.container.Database", return_value=mock_database
     ):
         async with MarquiseFactory() as factory:
-            assert isinstance(factory.cinema, CinemaController)
+            assert isinstance(factory.list_cinemas_use_case, ListCinemasUseCase)
             mock_database.connect.assert_awaited_once()
 
         mock_database.disconnect.assert_awaited_once()
@@ -366,7 +378,7 @@ async def test_create_factory_returns_initialized_factory() -> None:
     ):
         factory = await create_factory()
         assert isinstance(factory, MarquiseFactory)
-        assert isinstance(factory.cinema, CinemaController)
+        assert isinstance(factory.list_cinemas_use_case, ListCinemasUseCase)
         mock_database.connect.assert_awaited_once()
         await factory.shutdown()
 

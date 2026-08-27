@@ -73,10 +73,12 @@ Apps in `apps/` access core through the public bootstrap API in
 from marquise import create_factory, create_factory_session
 
 factory = await create_factory()
-cinemas = await factory.cinema.list()
+use_case = factory.list_cinemas_use_case
+cinemas = await use_case.execute(use_case.InputData())
 
-async with create_factory_session() as f:
-    result = await f.cinema.get(cinema_id="...")
+async with create_factory_session() as factory:
+    use_case = factory.get_cinema_use_case
+    result = await use_case.execute(use_case.InputData(cinema_id="..."))
 ```
 
 ### Public facade
@@ -84,9 +86,8 @@ async with create_factory_session() as f:
 Defined in `packages/marquise-core/src/marquise/__init__.py` via `__all__`:
 
 - `MarquiseFactory`, `create_factory()`, `create_factory_session()`
-- `CinemaController`, `MovieController`, `ScreeningController`
 - `ApplicationError` and concrete application exception subclasses
-- Cinema and source use cases required by delivery apps (and their nested DTOs)
+- Configured cinema, movie, screening, source, and import use cases required by delivery apps, including nested DTOs
 
 Apps may import only from `marquise` (top-level) — never from
 `marquise.domain`, `marquise.application`, `marquise.interface_adapters`, or

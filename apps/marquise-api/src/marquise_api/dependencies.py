@@ -1,65 +1,70 @@
-"""Shared FastAPI dependencies for the read-only API.
-
-Provides per-controller dependency injection functions that resolve
-controllers from the :class:`~marquise.MarquiseFactory` stored on
-``app.state``.
-"""
+"""Factory-backed FastAPI dependencies."""
 
 from __future__ import annotations
 
 from fastapi import Request
 
 from marquise import (
-    CinemaController,
+    GetCinemaMoviesUseCase,
+    GetCinemaScreeningsUseCase,
+    GetCinemaUseCase,
+    GetMovieScreeningsUseCase,
+    GetMovieUseCase,
+    GetScreeningUseCase,
+    ListCinemasUseCase,
+    ListMoviesUseCase,
     MarquiseFactory,
-    MovieController,
-    ScreeningController,
+    SearchScreeningsUseCase,
 )
 
 
 def get_factory(request: Request) -> MarquiseFactory:
-    """Return the MarionFactory stored on the application state.
-
-    Args:
-        request: The incoming request (carries the app instance).
-
-    Returns:
-        The ``MarquiseFactory`` initialized during application startup.
-    """
+    """Return initialized factory stored on application state."""
     return request.app.state.factory
 
 
-def get_cinema_controller(request: Request) -> CinemaController:
-    """Return the cinema controller from the application state.
-
-    Args:
-        request: The incoming request (carries the app instance).
-
-    Returns:
-        The ``CinemaController`` managed by the factory.
-    """
-    return request.app.state.factory.cinema
+def get_list_cinemas_use_case(request: Request) -> ListCinemasUseCase:
+    """Return configured cinema-listing use case."""
+    return request.app.state.factory.list_cinemas_use_case
 
 
-def get_movie_controller(request: Request) -> MovieController:
-    """Return the movie controller from the application state.
-
-    Args:
-        request: The incoming request (carries the app instance).
-
-    Returns:
-        The ``MovieController`` managed by the factory.
-    """
-    return request.app.state.factory.movie
+def get_cinema_use_case(request: Request) -> GetCinemaUseCase:
+    """Return configured cinema lookup use case."""
+    return request.app.state.factory.get_cinema_use_case
 
 
-def get_screening_controller(request: Request) -> ScreeningController:
-    """Return the screening controller from the application state.
+def get_cinema_screenings_use_case(
+    request: Request,
+) -> GetCinemaScreeningsUseCase:
+    """Return configured cinema-screenings use case."""
+    return request.app.state.factory.get_cinema_screenings_use_case
 
-    Args:
-        request: The incoming request (carries the app instance).
 
-    Returns:
-        The ``ScreeningController`` managed by the factory.
-    """
-    return request.app.state.factory.screening
+def get_cinema_movies_use_case(request: Request) -> GetCinemaMoviesUseCase:
+    """Return configured cinema-movies use case."""
+    return request.app.state.factory.get_cinema_movies_use_case
+
+
+def get_list_movies_use_case(request: Request) -> ListMoviesUseCase:
+    """Return configured movie-listing use case."""
+    return request.app.state.factory.list_movies_use_case
+
+
+def get_movie_use_case(request: Request) -> GetMovieUseCase:
+    """Return configured movie lookup use case."""
+    return request.app.state.factory.get_movie_use_case
+
+
+def get_movie_screenings_use_case(request: Request) -> GetMovieScreeningsUseCase:
+    """Return configured movie-screenings use case."""
+    return request.app.state.factory.get_movie_screenings_use_case
+
+
+def get_search_screenings_use_case(request: Request) -> SearchScreeningsUseCase:
+    """Return configured screening-search use case."""
+    return request.app.state.factory.search_screenings_use_case
+
+
+def get_screening_use_case(request: Request) -> GetScreeningUseCase:
+    """Return configured screening lookup use case."""
+    return request.app.state.factory.get_screening_use_case

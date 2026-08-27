@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-26
+
+### v0.1.6
+
+- **Execute configured read use cases directly**: cinema, movie, and screening routes now construct use-case DTOs without pass-through controllers. Closes #188.
+
 ## 2026-08-10
 
 ### Deployment
