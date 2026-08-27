@@ -2,6 +2,12 @@
 
 Before 2026-07-15 this package was published as `marquise`.
 
+## 2026-08-27
+
+### v0.2.14
+
+- **Lighten screening search**: `SearchScreeningsUseCase` is replaced by `SearchScreeningsQuery`, which projects only the columns the response uses and maps straight to light `ScreeningSummary` values instead of building full `Movie`/`Cinema` entities per row. The narrowed query also serves the movie and cinema screening listings. Closes #205.
+
 ## 2026-08-26
 
 ### v0.2.13

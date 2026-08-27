@@ -300,9 +300,7 @@ async def test_to_entity_populates_release_year() -> None:
 async def test_search_with_all_filters() -> None:
     """Test search converts value objects to strings and maps summaries."""
     mock_gateway = create_autospec(ScreeningGateway, instance=True)
-    mock_gateway.search.return_value = GatewayPage(
-        rows=[_search_row()], total=1
-    )
+    mock_gateway.search.return_value = GatewayPage(rows=[_search_row()], total=1)
 
     repo = SupabaseScreeningRepository(gateway=mock_gateway)
     start = datetime(2026, 6, 7, tzinfo=UTC)
@@ -342,9 +340,7 @@ async def test_search_with_all_filters() -> None:
 async def test_search_with_no_filters() -> None:
     """Test search passes None through for every omitted filter."""
     mock_gateway = create_autospec(ScreeningGateway, instance=True)
-    mock_gateway.search.return_value = GatewayPage(
-        rows=[_search_row()], total=1
-    )
+    mock_gateway.search.return_value = GatewayPage(rows=[_search_row()], total=1)
 
     repo = SupabaseScreeningRepository(gateway=mock_gateway)
     await repo.search()
