@@ -8,8 +8,18 @@ from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi_cache.decorator import cache
 from fastapi_pagination import Page, Params
 
-from marquise import CinemaController
-from marquise_api.dependencies import get_cinema_controller
+from marquise import (
+    GetCinemaMoviesUseCase,
+    GetCinemaScreeningsUseCase,
+    GetCinemaUseCase,
+    ListCinemasUseCase,
+)
+from marquise_api.dependencies import (
+    get_cinema_movies_use_case,
+    get_cinema_screenings_use_case,
+    get_cinema_use_case,
+    get_list_cinemas_use_case,
+)
 from marquise_api.openapi_responses import error_responses
 from marquise_api.rate_limit import current_rate_limit, limiter
 from marquise_api.routers._dependencies import resolve_showtimes_date_range
@@ -36,10 +46,12 @@ async def list_cinemas(
         default=None, description="Filter cinemas by name (case-insensitive)."
     ),
     params: Params = Depends(),
-    controller: CinemaController = Depends(get_cinema_controller),
+    use_case: ListCinemasUseCase = Depends(get_list_cinemas_use_case),
 ) -> Page[CinemaResponse]:
     """List cinemas, optionally filtered by name."""
-    output = await controller.list(name=name, page=params.page, size=params.size)
+    output = await use_case.execute(
+        ListCinemasUseCase.InputData(name=name, page=params.page, size=params.size)
+    )
     return Page.create(
         items=[CinemaResponse.model_validate(c) for c in output.cinemas],
         total=output.total,
@@ -58,10 +70,10 @@ async def get_cinema(
     request: Request,
     response: Response,
     cinema_id: str,
-    controller: CinemaController = Depends(get_cinema_controller),
+    use_case: GetCinemaUseCase = Depends(get_cinema_use_case),
 ) -> CinemaResponse:
     """Retrieve a single cinema by its ID."""
-    output = await controller.get(cinema_id=cinema_id)
+    output = await use_case.execute(GetCinemaUseCase.InputData(cinema_id=cinema_id))
     return CinemaResponse.model_validate(output)
 
 
@@ -77,17 +89,19 @@ async def get_cinema_screenings(
     response: Response,
     cinema_id: str,
     params: Params = Depends(),
-    controller: CinemaController = Depends(get_cinema_controller),
+    use_case: GetCinemaScreeningsUseCase = Depends(get_cinema_screenings_use_case),
 ) -> Page[ScreeningResponse]:
     """List all of a cinema's screenings.
 
     No filtering beyond the cinema itself — use ``GET /v1/screenings`` for
     date range, movie, or language filters.
     """
-    output = await controller.get_screenings(
-        cinema_id=cinema_id,
-        page=params.page,
-        size=params.size,
+    output = await use_case.execute(
+        GetCinemaScreeningsUseCase.InputData(
+            cinema_id=cinema_id,
+            page=params.page,
+            size=params.size,
+        )
     )
 
     return Page.create(
@@ -110,16 +124,18 @@ async def get_cinema_movies(
     cinema_id: str,
     date_range: tuple[datetime, datetime] = Depends(resolve_showtimes_date_range),
     params: Params = Depends(),
-    controller: CinemaController = Depends(get_cinema_controller),
+    use_case: GetCinemaMoviesUseCase = Depends(get_cinema_movies_use_case),
 ) -> Page[MovieResponse]:
     """List the distinct movies currently screening at a cinema."""
     from_, to = date_range
-    output = await controller.get_movies(
-        cinema_id=cinema_id,
-        start_date=from_,
-        end_date=to,
-        page=params.page,
-        size=params.size,
+    output = await use_case.execute(
+        GetCinemaMoviesUseCase.InputData(
+            cinema_id=cinema_id,
+            start_date=from_,
+            end_date=to,
+            page=params.page,
+            size=params.size,
+        )
     )
 
     return Page.create(
