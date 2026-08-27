@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import asyncpg
 
+from marquise.application.queries.list_cinema_source_assignments import (
+    ListCinemaSourceAssignmentsQuery,
+)
 from marquise.application.repositories import CinemaRepository
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
 from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
-from marquise.application.use_cases.list_cinema_source_assignments import (
-    ListCinemaSourceAssignmentsQuery,
-)
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.infrastructure.supabase.gateways.cinema_source_assignment import (

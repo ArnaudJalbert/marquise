@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, create_autospec
 
+from marquise.application.queries.list_cinema_source_assignments import (
+    ListCinemaSourceAssignmentsQuery,
+)
 from marquise.application.repositories import CinemaRepository
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
 from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
-from marquise.application.use_cases.list_cinema_source_assignments import (
-    ListCinemaSourceAssignmentsQuery,
-)
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.infrastructure.di.source_management import (

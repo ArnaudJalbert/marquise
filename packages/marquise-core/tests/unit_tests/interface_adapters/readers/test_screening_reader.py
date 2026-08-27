@@ -7,7 +7,7 @@ from unittest.mock import ANY, AsyncMock, MagicMock
 
 import pytest
 
-from marquise.application.repositories import ScreeningSummary
+from marquise.application.readers import ScreeningSummary
 from marquise.interface_adapters.readers.screening_reader import (
     SupabaseScreeningReader,
 )

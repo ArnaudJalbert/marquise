@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from marquise.application.repositories import (
+from marquise.application.readers import (
     CinemaSourceAssignmentData,
     CinemaSourceAssignmentReader,
 )

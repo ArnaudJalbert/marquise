@@ -145,7 +145,7 @@ async def test_list_cinema_source_assignments_query_requires_initialize() -> Non
 @pytest.mark.asyncio
 async def test_list_cinema_source_assignments_query_after_initialize() -> None:
     """Verify assignment query uses initialized database pool."""
-    from marquise.application.use_cases.list_cinema_source_assignments import (
+    from marquise.application.queries.list_cinema_source_assignments import (
         ListCinemaSourceAssignmentsQuery,
     )
 
@@ -246,7 +246,7 @@ async def test_get_cinema_screenings_use_case_after_initialize() -> None:
 @pytest.mark.asyncio
 async def test_search_screenings_query_after_initialize() -> None:
     """Verify search_screenings_query returns a SearchScreeningsQuery."""
-    from marquise.application.use_cases.search_screenings import (
+    from marquise.application.queries.search_screenings import (
         SearchScreeningsQuery,
     )
 
