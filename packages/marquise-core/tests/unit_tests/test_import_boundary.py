@@ -102,7 +102,7 @@ def test_scanner_allows_public_surface_imports(tmp_path: Path) -> None:
     (clean_dir / "good_app.py").write_text(
         textwrap.dedent("""\
             from marquise import MarquiseFactory, create_factory
-            from marquise import CinemaController
+            from marquise import ListCinemasUseCase
         """)
     )
 

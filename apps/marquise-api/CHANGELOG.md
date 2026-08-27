@@ -4,6 +4,7 @@
 
 ### v0.1.6
 
+- **Execute configured read use cases directly**: cinema, movie, and screening routes now construct use-case DTOs without pass-through controllers. Closes #188.
 - **Cache screening search**: `GET /v1/screenings` responses are served from the existing in-memory cache (default 1-hour TTL), keyed by the full query string so each filter/page/size combination has its own entry. Closes #205.
 
 ## 2026-08-10

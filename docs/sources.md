@@ -17,7 +17,8 @@ Each source has two sides:
    — implements `SourceAdapter` protocol; delegates to the scraper gateway.
 
 The **registry** (`interface_adapters/repositories/source_registry.py`) maps source
-names to adapter instances. The DI container registers adapters at startup.
+names to adapter instances. Dedicated wiring in
+`infrastructure/di/source_registry.py` registers adapters at startup.
 
 Use cases call the registry — they never import scrapers directly.
 
@@ -47,7 +48,7 @@ Showtimes must emit UTC ISO 8601 timestamps — use
 1. Add scraper under `infrastructure/sources/<name>/gateways/source.py`.
 2. Add adapter under `interface_adapters/repositories/source_adapters/<name>.py`
    implementing `SourceAdapter` (see `base.py`).
-3. Register in the DI container (`infrastructure/di/container.py`).
+3. Register in `infrastructure/di/source_registry.py`.
 4. Unit-test the adapter with a mocked scraper gateway (`create_autospec`).
 5. Add integration coverage only if the scraper needs real network validation.
 
