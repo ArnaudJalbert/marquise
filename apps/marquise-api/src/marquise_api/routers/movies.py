@@ -6,10 +6,10 @@ from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi_cache.decorator import cache
 from fastapi_pagination import Page, Params
 
-from marquise import GetMovieScreeningsUseCase, GetMovieUseCase, ListMoviesUseCase
+from marquise import GetMovieScreeningsQuery, GetMovieUseCase, ListMoviesUseCase
 from marquise_api.dependencies import (
     get_list_movies_use_case,
-    get_movie_screenings_use_case,
+    get_movie_screenings_query,
     get_movie_use_case,
 )
 from marquise_api.openapi_responses import error_responses
@@ -94,15 +94,15 @@ async def get_movie_screenings(
     response: Response,
     movie_id: str,
     params: Params = Depends(),
-    use_case: GetMovieScreeningsUseCase = Depends(get_movie_screenings_use_case),
+    query: GetMovieScreeningsQuery = Depends(get_movie_screenings_query),
 ) -> Page[ScreeningResponse]:
     """List all of a movie's screenings.
 
     No filtering beyond the movie itself — use ``GET /v1/screenings`` for
     date range, cinema, or language filters.
     """
-    output = await use_case.execute(
-        GetMovieScreeningsUseCase.InputData(
+    output = await query.execute(
+        GetMovieScreeningsQuery.InputData(
             movie_id=movie_id,
             page=params.page,
             size=params.size,

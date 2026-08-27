@@ -4,9 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, create_autospec
 
-from marquise.application.queries.list_cinema_source_assignments import (
-    ListCinemaSourceAssignmentsQuery,
-)
 from marquise.application.repositories import CinemaRepository
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.create_source import CreateSourceUseCase
@@ -19,7 +16,6 @@ from marquise.infrastructure.di.source_management import (
     build_create_source_use_case,
     build_delete_source_use_case,
     build_get_cinema_source_use_case,
-    build_list_cinema_source_assignments_query,
     build_list_sources_use_case,
     build_unassign_source_use_case,
 )
@@ -62,16 +58,4 @@ def test_assignment_builders_wire_explicit_collaborators() -> None:
     for use_case in (assign, unassign, get_source):
         assert use_case.assignment_repository._gateway._pool is pool
         assert use_case.assignment_repository._gateway._schema == "test_schema"
-    pool.acquire.assert_not_called()
-
-
-def test_assignment_reader_builder_uses_supplied_pool_and_schema() -> None:
-    """Assignment listing query wraps reader without opening database I/O."""
-    pool = MagicMock()
-
-    query = build_list_cinema_source_assignments_query(pool, "test_schema")
-
-    assert isinstance(query, ListCinemaSourceAssignmentsQuery)
-    assert query._reader._pool is pool
-    assert query._reader._schema == "test_schema"
     pool.acquire.assert_not_called()

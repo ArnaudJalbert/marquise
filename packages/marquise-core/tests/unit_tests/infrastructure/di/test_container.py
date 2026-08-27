@@ -224,10 +224,10 @@ async def test_get_movie_use_case_after_initialize() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_cinema_screenings_use_case_after_initialize() -> None:
-    """Verify get_cinema_screenings_use_case returns a GetCinemaScreeningsUseCase."""
-    from marquise.application.use_cases.get_cinema_screenings import (
-        GetCinemaScreeningsUseCase,
+async def test_get_cinema_screenings_query_after_initialize() -> None:
+    """Verify get_cinema_screenings_query returns a GetCinemaScreeningsQuery."""
+    from marquise.application.queries.get_cinema_screenings import (
+        GetCinemaScreeningsQuery,
     )
 
     mock_database = AsyncMock()
@@ -238,8 +238,8 @@ async def test_get_cinema_screenings_use_case_after_initialize() -> None:
     ):
         container = Container()
         await container.initialize()
-        use_case = container.get_cinema_screenings_use_case
-        assert isinstance(use_case, GetCinemaScreeningsUseCase)
+        use_case = container.get_cinema_screenings_query
+        assert isinstance(use_case, GetCinemaScreeningsQuery)
         await container.shutdown()
 
 
