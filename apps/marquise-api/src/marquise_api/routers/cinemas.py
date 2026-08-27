@@ -10,13 +10,13 @@ from fastapi_pagination import Page, Params
 
 from marquise import (
     GetCinemaMoviesUseCase,
-    GetCinemaScreeningsUseCase,
+    GetCinemaScreeningsQuery,
     GetCinemaUseCase,
     ListCinemasUseCase,
 )
 from marquise_api.dependencies import (
     get_cinema_movies_use_case,
-    get_cinema_screenings_use_case,
+    get_cinema_screenings_query,
     get_cinema_use_case,
     get_list_cinemas_use_case,
 )
@@ -89,15 +89,15 @@ async def get_cinema_screenings(
     response: Response,
     cinema_id: str,
     params: Params = Depends(),
-    use_case: GetCinemaScreeningsUseCase = Depends(get_cinema_screenings_use_case),
+    query: GetCinemaScreeningsQuery = Depends(get_cinema_screenings_query),
 ) -> Page[ScreeningResponse]:
     """List all of a cinema's screenings.
 
     No filtering beyond the cinema itself — use ``GET /v1/screenings`` for
     date range, movie, or language filters.
     """
-    output = await use_case.execute(
-        GetCinemaScreeningsUseCase.InputData(
+    output = await query.execute(
+        GetCinemaScreeningsQuery.InputData(
             cinema_id=cinema_id,
             page=params.page,
             size=params.size,

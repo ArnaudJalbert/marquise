@@ -6,9 +6,9 @@ from fastapi import Request
 
 from marquise import (
     GetCinemaMoviesUseCase,
-    GetCinemaScreeningsUseCase,
+    GetCinemaScreeningsQuery,
     GetCinemaUseCase,
-    GetMovieScreeningsUseCase,
+    GetMovieScreeningsQuery,
     GetMovieUseCase,
     GetScreeningUseCase,
     ListCinemasUseCase,
@@ -33,11 +33,9 @@ def get_cinema_use_case(request: Request) -> GetCinemaUseCase:
     return request.app.state.factory.get_cinema_use_case
 
 
-def get_cinema_screenings_use_case(
-    request: Request,
-) -> GetCinemaScreeningsUseCase:
-    """Return configured cinema-screenings use case."""
-    return request.app.state.factory.get_cinema_screenings_use_case
+def get_cinema_screenings_query(request: Request) -> GetCinemaScreeningsQuery:
+    """Return configured cinema-screenings query."""
+    return request.app.state.factory.get_cinema_screenings_query
 
 
 def get_cinema_movies_use_case(request: Request) -> GetCinemaMoviesUseCase:
@@ -55,9 +53,9 @@ def get_movie_use_case(request: Request) -> GetMovieUseCase:
     return request.app.state.factory.get_movie_use_case
 
 
-def get_movie_screenings_use_case(request: Request) -> GetMovieScreeningsUseCase:
-    """Return configured movie-screenings use case."""
-    return request.app.state.factory.get_movie_screenings_use_case
+def get_movie_screenings_query(request: Request) -> GetMovieScreeningsQuery:
+    """Return configured movie-screenings query."""
+    return request.app.state.factory.get_movie_screenings_query
 
 
 def get_search_screenings_query(request: Request) -> SearchScreeningsQuery:

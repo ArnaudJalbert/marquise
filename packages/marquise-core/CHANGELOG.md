@@ -4,6 +4,10 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-08-27
 
+### v0.2.16
+
+- **Use readers for cinema and movie screening lists**: replace entity-backed listing use cases with configured queries backed by `ScreeningReader`. Closes #208.
+
 ### v0.2.15
 
 - **Use configured read use cases directly**: expose cinema, movie, and screening read use cases through the public factory and remove obsolete controllers. Closes #188 and #189.

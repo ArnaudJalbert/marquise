@@ -9,6 +9,10 @@ from contextlib import asynccontextmanager
 from marquise.application.queries.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
+from marquise.application.queries.get_cinema_screenings import (
+    GetCinemaScreeningsQuery,
+)
+from marquise.application.queries.get_movie_screenings import GetMovieScreeningsQuery
 from marquise.application.queries.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
@@ -24,14 +28,8 @@ from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
 from marquise.application.use_cases.get_cinema import GetCinemaUseCase
 from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
-from marquise.application.use_cases.get_cinema_screenings import (
-    GetCinemaScreeningsUseCase,
-)
 from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
 from marquise.application.use_cases.get_movie import GetMovieUseCase
-from marquise.application.use_cases.get_movie_screenings import (
-    GetMovieScreeningsUseCase,
-)
 from marquise.application.use_cases.get_screening import GetScreeningUseCase
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.application.use_cases.list_movies import ListMoviesUseCase
@@ -119,9 +117,9 @@ class MarquiseFactory:
         return self._container.get_cinema_use_case
 
     @property
-    def get_cinema_screenings_use_case(self) -> GetCinemaScreeningsUseCase:
-        """Configured use case for listing a cinema's screenings."""
-        return self._container.get_cinema_screenings_use_case
+    def get_cinema_screenings_query(self) -> GetCinemaScreeningsQuery:
+        """Configured query for listing a cinema's screenings."""
+        return self._container.get_cinema_screenings_query
 
     @property
     def get_cinema_movies_use_case(self) -> GetCinemaMoviesUseCase:
@@ -139,9 +137,9 @@ class MarquiseFactory:
         return self._container.get_movie_use_case
 
     @property
-    def get_movie_screenings_use_case(self) -> GetMovieScreeningsUseCase:
-        """Configured use case for listing a movie's screenings."""
-        return self._container.get_movie_screenings_use_case
+    def get_movie_screenings_query(self) -> GetMovieScreeningsQuery:
+        """Configured query for listing a movie's screenings."""
+        return self._container.get_movie_screenings_query
 
     @property
     def search_screenings_query(self) -> SearchScreeningsQuery:
