@@ -6,8 +6,12 @@ from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi_cache.decorator import cache
 from fastapi_pagination import Page, Params
 
-from marquise import MovieController
-from marquise_api.dependencies import get_movie_controller
+from marquise import GetMovieScreeningsUseCase, GetMovieUseCase, ListMoviesUseCase
+from marquise_api.dependencies import (
+    get_list_movies_use_case,
+    get_movie_screenings_use_case,
+    get_movie_use_case,
+)
 from marquise_api.openapi_responses import error_responses
 from marquise_api.rate_limit import current_rate_limit, limiter
 from marquise_api.schemas import MovieResponse, ScreeningResponse
@@ -42,11 +46,16 @@ async def list_movies(
         ),
     ),
     params: Params = Depends(),
-    controller: MovieController = Depends(get_movie_controller),
+    use_case: ListMoviesUseCase = Depends(get_list_movies_use_case),
 ) -> Page[MovieResponse]:
     """List movies, optionally filtered by title and/or fetched in bulk by ids."""
-    output = await controller.list(
-        title=title, ids=ids, page=params.page, size=params.size
+    output = await use_case.execute(
+        ListMoviesUseCase.InputData(
+            title=title,
+            ids=tuple(ids) if ids is not None else None,
+            page=params.page,
+            size=params.size,
+        )
     )
     return Page.create(
         items=[MovieResponse.model_validate(m) for m in output.movies],
@@ -66,10 +75,10 @@ async def get_movie(
     request: Request,
     response: Response,
     movie_id: str,
-    controller: MovieController = Depends(get_movie_controller),
+    use_case: GetMovieUseCase = Depends(get_movie_use_case),
 ) -> MovieResponse:
     """Retrieve a single movie by its ID."""
-    output = await controller.get(movie_id=movie_id)
+    output = await use_case.execute(GetMovieUseCase.InputData(movie_id=movie_id))
     return MovieResponse.model_validate(output)
 
 
@@ -85,17 +94,19 @@ async def get_movie_screenings(
     response: Response,
     movie_id: str,
     params: Params = Depends(),
-    controller: MovieController = Depends(get_movie_controller),
+    use_case: GetMovieScreeningsUseCase = Depends(get_movie_screenings_use_case),
 ) -> Page[ScreeningResponse]:
     """List all of a movie's screenings.
 
     No filtering beyond the movie itself — use ``GET /v1/screenings`` for
     date range, cinema, or language filters.
     """
-    output = await controller.get_screenings(
-        movie_id=movie_id,
-        page=params.page,
-        size=params.size,
+    output = await use_case.execute(
+        GetMovieScreeningsUseCase.InputData(
+            movie_id=movie_id,
+            page=params.page,
+            size=params.size,
+        )
     )
     return Page.create(
         items=[ScreeningResponse.model_validate(s) for s in output.screenings],

@@ -1,11 +1,4 @@
-"""Public bootstrap API for Marquise.
-
-Provides :class:`MarquiseFactory` — the single entry point for external
-consumers (apps) to obtain fully-wired controllers and supported use cases.
-Internal code may continue to use the
-:class:`~marquise.infrastructure.di.container.Container`
-directly.
-"""
+"""Public bootstrap API for configured Marquise use cases."""
 
 from __future__ import annotations
 
@@ -25,40 +18,44 @@ from marquise.application.use_cases.delete_source import DeleteSourceUseCase
 from marquise.application.use_cases.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
+from marquise.application.use_cases.get_cinema import GetCinemaUseCase
+from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
+from marquise.application.use_cases.get_cinema_screenings import (
+    GetCinemaScreeningsUseCase,
+)
 from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
+from marquise.application.use_cases.get_movie import GetMovieUseCase
+from marquise.application.use_cases.get_movie_screenings import (
+    GetMovieScreeningsUseCase,
+)
+from marquise.application.use_cases.get_screening import GetScreeningUseCase
 from marquise.application.use_cases.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
+from marquise.application.use_cases.list_movies import ListMoviesUseCase
 from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
+from marquise.application.use_cases.search_screenings import SearchScreeningsUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
-from marquise.infrastructure.controllers.cinema_controller import CinemaController
-from marquise.infrastructure.controllers.movie_controller import MovieController
-from marquise.infrastructure.controllers.screening_controller import ScreeningController
 from marquise.infrastructure.di.container import Container
 
 
 class MarquiseFactory:
-    """Factory for obtaining fully-wired controllers.
+    """Manage database lifecycle and expose configured use cases.
 
-    Handles database lifecycle (pool open/close) and exposes controllers
-    as properties.  Typical usage::
+    Typical usage::
 
         factory = MarquiseFactory()
         await factory.initialize()
         try:
-            result = await factory.cinema.list()
+            use_case = factory.list_cinemas_use_case
+            result = await use_case.execute(use_case.InputData())
         finally:
             await factory.shutdown()
-
-    Or as an async context manager::
-
-        async with MarquiseFactory() as f:
-            result = await f.cinema.list()
     """
 
     def __init__(self) -> None:
@@ -71,7 +68,7 @@ class MarquiseFactory:
     async def initialize(self) -> None:
         """Open the database connection pool.
 
-        Must be called before accessing any controller property.
+        Must be called before accessing any configured use case.
         Safe to call multiple times (idempotent).
         """
         await self._container.initialize()
@@ -93,7 +90,7 @@ class MarquiseFactory:
         return await self._container.check_database_health()
 
     # ------------------------------------------------------------------
-    # Controllers and use cases (read-only properties)
+    # Configured use cases (read-only properties)
     # ------------------------------------------------------------------
 
     @property
@@ -115,6 +112,46 @@ class MarquiseFactory:
     def list_cinemas_use_case(self) -> ListCinemasUseCase:
         """Configured use case for listing cinemas."""
         return self._container.list_cinemas_use_case
+
+    @property
+    def get_cinema_use_case(self) -> GetCinemaUseCase:
+        """Configured use case for retrieving one cinema."""
+        return self._container.get_cinema_use_case
+
+    @property
+    def get_cinema_screenings_use_case(self) -> GetCinemaScreeningsUseCase:
+        """Configured use case for listing a cinema's screenings."""
+        return self._container.get_cinema_screenings_use_case
+
+    @property
+    def get_cinema_movies_use_case(self) -> GetCinemaMoviesUseCase:
+        """Configured use case for listing a cinema's movies."""
+        return self._container.get_cinema_movies_use_case
+
+    @property
+    def list_movies_use_case(self) -> ListMoviesUseCase:
+        """Configured use case for listing movies."""
+        return self._container.list_movies_use_case
+
+    @property
+    def get_movie_use_case(self) -> GetMovieUseCase:
+        """Configured use case for retrieving one movie."""
+        return self._container.get_movie_use_case
+
+    @property
+    def get_movie_screenings_use_case(self) -> GetMovieScreeningsUseCase:
+        """Configured use case for listing a movie's screenings."""
+        return self._container.get_movie_screenings_use_case
+
+    @property
+    def search_screenings_use_case(self) -> SearchScreeningsUseCase:
+        """Configured use case for searching screenings."""
+        return self._container.search_screenings_use_case
+
+    @property
+    def get_screening_use_case(self) -> GetScreeningUseCase:
+        """Configured use case for retrieving one screening."""
+        return self._container.get_screening_use_case
 
     @property
     def list_cinema_source_assignments_query(
@@ -173,21 +210,6 @@ class MarquiseFactory:
         """Configured command for creating screenings."""
         return self._container.create_screenings_use_case
 
-    @property
-    def cinema(self) -> CinemaController:
-        """Cinema management controller."""
-        return self._container.cinema_controller
-
-    @property
-    def movie(self) -> MovieController:
-        """Movie read controller."""
-        return self._container.movie_controller
-
-    @property
-    def screening(self) -> ScreeningController:
-        """Screening read controller."""
-        return self._container.screening_controller
-
     # ------------------------------------------------------------------
     # Async context manager
     # ------------------------------------------------------------------
@@ -209,7 +231,7 @@ async def create_factory() -> MarquiseFactory:
     """Create and initialize a :class:`MarquiseFactory`.
 
     Returns:
-        A fully-initialized factory ready to serve controller requests.
+        A fully initialized factory ready to execute configured use cases.
     """
     factory = MarquiseFactory()
     await factory.initialize()
@@ -220,10 +242,11 @@ async def create_factory() -> MarquiseFactory:
 async def create_factory_session() -> AsyncGenerator[MarquiseFactory]:
     """Context-manager variant of :func:`create_factory`.
 
-    Automatically shuts down the factory when the ``async with`` block exits::
+    Automatically shuts down factory when ``async with`` block exits::
 
-        async with create_factory_session() as f:
-            result = await f.cinema.list()
+        async with create_factory_session() as factory:
+            use_case = factory.list_cinemas_use_case
+            result = await use_case.execute(use_case.InputData())
     """
     factory = MarquiseFactory()
     await factory.initialize()
