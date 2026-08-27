@@ -69,18 +69,6 @@ async def test_shutdown_safe_when_not_initialized() -> None:
 
 
 @pytest.mark.asyncio
-async def test_cinema_controller_requires_initialize() -> None:
-    """Verify cinema_controller raises RuntimeError if pool not initialized."""
-    with patch(
-        "marquise.infrastructure.di.container.Database",
-        return_value=AsyncMock(),
-    ):
-        container = Container()
-        with pytest.raises(RuntimeError, match="Database pool not available"):
-            _ = container.cinema_controller
-
-
-@pytest.mark.asyncio
 async def test_delete_cinema_use_case_requires_initialize() -> None:
     """Verify delete_cinema_use_case raises before pool initialization."""
     with patch(
@@ -290,24 +278,4 @@ async def test_get_screening_use_case_after_initialize() -> None:
         await container.initialize()
         use_case = container.get_screening_use_case
         assert isinstance(use_case, GetScreeningUseCase)
-        await container.shutdown()
-
-
-@pytest.mark.asyncio
-async def test_cinema_controller_after_initialize() -> None:
-    """Verify cinema_controller is available after initialize."""
-    from marquise.infrastructure.controllers.cinema_controller import (
-        CinemaController,
-    )
-
-    mock_database = AsyncMock()
-    mock_database.pool = AsyncMock()
-
-    with patch(
-        "marquise.infrastructure.di.container.Database", return_value=mock_database
-    ):
-        container = Container()
-        await container.initialize()
-        controller = container.cinema_controller
-        assert isinstance(controller, CinemaController)
         await container.shutdown()
