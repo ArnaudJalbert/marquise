@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-27
+
+### v0.1.6
+
+- **Cache screening search**: `GET /v1/screenings` responses are served from the existing in-memory cache (default 1-hour TTL), keyed by the full query string so each filter/page/size combination has its own entry. Closes #205.
+
 ## 2026-08-10
 
 ### Deployment
