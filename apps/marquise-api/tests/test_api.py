@@ -997,12 +997,13 @@ def test_cors_not_configured_by_default(
     assert "access-control-allow-origin" not in response.headers
 
 
-def test_cors_headers_present_when_configured(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_cors_headers_present_when_configured(
+    monkeypatch: pytest.MonkeyPatch, factory: MagicMock
+) -> None:
     """CORS headers are returned when MARQUISE_API_CORS_ORIGINS is set."""
     monkeypatch.setenv("MARQUISE_API_CORS_ORIGINS", "http://localhost:3000")
-    factory = MagicMock()
-    factory.list_cinemas_use_case.execute = AsyncMock(
-        return_value=SimpleNamespace(cinemas=[], total=0)
+    factory.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+        cinemas=[], total=0
     )
     client = TestClient(create_app(factory=factory))
 
@@ -1015,12 +1016,13 @@ def test_cors_headers_present_when_configured(monkeypatch: pytest.MonkeyPatch) -
     assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
 
 
-def test_cors_preflight_when_configured(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_cors_preflight_when_configured(
+    monkeypatch: pytest.MonkeyPatch, factory: MagicMock
+) -> None:
     """OPTIONS preflight requests return CORS headers when configured."""
     monkeypatch.setenv("MARQUISE_API_CORS_ORIGINS", "http://localhost:3000")
-    factory = MagicMock()
-    factory.list_cinemas_use_case.execute = AsyncMock(
-        return_value=SimpleNamespace(cinemas=[], total=0)
+    factory.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+        cinemas=[], total=0
     )
     client = TestClient(create_app(factory=factory))
 
@@ -1037,12 +1039,13 @@ def test_cors_preflight_when_configured(monkeypatch: pytest.MonkeyPatch) -> None
     assert response.headers["access-control-allow-methods"] == "GET"
 
 
-def test_cors_origin_not_allowed_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_cors_origin_not_allowed_rejected(
+    monkeypatch: pytest.MonkeyPatch, factory: MagicMock
+) -> None:
     """Requests from an origin not in the allowed list get no CORS headers."""
     monkeypatch.setenv("MARQUISE_API_CORS_ORIGINS", "http://localhost:3000")
-    factory = MagicMock()
-    factory.list_cinemas_use_case.execute = AsyncMock(
-        return_value=SimpleNamespace(cinemas=[], total=0)
+    factory.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+        cinemas=[], total=0
     )
     client = TestClient(create_app(factory=factory))
 
@@ -1076,8 +1079,8 @@ def test_rate_limit_exceeded_returns_429(
 ) -> None:
     """A client exceeding the configured rate limit gets a 429 with Retry-After."""
     monkeypatch.setenv("MARQUISE_API_RATE_LIMIT", "1/minute")
-    factory.list_cinemas_use_case.execute = AsyncMock(
-        return_value=SimpleNamespace(cinemas=[], total=0)
+    factory.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+        cinemas=[], total=0
     )
     client = TestClient(create_app(factory=factory))
 
@@ -1107,8 +1110,8 @@ def test_rate_limit_is_configurable_via_env_var(
 ) -> None:
     """A higher configured limit allows more requests before a 429."""
     monkeypatch.setenv("MARQUISE_API_RATE_LIMIT", "5/minute")
-    factory.list_cinemas_use_case.execute = AsyncMock(
-        return_value=SimpleNamespace(cinemas=[], total=0)
+    factory.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+        cinemas=[], total=0
     )
     client = TestClient(create_app(factory=factory))
 
