@@ -8,7 +8,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import asyncpg
 
-from marquise.application.repositories import Page, ScreeningReader, ScreeningSummary
+from marquise.application.readers import ScreeningReader, ScreeningSummary
+from marquise.application.repositories import Page
 
 DEFAULT_SCHEMA = "marquise"
 _COLUMNS = (

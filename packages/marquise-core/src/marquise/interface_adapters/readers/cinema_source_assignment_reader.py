@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import asyncpg
 
-from marquise.application.repositories import (
+from marquise.application.readers import (
     CinemaSourceAssignmentData,
     CinemaSourceAssignmentReader,
 )

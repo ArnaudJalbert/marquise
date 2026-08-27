@@ -11,15 +11,15 @@ from marquise.application.exceptions import (
     CinemaNotFoundError,
     CinemaSourceAssignmentNotFoundError,
 )
+from marquise.application.queries.fetch_screenings_from_source import (
+    FetchScreeningsFromSourceQuery,
+)
 from marquise.application.repositories import (
     CinemaRepository,
     CinemaSourceAssignmentRepository,
     MovieEnrichmentData,
     ShowtimeRow,
     SourceRegistryQuery,
-)
-from marquise.application.use_cases.fetch_screenings_from_source import (
-    FetchScreeningsFromSourceQuery,
 )
 from marquise.domain.entities import (
     Cinema,
