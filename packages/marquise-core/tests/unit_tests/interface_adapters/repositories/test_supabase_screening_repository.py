@@ -60,6 +60,21 @@ def sample_screening(sample_cinema: Cinema, sample_movie: Movie) -> Screening:
     )
 
 
+def _search_row() -> dict:
+    """Provide a sample narrow search projection row from the gateway."""
+    return {
+        "id": "scr-123",
+        "movie_id": "mov-456",
+        "cinema_id": "cin-789",
+        "showtime": datetime(2026, 6, 7, 19, 30, 0),
+        "ticket_url": None,
+        "room": None,
+        "language": None,
+        "movie_title": "Test Movie",
+        "cinema_name": "Test Cinema",
+    }
+
+
 @pytest.fixture
 def gateway_dict() -> dict:
     """Provide a sample gateway return dict with joined data.
@@ -282,10 +297,12 @@ async def test_to_entity_populates_release_year() -> None:
 
 
 @pytest.mark.asyncio
-async def test_search_with_all_filters(gateway_dict: dict) -> None:
-    """Test search converts value objects to strings and maps the result."""
+async def test_search_with_all_filters() -> None:
+    """Test search converts value objects to strings and maps summaries."""
     mock_gateway = create_autospec(ScreeningGateway, instance=True)
-    mock_gateway.search.return_value = GatewayPage(rows=[gateway_dict], total=1)
+    mock_gateway.search.return_value = GatewayPage(
+        rows=[_search_row()], total=1
+    )
 
     repo = SupabaseScreeningRepository(gateway=mock_gateway)
     start = datetime(2026, 6, 7, tzinfo=UTC)
@@ -303,6 +320,12 @@ async def test_search_with_all_filters(gateway_dict: dict) -> None:
 
     assert len(result.items) == 1
     assert result.total == 1
+    assert result.items[0].id == "scr-123"
+    assert result.items[0].movie_id == "mov-456"
+    assert result.items[0].movie_title == "Test Movie"
+    assert result.items[0].cinema_id == "cin-789"
+    assert result.items[0].cinema_name == "Test Cinema"
+    assert result.items[0].showtime == datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC)
     mock_gateway.search.assert_awaited_once_with(
         movie_id="mov-456",
         movie_title="Test",
@@ -316,10 +339,12 @@ async def test_search_with_all_filters(gateway_dict: dict) -> None:
 
 
 @pytest.mark.asyncio
-async def test_search_with_no_filters(gateway_dict: dict) -> None:
+async def test_search_with_no_filters() -> None:
     """Test search passes None through for every omitted filter."""
     mock_gateway = create_autospec(ScreeningGateway, instance=True)
-    mock_gateway.search.return_value = GatewayPage(rows=[gateway_dict], total=1)
+    mock_gateway.search.return_value = GatewayPage(
+        rows=[_search_row()], total=1
+    )
 
     repo = SupabaseScreeningRepository(gateway=mock_gateway)
     await repo.search()

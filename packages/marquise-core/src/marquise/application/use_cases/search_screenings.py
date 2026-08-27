@@ -1,4 +1,4 @@
-"""Search screenings across all cinemas use case (read-only)."""
+"""Search screenings across all cinemas query (read-only)."""
 
 from __future__ import annotations
 
@@ -10,12 +10,18 @@ from marquise.application.repositories import (
     CinemaRepository,
     MovieRepository,
     ScreeningRepository,
+    ScreeningSummary,
 )
 from marquise.domain.value_objects import CinemaId, MovieId
 
 
-class SearchScreeningsUseCase:
-    """Use case for searching screenings by any combination of filters."""
+class SearchScreeningsQuery:
+    """Query for searching screenings by any combination of filters.
+
+    Mirrors ``FetchScreeningsFromSourceQuery``: repositories return a light
+    ``ScreeningSummary`` projection, so no full ``Screening``/``Movie``/
+    ``Cinema`` entities are constructed per row.
+    """
 
     @dataclass(frozen=True, slots=True)
     class InputData:
@@ -70,32 +76,6 @@ class SearchScreeningsUseCase:
                 raise ValueError("page must be at least 1")
 
     @dataclass(frozen=True, slots=True)
-    class ScreeningData:
-        """A single screening in the output.
-
-        Attributes:
-            id: Unique identifier of the screening.
-            movie_id: The screened movie's ID.
-            movie_title: The screened movie's title.
-            cinema_id: The hosting cinema's ID.
-            cinema_name: The hosting cinema's display name.
-            showtime: The screening time.
-            ticket_url: Link to purchase tickets (optional).
-            room: Room or auditorium name (optional).
-            language: Language or subtitle version (optional).
-        """
-
-        id: str
-        movie_id: str
-        movie_title: str
-        cinema_id: str
-        cinema_name: str
-        showtime: datetime
-        ticket_url: str | None = None
-        room: str | None = None
-        language: str | None = None
-
-    @dataclass(frozen=True, slots=True)
     class OutputData:
         """Output data containing the matching screenings.
 
@@ -105,7 +85,7 @@ class SearchScreeningsUseCase:
                 limit/offset.
         """
 
-        screenings: tuple[SearchScreeningsUseCase.ScreeningData, ...]
+        screenings: tuple[ScreeningSummary, ...]
         total: int
 
     def __init__(
@@ -183,19 +163,6 @@ class SearchScreeningsUseCase:
             offset=offset,
         )
 
-        screening_data = tuple(
-            self.ScreeningData(
-                id=str(s.id),
-                movie_id=str(s.movie.id),
-                movie_title=s.movie.title,
-                cinema_id=str(s.cinema.id),
-                cinema_name=s.cinema.name,
-                showtime=s.showtime.value,
-                ticket_url=s.ticket_url,
-                room=s.room,
-                language=s.language,
-            )
-            for s in page.items
-        )
+        screening_data = tuple(page.items)
 
         return self.OutputData(screenings=screening_data, total=page.total)

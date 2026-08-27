@@ -5,23 +5,23 @@ from __future__ import annotations
 from datetime import datetime
 
 from marquise.application.use_cases.get_screening import GetScreeningUseCase
-from marquise.application.use_cases.search_screenings import SearchScreeningsUseCase
+from marquise.application.use_cases.search_screenings import SearchScreeningsQuery
 
 
 class ScreeningController:
     """Handles screening read flows.
 
-    All methods are public — no authentication required.  Use case instances
-    are injected at construction time.
+    All methods are public — no authentication required.  Use case and query
+    instances are injected at construction time.
     """
 
     def __init__(
         self,
         get_screening_use_case: GetScreeningUseCase,
-        search_screenings_use_case: SearchScreeningsUseCase,
+        search_screenings_query: SearchScreeningsQuery,
     ) -> None:
         self._get_use_case = get_screening_use_case
-        self._search_use_case = search_screenings_use_case
+        self._search_query = search_screenings_query
 
     async def get(self, screening_id: str) -> GetScreeningUseCase.OutputData:
         """Retrieve a single screening by its ID.
@@ -50,7 +50,7 @@ class ScreeningController:
         language: str | None = None,
         page: int = 1,
         size: int | None = None,
-    ) -> SearchScreeningsUseCase.OutputData:
+    ) -> SearchScreeningsQuery.OutputData:
         """Search screenings across all cinemas by any combination of filters.
 
         This is a public operation — no authentication required.
@@ -70,7 +70,7 @@ class ScreeningController:
             The output data with the matching page of screenings and the
             total count.
         """
-        request = SearchScreeningsUseCase.InputData(
+        request = SearchScreeningsQuery.InputData(
             movie=movie,
             movie_id=movie_id,
             cinema_id=cinema_id,
@@ -80,4 +80,4 @@ class ScreeningController:
             page=page,
             size=size,
         )
-        return await self._search_use_case.execute(request)
+        return await self._search_query.execute(request)

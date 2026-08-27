@@ -39,6 +39,13 @@ _SCREENING_COLUMNS = (
     " s.external_id, s.ticket_url, s.room, s.language"
 )
 _JOINED_COLUMNS = f"{_SCREENING_COLUMNS}, {_MOVIE_COLUMNS}, {_CINEMA_COLUMNS}"
+#: Narrow projection for search/list responses — only the fields the read
+#: endpoints expose, avoiding full movie/cinema rows per screening.
+_SEARCH_COLUMNS = (
+    "s.id, s.movie_id, s.cinema_id, s.showtime,"
+    " s.ticket_url, s.room, s.language,"
+    " m.title AS movie_title, c.name AS cinema_name"
+)
 _PLAIN_MOVIE_COLUMNS = (
     "m.id, m.title, m.release_year, m.directors, m.cast_members,"
     " m.duration_minutes, m.description, m.poster_url, m.trailer_url,"
@@ -284,7 +291,7 @@ class SupabaseScreeningGateway:
             if limit is None:
                 rows = await conn.fetch(
                     f"""
-                    SELECT {_JOINED_COLUMNS}
+                    SELECT {_SEARCH_COLUMNS}
                     FROM "{self._schema}".screenings s
                     JOIN "{self._schema}".movies m ON s.movie_id = m.id
                     JOIN "{self._schema}".cinemas c ON s.cinema_id = c.id
@@ -299,7 +306,7 @@ class SupabaseScreeningGateway:
             offset_param = f"${len(params) + 2}"
             rows = await conn.fetch(
                 f"""
-                SELECT {_JOINED_COLUMNS}, COUNT(*) OVER() AS __total
+                SELECT {_SEARCH_COLUMNS}, COUNT(*) OVER() AS __total
                 FROM "{self._schema}".screenings s
                 JOIN "{self._schema}".movies m ON s.movie_id = m.id
                 JOIN "{self._schema}".cinemas c ON s.cinema_id = c.id
