@@ -12,11 +12,7 @@ from marquise.application.exceptions import (
     ScreeningAlreadyExistsError,
     ScreeningNotFoundError,
 )
-from marquise.application.repositories import (
-    Page,
-    ScreeningRepository,
-    ScreeningSummary,
-)
+from marquise.application.repositories import Page, ScreeningRepository
 from marquise.domain.entities import Movie, Screening
 from marquise.domain.value_objects import (
     CinemaId,
@@ -201,7 +197,7 @@ class SupabaseScreeningRepository(ScreeningRepository):
         language: str | None = None,
         limit: int | None = None,
         offset: int = 0,
-    ) -> Page[ScreeningSummary]:
+    ) -> Page[Screening]:
         """Find screenings matching any combination of filters, paginated.
 
         Args:
@@ -217,8 +213,8 @@ class SupabaseScreeningRepository(ScreeningRepository):
                 results.
 
         Returns:
-            A ``Page[ScreeningSummary]`` with the matching screenings and
-            the total count matching the filters.
+            A ``Page[Screening]`` with the matching screenings and the total
+            count matching the filters.
         """
         gateway_page = await self._gateway.search(
             movie_id=str(movie_id) if movie_id is not None else None,
@@ -231,20 +227,7 @@ class SupabaseScreeningRepository(ScreeningRepository):
             offset=offset,
         )
         return Page(
-            items=[
-                ScreeningSummary(
-                    id=row["id"],
-                    movie_id=row["movie_id"],
-                    movie_title=row["movie_title"],
-                    cinema_id=row["cinema_id"],
-                    cinema_name=row["cinema_name"],
-                    showtime=_parse_datetime(row["showtime"]),
-                    ticket_url=row.get("ticket_url"),
-                    room=row.get("room"),
-                    language=row.get("language"),
-                )
-                for row in gateway_page.rows
-            ],
+            items=[self._to_entity(row) for row in gateway_page.rows],
             total=gateway_page.total,
         )
 

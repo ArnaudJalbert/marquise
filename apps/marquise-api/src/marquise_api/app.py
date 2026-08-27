@@ -22,7 +22,6 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter, Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_cache import FastAPICache
-from fastapi_cache.backends.inmemory import InMemoryBackend
 from fastapi_pagination import add_pagination
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -30,6 +29,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from starlette.responses import JSONResponse, Response
 
 from marquise import ApplicationError, MarquiseFactory, create_factory
+from marquise_api.cache import BoundedInMemoryBackend
 from marquise_api.dependencies import get_factory
 from marquise_api.exception_handlers import (
     application_error_handler,
@@ -51,6 +51,7 @@ from marquise_api.routers import (
 #: refreshed once a day, so an hour keeps responses fresh while still
 #: absorbing the vast majority of repeat traffic between refreshes.
 DEFAULT_CACHE_TTL_SECONDS = 3600
+DEFAULT_CACHE_MAX_ENTRIES = 1024
 
 #: Namespace prefix for cached responses. Public so tests can clear
 #: exactly this app's cache entries between repeated create_app() calls
@@ -97,7 +98,11 @@ def create_app(factory: MarquiseFactory | None = None) -> FastAPI:
     )
 
     FastAPICache.reset()
-    FastAPICache.init(InMemoryBackend(), prefix=CACHE_PREFIX, expire=cache_ttl_seconds)
+    FastAPICache.init(
+        BoundedInMemoryBackend(DEFAULT_CACHE_MAX_ENTRIES),
+        prefix=CACHE_PREFIX,
+        expire=cache_ttl_seconds,
+    )
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
