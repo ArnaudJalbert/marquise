@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
 
 from marquise.application.exceptions import CinemaNotFoundError
-from marquise.application.repositories import CinemaRepository, ScreeningRepository
+from marquise.application.repositories import (
+    CinemaRepository,
+    ScreeningRepository,
+    ScreeningSummary,
+)
 from marquise.domain.value_objects import CinemaId
 
 
@@ -14,7 +17,7 @@ class GetCinemaScreeningsUseCase:
     """Use case for listing all of a cinema's screenings.
 
     No filtering beyond the cinema scope is supported here — use
-    ``SearchScreeningsUseCase`` (``GET /v1/screenings``) for date range,
+    ``SearchScreeningsQuery`` (``GET /v1/screenings``) for date range,
     movie, or language filters.
     """
 
@@ -48,32 +51,6 @@ class GetCinemaScreeningsUseCase:
                 raise ValueError("page must be at least 1")
 
     @dataclass(frozen=True, slots=True)
-    class ScreeningData:
-        """A single screening in the output.
-
-        Attributes:
-            id: Unique identifier of the screening.
-            movie_id: The screened movie's ID.
-            movie_title: The screened movie's title.
-            cinema_id: The hosting cinema's ID.
-            cinema_name: The hosting cinema's display name.
-            showtime: The screening time.
-            ticket_url: Link to purchase tickets (optional).
-            room: Room or auditorium name (optional).
-            language: Language or subtitle version (optional).
-        """
-
-        id: str
-        movie_id: str
-        movie_title: str
-        cinema_id: str
-        cinema_name: str
-        showtime: datetime
-        ticket_url: str | None = None
-        room: str | None = None
-        language: str | None = None
-
-    @dataclass(frozen=True, slots=True)
     class OutputData:
         """Output data containing the cinema's screenings.
 
@@ -87,7 +64,7 @@ class GetCinemaScreeningsUseCase:
 
         cinema_id: str
         cinema_name: str
-        screenings: tuple[GetCinemaScreeningsUseCase.ScreeningData, ...]
+        screenings: tuple[ScreeningSummary, ...]
         total: int
 
     def __init__(
@@ -139,24 +116,9 @@ class GetCinemaScreeningsUseCase:
             offset=offset,
         )
 
-        screening_data = tuple(
-            self.ScreeningData(
-                id=str(s.id),
-                movie_id=str(s.movie.id),
-                movie_title=s.movie.title,
-                cinema_id=str(s.cinema.id),
-                cinema_name=s.cinema.name,
-                showtime=s.showtime.value,
-                ticket_url=s.ticket_url,
-                room=s.room,
-                language=s.language,
-            )
-            for s in page.items
-        )
-
         return self.OutputData(
             cinema_id=str(cinema.id),
             cinema_name=cinema.name,
-            screenings=screening_data,
+            screenings=tuple(page.items),
             total=page.total,
         )

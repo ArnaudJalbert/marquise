@@ -1169,17 +1169,47 @@ def test_search_screenings_invalid_range_returns_422_envelope(
     assert body["error_code"] == "invalid_input"
 
 
-def test_search_screenings_is_not_cached(
-    client: TestClient, factory: MagicMock
-) -> None:
-    """Repeated identical requests to /screenings are not served from cache."""
+def test_search_screenings_is_cached(client: TestClient, factory: MagicMock) -> None:
+    """Repeated identical requests to /screenings reuse the cached response."""
     factory.screening.search.return_value = SimpleNamespace(screenings=[], total=0)
 
     first = client.get("/v1/screenings")
     second = client.get("/v1/screenings")
 
     assert first.status_code == 200
+    assert first.headers.get("X-FastAPI-Cache") == "MISS"
     assert second.status_code == 200
+    assert second.headers.get("X-FastAPI-Cache") == "HIT"
+    assert factory.screening.search.await_count == 1
+
+
+def test_search_screenings_different_filters_use_separate_cache_entries(
+    client: TestClient, factory: MagicMock
+) -> None:
+    """Different query strings get separate cache entries and re-execute."""
+    factory.screening.search.return_value = SimpleNamespace(screenings=[], total=0)
+
+    first = client.get("/v1/screenings", params={"from": "2026-06-27T00:00:00Z"})
+    second = client.get("/v1/screenings", params={"from": "2026-06-28T00:00:00Z"})
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert second.headers.get("X-FastAPI-Cache") == "MISS"
+    assert factory.screening.search.await_count == 2
+
+
+def test_search_screenings_different_pages_use_separate_cache_entries(
+    client: TestClient, factory: MagicMock
+) -> None:
+    """Different page/size combinations get separate cache entries."""
+    factory.screening.search.return_value = SimpleNamespace(screenings=[], total=0)
+
+    first = client.get("/v1/screenings", params={"page": 1, "size": 100})
+    second = client.get("/v1/screenings", params={"page": 2, "size": 100})
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert second.headers.get("X-FastAPI-Cache") == "MISS"
     assert factory.screening.search.await_count == 2
 
 

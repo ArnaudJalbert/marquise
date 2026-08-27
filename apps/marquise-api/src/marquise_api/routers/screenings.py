@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query, Request, Response
@@ -17,12 +18,33 @@ from marquise_api.schemas import ScreeningResponse
 router = APIRouter(tags=["screenings"])
 
 
+def _search_screenings_key_builder(
+    func: Callable[..., object],
+    namespace: str = "",
+    *,
+    request: Request | None = None,
+    response: Response | None = None,
+    args: tuple[object, ...],
+    kwargs: dict[str, object],
+) -> str:
+    """Cache key from the raw query string.
+
+    The default key builder hashes resolved keyword arguments, which mixes
+    dependency objects (controller, pagination) into the key. Keying off the
+    raw query string gives one entry per filter/page/size combination and is
+    stable across requests.
+    """
+    query = request.url.query if request is not None else ""
+    return f"{namespace}:{func.__module__}:{func.__name__}:{query}"
+
+
 @router.get(
     "/screenings",
     response_model=Page[ScreeningResponse],
     responses=error_responses(422, 429),
 )
 @limiter.limit(current_rate_limit)
+@cache(key_builder=_search_screenings_key_builder)
 async def search_screenings(
     request: Request,
     response: Response,

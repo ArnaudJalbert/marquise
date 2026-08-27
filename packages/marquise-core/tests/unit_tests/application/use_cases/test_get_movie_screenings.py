@@ -12,17 +12,13 @@ from marquise.application.repositories import (
     MovieRepository,
     Page,
     ScreeningRepository,
+    ScreeningSummary,
 )
 from marquise.application.use_cases.get_movie_screenings import (
     GetMovieScreeningsUseCase,
 )
-from marquise.domain.entities import Cinema, Movie, Screening
-from marquise.domain.value_objects import (
-    CinemaId,
-    MovieId,
-    ScreeningId,
-    Showtime,
-)
+from marquise.domain.entities import Movie
+from marquise.domain.value_objects import MovieId
 
 
 def _input() -> GetMovieScreeningsUseCase.InputData:
@@ -32,13 +28,14 @@ def _input() -> GetMovieScreeningsUseCase.InputData:
 @pytest.mark.asyncio
 async def test_returns_movie_and_screenings() -> None:
     """The use case returns the movie with its screenings."""
-    cinema = Cinema(id=CinemaId(value="cin-1"), name="Cinema One")
     movie = Movie(id=MovieId(value="mov-1"), title="The Odyssey")
-    screening = Screening(
-        id=ScreeningId(value="scr-1"),
-        movie=movie,
-        cinema=cinema,
-        showtime=Showtime(value=datetime(2026, 6, 27, 19, 30, tzinfo=UTC)),
+    screening = ScreeningSummary(
+        id="scr-1",
+        movie_id="mov-1",
+        movie_title="The Odyssey",
+        cinema_id="cin-1",
+        cinema_name="Cinema One",
+        showtime=datetime(2026, 6, 27, 19, 30, tzinfo=UTC),
     )
     movie_repo = create_autospec(MovieRepository, instance=True)
     movie_repo.find_by_id.return_value = movie

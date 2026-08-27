@@ -41,7 +41,7 @@ from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
-from marquise.application.use_cases.search_screenings import SearchScreeningsUseCase
+from marquise.application.use_cases.search_screenings import SearchScreeningsQuery
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.infrastructure.controllers.cinema_controller import CinemaController
@@ -449,8 +449,8 @@ class Container:
         )
 
     @property
-    def _search_screenings_use_case(self) -> SearchScreeningsUseCase:
-        return SearchScreeningsUseCase(
+    def _search_screenings_query(self) -> SearchScreeningsQuery:
+        return SearchScreeningsQuery(
             screening_repository=self._screening_repository,
             cinema_repository=self._cinema_repository,
             movie_repository=self._movie_repository,
@@ -570,9 +570,9 @@ class Container:
         return self._get_cinema_screenings_use_case
 
     @property
-    def search_screenings_use_case(self) -> SearchScreeningsUseCase:
-        """Public search-screenings use case (no authentication required)."""
-        return self._search_screenings_use_case
+    def search_screenings_query(self) -> SearchScreeningsQuery:
+        """Public search-screenings query (no authentication required)."""
+        return self._search_screenings_query
 
     @property
     def get_screening_use_case(self) -> GetScreeningUseCase:
@@ -614,5 +614,5 @@ class Container:
     def screening_controller(self) -> ScreeningController:
         return ScreeningController(
             get_screening_use_case=self._get_screening_use_case,
-            search_screenings_use_case=self._search_screenings_use_case,
+            search_screenings_query=self._search_screenings_query,
         )

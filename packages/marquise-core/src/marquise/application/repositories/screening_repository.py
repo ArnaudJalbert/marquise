@@ -3,11 +3,31 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from datetime import datetime
 
 from marquise.application.repositories.page import Page
 from marquise.domain.entities import Movie, Screening
 from marquise.domain.value_objects import CinemaId, MovieId, ScreeningId
+
+
+@dataclass(frozen=True, slots=True)
+class ScreeningSummary:
+    """Light projection of a screening for search and listing responses.
+
+    Carries only the fields the read endpoints expose, so querying it does
+    not construct full ``Movie``/``Cinema`` entities per row.
+    """
+
+    id: str
+    movie_id: str
+    movie_title: str
+    cinema_id: str
+    cinema_name: str
+    showtime: datetime
+    ticket_url: str | None = None
+    room: str | None = None
+    language: str | None = None
 
 
 class ScreeningRepository(ABC):
@@ -70,7 +90,7 @@ class ScreeningRepository(ABC):
         language: str | None = None,
         limit: int | None = None,
         offset: int = 0,
-    ) -> Page[Screening]:
+    ) -> Page[ScreeningSummary]:
         """Find screenings matching any combination of filters, paginated.
 
         All filters are optional and combinable. Omitting a filter means it
@@ -89,8 +109,9 @@ class ScreeningRepository(ABC):
                 results.
 
         Returns:
-            A ``Page[Screening]`` with the matching screenings and the total
-            count matching the filters, ignoring ``limit``/``offset``.
+            A ``Page[ScreeningSummary]`` with the matching screenings and
+            the total count matching the filters, ignoring
+            ``limit``/``offset``.
         """
         ...
 
