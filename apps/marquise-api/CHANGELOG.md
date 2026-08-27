@@ -2,6 +2,10 @@
 
 ## 2026-08-27
 
+### v0.1.8
+
+- **Use configured screening-list queries**: cinema and movie screening routes execute reader-backed queries directly. Closes #208.
+
 ### v0.1.7
 
 - **Execute configured read use cases directly**: cinema, movie, and screening routes now construct use-case DTOs without pass-through controllers. Closes #188.

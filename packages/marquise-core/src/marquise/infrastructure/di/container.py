@@ -11,6 +11,10 @@ from dotenv import load_dotenv
 from marquise.application.queries.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
+from marquise.application.queries.get_cinema_screenings import (
+    GetCinemaScreeningsQuery,
+)
+from marquise.application.queries.get_movie_screenings import GetMovieScreeningsQuery
 from marquise.application.queries.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
@@ -26,14 +30,8 @@ from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
 from marquise.application.use_cases.get_cinema import GetCinemaUseCase
 from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
-from marquise.application.use_cases.get_cinema_screenings import (
-    GetCinemaScreeningsUseCase,
-)
 from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
 from marquise.application.use_cases.get_movie import GetMovieUseCase
-from marquise.application.use_cases.get_movie_screenings import (
-    GetMovieScreeningsUseCase,
-)
 from marquise.application.use_cases.get_screening import GetScreeningUseCase
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.application.use_cases.list_movies import ListMoviesUseCase
@@ -48,12 +46,17 @@ from marquise.infrastructure.di.import_use_cases import (
     build_create_screenings_use_case,
     build_fetch_screenings_use_case,
 )
+from marquise.infrastructure.di.queries import (
+    build_get_cinema_screenings_query,
+    build_get_movie_screenings_query,
+    build_list_cinema_source_assignments_query,
+    build_search_screenings_query,
+)
 from marquise.infrastructure.di.source_management import (
     build_assign_source_use_case,
     build_create_source_use_case,
     build_delete_source_use_case,
     build_get_cinema_source_use_case,
-    build_list_cinema_source_assignments_query,
     build_list_sources_use_case,
     build_unassign_source_use_case,
 )
@@ -64,9 +67,6 @@ from marquise.infrastructure.supabase.gateways.cinema import SupabaseCinemaGatew
 from marquise.infrastructure.supabase.gateways.movie import SupabaseMovieGateway
 from marquise.infrastructure.supabase.gateways.screening import (
     SupabaseScreeningGateway,
-)
-from marquise.interface_adapters.readers.screening_reader import (
-    SupabaseScreeningReader,
 )
 from marquise.interface_adapters.repositories.source_registry import SourceRegistry
 from marquise.interface_adapters.repositories.supabase.cinema_repository import (
@@ -208,10 +208,6 @@ class Container:
             self._registry = build_source_registry(self._settings.cineplex_api_key)
         return self._registry
 
-    @property
-    def _screening_reader(self) -> SupabaseScreeningReader:
-        return SupabaseScreeningReader(pool=self._pool_property, schema=self._schema)
-
     # ------------------------------------------------------------------
     # Repositories
     # ------------------------------------------------------------------
@@ -321,11 +317,8 @@ class Container:
         return ListMoviesUseCase(movie_repository=self._movie_repository)
 
     @property
-    def _get_cinema_screenings_use_case(self) -> GetCinemaScreeningsUseCase:
-        return GetCinemaScreeningsUseCase(
-            cinema_repository=self._cinema_repository,
-            screening_repository=self._screening_repository,
-        )
+    def _get_cinema_screenings_query(self) -> GetCinemaScreeningsQuery:
+        return build_get_cinema_screenings_query(self._pool_property, self._schema)
 
     @property
     def _get_cinema_movies_use_case(self) -> GetCinemaMoviesUseCase:
@@ -336,22 +329,15 @@ class Container:
 
     @property
     def _search_screenings_query(self) -> SearchScreeningsQuery:
-        return SearchScreeningsQuery(
-            screening_reader=self._screening_reader,
-            cinema_repository=self._cinema_repository,
-            movie_repository=self._movie_repository,
-        )
+        return build_search_screenings_query(self._pool_property, self._schema)
 
     @property
     def _get_screening_use_case(self) -> GetScreeningUseCase:
         return GetScreeningUseCase(screening_repository=self._screening_repository)
 
     @property
-    def _get_movie_screenings_use_case(self) -> GetMovieScreeningsUseCase:
-        return GetMovieScreeningsUseCase(
-            movie_repository=self._movie_repository,
-            screening_repository=self._screening_repository,
-        )
+    def _get_movie_screenings_query(self) -> GetMovieScreeningsQuery:
+        return build_get_movie_screenings_query(self._pool_property, self._schema)
 
     # ------------------------------------------------------------------
     # Public use cases
@@ -451,9 +437,9 @@ class Container:
         return self._list_movies_use_case
 
     @property
-    def get_cinema_screenings_use_case(self) -> GetCinemaScreeningsUseCase:
-        """Public get-cinema-screenings use case (no authentication required)."""
-        return self._get_cinema_screenings_use_case
+    def get_cinema_screenings_query(self) -> GetCinemaScreeningsQuery:
+        """Public cinema-screenings query (no authentication required)."""
+        return self._get_cinema_screenings_query
 
     @property
     def search_screenings_query(self) -> SearchScreeningsQuery:
@@ -466,9 +452,9 @@ class Container:
         return self._get_screening_use_case
 
     @property
-    def get_movie_screenings_use_case(self) -> GetMovieScreeningsUseCase:
-        """Public get-movie-screenings use case (no authentication required)."""
-        return self._get_movie_screenings_use_case
+    def get_movie_screenings_query(self) -> GetMovieScreeningsQuery:
+        """Public movie-screenings query (no authentication required)."""
+        return self._get_movie_screenings_query
 
     @property
     def get_cinema_movies_use_case(self) -> GetCinemaMoviesUseCase:

@@ -16,9 +16,9 @@ from fastapi.testclient import TestClient
 from marquise import (
     CinemaNotFoundError,
     GetCinemaMoviesUseCase,
-    GetCinemaScreeningsUseCase,
+    GetCinemaScreeningsQuery,
     GetCinemaUseCase,
-    GetMovieScreeningsUseCase,
+    GetMovieScreeningsQuery,
     GetMovieUseCase,
     GetScreeningUseCase,
     ListCinemasUseCase,
@@ -37,16 +37,16 @@ def factory() -> MagicMock:
     fake = create_autospec(MarquiseFactory, instance=True)
     fake.list_cinemas_use_case = create_autospec(ListCinemasUseCase, instance=True)
     fake.get_cinema_use_case = create_autospec(GetCinemaUseCase, instance=True)
-    fake.get_cinema_screenings_use_case = create_autospec(
-        GetCinemaScreeningsUseCase, instance=True
+    fake.get_cinema_screenings_query = create_autospec(
+        GetCinemaScreeningsQuery, instance=True
     )
     fake.get_cinema_movies_use_case = create_autospec(
         GetCinemaMoviesUseCase, instance=True
     )
     fake.list_movies_use_case = create_autospec(ListMoviesUseCase, instance=True)
     fake.get_movie_use_case = create_autospec(GetMovieUseCase, instance=True)
-    fake.get_movie_screenings_use_case = create_autospec(
-        GetMovieScreeningsUseCase, instance=True
+    fake.get_movie_screenings_query = create_autospec(
+        GetMovieScreeningsQuery, instance=True
     )
     fake.search_screenings_query = create_autospec(SearchScreeningsQuery, instance=True)
     fake.get_screening_use_case = create_autospec(GetScreeningUseCase, instance=True)
@@ -148,7 +148,7 @@ def test_list_cinemas_executes_use_case_dto(
 
 def test_get_cinema_screenings(client: TestClient, factory: MagicMock) -> None:
     """GET /cinemas/{id}/screenings returns screenings in range."""
-    factory.get_cinema_screenings_use_case.execute.return_value = SimpleNamespace(
+    factory.get_cinema_screenings_query.execute.return_value = SimpleNamespace(
         cinema_id="cin-1",
         cinema_name="Cinema One",
         screenings=[
@@ -363,7 +363,7 @@ def test_get_cinema_screenings_pagination(
     router passes params through and reports ``total`` from the response
     rather than computing it from the page length.
     """
-    factory.get_cinema_screenings_use_case.execute.return_value = SimpleNamespace(
+    factory.get_cinema_screenings_query.execute.return_value = SimpleNamespace(
         cinema_id="cin-1",
         cinema_name="Cinema One",
         screenings=[
@@ -404,8 +404,8 @@ def test_get_cinema_screenings_pagination(
     assert body["total"] == 5
     assert body["page"] == 2
     assert body["size"] == 2
-    factory.get_cinema_screenings_use_case.execute.assert_awaited_once_with(
-        GetCinemaScreeningsUseCase.InputData(cinema_id="cin-1", page=2, size=2)
+    factory.get_cinema_screenings_query.execute.assert_awaited_once_with(
+        GetCinemaScreeningsQuery.InputData(cinema_id="cin-1", page=2, size=2)
     )
 
 
@@ -413,7 +413,7 @@ def test_get_cinema_screenings_not_found(
     client: TestClient, factory: MagicMock
 ) -> None:
     """A missing cinema yields 404 with the standard error envelope."""
-    factory.get_cinema_screenings_use_case.execute.side_effect = CinemaNotFoundError(
+    factory.get_cinema_screenings_query.execute.side_effect = CinemaNotFoundError(
         "nope"
     )
 
@@ -432,7 +432,7 @@ def test_get_cinema_screenings_unexpected_value_error_returns_422_envelope(
     client: TestClient, factory: MagicMock
 ) -> None:
     """A ValueError from the use case yields a 422 envelope."""
-    factory.get_cinema_screenings_use_case.execute.side_effect = ValueError("bad input")
+    factory.get_cinema_screenings_query.execute.side_effect = ValueError("bad input")
 
     response = client.get("/v1/cinemas/cin-1/screenings")
 
@@ -446,7 +446,7 @@ def test_get_cinema_screenings_ignores_unsupported_query_params(
     client: TestClient, factory: MagicMock
 ) -> None:
     """Filters beyond cinema scope aren't accepted — use GET /v1/screenings instead."""
-    factory.get_cinema_screenings_use_case.execute.return_value = SimpleNamespace(
+    factory.get_cinema_screenings_query.execute.return_value = SimpleNamespace(
         cinema_id="cin-1",
         cinema_name="Cinema One",
         screenings=[],
@@ -462,8 +462,8 @@ def test_get_cinema_screenings_ignores_unsupported_query_params(
     body = response.json()
     assert len(body["items"]) == 0
     assert body["total"] == 0
-    factory.get_cinema_screenings_use_case.execute.assert_awaited_once_with(
-        GetCinemaScreeningsUseCase.InputData(cinema_id="cin-1", page=1, size=50)
+    factory.get_cinema_screenings_query.execute.assert_awaited_once_with(
+        GetCinemaScreeningsQuery.InputData(cinema_id="cin-1", page=1, size=50)
     )
 
 
@@ -746,7 +746,7 @@ def test_get_cinema_screenings_is_cached(
     client: TestClient, factory: MagicMock
 ) -> None:
     """A second request reuses the cached response."""
-    factory.get_cinema_screenings_use_case.execute.return_value = SimpleNamespace(
+    factory.get_cinema_screenings_query.execute.return_value = SimpleNamespace(
         cinema_id="cin-1",
         cinema_name="Cinema One",
         screenings=[],
@@ -758,7 +758,7 @@ def test_get_cinema_screenings_is_cached(
 
     assert first.status_code == 200
     assert second.json() == first.json()
-    factory.get_cinema_screenings_use_case.execute.assert_awaited_once()
+    factory.get_cinema_screenings_query.execute.assert_awaited_once()
 
 
 def test_list_cinemas_cache_has_miss_header_on_first_request(
@@ -847,7 +847,7 @@ def test_get_cinema_screenings_cache_has_miss_header_on_first_request(
     client: TestClient, factory: MagicMock
 ) -> None:
     """The first screenings request has an X-FastAPI-Cache MISS header."""
-    factory.get_cinema_screenings_use_case.execute.return_value = SimpleNamespace(
+    factory.get_cinema_screenings_query.execute.return_value = SimpleNamespace(
         cinema_id="cin-1",
         cinema_name="Cinema One",
         screenings=[],
@@ -864,7 +864,7 @@ def test_get_cinema_screenings_cache_has_hit_header_on_repeat_request(
     client: TestClient, factory: MagicMock
 ) -> None:
     """Repeat requests for /cinemas/{id}/screenings have X-FastAPI-Cache: HIT header."""
-    factory.get_cinema_screenings_use_case.execute.return_value = SimpleNamespace(
+    factory.get_cinema_screenings_query.execute.return_value = SimpleNamespace(
         cinema_id="cin-1",
         cinema_name="Cinema One",
         screenings=[],
@@ -1322,7 +1322,7 @@ def test_get_screening_not_found(client: TestClient, factory: MagicMock) -> None
 
 def test_get_movie_screenings(client: TestClient, factory: MagicMock) -> None:
     """GET /movies/{id}/screenings returns all of the movie's screenings."""
-    factory.get_movie_screenings_use_case.execute.return_value = SimpleNamespace(
+    factory.get_movie_screenings_query.execute.return_value = SimpleNamespace(
         movie_id="mov-1",
         movie_title="The Odyssey",
         screenings=[
@@ -1354,7 +1354,7 @@ def test_get_movie_screenings_ignores_unsupported_query_params(
     client: TestClient, factory: MagicMock
 ) -> None:
     """Filters beyond movie scope aren't accepted — use GET /v1/screenings instead."""
-    factory.get_movie_screenings_use_case.execute.return_value = SimpleNamespace(
+    factory.get_movie_screenings_query.execute.return_value = SimpleNamespace(
         movie_id="mov-1", movie_title="The Odyssey", screenings=[], total=0
     )
 
@@ -1364,14 +1364,14 @@ def test_get_movie_screenings_ignores_unsupported_query_params(
     )
 
     assert response.status_code == 200
-    factory.get_movie_screenings_use_case.execute.assert_awaited_once_with(
-        GetMovieScreeningsUseCase.InputData(movie_id="mov-1", page=1, size=50)
+    factory.get_movie_screenings_query.execute.assert_awaited_once_with(
+        GetMovieScreeningsQuery.InputData(movie_id="mov-1", page=1, size=50)
     )
 
 
 def test_get_movie_screenings_not_found(client: TestClient, factory: MagicMock) -> None:
     """GET /movies/{id}/screenings returns a 404 envelope for a missing movie."""
-    factory.get_movie_screenings_use_case.execute.side_effect = MovieNotFoundError(
+    factory.get_movie_screenings_query.execute.side_effect = MovieNotFoundError(
         "A movie with ID 'missing' was not found"
     )
 

@@ -4,9 +4,6 @@ from __future__ import annotations
 
 import asyncpg
 
-from marquise.application.queries.list_cinema_source_assignments import (
-    ListCinemaSourceAssignmentsQuery,
-)
 from marquise.application.repositories import CinemaRepository
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.create_source import CreateSourceUseCase
@@ -19,9 +16,6 @@ from marquise.infrastructure.supabase.gateways.cinema_source_assignment import (
 )
 from marquise.infrastructure.supabase.gateways.source_definition import (
     SupabaseSourceDefinitionGateway,
-)
-from marquise.interface_adapters.readers.cinema_source_assignment_reader import (
-    SupabaseCinemaSourceAssignmentReader,
 )
 from marquise.interface_adapters.repositories.supabase.cinema_source_assignment_repository import (  # noqa: E501
     SupabaseCinemaSourceAssignmentRepository,
@@ -94,13 +88,4 @@ def build_get_cinema_source_use_case(
     """Build cinema-source lookup use case."""
     return GetCinemaSourceUseCase(
         assignment_repository=_assignment_repository(pool, schema)
-    )
-
-
-def build_list_cinema_source_assignments_query(
-    pool: asyncpg.Pool, schema: str
-) -> ListCinemaSourceAssignmentsQuery:
-    """Build cinema-source assignment listing query."""
-    return ListCinemaSourceAssignmentsQuery(
-        reader=SupabaseCinemaSourceAssignmentReader(pool=pool, schema=schema)
     )
