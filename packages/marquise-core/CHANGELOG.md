@@ -4,11 +4,11 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-08-27
 
-### v0.2.14
+### v0.2.15
 
 - **Use configured read use cases directly**: expose cinema, movie, and screening read use cases through the public factory and remove obsolete controllers. Closes #188 and #189.
 - **Split dependency wiring by responsibility**: isolate source registry, source management, and import use-case construction from the lifecycle container. Closes #190, #191, and #193.
-- **Lighten screening search**: `SearchScreeningsUseCase` is replaced by `SearchScreeningsQuery`, which projects only the columns the response uses and maps straight to light `ScreeningSummary` values instead of building full `Movie`/`Cinema` entities per row. The narrowed query also serves the movie and cinema screening listings. Closes #205.
+- **Lighten screening search**: `SearchScreeningsUseCase` is replaced by `SearchScreeningsQuery` and a dedicated Supabase reader that projects only response columns into light `ScreeningSummary` values. Entity-based screening use cases keep using `ScreeningRepository`. Closes #205.
 
 ### v0.2.13
 

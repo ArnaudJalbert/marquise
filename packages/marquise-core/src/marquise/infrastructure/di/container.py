@@ -65,6 +65,9 @@ from marquise.infrastructure.supabase.gateways.movie import SupabaseMovieGateway
 from marquise.infrastructure.supabase.gateways.screening import (
     SupabaseScreeningGateway,
 )
+from marquise.interface_adapters.readers.screening_reader import (
+    SupabaseScreeningReader,
+)
 from marquise.interface_adapters.repositories.source_registry import SourceRegistry
 from marquise.interface_adapters.repositories.supabase.cinema_repository import (
     SupabaseCinemaRepository,
@@ -205,6 +208,10 @@ class Container:
             self._registry = build_source_registry(self._settings.cineplex_api_key)
         return self._registry
 
+    @property
+    def _screening_reader(self) -> SupabaseScreeningReader:
+        return SupabaseScreeningReader(pool=self._pool_property, schema=self._schema)
+
     # ------------------------------------------------------------------
     # Repositories
     # ------------------------------------------------------------------
@@ -330,7 +337,7 @@ class Container:
     @property
     def _search_screenings_query(self) -> SearchScreeningsQuery:
         return SearchScreeningsQuery(
-            screening_repository=self._screening_repository,
+            screening_reader=self._screening_reader,
             cinema_repository=self._cinema_repository,
             movie_repository=self._movie_repository,
         )

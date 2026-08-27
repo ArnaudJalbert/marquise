@@ -10,10 +10,11 @@ from marquise.application.repositories.cinema_source_assignment_repository impor
 )
 from marquise.application.repositories.movie_repository import MovieRepository
 from marquise.application.repositories.page import Page
-from marquise.application.repositories.screening_repository import (
-    ScreeningRepository,
+from marquise.application.repositories.screening_reader import (
+    ScreeningReader,
     ScreeningSummary,
 )
+from marquise.application.repositories.screening_repository import ScreeningRepository
 from marquise.application.repositories.source_definition_repository import (
     SourceDefinitionRepository,
 )
@@ -33,6 +34,7 @@ __all__ = [
     "MovieRepository",
     "Page",
     "RegistrySourceEntry",
+    "ScreeningReader",
     "ScreeningRepository",
     "ScreeningSummary",
     "ShowtimeRow",

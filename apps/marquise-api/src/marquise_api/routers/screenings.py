@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import datetime
+from hashlib import sha256
 
 from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi_cache.decorator import cache
@@ -30,15 +31,10 @@ def _search_screenings_key_builder(
     args: tuple[object, ...],
     kwargs: dict[str, object],
 ) -> str:
-    """Cache key from the raw query string.
-
-    The default key builder hashes resolved keyword arguments, which mixes
-    dependency objects (controller, pagination) into the key. Keying off the
-    raw query string gives one entry per filter/page/size combination and is
-    stable across requests.
-    """
+    """Build a fixed-length cache key from the raw query string."""
     query = request.url.query if request is not None else ""
-    return f"{namespace}:{func.__module__}:{func.__name__}:{query}"
+    digest = sha256(query.encode()).hexdigest()
+    return f"{namespace}:{func.__module__}:{func.__name__}:{digest}"
 
 
 @router.get(
