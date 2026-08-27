@@ -201,7 +201,7 @@ class SupabaseScreeningRepository(ScreeningRepository):
         language: str | None = None,
         limit: int | None = None,
         offset: int = 0,
-    ) -> Page[Screening]:
+    ) -> Page[ScreeningSummary]:
         """Find screenings matching any combination of filters, paginated.
 
         Args:
