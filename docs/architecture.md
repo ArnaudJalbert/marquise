@@ -47,9 +47,9 @@ instead of a gateway-plus-repository chain when no domain entity or business rul
 is involved. External-source adapters normalise fetched rows. Imports application
 and domain — never infrastructure.
 
-**Infrastructure** — Owns DI wiring, controllers, and gateways used by domain
-repositories. Gateways return plain data structures. Controllers delegate to use
-cases — no business logic.
+**Infrastructure** — Owns DI wiring and gateways used by domain repositories.
+Gateways return plain data structures. Composition modules build configured use
+cases without performing I/O.
 
 **Delivery** — CLI, API, and UI applications. Thin wiring only. Import the
 published library facade — never internal library modules.
@@ -65,8 +65,7 @@ published library facade — never internal library modules.
 | Repository (adapter) | Entity ↔ store mapping | SQL, driver-specific types |
 | Read adapter | Read-only projection through injected client/pool | Domain entities, business rules |
 | Gateway | I/O with external systems; plain data out | Domain entities |
-| Controller | Input DTO → use case → output DTO | Business logic, domain types in signature |
-| Delivery entrypoint | Wire request to controller or factory | Business logic |
+| Delivery entrypoint | Build input DTO and execute factory-provided use case | Business logic |
 
 ---
 
@@ -77,7 +76,7 @@ or factory) — never constructed internally, never read from globals.
 
 - Use cases depend on **repository interfaces** (ABCs), not concrete stores
 - Repository implementations depend on **gateway protocols**, not concrete drivers
-- Controllers depend on **use cases**, not repositories directly
+- Delivery apps receive configured **use cases** from the public factory
 - A factory or container at the **composition root** wires concrete implementations
 
 ### Testability boundary
@@ -88,7 +87,7 @@ or factory) — never constructed internally, never read from globals.
 | Application | Unit | None — mock repository ABCs |
 | Interface adapters | Unit | None — mock injected gateway, client, or pool |
 | Infrastructure (gateways, scrapers) | Integration | Real DB / network **only here** |
-| Delivery apps | Unit | None — mock factory / controllers |
+| Delivery apps | Unit | None — mock factory-provided use cases |
 
 Everything **up to and including interface adapters** must be testable in
 isolation with injected mocks — no database, no HTTP, no filesystem. A read
@@ -134,19 +133,16 @@ dependencies. No module-level mutable singletons.
 ```mermaid
 sequenceDiagram
   participant Delivery as Delivery_CLI_or_API
-  participant Controller as Controller
-  participant UseCase as UseCase
+  participant UseCase as Configured_Use_Case
   participant Repo as Repository
   participant Gateway as Gateway
 
-  Delivery->>Controller: request params
-  Controller->>UseCase: InputData
+  Delivery->>UseCase: InputData
   UseCase->>Repo: domain operation
   Repo->>Gateway: plain query
   Gateway-->>Repo: plain data
   Repo-->>UseCase: entity
-  UseCase-->>Controller: OutputData
-  Controller-->>Delivery: agnostic result
+  UseCase-->>Delivery: OutputData
 ```
 
 ---

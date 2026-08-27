@@ -1,25 +1,7 @@
-"""Marquise — movie showtimes aggregator for Montreal.
+"""Marquise movie showtimes aggregator public API.
 
-Public API
-----------
-Use :func:`create_factory` or :class:`MarquiseFactory` to obtain
-fully-wired controllers::
-
-    from marquise import create_factory
-
-    factory = await create_factory()
-    cinemas = await factory.cinema.list()
-
-Alternatively, use the async context manager for automatic cleanup::
-
-    from marquise import MarquiseFactory
-
-    async with MarquiseFactory() as f:
-        cinemas = await f.cinema.list()
-
-Everything under ``marquise.domain``, ``marquise.application``,
-``marquise.interface_adapters``, and ``marquise.infrastructure`` is
-private and must not be imported by external consumers.
+Use :func:`create_factory` or :class:`MarquiseFactory` to obtain configured
+use cases through this supported facade. Internal package modules are private.
 """
 
 from marquise.application.exceptions import (
@@ -48,15 +30,27 @@ from marquise.application.use_cases.delete_source import DeleteSourceUseCase
 from marquise.application.use_cases.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
+from marquise.application.use_cases.get_cinema import GetCinemaUseCase
+from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
+from marquise.application.use_cases.get_cinema_screenings import (
+    GetCinemaScreeningsUseCase,
+)
 from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
+from marquise.application.use_cases.get_movie import GetMovieUseCase
+from marquise.application.use_cases.get_movie_screenings import (
+    GetMovieScreeningsUseCase,
+)
+from marquise.application.use_cases.get_screening import GetScreeningUseCase
 from marquise.application.use_cases.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
+from marquise.application.use_cases.list_movies import ListMoviesUseCase
 from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
+from marquise.application.use_cases.search_screenings import SearchScreeningsQuery
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.bootstrap import (
@@ -64,15 +58,11 @@ from marquise.bootstrap import (
     create_factory,
     create_factory_session,
 )
-from marquise.infrastructure.controllers.cinema_controller import CinemaController
-from marquise.infrastructure.controllers.movie_controller import MovieController
-from marquise.infrastructure.controllers.screening_controller import ScreeningController
 
 __all__ = [
     "ApplicationError",
     "AssignSourceUseCase",
     "CinemaAlreadyExistsError",
-    "CinemaController",
     "CinemaIdAlreadyExistsError",
     "CinemaNotFoundError",
     "CinemaSourceAssignmentAlreadyExistsError",
@@ -84,19 +74,25 @@ __all__ = [
     "DeleteCinemaUseCase",
     "DeleteSourceUseCase",
     "FetchScreeningsFromSourceQuery",
+    "GetCinemaMoviesUseCase",
+    "GetCinemaScreeningsUseCase",
     "GetCinemaSourceUseCase",
+    "GetCinemaUseCase",
+    "GetMovieScreeningsUseCase",
+    "GetMovieUseCase",
+    "GetScreeningUseCase",
     "create_factory",
     "create_factory_session",
     "ListCinemaSourceAssignmentsQuery",
     "ListCinemasUseCase",
+    "ListMoviesUseCase",
     "ListRegistrySourcesUseCase",
     "ListSourcesUseCase",
     "MarquiseFactory",
-    "MovieController",
     "MovieNotFoundError",
     "ScreeningAlreadyExistsError",
-    "ScreeningController",
     "ScreeningNotFoundError",
+    "SearchScreeningsQuery",
     "SourceAlreadyExistsError",
     "SourceNotFoundError",
     "TooManyMovieIdsError",
