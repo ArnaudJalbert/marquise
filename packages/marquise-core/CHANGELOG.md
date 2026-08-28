@@ -2,6 +2,12 @@
 
 Before 2026-07-15 this package was published as `marquise`.
 
+## 2026-08-28
+
+### v0.2.16
+
+- **Make screening pagination deterministic**: add a stable screening ID tie-breaker after showtime ordering.
+
 ## 2026-08-26
 
 ### v0.2.14
