@@ -32,3 +32,4 @@ review_date: YYYY-MM-DD
 ## Recorded decisions
 
 - [[Marquise Atlas as Company Knowledge Base]]
+- [[Decision - Version Hermes operating context on a dedicated branch]]

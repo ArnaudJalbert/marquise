@@ -19,3 +19,4 @@ owner: Aster
 3. Give active notes a status and owner where useful.
 4. Archive rather than delete superseded organizational knowledge when history matters.
 5. Keep sensitive material out of broadly accessible notes and repositories.
+6. Every newly established or materially changed process gets a durable Atlas process note before it is considered complete.
