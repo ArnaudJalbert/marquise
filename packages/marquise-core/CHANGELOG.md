@@ -2,6 +2,12 @@
 
 Before 2026-07-15 this package was published as `marquise`.
 
+## 2026-08-28
+
+### v0.2.15
+
+- **Repair Cinéma Public booking URLs**: normalize malformed and relative booking paths emitted by the source adapter.
+
 ## 2026-08-26
 
 ### v0.2.14
