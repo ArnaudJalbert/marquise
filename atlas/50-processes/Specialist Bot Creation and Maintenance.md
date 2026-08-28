@@ -108,6 +108,18 @@ Profile slugs are lowercase, alphanumeric names suitable for a directory. The pe
 
 If the profile needs inherited provider configuration, use the supported clone/configuration path rather than hand-editing Hermes configuration. A clone may copy more skills than intended, so inspect and narrow capabilities afterward. Never put credentials in Atlas, source control, or a Bot prompt.
 
+### GitHub access prerequisite
+
+When a Bot must inspect private repositories, issues, pull requests, GitHub Actions, or repository code:
+
+1. Enable only the required GitHub skills and tool access, such as `github-auth`, `github-repo-management`, `github-issues`, or `github-code-review`.
+2. Reuse an existing approved GitHub credential through the supported profile/environment credential mechanism when appropriate; do not create or rotate a token unnecessarily.
+3. Ensure the credential is available inside the Bot’s isolated runtime, not only in Aster’s shell, host-level Git configuration, or another profile.
+4. Verify authenticated access from the Bot itself against the exact private repository and required endpoint (for example, repository contents and Actions run metadata).
+5. If access is unavailable or insufficient, mark the Bot or dependent routine as blocked rather than treating a `404`, unauthenticated response, or local workflow file as proof of access.
+
+Use the minimum permissions required. Keep tokens in credential storage or the profile’s secret environment only; never record token values in Atlas, chat, prompts, logs, or Git diffs.
+
 ## Gate 3 — Install the role identity
 
 Write the approved role into the Bot’s `SOUL.md`. It must include:
@@ -152,6 +164,7 @@ Run and record evidence for all applicable checks:
 - The Bot responds to a founding-context message in its canonical chat.
 - The Atlas charter exists under `atlas/40-agents/`.
 - The profile has only the intended capabilities and no unnecessary permissions.
+- For any required private GitHub access, the Bot independently authenticates and can read the exact repository and Actions metadata it needs.
 - Sensitive credentials are not present in the charter, chat seed, or Git diff.
 
 Do not report a Bot as ready based solely on a successful creation command.
