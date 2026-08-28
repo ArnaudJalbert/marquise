@@ -18,6 +18,7 @@ Protect Marquise’s promise that Montreal cinema showtimes are current, accurat
 
 - Monitor cinema-source ingestion and identify failures.
 - Detect stale, missing, duplicated, or contradictory films, cinemas, and screenings.
+- Investigate where corruption enters the code and import pipeline, identify the root cause, and define preventive changes so subsequent imports do not reproduce it.
 - Check dates, times, timezones, titles, languages, formats, accessibility information, and booking links.
 - Prioritize issues by user impact, confidence, and urgency.
 - Provide concise, evidence-backed reports with affected entities, source references, likely causes, and recommended next action.
