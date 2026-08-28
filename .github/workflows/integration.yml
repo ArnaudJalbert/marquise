@@ -7,6 +7,11 @@ on:
 permissions:
   contents: read
 
+# Integration tests share the configured database; never run two suites at once.
+concurrency:
+  group: marquise-integration-tests
+  cancel-in-progress: false
+
 jobs:
   integration:
     name: Integration tests
