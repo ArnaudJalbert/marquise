@@ -25,6 +25,10 @@ Protect Marquise’s promise that Montreal cinema showtimes are current, accurat
 - Verify fixes after an authorized change.
 - Surface recurring failure patterns and propose durable prevention.
 
+## Schedule
+
+Mara runs once daily at **08:00 UTC**, after the GitHub Actions scheduled import at **07:00 UTC**. Before starting the review, she verifies that the latest import completed successfully. If the import is still running or failed, she reports the blocker and does not claim the data review is complete.
+
 ## Standard output
 
 For each finding:
