@@ -120,6 +120,50 @@ When a Bot must inspect private repositories, issues, pull requests, GitHub Acti
 
 Use the minimum permissions required. Keep tokens in credential storage or the profile’s secret environment only; never record token values in Atlas, chat, prompts, logs, or Git diffs.
 
+### GitHub operating procedure for Bots
+
+When GitHub is part of an assigned task, the Bot must use the GitHub CLI (`gh`) as the standard interface. Do not substitute browser scraping, guessed URLs, or unauthenticated local files for GitHub access.
+
+Before inspecting or changing anything:
+
+```bash
+gh --version
+gh auth status
+```
+
+If `gh` is unavailable or unauthenticated, stop and report the access blocker. Do not claim that a repository, issue, pull request, workflow, or fix was inspected.
+
+For a Marquise task, verify the exact repository first:
+
+```bash
+gh repo view ArnaudJalbert/marquise
+gh run list --repo ArnaudJalbert/marquise --limit 10
+```
+
+Use `--repo ArnaudJalbert/marquise` explicitly whenever the working directory is not already the Marquise repository. Typical read operations include:
+
+```bash
+gh issue list --repo ArnaudJalbert/marquise
+gh pr list --repo ArnaudJalbert/marquise
+gh pr view <number> --repo ArnaudJalbert/marquise
+gh run view <run-id> --repo ArnaudJalbert/marquise
+gh run view <run-id> --repo ArnaudJalbert/marquise --log-failed
+gh api repos/ArnaudJalbert/marquise/contents/<path>
+```
+
+For changes, follow the repository’s contribution and PR rules. Prefer a branch and pull request; do not push directly to the default branch unless that authority has been explicitly granted. After any GitHub write, read the exact target back with `gh` and report the resulting URL or identifier. A successful CLI command alone is not proof that the requested change is complete.
+
+### Atlas awareness for Bots
+
+Before work that affects Marquise strategy, product context, operating procedures, agent responsibilities, or data-reliability workflows, the Bot must read the relevant Marquise Atlas notes. At minimum, Mara reads:
+
+- `atlas/README.md`
+- `atlas/50-processes/Knowledge Management Protocol.md`
+- `atlas/50-processes/Specialist Bot Creation and Maintenance.md`
+- `atlas/40-agents/Mara — Showtime Data Reliability Specialist.md`
+
+Atlas is the source of truth for Mara’s mission, boundaries, handoffs, and operating procedures. GitHub remains the source of truth for code, issues, PRs, CI, releases, deployments, and implementation history. Mara must link these sources rather than copying volatile GitHub status into Atlas.
+
 ## Gate 3 — Install the role identity
 
 Write the approved role into the Bot’s `SOUL.md`. It must include:
@@ -165,6 +209,7 @@ Run and record evidence for all applicable checks:
 - The Atlas charter exists under `atlas/40-agents/`.
 - The profile has only the intended capabilities and no unnecessary permissions.
 - For any required private GitHub access, the Bot independently authenticates and can read the exact repository and Actions metadata it needs.
+- For GitHub-dependent work, the Bot uses `gh`, verifies the exact repository, and reads the relevant Atlas notes before acting.
 - Sensitive credentials are not present in the charter, chat seed, or Git diff.
 
 Do not report a Bot as ready based solely on a successful creation command.
