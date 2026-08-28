@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, create_autospec
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, create_autospec
 
 import pytest
 from fastapi.testclient import TestClient
@@ -1254,6 +1254,26 @@ def test_search_screenings_is_cached(client: TestClient, factory: MagicMock) -> 
     assert second.status_code == 200
     assert second.headers.get("X-FastAPI-Cache") == "HIT"
     assert factory.search_screenings_query.execute.await_count == 1
+
+
+def test_search_screenings_cache_ignores_fresh_injected_query(
+    client: TestClient, factory: MagicMock
+) -> None:
+    """Same request hits cache when dependency returns a fresh query each time."""
+    first_query = create_autospec(SearchScreeningsQuery, instance=True)
+    first_query.execute.return_value = SimpleNamespace(screenings=[], total=0)
+    second_query = create_autospec(SearchScreeningsQuery, instance=True)
+    type(factory).search_screenings_query = PropertyMock(
+        side_effect=[first_query, second_query]
+    )
+
+    first = client.get("/v1/screenings")
+    second = client.get("/v1/screenings")
+
+    assert first.headers.get("X-FastAPI-Cache") == "MISS"
+    assert second.headers.get("X-FastAPI-Cache") == "HIT"
+    first_query.execute.assert_awaited_once()
+    second_query.execute.assert_not_awaited()
 
 
 def test_search_screenings_different_filters_use_separate_cache_entries(
