@@ -59,10 +59,12 @@ python3 scripts/sync-hermes-state.py --commit --push
 
 ## Automatic cadence
 
-A durable Hermes cron job runs the same commit-and-push procedure daily at
-04:00 Montreal time. If no source changed, no new commit is created. The
-branch is reviewed or inspected independently and is never merged as part of
-the sync job.
+A durable Hermes cron job checks hourly and runs the snapshot procedure only
+when the local time is 04:00 in `America/Toronto`. This guard is implemented
+by `scripts/run-hermes-sync-if-due.py`, so the schedule remains correct across
+Montreal daylight-saving changes. If no source changed, no new commit is
+created. The branch is reviewed or inspected independently and is never merged
+as part of the sync job.
 
 ## Verification and failure handling
 
