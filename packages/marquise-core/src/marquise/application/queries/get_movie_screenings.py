@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from marquise.application.exceptions import MovieNotFoundError
-from marquise.application.readers import ScreeningReader, ScreeningSummary
+from marquise.application.readers import ScreeningReader
 from marquise.application.repositories import MovieRepository
 from marquise.domain.value_objects import MovieId
 
@@ -34,7 +34,7 @@ class GetMovieScreeningsQuery:
     class OutputData:
         """Screening summaries and matching total."""
 
-        screenings: tuple[ScreeningSummary, ...]
+        screenings: tuple[ScreeningReader.ScreeningData, ...]
         total: int
 
     def __init__(

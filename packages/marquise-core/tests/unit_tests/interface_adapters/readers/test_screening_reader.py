@@ -7,7 +7,7 @@ from unittest.mock import ANY, AsyncMock, MagicMock
 
 import pytest
 
-from marquise.application.readers import ScreeningSummary
+from marquise.application.readers import ScreeningReader
 from marquise.interface_adapters.readers.screening_reader import (
     SupabaseScreeningReader,
 )
@@ -55,7 +55,7 @@ async def test_search_maps_projection_and_filters() -> None:
     )
 
     assert result.items == [
-        ScreeningSummary(
+        ScreeningReader.ScreeningData(
             id="scr-1",
             movie_id="mov-1",
             movie_title="The Odyssey",

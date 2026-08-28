@@ -11,13 +11,13 @@ from marquise.application.exceptions import CinemaNotFoundError
 from marquise.application.queries.get_cinema_screenings import (
     GetCinemaScreeningsQuery,
 )
-from marquise.application.readers import ScreeningReader, ScreeningSummary
+from marquise.application.readers import ScreeningReader
 from marquise.application.repositories import CinemaRepository, Page
 from marquise.domain.value_objects import CinemaId
 
 
-def _summary() -> ScreeningSummary:
-    return ScreeningSummary(
+def _summary() -> ScreeningReader.ScreeningData:
+    return ScreeningReader.ScreeningData(
         id="scr-1",
         movie_id="mov-1",
         movie_title="The Odyssey",

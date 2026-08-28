@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from marquise.application.exceptions import CinemaNotFoundError, MovieNotFoundError
-from marquise.application.readers import ScreeningReader, ScreeningSummary
+from marquise.application.readers import ScreeningReader
 from marquise.application.repositories import CinemaRepository, MovieRepository
 from marquise.domain.value_objects import CinemaId, MovieId
 
@@ -14,8 +14,8 @@ from marquise.domain.value_objects import CinemaId, MovieId
 class SearchScreeningsQuery:
     """Query for searching screenings by any combination of filters.
 
-    Uses a dedicated reader that returns a light ``ScreeningSummary``
-    projection, so no domain entities are constructed per result row.
+    Uses a dedicated reader projection, so no domain entities are constructed
+    per result row.
     """
 
     @dataclass(frozen=True, slots=True)
@@ -71,6 +71,20 @@ class SearchScreeningsQuery:
                 raise ValueError("page must be at least 1")
 
     @dataclass(frozen=True, slots=True)
+    class ScreeningData:
+        """Display data for one screening search result."""
+
+        id: str
+        movie_id: str
+        movie_title: str
+        cinema_id: str
+        cinema_name: str
+        showtime: datetime
+        ticket_url: str | None = None
+        room: str | None = None
+        language: str | None = None
+
+    @dataclass(frozen=True, slots=True)
     class OutputData:
         """Output data containing the matching screenings.
 
@@ -80,7 +94,7 @@ class SearchScreeningsQuery:
                 limit/offset.
         """
 
-        screenings: tuple[ScreeningSummary, ...]
+        screenings: tuple[SearchScreeningsQuery.ScreeningData, ...]
         total: int
 
     def __init__(
@@ -154,4 +168,20 @@ class SearchScreeningsQuery:
             offset=offset,
         )
 
-        return self.OutputData(screenings=tuple(page.items), total=page.total)
+        return self.OutputData(
+            screenings=tuple(
+                self.ScreeningData(
+                    id=screening.id,
+                    movie_id=screening.movie_id,
+                    movie_title=screening.movie_title,
+                    cinema_id=screening.cinema_id,
+                    cinema_name=screening.cinema_name,
+                    showtime=screening.showtime,
+                    ticket_url=screening.ticket_url,
+                    room=screening.room,
+                    language=screening.language,
+                )
+                for screening in page.items
+            ),
+            total=page.total,
+        )

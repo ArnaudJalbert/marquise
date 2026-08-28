@@ -9,23 +9,22 @@ from datetime import datetime
 from marquise.application.repositories.page import Page
 
 
-@dataclass(frozen=True, slots=True)
-class ScreeningSummary:
-    """Display data for one screening search result."""
-
-    id: str
-    movie_id: str
-    movie_title: str
-    cinema_id: str
-    cinema_name: str
-    showtime: datetime
-    ticket_url: str | None = None
-    room: str | None = None
-    language: str | None = None
-
-
 class ScreeningReader(ABC):
     """Search screening display data without constructing domain entities."""
+
+    @dataclass(frozen=True, slots=True)
+    class ScreeningData:
+        """Display data for one screening search result."""
+
+        id: str
+        movie_id: str
+        movie_title: str
+        cinema_id: str
+        cinema_name: str
+        showtime: datetime
+        ticket_url: str | None = None
+        room: str | None = None
+        language: str | None = None
 
     @abstractmethod
     async def search(
@@ -38,6 +37,6 @@ class ScreeningReader(ABC):
         language: str | None = None,
         limit: int | None = None,
         offset: int = 0,
-    ) -> Page[ScreeningSummary]:
+    ) -> Page[ScreeningReader.ScreeningData]:
         """Return screenings matching optional filters, paginated."""
         ...
