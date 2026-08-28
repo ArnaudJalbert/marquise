@@ -9,13 +9,13 @@ import pytest
 
 from marquise.application.exceptions import CinemaNotFoundError, MovieNotFoundError
 from marquise.application.queries.search_screenings import SearchScreeningsQuery
-from marquise.application.readers import ScreeningReader, ScreeningSummary
+from marquise.application.readers import ScreeningReader
 from marquise.application.repositories import CinemaRepository, MovieRepository, Page
 from marquise.domain.value_objects import CinemaId, MovieId
 
 
-def _summary() -> ScreeningSummary:
-    return ScreeningSummary(
+def _summary() -> ScreeningReader.ScreeningData:
+    return ScreeningReader.ScreeningData(
         id="scr-1",
         movie_id="mov-1",
         movie_title="The Odyssey",
@@ -40,7 +40,16 @@ async def test_returns_matching_screenings() -> None:
     )
     result = await query.execute(SearchScreeningsQuery.InputData())
 
-    assert result.screenings == (_summary(),)
+    assert result.screenings == (
+        SearchScreeningsQuery.ScreeningData(
+            id="scr-1",
+            movie_id="mov-1",
+            movie_title="The Odyssey",
+            cinema_id="cin-1",
+            cinema_name="Cinema One",
+            showtime=datetime(2026, 6, 27, 19, 30, tzinfo=UTC),
+        ),
+    )
     assert result.total == 1
 
 

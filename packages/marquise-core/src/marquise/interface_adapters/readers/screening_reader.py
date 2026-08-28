@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import asyncpg
 
-from marquise.application.readers import ScreeningReader, ScreeningSummary
+from marquise.application.readers import ScreeningReader
 from marquise.application.repositories import Page
 
 DEFAULT_SCHEMA = "marquise"
@@ -51,7 +51,7 @@ class SupabaseScreeningReader(ScreeningReader):
         language: str | None = None,
         limit: int | None = None,
         offset: int = 0,
-    ) -> Page[ScreeningSummary]:
+    ) -> Page[ScreeningReader.ScreeningData]:
         """Return screenings matching optional filters, paginated."""
         conditions: list[str] = []
         params: list[str | datetime] = []
@@ -119,7 +119,7 @@ class SupabaseScreeningReader(ScreeningReader):
 
         return Page(
             items=[
-                ScreeningSummary(
+                ScreeningReader.ScreeningData(
                     id=row["id"],
                     movie_id=row["movie_id"],
                     movie_title=row["movie_title"],

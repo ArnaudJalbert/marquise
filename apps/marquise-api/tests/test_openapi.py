@@ -2,12 +2,21 @@
 
 from __future__ import annotations
 
+import asyncio
 from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
+from fastapi_cache.backends.inmemory import InMemoryBackend
 
-from marquise_api.app import create_app
+from marquise_api.app import CACHE_PREFIX, create_app
+
+
+@pytest.fixture(autouse=True)
+def _clear_response_cache() -> None:
+    """Clear cached responses after each test."""
+    yield
+    asyncio.run(InMemoryBackend().clear(namespace=CACHE_PREFIX))
 
 
 @pytest.fixture
