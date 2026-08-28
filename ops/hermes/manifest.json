@@ -1,0 +1,38 @@
+{
+  "description": "Sanitized Hermes operating context snapshot.",
+  "excluded": [
+    ".env",
+    "auth.json",
+    "state.db",
+    "sessions",
+    "logs",
+    "caches",
+    "locks"
+  ],
+  "files": {
+    "MEMORY.md": {
+      "sha256": "5d4c533ca976a935669d6bed93c14e764959aa0853dfb1d44861a04d91748323",
+      "source": "/opt/data/memories/MEMORY.md"
+    },
+    "SOUL.md": {
+      "sha256": "e860e03b990c8eb2c1548d022e4ea7c634cc186042d4c2e7af1a86d23afd89b3",
+      "source": "/opt/data/SOUL.md"
+    },
+    "USER.md": {
+      "sha256": "687244d3111a0d0e08cc31a3c3b6ed18462aa952f22bb79cd192742e230fbdfc",
+      "source": "/opt/data/memories/USER.md"
+    },
+    "config.sanitized.yaml": {
+      "redactions": [
+        "dashboard.basic_auth.password_hash",
+        "TELEGRAM_HOME_CHANNEL"
+      ],
+      "sha256": "de90041ed7d7cd124b8b4640374a9e81554460911b28872c82f62551815f43b7",
+      "source": "/opt/data/config.yaml"
+    },
+    "profiles/mara/SOUL.md": {
+      "sha256": "c2500e8dc3679ebc69d5fc7005d82ad05eab5d00ebd9e961a158d6fc388f00b5",
+      "source": "/opt/data/profiles/mara/SOUL.md"
+    }
+  }
+}
