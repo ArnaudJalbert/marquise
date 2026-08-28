@@ -103,6 +103,9 @@ def main() -> int:
     branch = run("git", "branch", "--show-current")
     if branch != EXPECTED_BRANCH:
         raise SystemExit(f"Refusing to sync on branch {branch!r}; expected {EXPECTED_BRANCH!r}.")
+    dirty = run("git", "status", "--porcelain")
+    if dirty:
+        raise SystemExit("Refusing to sync with unrelated working-tree changes.")
 
     changed = sync()
     print("Hermes snapshot: " + ("updated" if changed else "already current"))
