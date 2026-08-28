@@ -8,6 +8,10 @@ Before 2026-07-15 this package was published as `marquise`.
 
 - **Make screening pagination deterministic**: add a stable screening ID tie-breaker after showtime ordering.
 
+### v0.2.15
+
+- **Repair Cinéma Public booking URLs**: normalize malformed and relative booking paths emitted by the source adapter.
+
 ## 2026-08-26
 
 ### v0.2.14
