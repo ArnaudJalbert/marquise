@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-29
+
+### v0.1.12
+
+- **Bound bulk import concurrency**: limit active cinema pipelines to two so scheduled imports do not overwhelm the database pool. Closes #198.
+
 ## 2026-08-26
 
 ### v0.1.11
