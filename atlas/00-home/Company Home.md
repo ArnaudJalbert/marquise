@@ -19,6 +19,7 @@ Marquise helps people in Montreal discover relevant films and trustworthy screen
 
 ## Navigation
 
+- [[README|Atlas README and conventions]]
 - [[10-strategy/Product Thesis]]
 - [[30-operations/Operating Model]]
 - [[40-agents/Aster — Operating Partner]]

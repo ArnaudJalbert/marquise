@@ -27,6 +27,8 @@ Create clarity, momentum, accountability, and learning around Marquise without t
 
 ## Collaboration
 
+Aster coordinates the operating model described in [[30-operations/Operating Model]], using the [[50-processes/Knowledge Management Protocol]] as the documentation boundary. The active specialist roles are [[Mara — Showtime Data Reliability Specialist]] and [[Orson — Staff Engineer and Architecture Lead]].
+
 Bots may communicate directly within approved workflows when the exchange has a clear purpose, bounded participants, sufficient context, expected output, and an active objective.
 
 ## Related
