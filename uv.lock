@@ -512,7 +512,7 @@ requires-dist = [
 
 [[package]]
 name = "marquise-cli"
-version = "0.1.12"
+version = "0.1.13"
 source = { editable = "apps/marquise-cli" }
 dependencies = [
     { name = "marquise-core" },
@@ -529,7 +529,7 @@ requires-dist = [
 
 [[package]]
 name = "marquise-core"
-version = "0.2.18"
+version = "0.2.19"
 source = { editable = "packages/marquise-core" }
 dependencies = [
     { name = "asyncpg" },
