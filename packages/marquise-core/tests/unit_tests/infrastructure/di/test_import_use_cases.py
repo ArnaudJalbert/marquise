@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, create_autospec
 
+from marquise.application.queries.fetch_screenings_from_source import (
+    FetchScreeningsFromSourceQuery,
+)
 from marquise.application.repositories import SourceRegistryQuery
 from marquise.application.use_cases.create_missing_movies import (
     CreateMissingMoviesCommand,
 )
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
-from marquise.application.use_cases.fetch_screenings_from_source import (
-    FetchScreeningsFromSourceQuery,
-)
 from marquise.infrastructure.di.import_use_cases import (
     build_create_movies_use_case,
     build_create_screenings_use_case,

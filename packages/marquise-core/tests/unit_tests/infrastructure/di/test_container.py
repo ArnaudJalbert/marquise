@@ -145,7 +145,7 @@ async def test_list_cinema_source_assignments_query_requires_initialize() -> Non
 @pytest.mark.asyncio
 async def test_list_cinema_source_assignments_query_after_initialize() -> None:
     """Verify assignment query uses initialized database pool."""
-    from marquise.application.use_cases.list_cinema_source_assignments import (
+    from marquise.application.queries.list_cinema_source_assignments import (
         ListCinemaSourceAssignmentsQuery,
     )
 
@@ -224,10 +224,10 @@ async def test_get_movie_use_case_after_initialize() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_cinema_screenings_use_case_after_initialize() -> None:
-    """Verify get_cinema_screenings_use_case returns a GetCinemaScreeningsUseCase."""
-    from marquise.application.use_cases.get_cinema_screenings import (
-        GetCinemaScreeningsUseCase,
+async def test_get_cinema_screenings_query_after_initialize() -> None:
+    """Verify get_cinema_screenings_query returns a GetCinemaScreeningsQuery."""
+    from marquise.application.queries.get_cinema_screenings import (
+        GetCinemaScreeningsQuery,
     )
 
     mock_database = AsyncMock()
@@ -238,16 +238,16 @@ async def test_get_cinema_screenings_use_case_after_initialize() -> None:
     ):
         container = Container()
         await container.initialize()
-        use_case = container.get_cinema_screenings_use_case
-        assert isinstance(use_case, GetCinemaScreeningsUseCase)
+        use_case = container.get_cinema_screenings_query
+        assert isinstance(use_case, GetCinemaScreeningsQuery)
         await container.shutdown()
 
 
 @pytest.mark.asyncio
-async def test_search_screenings_use_case_after_initialize() -> None:
-    """Verify search_screenings_use_case returns a SearchScreeningsUseCase."""
-    from marquise.application.use_cases.search_screenings import (
-        SearchScreeningsUseCase,
+async def test_search_screenings_query_after_initialize() -> None:
+    """Verify search_screenings_query returns a SearchScreeningsQuery."""
+    from marquise.application.queries.search_screenings import (
+        SearchScreeningsQuery,
     )
 
     mock_database = AsyncMock()
@@ -258,8 +258,8 @@ async def test_search_screenings_use_case_after_initialize() -> None:
     ):
         container = Container()
         await container.initialize()
-        use_case = container.search_screenings_use_case
-        assert isinstance(use_case, SearchScreeningsUseCase)
+        query = container.search_screenings_query
+        assert isinstance(query, SearchScreeningsQuery)
         await container.shutdown()
 
 

@@ -6,11 +6,11 @@ from unittest.mock import create_autospec
 
 import pytest
 
-from marquise.application.repositories import (
+from marquise.application.queries import ListCinemaSourceAssignmentsQuery
+from marquise.application.readers import (
     CinemaSourceAssignmentData,
     CinemaSourceAssignmentReader,
 )
-from marquise.application.use_cases import ListCinemaSourceAssignmentsQuery
 
 
 @pytest.mark.asyncio
