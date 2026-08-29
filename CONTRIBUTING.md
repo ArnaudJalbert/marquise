@@ -341,9 +341,7 @@ Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
 
 ### Delivery process
 
-- [Atlas Documentation and Delivery Workflow](atlas/50-processes/Documentation%20and%20Delivery%20Workflow.md) — SSOT boundaries, briefs, stories, PRs, review, and verification gates
-- [Project brief template](docs/templates/project-brief.md)
-- [User story template](docs/templates/user-story.md)
+- [Atlas Documentation and Delivery Workflow](atlas/50-processes/Documentation%20and%20Delivery%20Workflow.md) — issue planning, PRs, review, and verification gates
 - [Pull request template](.github/PULL_REQUEST_TEMPLATE.md)
 
 ### Documentation

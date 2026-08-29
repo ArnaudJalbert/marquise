@@ -13,26 +13,24 @@ Rules for keeping Atlas and GitHub useful.
 
 | Concern | Source |
 |---|---|
-| Strategy, product context, research, briefs, decisions | Marquise Atlas |
-| Code, issues, PRs, reviews, CI, releases, deployments | GitHub: [`ArnaudJalbert/marquise`](https://github.com/ArnaudJalbert/marquise) |
+| Broad, lasting strategy, principles, processes, decisions, validated learning | Marquise Atlas |
+| Planning, brainstorming, research, proposals, task context | GitHub Issues |
+| Code, PRs, reviews, CI, releases, deployments | GitHub: [`ArnaudJalbert/marquise`](https://github.com/ArnaudJalbert/marquise) |
 
-Update records at their source. Atlas links to GitHub; it does not copy live status. Arno owns direction, priority, security, material cost, and irreversible commitments. Aster owns this process.
+GitHub Issues are the planning record. Use `type:idea`, `type:research`, or `type:proposal`, plus an existing area label when relevant. Use `blocked` only when work is waiting on a dependency. Atlas links to GitHub; it does not copy live status.
 
 ## Workflow
 
-1. Create an Atlas note only when work needs durable context.
-2. Link related Atlas and GitHub records. Do not duplicate them.
-3. Keep code, discussion, checks, and status in GitHub.
-4. Add verified decisions and learnings to Atlas.
-5. Update or archive notes when assumptions change.
+1. Create a GitHub Issue for planning, research, proposals, and work in progress.
+2. Keep code, discussion, checks, and status in GitHub.
+3. Add only broad, lasting decisions and validated learning to Atlas.
+4. Link related Atlas and GitHub records. Do not duplicate them.
 
-## Briefs, milestones, and stories
+## Issues
 
-Use a [project brief](../../docs/templates/project-brief.md) only for work spanning several issues or PRs. It explains why the work matters, its boundaries, who decides, and links to GitHub. It is not a task list.
+Use the issue body for the problem, proposal, research findings, acceptance criteria, and links. Use comments for new evidence and decisions.
 
-A milestone has an outcome, owner, proof, dependencies, and exit criteria. Track its status in GitHub.
-
-Use the [user-story template](../../docs/templates/user-story.md) for a durable handoff. Acceptance criteria must be testable. Include relevant error, empty, permission, freshness, and rollback cases.
+Use milestones only for outcomes that group several issues. Acceptance criteria must be testable; include relevant error, empty, permission, freshness, and rollback cases.
 
 ## Pull requests
 
