@@ -53,6 +53,15 @@ Use `/opt/data/bin/gh issue` and `/opt/data/bin/gh api` with the explicit reposi
 - Use the smallest useful issue body with evidence, user impact, expected/actual behavior, scope, and acceptance criteria.
 - Read back the created issue or milestone and record its URL/number.
 
+### Milestone authority and naming
+
+- **Aster is the only agent authorized to create, rename, close, or reopen milestones.** Specialist Bots may recommend a milestone or provide its proposed title, description, and rationale, but they must not mutate milestone records.
+- Arno retains final authority over milestone priorities and scope. Aster may execute an approved milestone change and is responsible for checking that it is needed, non-duplicative, and correctly named.
+- Milestone titles contain only the human-readable outcome. Do not add priority or sequencing prefixes such as `P1:`, `P2:`, `P3:`, or `P3.1 —`. Priority belongs in the planning decision or issue labels, not in the milestone title.
+- Before creation, Aster searches open and closed milestones for exact and near-duplicate titles, confirms the intended title and description, and uses explicit fields for the write.
+- After creation or any rename, Aster reads the exact milestone back and verifies its number, title, description, state, URL, and issue relationship. A successful write command alone is not completion evidence.
+- If another agent reports that it created or changed a milestone, Aster treats the report as unverified, checks GitHub directly, and corrects or escalates the record as appropriate.
+
 ## Pull requests and code
 
 Follow [[Opening a Pull Request]] for branching, worktrees, tests, commits, PR creation, CI checks, and merge boundaries. Follow [[Bug Finding to Issue and PR]] for validated data-reliability findings.
