@@ -6,6 +6,17 @@ import types
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
+from marquise.application.queries.fetch_screenings_from_source import (
+    FetchScreeningsFromSourceQuery,
+)
+from marquise.application.queries.get_cinema_screenings import (
+    GetCinemaScreeningsQuery,
+)
+from marquise.application.queries.get_movie_screenings import GetMovieScreeningsQuery
+from marquise.application.queries.list_cinema_source_assignments import (
+    ListCinemaSourceAssignmentsQuery,
+)
+from marquise.application.queries.search_screenings import SearchScreeningsQuery
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.create_missing_movies import (
@@ -15,30 +26,17 @@ from marquise.application.use_cases.create_screenings import CreateScreeningsCom
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
-from marquise.application.use_cases.fetch_screenings_from_source import (
-    FetchScreeningsFromSourceQuery,
-)
 from marquise.application.use_cases.get_cinema import GetCinemaUseCase
 from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
-from marquise.application.use_cases.get_cinema_screenings import (
-    GetCinemaScreeningsUseCase,
-)
 from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
 from marquise.application.use_cases.get_movie import GetMovieUseCase
-from marquise.application.use_cases.get_movie_screenings import (
-    GetMovieScreeningsUseCase,
-)
 from marquise.application.use_cases.get_screening import GetScreeningUseCase
-from marquise.application.use_cases.list_cinema_source_assignments import (
-    ListCinemaSourceAssignmentsQuery,
-)
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.application.use_cases.list_movies import ListMoviesUseCase
 from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
-from marquise.application.use_cases.search_screenings import SearchScreeningsUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.infrastructure.di.container import Container
@@ -119,9 +117,9 @@ class MarquiseFactory:
         return self._container.get_cinema_use_case
 
     @property
-    def get_cinema_screenings_use_case(self) -> GetCinemaScreeningsUseCase:
-        """Configured use case for listing a cinema's screenings."""
-        return self._container.get_cinema_screenings_use_case
+    def get_cinema_screenings_query(self) -> GetCinemaScreeningsQuery:
+        """Configured query for listing a cinema's screenings."""
+        return self._container.get_cinema_screenings_query
 
     @property
     def get_cinema_movies_use_case(self) -> GetCinemaMoviesUseCase:
@@ -139,14 +137,14 @@ class MarquiseFactory:
         return self._container.get_movie_use_case
 
     @property
-    def get_movie_screenings_use_case(self) -> GetMovieScreeningsUseCase:
-        """Configured use case for listing a movie's screenings."""
-        return self._container.get_movie_screenings_use_case
+    def get_movie_screenings_query(self) -> GetMovieScreeningsQuery:
+        """Configured query for listing a movie's screenings."""
+        return self._container.get_movie_screenings_query
 
     @property
-    def search_screenings_use_case(self) -> SearchScreeningsUseCase:
-        """Configured use case for searching screenings."""
-        return self._container.search_screenings_use_case
+    def search_screenings_query(self) -> SearchScreeningsQuery:
+        """Configured query for searching screenings."""
+        return self._container.search_screenings_query
 
     @property
     def get_screening_use_case(self) -> GetScreeningUseCase:
