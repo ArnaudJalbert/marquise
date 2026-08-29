@@ -17,7 +17,7 @@ Rules for keeping Atlas and GitHub useful.
 | Planning, brainstorming, research, proposals, task context | GitHub Issues |
 | Code, PRs, reviews, CI, releases, deployments | GitHub: [`ArnaudJalbert/marquise`](https://github.com/ArnaudJalbert/marquise) |
 
-GitHub Issues are the planning record. Use `type:idea`, `type:research`, or `type:proposal`, plus an existing area label when relevant. Use `blocked` only when work is waiting on a dependency. Atlas links to GitHub; it does not copy live status.
+GitHub Issues are the planning record. Every issue must have an appropriate type label, such as `type:idea`, `type:research`, or `type:proposal`, plus area and status labels when relevant. Use `blocked` only when work is waiting on a dependency. Atlas links to GitHub; it does not copy live status.
 
 ## Workflow
 
@@ -28,7 +28,7 @@ GitHub Issues are the planning record. Use `type:idea`, `type:research`, or `typ
 
 ## Issues
 
-Use the issue body for the problem, proposal, research findings, acceptance criteria, and links. Use comments for new evidence and decisions.
+Use the issue body for the problem, proposal, research findings, acceptance criteria, and links. Add the appropriate type label when creating the issue, then add relevant area and status labels. Use comments for new evidence and decisions.
 
 Use milestones only for outcomes that group several issues. Acceptance criteria must be testable; include relevant error, empty, permission, freshness, and rollback cases.
 
