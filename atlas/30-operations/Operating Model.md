@@ -24,6 +24,10 @@ review_date: 2026-09-30
 4. Verify the requested result with real evidence before reporting completion.
 5. Capture durable decisions and learnings in Atlas.
 
+## Code review standard
+
+AI-authored code is reviewed by a different person, Bot, or fresh temporary reviewer. Authors and reviewers are expected to challenge each other's assumptions, resolve disagreement through evidence, and escalate only consequential unresolved trade-offs. The full workflow is [[50-processes/Code Review and Constructive Challenge]].
+
 ## Cadence
 
 At review points, answer:
