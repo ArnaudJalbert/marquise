@@ -30,12 +30,15 @@ class FetchScreeningsFromSourceQuery:
         cinema_id: str
         start_date: date
         end_date: date
+        enrichment_concurrency: int = 8
 
         def __post_init__(self) -> None:
             if not self.cinema_id.strip():
                 raise ValueError("cinema_id must not be empty")
             if self.start_date > self.end_date:
                 raise ValueError("start_date must not be after end_date")
+            if self.enrichment_concurrency < 1:
+                raise ValueError("enrichment_concurrency must be positive")
 
     @dataclass(frozen=True, slots=True)
     class FetchedMovieData:
@@ -128,12 +131,11 @@ class FetchScreeningsFromSourceQuery:
 
         detail_map: dict[str, MovieEnrichmentData] = {}
         if unique_identifiers:
-            raw_details = await asyncio.gather(
-                *[
-                    self.source_registry.fetch_movie_detail(source_name, ident)
-                    for ident in unique_identifiers
-                ],
-                return_exceptions=True,
+            raw_details = await _fetch_movie_details(
+                self.source_registry,
+                source_name,
+                unique_identifiers,
+                request.enrichment_concurrency,
             )
             for ident, detail in zip(unique_identifiers, raw_details):
                 if isinstance(detail, MovieEnrichmentData):
@@ -202,6 +204,43 @@ class FetchScreeningsFromSourceQuery:
                 for r in raw_rows
             ),
         )
+
+
+async def _fetch_movie_detail(
+    source_registry: SourceRegistryQuery,
+    source_name: str,
+    identifier: str,
+    semaphore: asyncio.Semaphore,
+) -> MovieEnrichmentData | Exception:
+    """Fetch one detail row while preserving predictable source failure isolation."""
+    async with semaphore:
+        try:
+            detail = await source_registry.fetch_movie_detail(source_name, identifier)
+        except (OSError, TimeoutError) as exc:
+            return exc
+        return (
+            detail
+            if isinstance(detail, MovieEnrichmentData)
+            else ValueError("source returned an invalid enrichment result")
+        )
+
+
+async def _fetch_movie_details(
+    source_registry: SourceRegistryQuery,
+    source_name: str,
+    identifiers: list[str],
+    concurrency: int,
+) -> list[MovieEnrichmentData | Exception]:
+    """Fetch movie details concurrently with an explicit upper bound."""
+    semaphore = asyncio.Semaphore(concurrency)
+    return list(
+        await asyncio.gather(
+            *(
+                _fetch_movie_detail(source_registry, source_name, identifier, semaphore)
+                for identifier in identifiers
+            )
+        )
+    )
 
 
 def _normalize_title(title: str) -> str:
