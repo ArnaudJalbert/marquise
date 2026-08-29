@@ -16,7 +16,7 @@ backend in the same repository.
 - **Apps compose** library exports, configure clients, and pass them via props
 - Each package builds, lints, typechecks, and tests on its own; client tests inject `fetch`
 
-Full rules → [docs/architecture.md](../docs/architecture.md) (modular web packages) and [AGENTS.md](../AGENTS.md).
+Full rules → [Atlas Clean Architecture](../atlas/50-processes/Clean%20Architecture.md) (modular web packages) and [AGENTS.md](../AGENTS.md).
 
 ## Layout
 

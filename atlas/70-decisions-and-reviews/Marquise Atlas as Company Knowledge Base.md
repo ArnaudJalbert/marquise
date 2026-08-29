@@ -7,6 +7,8 @@ date: 2026-08-28
 
 # Decision: Marquise Atlas as Company Knowledge Base
 
+This decision establishes the repository described in [[../README]] and the navigation starting at [[../00-home/Company Home]]. Its documentation rules are maintained in [[../50-processes/Knowledge Management Protocol]].
+
 ## Context
 
 Marquise needs an organizational source of truth that is distinct from Arno’s personal notes and from GitHub’s engineering records.

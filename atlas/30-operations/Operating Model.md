@@ -6,6 +6,8 @@ review_date: 2026-09-30
 
 # Operating Model
 
+The operating model applies the [[10-strategy/Product Thesis]] in day-to-day decisions and execution. It is coordinated through [[40-agents/Aster — Operating Partner]] and documented alongside the [[50-processes/Knowledge Management Protocol]].
+
 ## Decision rights
 
 | Area | Arno | Aster |
@@ -23,6 +25,10 @@ review_date: 2026-09-30
 3. Surface blockers early.
 4. Verify the requested result with real evidence before reporting completion.
 5. Capture durable decisions and learnings in Atlas.
+
+## Code review standard
+
+AI-authored code is reviewed by a different person, Bot, or fresh temporary reviewer. Authors and reviewers are expected to challenge each other's assumptions, resolve disagreement through evidence, and escalate only consequential unresolved trade-offs. The full workflow is [[50-processes/Code Review and Constructive Challenge]].
 
 ## Cadence
 

@@ -32,3 +32,4 @@ review_date: YYYY-MM-DD
 ## Recorded decisions
 
 - [[Marquise Atlas as Company Knowledge Base]]
+- [[Decision - Establish Orson as Staff Engineer and Architecture Lead]]

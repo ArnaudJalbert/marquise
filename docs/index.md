@@ -12,7 +12,7 @@ Documentation lives in the repository (not all pages are published here):
 
 | Document | Purpose |
 |----------|---------|
-| [Architecture](https://github.com/ArnaudJalbert/marquise/blob/main/docs/architecture.md) | Design principles: layers, DI, testability |
+| [Atlas Clean Architecture](../atlas/50-processes/Clean%20Architecture.md) | Design principles: layers, DI, testability |
 | [Development rules](https://github.com/ArnaudJalbert/marquise/blob/main/AGENTS.md) | Enforced rules for developers and AI assistants |
 | [Contributing](https://github.com/ArnaudJalbert/marquise/blob/main/CONTRIBUTING.md) | Setup, commands, paths, CI |
 
