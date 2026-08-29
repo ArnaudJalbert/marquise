@@ -37,7 +37,7 @@ def _row(
 
 @pytest.mark.asyncio
 async def test_audit_reports_duplicate_stale_and_missing_ticket_findings() -> None:
-    """Audit reports each supported problem without calling the repository."""
+    """Audit reports duplicate, past, and missing-ticket rows without writing."""
     reader = create_autospec(ScreeningReader, instance=True)
     now = datetime(2026, 8, 29, 12, tzinfo=UTC)
     reader.search = AsyncMock(
@@ -68,7 +68,7 @@ async def test_audit_reports_duplicate_stale_and_missing_ticket_findings() -> No
 
 @pytest.mark.asyncio
 async def test_audit_does_not_claim_timestamp_provenance_checks() -> None:
-    """Audit does not claim timezone provenance after timestamps become UTC."""
+    """A future naive showtime with complete text produces no finding."""
     reader = create_autospec(ScreeningReader, instance=True)
     reader.search = AsyncMock(
         return_value=type(

@@ -43,7 +43,7 @@ def audit() -> None:
 async def run_reconcile(
     factory: MarquiseFactory, plan: str, apply: bool, confirmation: str | None
 ) -> None:
-    """Read a plan, then preview its corrections or apply one confirmed correction."""
+    """Read a plan, then validate it without writing or apply one correction."""
     corrections = _parse_corrections(plan)
     await factory.initialize()
     try:
@@ -62,5 +62,5 @@ async def run_reconcile(
 
 
 def reconcile(plan: str, apply: bool = False, confirmation: str | None = None) -> None:
-    """Preview a plan; write one correction only with --apply --confirm RECONCILE."""
+    """Validate a plan; write one correction only with --apply --confirm RECONCILE."""
     asyncio.run(run_reconcile(MarquiseFactory(), plan, apply, confirmation))

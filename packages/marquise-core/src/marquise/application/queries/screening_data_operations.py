@@ -1,4 +1,4 @@
-"""Find screening data problems and correct four non-identity fields."""
+"""Find screening problems and correct external ID, ticket URL, room, or language."""
 
 from __future__ import annotations
 
@@ -17,8 +17,8 @@ class ScreeningDataAuditQuery:
 
     A duplicate has the same cinema ID, movie ID, and showtime as an earlier
     row. Checked text means ticket URL, movie ID, cinema ID, and movie title.
-    Timestamp provenance is not checked because the schema stores timestamps
-    without timezone data and the reader returns every timestamp as UTC.
+    The query compares showtimes with the clock but does not report timezone
+    provenance.
     """
 
     @dataclass(frozen=True, slots=True)
@@ -112,7 +112,10 @@ class ScreeningDataAuditQuery:
 
 
 class ReconcileScreeningsCommand:
-    """Preview or update external ID, ticket URL, room, and language by screening ID."""
+    """Validate or update four fields by screening ID.
+
+    The fields are external ID, ticket URL, room, and language.
+    """
 
     @dataclass(frozen=True, slots=True)
     class Correction:
@@ -140,7 +143,7 @@ class ReconcileScreeningsCommand:
 
     @dataclass(frozen=True, slots=True)
     class InputData:
-        """Corrections to preview, or one correction to apply with RECONCILE."""
+        """Corrections to validate, or one correction to apply with RECONCILE."""
 
         corrections: tuple[ReconcileScreeningsCommand.Correction, ...]
         apply: bool = False
@@ -165,7 +168,7 @@ class ReconcileScreeningsCommand:
         self._repository = screening_repository
 
     async def execute(self, request: InputData) -> OutputData:
-        """Preview corrections, or update one when apply and RECONCILE are supplied."""
+        """Return dry-run results, or update one row with apply and RECONCILE."""
         if request.apply and request.confirmation != "RECONCILE":
             raise ValueError("confirmation must be RECONCILE when apply is enabled")
         if request.apply and len(request.corrections) != 1:
