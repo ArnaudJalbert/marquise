@@ -13,7 +13,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
-from marquise import GetCinemaSourceUseCase, ImportScreeningsCommand, MarquiseFactory
+from marquise import ImportScreeningsCommand, MarquiseFactory
 from marquise_cli.helpers import run_spinner, select_cinema
 
 _console = Console()
@@ -115,7 +115,7 @@ async def run_import_cinema(factory: MarquiseFactory) -> None:
             return
         get_source_use_case = factory.get_cinema_source_use_case
         assignment = await get_source_use_case.execute(
-            GetCinemaSourceUseCase.InputData(cinema_id=cinema.id)
+            get_source_use_case.InputData(cinema_id=cinema.id)
         )
         print(f"  Cinema:        {cinema.name}")
         print(f"  Assigned source: {assignment.source_display_name}")
