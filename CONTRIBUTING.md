@@ -288,11 +288,11 @@ Component tests use **Vitest** + **Testing Library**. No live HTTP in unit tests
 
 Pull requests to `main` run the repository workflows:
 
-- `quality`: `ruff format --check`, `ruff check`, `ty check packages/marquise-core/src`, core unit tests with the 70% coverage gate, and the import boundary check.
-- `integration`: `packages/marquise-core/tests/integration_tests/` with the configured `DATABASE_URL` secret.
+- `quality`: `ruff format --check`, `ruff check`, `ty check packages/marquise-core/src`, and core unit tests with the 70% coverage gate. Import-boundary validation remains a local/documented architectural check, not a current CI step.
+- `integration`: `packages/marquise-core/tests/integration_tests/`, after verifying the required `DATABASE_URL`, `SUPABASE_URL`, and `SUPABASE_PUBLISHABLE_KEY` secrets.
 - `release-validation`: release/package validation checks.
 
-The exact trigger, command, and blocking behavior is defined by the workflow files in [`.github/workflows/`](.github/workflows/). In particular, `ty` is currently a blocking quality step; do not describe it as advisory here. The integration workflow is pull-request-triggered, not a manual-only job.
+The exact trigger, command, blocking behavior, and environment wiring are defined by the workflow files in [`.github/workflows/`](.github/workflows/). In particular, `ty` is currently a blocking quality step; do not describe it as advisory here. The integration workflow is pull-request-triggered, not a manual-only job.
 
 **CI gate**: 70% minimum. **Target**: 80%+ overall, 100% for `domain/` and
 `application/`.
