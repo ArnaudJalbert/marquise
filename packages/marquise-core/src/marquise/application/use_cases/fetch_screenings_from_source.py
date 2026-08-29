@@ -81,10 +81,14 @@ class FetchScreeningsFromSourceQuery:
         cinema_repository: CinemaRepository,
         assignment_repository: CinemaSourceAssignmentRepository,
         source_registry: SourceRegistryQuery,
+        enrichment_concurrency: int = 8,
     ) -> None:
+        if enrichment_concurrency < 1:
+            raise ValueError("enrichment_concurrency must be positive")
         self.cinema_repository = cinema_repository
         self.assignment_repository = assignment_repository
         self.source_registry = source_registry
+        self.enrichment_concurrency = enrichment_concurrency
 
     async def execute(self, request: InputData) -> OutputData:
         cinema_id = CinemaId(value=request.cinema_id)
@@ -128,12 +132,24 @@ class FetchScreeningsFromSourceQuery:
 
         detail_map: dict[str, MovieEnrichmentData] = {}
         if unique_identifiers:
+            semaphore = asyncio.Semaphore(self.enrichment_concurrency)
+
+            async def fetch_detail(identifier: str) -> MovieEnrichmentData | Exception:
+                async with semaphore:
+                    try:
+                        detail = await self.source_registry.fetch_movie_detail(
+                            source_name, identifier
+                        )
+                    except Exception as exc:
+                        return exc
+                    return (
+                        detail
+                        if isinstance(detail, MovieEnrichmentData)
+                        else ValueError("source returned an invalid enrichment result")
+                    )
+
             raw_details = await asyncio.gather(
-                *[
-                    self.source_registry.fetch_movie_detail(source_name, ident)
-                    for ident in unique_identifiers
-                ],
-                return_exceptions=True,
+                *(fetch_detail(identifier) for identifier in unique_identifiers)
             )
             for ident, detail in zip(unique_identifiers, raw_details):
                 if isinstance(detail, MovieEnrichmentData):
