@@ -15,7 +15,6 @@ Rules for keeping Atlas and GitHub useful.
 |---|---|
 | Strategy, product context, research, briefs, decisions | Marquise Atlas |
 | Code, issues, PRs, reviews, CI, releases, deployments | GitHub: [`ArnaudJalbert/marquise`](https://github.com/ArnaudJalbert/marquise) |
-| Private founder thinking | Arno’s personal vault |
 
 Update records at their source. Atlas links to GitHub; it does not copy live status. Arno owns direction, priority, security, material cost, and irreversible commitments. Aster owns this process.
 

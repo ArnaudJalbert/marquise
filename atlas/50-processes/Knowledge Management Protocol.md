@@ -12,7 +12,6 @@ This protocol implements the source-of-truth boundary established by [[../70-dec
 
 - **GitHub (`ArnaudJalbert/marquise`)**: code, issues, PRs, CI, releases, deployments, and implementation-level records.
 - **Marquise Atlas**: strategic context, operating procedures, decision records, research, agent charters, and project briefs.
-- **Personal vault**: private founder thinking and personal notes.
 
 ## Rules
 
