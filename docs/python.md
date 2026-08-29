@@ -2,7 +2,7 @@
 
 Entity, use-case, and package conventions for `packages/marquise-core`.
 
-See also [architecture.md](architecture.md) for layer rules.
+See also [Atlas Clean Architecture](../atlas/50-processes/Clean%20Architecture.md) for layer rules.
 
 ---
 

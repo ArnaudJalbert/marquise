@@ -20,6 +20,7 @@ Marquise helps people in Montreal discover relevant films and trustworthy screen
 - [[10-strategy/Product Thesis]]
 - [[30-operations/Operating Model]]
 - [[40-agents/Aster — Operating Partner]]
+- [[50-processes/Code Review and Constructive Challenge]]
 - [[70-decisions-and-reviews/Decision Log]]
 
 ## Current priorities
