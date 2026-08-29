@@ -7,80 +7,55 @@ review_date: 2026-09-30
 
 # Documentation and Delivery Workflow
 
-A lightweight operating process for turning an approved idea into durable context and a verified GitHub change. It complements [[Knowledge Management Protocol]], [[Code Review and Constructive Challenge]], and [[Technical Review by Orson]].
+Turn an approved idea into durable context and a verified GitHub change. This complements [[Knowledge Management Protocol]], [[Code Review and Constructive Challenge]], and [[Technical Review by Orson]].
 
-## 1. Source-of-truth boundaries and governance
+## Source of truth
 
-| Concern | Source of truth | What Atlas stores |
+| Concern | Source of truth | Atlas stores |
 |---|---|---|
-| Strategy, product context, operating rules, agent charters, research, project briefs, decisions | Marquise Atlas | Durable context, links, owners, status, review dates |
-| Code, issues, pull requests, reviews, CI, releases, deployments, implementation history | GitHub: [`ArnaudJalbert/marquise`](https://github.com/ArnaudJalbert/marquise) | Links and stable context only; never copied live status |
-| Private founder thinking | Arno’s personal vault | Not copied without permission |
+| Strategy, product context, operating rules, agent charters, research, briefs, decisions | Marquise Atlas | Durable context, links, owners, status, review dates |
+| Code, issues, PRs, reviews, CI, releases, deployments | GitHub: [`ArnaudJalbert/marquise`](https://github.com/ArnaudJalbert/marquise) | Links and durable context only |
+| Private founder thinking | Arno’s personal vault | Nothing without permission |
 
-The owner of a source updates that source. Atlas may link to an issue or PR, but must not mirror labels, check results, review state, or other volatile GitHub fields. A durable decision or learning belongs in Atlas when it will guide future work; the implementation record remains in GitHub. Arno decides product direction, priority, irreversible commitments, security posture, and material cost. Aster maintains this process and escalates consequential decisions.
+Owners update their own source. Atlas links to GitHub but does not copy volatile status. Arno decides direction, priority, irreversible commitments, security posture, and material cost. Aster maintains this process and escalates consequential decisions.
 
-## 2. Documentation lifecycle
+## Lifecycle
 
-1. **Frame:** create or update the relevant Atlas note before work when the change needs shared context. Give active notes a `type`, `status`, owner, and review date where useful.
-2. **Link:** connect the brief, decision, research, agent/process note, and GitHub issue/PR rather than duplicating content.
-3. **Execute:** keep implementation details, discussion, checks, and changing status in GitHub. Keep Atlas focused on durable intent, boundaries, and decisions.
-4. **Verify:** update Atlas only with the verified outcome, decision, or learning. Do not report completion from a successful command alone.
-5. **Review:** on the review date or when assumptions change, mark the note active, superseded, or archived. Preserve history when it explains a consequential choice.
+1. **Frame:** create or update an Atlas note when work needs shared, durable context.
+2. **Link:** connect briefs, decisions, research, agents, and GitHub records instead of duplicating them.
+3. **Execute:** keep implementation, discussion, checks, and live status in GitHub.
+4. **Verify:** record only verified outcomes, decisions, and learnings in Atlas.
+5. **Review:** revise, supersede, or archive notes when their assumptions change.
 
-A note is done when its owner, purpose, current status, related links, and next review or retirement condition are clear.
+## Briefs, milestones, and stories
 
-## 3. Milestones and project briefs
+Use a [project brief](../../docs/templates/project-brief.md) for a meaningful initiative, cross-cutting change, or work spanning multiple issues or PRs. Record the problem, outcome, non-goals, owner, authority, risks, milestones, and GitHub links. It is not a second project tracker.
 
-Use an Atlas project brief for a meaningful initiative, cross-cutting change, or work expected to span multiple issues/PRs. Start from [`docs/templates/project-brief.md`](../../docs/templates/project-brief.md). The brief records the problem, desired outcome, non-goals, owner, decision authority, assumptions, risks, milestones, and links to GitHub issues. It does **not** become a second project tracker.
+A milestone is an outcome with an owner, evidence, dependencies, and exit criteria. Track assignments, order, and status in GitHub.
 
-A milestone is a user-visible or decision-useful checkpoint, not a date-shaped task list. Each milestone has an outcome, owner, evidence, dependencies, and exit/acceptance criteria. Keep issue assignment, ordering, status, and completion in GitHub; link the relevant milestone or issues from the brief. Close or revise a milestone when evidence changes, and record consequential scope changes as an Atlas decision.
+Use the [user-story template](../../docs/templates/user-story.md) when a story needs a durable handoff. Acceptance criteria must be observable and verifiable by a test, inspection, or recorded evidence. Include relevant error, empty, permission, freshness, and rollback cases.
 
-## 4. User stories and acceptance criteria
+## Pull requests
 
-Write the smallest useful story around a user or operator outcome:
+Keep one focused change per PR. Use the [PR template](../../.github/PULL_REQUEST_TEMPLATE.md): concise changes, checks and results, outcome, and `Closes #N`. Keep PR discussion, commits, checks, and review state in GitHub. Record only durable decisions and learnings in Atlas.
 
-> As a **[user]**, I want **[capability]**, so that **[benefit]**.
+## Review and merge gates
 
-Use [`docs/templates/user-story.md`](../../docs/templates/user-story.md) when a story needs a durable handoff. Acceptance criteria must be observable, testable, and unambiguous. Prefer examples or Given/When/Then scenarios; include error, empty, permission, and data-freshness cases when relevant. A story is ready for implementation when its actor, outcome, scope/non-goals, dependencies, and acceptance criteria are understood. It is done only when every criterion is evidenced by tests, inspection, or an explicitly recorded verification.
+Reviewers inspect the relevant brief or issue, applicable rules, full diff, and current-head CI. Comments state evidence, impact, and next action. Authors disposition substantive findings as `fixed`, `withdrawn`, `accepted-risk`, `escalated-and-decided`, or `non-blocking follow-up`.
 
-## 5. Pull-request template and process
+Before approval:
 
-The repository template at [`/.github/PULL_REQUEST_TEMPLATE.md`](../../.github/PULL_REQUEST_TEMPLATE.md) keeps the GitHub record complete without copying it into Atlas. The author should:
+- [ ] Acceptance criteria and source-of-truth boundaries are clear.
+- [ ] Required local checks and relevant CI passed on the current head.
+- [ ] Security, data, migration, performance, and testability risks are proportionate to the change.
+- [ ] An independent reviewer inspected the latest diff and substantive comments are resolved.
 
-1. Link the issue (`Closes #N`) or state the acceptance criteria for a small docs/metadata change.
-2. Explain the user/operational outcome, scope, non-goals, risk, migration/rollback plan, and relevant Atlas links.
-3. List tests/checks and any follow-up explicitly.
-4. Keep one focused change per PR; split unrelated work.
-5. Request review only when the latest head is ready and the template is complete.
-
-PR body, discussion, commits, checks, and review state are GitHub records. Atlas records only durable decisions, process changes, and learnings.
-
-## 6. PR review process
-
-The author states the weakest assumption and evidence. An independent reviewer reads the issue/brief, applicable rules, full diff, and current-head CI. Review comments use `Blocker`, `Challenge`, `Suggestion`, or `Question` and include evidence, impact, and next action. Reviewers check acceptance criteria, user impact, correctness, security/privacy, data/migration risk, performance, maintainability, scope, and Clean Architecture boundaries.
-
-The author evaluates each substantive finding and replies with a disposition: `fixed`, `withdrawn`, `accepted-risk`, `escalated-and-decided`, or `non-blocking follow-up`. Material pushes require review of the changed range at the new head. The reviewer withdraws a finding disproved by evidence; neither side treats confidence or a green check as proof. AI-authored work requires a different person, Bot, or fresh temporary reviewer. Follow [[Code Review and Constructive Challenge]] and [[Technical Review by Orson]] for role-specific rules.
-
-## 7. Review and verification gates
-
-Before requesting approval:
-
-- [ ] Source-of-truth boundary is respected; no volatile GitHub status was copied to Atlas.
-- [ ] Issue/brief/story and acceptance criteria are linked or recorded in the PR.
-- [ ] Scope, risks, migrations, rollback, and user-visible documentation impact are explicit.
-- [ ] Required local checks and relevant CI are run on the current head.
-- [ ] Clean Architecture, security, data integrity, performance, and testability checks are proportionate to the change.
-- [ ] An independent reviewer has inspected the latest diff; the author has dispositioned substantive comments.
-
-Ready to merge means every acceptance criterion and required check passes on the current head, no blocker or consequential challenge remains, migration/rollback evidence is sufficient, and an independent reviewer approved that exact SHA. Approval is not merge or deployment authority. After an authorized merge/deploy, verify the external effect and record durable learning; link GitHub evidence rather than copying its changing state.
+Approval is not merge or deployment authority. After an authorized merge or deploy, verify the external effect and link its GitHub evidence from Atlas when the learning is durable.
 
 ## Sources
 
-- GitHub Docs, [Creating a pull request template](https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/creating-a-pull-request-template-for-your-repository) — repository PR templates.
-- GitHub Docs, [Managing and standardizing pull requests](https://docs.github.com/en/pull-requests/reference/managing-and-standardizing-pull-requests) — standardization and review workflow.
-- GitHub Docs, [About pull request reviews](https://docs.github.com/en/pull-requests/reference/pull-request-reviews) — review states and collaboration.
-- GitHub Docs, [About protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches) — required checks and review protections.
-- Atlassian, [Building a single source of truth](https://www.atlassian.com/work-management/knowledge-sharing/documentation/building-a-single-source-of-truth-ssot-for-your-team) — ownership and discoverability for team knowledge.
-- Asana, [Project milestones](https://www.asana.com/resources/project-milestones) — outcome-oriented checkpoints.
-- Bill Wake, [INVEST in good stories](https://xp123.com/articles/invest-in-good-stories/) — independent, valuable, estimable, small, and testable stories.
-- Google Engineering Practices, [Small CLs](https://google.github.io/eng-practices/review/developer/small-cls.html) — focused, reviewable changes.
+- GitHub Docs: [PR templates](https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/creating-a-pull-request-template-for-your-repository), [standardizing PRs](https://docs.github.com/en/pull-requests/reference/managing-and-standardizing-pull-requests), [reviews](https://docs.github.com/en/pull-requests/reference/pull-request-reviews), and [protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
+- Atlassian: [single source of truth](https://www.atlassian.com/work-management/knowledge-sharing/documentation/building-a-single-source-of-truth-ssot-for-your-team).
+- Asana: [project milestones](https://www.asana.com/resources/project-milestones).
+- Bill Wake: [INVEST](https://xp123.com/articles/invest-in-good-stories/).
+- Google Engineering Practices: [small CLs](https://google.github.io/eng-practices/review/developer/small-cls.html).
