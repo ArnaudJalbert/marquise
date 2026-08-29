@@ -12,6 +12,7 @@ from marquise.application.use_cases.create_missing_movies import (
     CreateMissingMoviesCommand,
 )
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
+from marquise.application.use_cases.import_screenings import ImportScreeningsCommand
 from marquise.infrastructure.supabase.gateways.cinema import SupabaseCinemaGateway
 from marquise.infrastructure.supabase.gateways.cinema_source_assignment import (
     SupabaseCinemaSourceAssignmentGateway,
@@ -70,4 +71,17 @@ def build_create_screenings_use_case(
         screening_repository=SupabaseScreeningRepository(
             gateway=SupabaseScreeningGateway(pool=pool, schema=schema)
         )
+    )
+
+
+def build_import_screenings_use_case(
+    fetch_screenings_use_case: FetchScreeningsFromSourceQuery,
+    create_movies_use_case: CreateMissingMoviesCommand,
+    create_screenings_use_case: CreateScreeningsCommand,
+) -> ImportScreeningsCommand:
+    """Build the application-level cinema import workflow."""
+    return ImportScreeningsCommand(
+        fetch_screenings_use_case=fetch_screenings_use_case,
+        create_movies_use_case=create_movies_use_case,
+        create_screenings_use_case=create_screenings_use_case,
     )

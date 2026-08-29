@@ -31,6 +31,7 @@ from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseC
 from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
 from marquise.application.use_cases.get_movie import GetMovieUseCase
 from marquise.application.use_cases.get_screening import GetScreeningUseCase
+from marquise.application.use_cases.import_screenings import ImportScreeningsCommand
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.application.use_cases.list_movies import ListMoviesUseCase
 from marquise.application.use_cases.list_registry_sources import (
@@ -207,6 +208,11 @@ class MarquiseFactory:
     def create_screenings_use_case(self) -> CreateScreeningsCommand:
         """Configured command for creating screenings."""
         return self._container.create_screenings_use_case
+
+    @property
+    def import_screenings_use_case(self) -> ImportScreeningsCommand:
+        """Configured application workflow for importing one cinema."""
+        return self._container.import_screenings_use_case
 
     # ------------------------------------------------------------------
     # Async context manager

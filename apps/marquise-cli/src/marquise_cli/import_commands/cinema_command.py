@@ -13,7 +13,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
-from marquise import MarquiseFactory
+from marquise import GetCinemaSourceUseCase, ImportScreeningsCommand, MarquiseFactory
 from marquise_cli.helpers import run_spinner, select_cinema
 
 _console = Console()
@@ -58,62 +58,14 @@ async def _import_screenings(
     factory: MarquiseFactory, cinema_id: str, start_date: date, end_date: date
 ) -> dict:
     """Import one cinema date range as formatting data."""
-    fetch_use_case = factory.fetch_screenings_use_case
-    fetched = await fetch_use_case.execute(
-        fetch_use_case.InputData(
+    result = await factory.import_screenings_use_case.execute(
+        ImportScreeningsCommand.InputData(
             cinema_id=cinema_id,
             start_date=start_date,
             end_date=end_date,
         )
     )
-    movies_use_case = factory.create_movies_use_case
-    movies = await movies_use_case.execute(
-        movies_use_case.InputData(
-            movies=tuple(
-                movies_use_case.MovieInput(
-                    title=movie.title,
-                    description=movie.description,
-                    directors=movie.directors,
-                    cast=movie.cast,
-                    duration_minutes=movie.duration_minutes,
-                    release_year=movie.release_year,
-                    poster_url=movie.poster_url,
-                    trailer_url=movie.trailer_url,
-                    genres=movie.genres,
-                    original_title=movie.original_title,
-                    rating=movie.rating,
-                    origin_countries=movie.origin_countries,
-                )
-                for movie in fetched.movies
-            )
-        )
-    )
-    title_to_id = {movie.title: movie.id for movie in movies.movies}
-    screenings_use_case = factory.create_screenings_use_case
-    screenings = await screenings_use_case.execute(
-        screenings_use_case.InputData(
-            screenings=tuple(
-                screenings_use_case.ScreeningInput(
-                    movie_id=title_to_id[_normalize_title(screening.movie_title)],
-                    movie_title=screening.movie_title,
-                    cinema_id=fetched.cinema_id,
-                    cinema_name=fetched.cinema_name,
-                    showtime=screening.showtime,
-                    external_id=screening.external_id,
-                    ticket_url=screening.ticket_url,
-                    room=screening.room,
-                    language=screening.language,
-                )
-                for screening in fetched.screenings
-            )
-        )
-    )
-    return {
-        **asdict(screenings),
-        "cinema_id": fetched.cinema_id,
-        "cinema_name": fetched.cinema_name,
-        "source_name": fetched.source_name,
-    }
+    return asdict(result)
 
 
 def _screenings_table(result: dict) -> Table:
@@ -163,7 +115,7 @@ async def run_import_cinema(factory: MarquiseFactory) -> None:
             return
         get_source_use_case = factory.get_cinema_source_use_case
         assignment = await get_source_use_case.execute(
-            get_source_use_case.InputData(cinema_id=cinema.id)
+            GetCinemaSourceUseCase.InputData(cinema_id=cinema.id)
         )
         print(f"  Cinema:        {cinema.name}")
         print(f"  Assigned source: {assignment.source_display_name}")
@@ -178,11 +130,6 @@ async def run_import_cinema(factory: MarquiseFactory) -> None:
         _console.print(_summary(result))
     finally:
         await factory.shutdown()
-
-
-def _normalize_title(title: str) -> str:
-    """Strip and collapse internal whitespace in a scraped movie title."""
-    return " ".join(title.strip().split())
 
 
 def import_cinema() -> None:
