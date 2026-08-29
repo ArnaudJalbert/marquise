@@ -7,6 +7,8 @@ review_date: 2026-09-30
 
 # Specialist Bot Creation and Maintenance
 
+This process sits within the [[../30-operations/Operating Model]] and uses [[../50-processes/Knowledge Management Protocol]] for its source-of-truth rules. [[../40-agents/Mara — Showtime Data Reliability Specialist]] is the current reference implementation.
+
 ## Purpose
 
 This is Aster’s standard operating procedure for creating and maintaining Marquise specialist Bots. It prevents repeated research, keeps Bot roles narrow, and keeps the live Hermes profile aligned with Marquise Atlas.

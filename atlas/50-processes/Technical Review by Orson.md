@@ -7,6 +7,8 @@ review_date: 2026-09-30
 
 # Technical Review by Orson
 
+This is the review gate described in [[../40-agents/Orson — Staff Engineer and Architecture Lead]] and a technical implementation of the [[../30-operations/Operating Model]] execution standard.
+
 ## Purpose
 
 Ensure every Marquise PR receives one independent, evidence-based technical review before Arno’s final review or merge decision.

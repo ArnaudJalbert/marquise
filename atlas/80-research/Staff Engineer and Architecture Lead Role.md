@@ -8,6 +8,8 @@ review_date: 2026-09-30
 
 # Research: Staff Engineer and Architecture Lead Role
 
+This research informs [[../70-decisions-and-reviews/Decision - Establish Orson as Staff Engineer and Architecture Lead]], the [[../40-agents/Orson — Staff Engineer and Architecture Lead]] charter, and its [[../50-processes/Technical Review by Orson]] process.
+
 ## Conclusion
 
 For Marquise, the useful role is a hybrid **Tech Lead + Architecture Lead**, not a broad CTO. The role needs to remain hands-on while providing technical direction, independent PR review, and safe implementation. The scope is appropriate for a solo founder supported by specialist Bots and temporary agents.
