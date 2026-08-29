@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import date, timedelta
 
@@ -43,6 +44,18 @@ class CinemaImportResult:
     detail: str | None = None
 
 
+async def _run_bounded_cinema_import(
+    import_cinema: Callable[
+        [ListCinemasUseCase.CinemaData], Awaitable[CinemaImportResult]
+    ],
+    cinema: ListCinemasUseCase.CinemaData,
+    semaphore: asyncio.Semaphore,
+) -> CinemaImportResult:
+    """Run one cinema import while respecting the bulk concurrency limit."""
+    async with semaphore:
+        return await import_cinema(cinema)
+
+
 async def run_import_all(
     factory: MarquiseFactory, days: int
 ) -> list[CinemaImportResult]:
@@ -69,7 +82,7 @@ async def run_import_all(
             list_cinemas_use_case.InputData()
         )
 
-        async def _import_one(
+        async def _import_cinema(
             cinema: ListCinemasUseCase.CinemaData,
         ) -> CinemaImportResult:
             print(f"  Importing {cinema.name}...")
@@ -154,15 +167,13 @@ async def run_import_all(
                 )
 
         semaphore = asyncio.Semaphore(2)
-
-        async def _import_cinema(
-            cinema: ListCinemasUseCase.CinemaData,
-        ) -> CinemaImportResult:
-            async with semaphore:
-                return await _import_one(cinema)
-
         return list(
-            await asyncio.gather(*[_import_cinema(c) for c in cinemas_response.cinemas])
+            await asyncio.gather(
+                *(
+                    _run_bounded_cinema_import(_import_cinema, cinema, semaphore)
+                    for cinema in cinemas_response.cinemas
+                )
+            )
         )
     finally:
         await factory.shutdown()
