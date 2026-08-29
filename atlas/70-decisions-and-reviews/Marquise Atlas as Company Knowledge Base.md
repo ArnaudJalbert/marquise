@@ -11,7 +11,7 @@ This decision establishes the repository described in [[../README]] and the navi
 
 ## Context
 
-Marquise needs an organizational source of truth that is distinct from Arno’s personal notes and from GitHub’s engineering records.
+Marquise needs an organizational source of truth distinct from GitHub’s engineering records.
 
 ## Decision
 
@@ -24,6 +24,5 @@ It creates a discoverable home for current strategic context, operations, decisi
 ## Consequences
 
 - Company knowledge belongs in Atlas.
-- Personal founder thinking remains in Arno’s personal vault.
 - Engineering execution remains in `ArnaudJalbert/marquise`.
 - Atlas uses lightweight folders, links, and properties rather than duplicated records.
