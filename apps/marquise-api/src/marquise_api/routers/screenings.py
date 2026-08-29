@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
+from hashlib import sha256
 
 from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi_cache.decorator import cache
 from fastapi_pagination import Page, Params
 
-from marquise import GetScreeningUseCase, SearchScreeningsUseCase
+from marquise import GetScreeningUseCase, SearchScreeningsQuery
 from marquise_api.dependencies import (
     get_screening_use_case,
-    get_search_screenings_use_case,
+    get_search_screenings_query,
 )
 from marquise_api.openapi_responses import error_responses
 from marquise_api.rate_limit import current_rate_limit, limiter
@@ -20,12 +22,28 @@ from marquise_api.schemas import ScreeningResponse
 router = APIRouter(tags=["screenings"])
 
 
+def _search_screenings_key_builder(
+    func: Callable[..., object],
+    namespace: str = "",
+    *,
+    request: Request | None = None,
+    response: Response | None = None,
+    args: tuple[object, ...],
+    kwargs: dict[str, object],
+) -> str:
+    """Build a fixed-length cache key from the raw query string."""
+    query = request.url.query if request is not None else ""
+    digest = sha256(query.encode()).hexdigest()
+    return f"{namespace}:{func.__module__}:{func.__name__}:{digest}"
+
+
 @router.get(
     "/screenings",
     response_model=Page[ScreeningResponse],
     responses=error_responses(422, 429),
 )
 @limiter.limit(current_rate_limit)
+@cache(key_builder=_search_screenings_key_builder)
 async def search_screenings(
     request: Request,
     response: Response,
@@ -49,11 +67,11 @@ async def search_screenings(
         default=None, description="Filter by exact language/subtitle version."
     ),
     params: Params = Depends(),
-    use_case: SearchScreeningsUseCase = Depends(get_search_screenings_use_case),
+    query: SearchScreeningsQuery = Depends(get_search_screenings_query),
 ) -> Page[ScreeningResponse]:
     """Search screenings across all cinemas by any combination of filters."""
-    output = await use_case.execute(
-        SearchScreeningsUseCase.InputData(
+    output = await query.execute(
+        SearchScreeningsQuery.InputData(
             movie=movie,
             movie_id=movie_id,
             cinema_id=cinema_id,

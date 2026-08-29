@@ -51,7 +51,6 @@ from marquise_api.routers import (
 #: refreshed once a day, so an hour keeps responses fresh while still
 #: absorbing the vast majority of repeat traffic between refreshes.
 DEFAULT_CACHE_TTL_SECONDS = 3600
-
 #: Namespace prefix for cached responses. Public so tests can clear
 #: exactly this app's cache entries between repeated create_app() calls
 #: (see tests/unit_tests/infrastructure/api/test_api.py) without reaching
