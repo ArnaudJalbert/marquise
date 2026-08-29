@@ -1,14 +1,15 @@
 # Summary
 
-- Imperative sentence that describes one change made in this PR.
-- One line for each change that has been done.
-- This list needs be extremely concise and precise, but also complete.
+- Describe each change made in this PR with an imperative sentence.
+- Keep this list concise, precise, and complete.
 
 # Verification
 
-- List all the verification to minimize the risk done by this change, such as tests, linting, reformats, and similar checks.
-- One line for each verification.
+- List each test, lint, formatting, or other check run for this change.
+- State the outcome of each check.
 
-Outcome of the verification
+## Outcome
 
-Closes #*** where *** is the issue number.
+<!-- Summarize the verification results and note any remaining risk. -->
+
+Closes #123
