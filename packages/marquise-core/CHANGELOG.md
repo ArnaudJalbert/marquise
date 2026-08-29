@@ -4,7 +4,7 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-08-29
 
-### v0.2.16
+### v0.2.17
 
 - **Bound source movie enrichment**: limit concurrent detail requests per cinema import to protect provider and event-loop capacity. Closes #229.
 
