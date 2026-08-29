@@ -1,4 +1,4 @@
-"""Regression tests for the screening data-operations use cases."""
+"""Tests for screening problem reports and metadata corrections."""
 
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ def _row(
 
 @pytest.mark.asyncio
 async def test_audit_reports_duplicate_stale_and_missing_ticket_findings() -> None:
-    """Suspicious rows are reported without invoking any write collaborator."""
+    """Audit reports each supported problem without calling the repository."""
     reader = create_autospec(ScreeningReader, instance=True)
     now = datetime(2026, 8, 29, 12, tzinfo=UTC)
     reader.search = AsyncMock(
@@ -68,7 +68,7 @@ async def test_audit_reports_duplicate_stale_and_missing_ticket_findings() -> No
 
 @pytest.mark.asyncio
 async def test_audit_does_not_claim_timestamp_provenance_checks() -> None:
-    """Timestamp-without-time-zone rows are not misreported after normalization."""
+    """Audit does not claim timezone provenance after timestamps become UTC."""
     reader = create_autospec(ScreeningReader, instance=True)
     reader.search = AsyncMock(
         return_value=type(
@@ -89,7 +89,7 @@ async def test_audit_does_not_claim_timestamp_provenance_checks() -> None:
 
 @pytest.mark.asyncio
 async def test_reconcile_dry_run_never_updates_repository() -> None:
-    """The default reconciliation mode only validates and previews changes."""
+    """Without apply, reconciliation reads rows but does not update them."""
     repository = create_autospec(ScreeningRepository, instance=True)
     repository.find_by_id = AsyncMock(
         return_value=Screening(
@@ -117,7 +117,7 @@ async def test_reconcile_dry_run_never_updates_repository() -> None:
 
 @pytest.mark.asyncio
 async def test_reconcile_requires_apply_and_confirmation_for_writes() -> None:
-    """Even an explicit apply flag cannot write without a separate confirmation."""
+    """Apply does not write unless confirmation is exactly RECONCILE."""
     repository = create_autospec(ScreeningRepository, instance=True)
     command = ReconcileScreeningsCommand(repository)
     with pytest.raises(ValueError, match="confirmation"):
@@ -128,7 +128,7 @@ async def test_reconcile_requires_apply_and_confirmation_for_writes() -> None:
 
 @pytest.mark.asyncio
 async def test_reconcile_returns_not_found_when_repository_raises() -> None:
-    """A missing repository row becomes a deterministic item result."""
+    """A missing screening ID returns not-found instead of raising."""
     repository = create_autospec(ScreeningRepository, instance=True)
     repository.find_by_id = AsyncMock(
         side_effect=ScreeningNotFoundError("screening missing")
@@ -157,7 +157,7 @@ async def test_reconcile_returns_not_found_when_repository_raises() -> None:
 
 @pytest.mark.asyncio
 async def test_reconcile_apply_rejects_multiple_corrections_before_reading() -> None:
-    """Apply mode refuses partial-write plans before touching the repository."""
+    """Apply rejects multiple corrections before reading or updating rows."""
     repository = create_autospec(ScreeningRepository, instance=True)
     corrections = tuple(
         ReconcileScreeningsCommand.Correction(

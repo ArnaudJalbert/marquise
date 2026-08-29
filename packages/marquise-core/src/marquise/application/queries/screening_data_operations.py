@@ -1,4 +1,4 @@
-"""Application-level showtime auditing and guarded reconciliation."""
+"""Find screening data problems and correct four non-identity fields."""
 
 from __future__ import annotations
 
@@ -13,16 +13,17 @@ from marquise.domain.value_objects import ScreeningId
 
 
 class ScreeningDataAuditQuery:
-    """Inspect screening projections for actionable reliability findings.
+    """Report duplicate identities, past showtimes, and blank screening text.
 
-    Timestamp provenance is intentionally not audited: the production schema
-    stores ``TIMESTAMP WITHOUT TIME ZONE`` and the reader normalizes values to
-    UTC before this query receives them.
+    A duplicate has the same cinema ID, movie ID, and showtime as an earlier
+    row. Checked text means ticket URL, movie ID, cinema ID, and movie title.
+    Timestamp provenance is not checked because the schema stores timestamps
+    without timezone data and the reader returns every timestamp as UTC.
     """
 
     @dataclass(frozen=True, slots=True)
     class InputData:
-        """Audit filters. An empty request audits the complete projection."""
+        """Optional cinema and time filters; no filters select every screening."""
 
         cinema_id: str | None = None
         start_date: datetime | None = None
@@ -30,7 +31,7 @@ class ScreeningDataAuditQuery:
 
     @dataclass(frozen=True, slots=True)
     class Finding:
-        """One deterministic data-quality finding."""
+        """The failed check, screening ID, and reason it failed."""
 
         code: str
         screening_id: str
@@ -38,7 +39,7 @@ class ScreeningDataAuditQuery:
 
     @dataclass(frozen=True, slots=True)
     class OutputData:
-        """Audit findings and the number of inspected rows."""
+        """The number of rows read and every failed check found in those rows."""
 
         inspected_count: int
         findings: tuple[ScreeningDataAuditQuery.Finding, ...]
@@ -52,7 +53,7 @@ class ScreeningDataAuditQuery:
         self._clock = clock or (lambda: datetime.now(UTC))
 
     async def execute(self, request: InputData) -> OutputData:
-        """Inspect rows without calling a write port."""
+        """Read matching screenings and return findings without writing any rows."""
         page = await self._reader.search(
             cinema_id=request.cinema_id,
             start_date=request.start_date,
@@ -111,11 +112,11 @@ class ScreeningDataAuditQuery:
 
 
 class ReconcileScreeningsCommand:
-    """Preview or explicitly apply safe metadata corrections by screening ID."""
+    """Preview or update external ID, ticket URL, room, and language by screening ID."""
 
     @dataclass(frozen=True, slots=True)
     class Correction:
-        """Allowed non-identity fields to correct."""
+        """Editable values; None keeps the old value and an empty string replaces it."""
 
         screening_id: str
         external_id: str | None = None
@@ -139,18 +140,24 @@ class ReconcileScreeningsCommand:
 
     @dataclass(frozen=True, slots=True)
     class InputData:
+        """Corrections to preview, or one correction to apply with RECONCILE."""
+
         corrections: tuple[ReconcileScreeningsCommand.Correction, ...]
         apply: bool = False
         confirmation: str | None = None
 
     @dataclass(frozen=True, slots=True)
     class ItemResult:
+        """A dry-run, updated, or not-found result for one screening ID."""
+
         screening_id: str
         status: str
         detail: str
 
     @dataclass(frozen=True, slots=True)
     class OutputData:
+        """One result per correction and the number of screenings updated."""
+
         items: tuple[ReconcileScreeningsCommand.ItemResult, ...]
         changed_count: int
 
@@ -158,7 +165,7 @@ class ReconcileScreeningsCommand:
         self._repository = screening_repository
 
     async def execute(self, request: InputData) -> OutputData:
-        """Validate all corrections, then write only with two explicit guards."""
+        """Preview corrections, or update one when apply and RECONCILE are supplied."""
         if request.apply and request.confirmation != "RECONCILE":
             raise ValueError("confirmation must be RECONCILE when apply is enabled")
         if request.apply and len(request.corrections) != 1:
