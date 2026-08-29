@@ -6,6 +6,19 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from marquise.application.queries.fetch_screenings_from_source import (
+    FetchScreeningsFromSourceQuery,
+)
+from marquise.application.queries.get_cinema_screenings import (
+    GetCinemaScreeningsQuery,
+)
+from marquise.application.queries.get_movie_screenings import (
+    GetMovieScreeningsQuery,
+)
+from marquise.application.queries.list_cinema_source_assignments import (
+    ListCinemaSourceAssignmentsQuery,
+)
+from marquise.application.queries.search_screenings import SearchScreeningsQuery
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.create_missing_movies import (
@@ -15,30 +28,17 @@ from marquise.application.use_cases.create_screenings import CreateScreeningsCom
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
-from marquise.application.use_cases.fetch_screenings_from_source import (
-    FetchScreeningsFromSourceQuery,
-)
 from marquise.application.use_cases.get_cinema import GetCinemaUseCase
 from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
-from marquise.application.use_cases.get_cinema_screenings import (
-    GetCinemaScreeningsUseCase,
-)
 from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
 from marquise.application.use_cases.get_movie import GetMovieUseCase
-from marquise.application.use_cases.get_movie_screenings import (
-    GetMovieScreeningsUseCase,
-)
 from marquise.application.use_cases.get_screening import GetScreeningUseCase
-from marquise.application.use_cases.list_cinema_source_assignments import (
-    ListCinemaSourceAssignmentsQuery,
-)
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.application.use_cases.list_movies import ListMoviesUseCase
 from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
-from marquise.application.use_cases.search_screenings import SearchScreeningsUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.bootstrap import MarquiseFactory, create_factory, create_factory_session
@@ -252,12 +252,12 @@ async def test_list_assignments_query_returns_configured_query() -> None:
         "create_movies_use_case",
         "create_screenings_use_case",
         "get_cinema_use_case",
-        "get_cinema_screenings_use_case",
+        "get_cinema_screenings_query",
         "get_cinema_movies_use_case",
         "list_movies_use_case",
         "get_movie_use_case",
-        "get_movie_screenings_use_case",
-        "search_screenings_use_case",
+        "get_movie_screenings_query",
+        "search_screenings_query",
         "get_screening_use_case",
     ],
 )
@@ -284,12 +284,12 @@ def test_configured_use_cases_require_initialize(property_name: str) -> None:
         ("create_movies_use_case", CreateMissingMoviesCommand),
         ("create_screenings_use_case", CreateScreeningsCommand),
         ("get_cinema_use_case", GetCinemaUseCase),
-        ("get_cinema_screenings_use_case", GetCinemaScreeningsUseCase),
+        ("get_cinema_screenings_query", GetCinemaScreeningsQuery),
         ("get_cinema_movies_use_case", GetCinemaMoviesUseCase),
         ("list_movies_use_case", ListMoviesUseCase),
         ("get_movie_use_case", GetMovieUseCase),
-        ("get_movie_screenings_use_case", GetMovieScreeningsUseCase),
-        ("search_screenings_use_case", SearchScreeningsUseCase),
+        ("get_movie_screenings_query", GetMovieScreeningsQuery),
+        ("search_screenings_query", SearchScreeningsQuery),
         ("get_screening_use_case", GetScreeningUseCase),
     ],
 )
