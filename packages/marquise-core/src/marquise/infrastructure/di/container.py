@@ -33,6 +33,7 @@ from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseC
 from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
 from marquise.application.use_cases.get_movie import GetMovieUseCase
 from marquise.application.use_cases.get_screening import GetScreeningUseCase
+from marquise.application.use_cases.import_screenings import ImportScreeningsCommand
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.application.use_cases.list_movies import ListMoviesUseCase
 from marquise.application.use_cases.list_registry_sources import (
@@ -45,6 +46,7 @@ from marquise.infrastructure.di.import_use_cases import (
     build_create_movies_use_case,
     build_create_screenings_use_case,
     build_fetch_screenings_use_case,
+    build_import_screenings_use_case,
 )
 from marquise.infrastructure.di.queries import (
     build_get_cinema_screenings_query,
@@ -300,6 +302,14 @@ class Container:
     def _create_screenings_use_case(self) -> CreateScreeningsCommand:
         return build_create_screenings_use_case(self._pool_property, self._schema)
 
+    @property
+    def _import_screenings_use_case(self) -> ImportScreeningsCommand:
+        return build_import_screenings_use_case(
+            fetch_screenings_use_case=self._fetch_screenings_use_case,
+            create_movies_use_case=self._create_movies_use_case,
+            create_screenings_use_case=self._create_screenings_use_case,
+        )
+
     # ------------------------------------------------------------------
     # Use cases — Read-only (public API)
     # ------------------------------------------------------------------
@@ -415,6 +425,11 @@ class Container:
     def create_screenings_use_case(self) -> CreateScreeningsCommand:
         """Public create-screenings command."""
         return self._create_screenings_use_case
+
+    @property
+    def import_screenings_use_case(self) -> ImportScreeningsCommand:
+        """Public application workflow for importing one cinema."""
+        return self._import_screenings_use_case
 
     @property
     def list_cinemas_use_case(self) -> ListCinemasUseCase:
