@@ -14,7 +14,7 @@ Do not duplicate GitHub records here. Link to the relevant GitHub URL instead.
 
 ## Navigation
 
-Start at [[00-home/Company Home]].
+Start at [[00-home/Company Home]]. For the execution loop, read [[50-processes/Documentation and Delivery Workflow]].
 
 ## Folder map
 

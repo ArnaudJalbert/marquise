@@ -6,7 +6,7 @@ owner: Aster
 
 # Knowledge Management Protocol
 
-This protocol implements the source-of-truth boundary established by [[../70-decisions-and-reviews/Marquise Atlas as Company Knowledge Base]] and supports the navigation conventions in [[../README]].
+This protocol implements the source-of-truth boundary established by [[../70-decisions-and-reviews/Marquise Atlas as Company Knowledge Base]] and supports the navigation conventions in [[../README]]. The practical execution loop is [[Documentation and Delivery Workflow]].
 
 ## Source-of-truth boundaries
 

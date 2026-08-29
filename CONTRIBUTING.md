@@ -1,6 +1,7 @@
 # Contributing to Marquise
 
-This repository — setup, commands, paths, and CI. For design principles see
+This repository — setup, commands, paths, and CI. For the operating process see
+[Atlas Documentation and Delivery Workflow](atlas/50-processes/Documentation%20and%20Delivery%20Workflow.md); for design principles see
 [Atlas Clean Architecture](atlas/50-processes/Clean%20Architecture.md). For enforced rules see [AGENTS.md](AGENTS.md).
 
 ---
@@ -342,6 +343,13 @@ Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
 - **Security**: private vulnerability report on GitHub — no public issues
 
 ## Further reading
+
+### Delivery process
+
+- [Atlas Documentation and Delivery Workflow](atlas/50-processes/Documentation%20and%20Delivery%20Workflow.md) — SSOT boundaries, briefs, stories, PRs, review, and verification gates
+- [Project brief template](docs/templates/project-brief.md)
+- [User story template](docs/templates/user-story.md)
+- [Pull request template](.github/PULL_REQUEST_TEMPLATE.md)
 
 ### Documentation
 
