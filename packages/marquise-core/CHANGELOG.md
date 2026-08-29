@@ -2,17 +2,30 @@
 
 Before 2026-07-15 this package was published as `marquise`.
 
-## 2026-08-27
+## 2026-08-29
 
-### v0.2.16
+### v0.2.18
 
 - **Use readers for cinema and movie screening lists**: replace entity-backed listing use cases with configured queries backed by `ScreeningReader`. Closes #208.
-
-### v0.2.15
-
 - **Use configured read use cases directly**: expose cinema, movie, and screening read use cases through the public factory and remove obsolete controllers. Closes #188 and #189.
 - **Split dependency wiring by responsibility**: isolate source registry, source management, and import use-case construction from the lifecycle container. Closes #190, #191, and #193.
 - **Lighten screening search**: `SearchScreeningsUseCase` is replaced by `SearchScreeningsQuery` and a dedicated Supabase reader that projects only response columns into light `ScreeningSummary` values. Entity-based screening use cases keep using `ScreeningRepository`. Closes #205.
+
+### v0.2.17
+
+- **Bound source movie enrichment**: limit concurrent detail requests per cinema import to protect provider and event-loop capacity. Closes #229.
+
+## 2026-08-28
+
+### v0.2.16
+
+- **Make screening pagination deterministic**: add a stable screening ID tie-breaker after showtime ordering.
+
+### v0.2.15
+
+- **Repair Cinéma Public booking URLs**: normalize malformed and relative booking paths emitted by the source adapter.
+
+## 2026-08-26
 
 ### v0.2.13
 
