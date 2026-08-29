@@ -44,7 +44,7 @@ Aster’s router forwards tagged requests. Untagged comments do not notify Bots.
 
 ## Pull requests
 
-Keep one focused change per PR. Use the [PR template](../../.github/PULL_REQUEST_TEMPLATE.md). Keep PR discussion, commits, checks, and review state in GitHub. Put only durable decisions and learnings in Atlas.
+Every PR must link one issue with `Closes #N`. Keep one focused change per PR. Use the [PR template](../../.github/PULL_REQUEST_TEMPLATE.md). Keep PR discussion, commits, checks, and review state in GitHub. Put only durable decisions and learnings in Atlas.
 
 ## Review and merge gates
 
