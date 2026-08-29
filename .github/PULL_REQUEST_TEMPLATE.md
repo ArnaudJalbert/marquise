@@ -10,4 +10,6 @@
 
 <!-- State the result and any remaining risk. -->
 
+## Linked issue
+
 Closes #123
