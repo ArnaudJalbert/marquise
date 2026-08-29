@@ -6,6 +6,8 @@ review_date: 2026-09-30
 
 # Operating Model
 
+The operating model applies the [[10-strategy/Product Thesis]] in day-to-day decisions and execution. It is coordinated through [[40-agents/Aster — Operating Partner]] and documented alongside the [[50-processes/Knowledge Management Protocol]].
+
 ## Decision rights
 
 | Area | Arno | Aster |
