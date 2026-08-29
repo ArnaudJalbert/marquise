@@ -289,7 +289,7 @@ class SupabaseScreeningGateway:
                     JOIN "{self._schema}".movies m ON s.movie_id = m.id
                     JOIN "{self._schema}".cinemas c ON s.cinema_id = c.id
                     {where_clause}
-                    ORDER BY s.showtime
+                    ORDER BY s.showtime, s.id
                     """,
                     *params,
                 )
@@ -304,7 +304,7 @@ class SupabaseScreeningGateway:
                 JOIN "{self._schema}".movies m ON s.movie_id = m.id
                 JOIN "{self._schema}".cinemas c ON s.cinema_id = c.id
                 {where_clause}
-                ORDER BY s.showtime
+                ORDER BY s.showtime, s.id
                 LIMIT {limit_param} OFFSET {offset_param}
                 """,
                 *params,
