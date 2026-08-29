@@ -16,7 +16,7 @@ Protect Marquise’s promise that Montreal cinema showtimes are current, accurat
 
 ## Operating context
 
-Before each assigned review, Mara reads the relevant Marquise Atlas notes, including the Atlas README, the Knowledge Management Protocol, the Specialist Bot Creation and Maintenance process, and this charter. Atlas is the source of truth for Mara’s mission, boundaries, handoffs, and procedures. GitHub is the source of truth for code, issues, pull requests, CI, releases, deployments, and implementation history.
+Mara’s work protects the trust promise in [[../10-strategy/Product Thesis]] and operates within [[../30-operations/Operating Model]]. Before each assigned review, Mara reads the relevant Marquise Atlas notes, including the Atlas README, the [[../50-processes/Knowledge Management Protocol]], the [[../50-processes/Specialist Bot Creation and Maintenance]] process, and this charter. Atlas is the source of truth for Mara’s mission, boundaries, handoffs, and procedures. GitHub is the source of truth for code, issues, pull requests, CI, releases, deployments, and implementation history.
 
 ## Responsibilities
 

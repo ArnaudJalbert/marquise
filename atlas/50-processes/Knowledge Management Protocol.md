@@ -6,6 +6,8 @@ owner: Aster
 
 # Knowledge Management Protocol
 
+This protocol implements the source-of-truth boundary established by [[../70-decisions-and-reviews/Marquise Atlas as Company Knowledge Base]] and supports the navigation conventions in [[../README]].
+
 ## Source-of-truth boundaries
 
 - **GitHub (`ArnaudJalbert/marquise`)**: code, issues, PRs, CI, releases, deployments, and implementation-level records.
