@@ -4,7 +4,7 @@ Enforced standards for contributors and AI assistants.
 
 | Document | Purpose |
 |----------|---------|
-| [docs/architecture.md](docs/architecture.md) | Design principles: layers, DI, testability |
+| [Atlas Clean Architecture](atlas/50-processes/Clean%20Architecture.md) | Design principles: layers, DI, testability |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | This repository: setup, commands, paths, CI |
 | [docs/](docs/) | Detailed repo-specific guidelines (read on demand) |
 
@@ -49,14 +49,14 @@ They do not share a lockfile or package manager. Work in one subtree at a time.
 - Virtual root workspace config; **single lockfile** — sync only from Python repo root
 - Each member owns its own dependencies, scripts, and pytest config
 - Run **each app test suite in its own pytest invocation**
-- Delivery apps import the **library public facade only** (see [docs/architecture.md](docs/architecture.md))
+- Delivery apps import the **library public facade only** (see [Atlas Clean Architecture](atlas/50-processes/Clean%20Architecture.md))
 
 ### Web (pnpm + Turborepo)
 
 - Self-contained under `web/` — pnpm + Turborepo; single lockfile from `web/` root
 - Apps → packages only; public API via package `exports`
 - Inject client at boundary; no live HTTP in unit tests
-- Full rules → [docs/architecture.md#modular-web-packages](docs/architecture.md#modular-web-packages)
+- Full rules → [Atlas Clean Architecture](atlas/50-processes/Clean%20Architecture.md)
 
 Repo-specific layout and commands → [CONTRIBUTING.md](CONTRIBUTING.md) (Python and web sections).
 
@@ -64,7 +64,7 @@ Repo-specific layout and commands → [CONTRIBUTING.md](CONTRIBUTING.md) (Python
 
 ## Architecture contract
 
-Details → [docs/architecture.md](docs/architecture.md). **Clean Architecture is the ceiling
+Details → [Atlas Clean Architecture](atlas/50-processes/Clean%20Architecture.md). **Clean Architecture is the ceiling
 and the floor** — all work stays inside it. Ponytail optimisations must not
 violate these rules:
 
@@ -94,7 +94,7 @@ tests only).
 - Tests swap real collaborators for `create_autospec` mocks of the same ABC or protocol
 
 Layer rules, testability boundary, and web testing →
-[docs/architecture.md#dependency-injection-and-testability](docs/architecture.md#dependency-injection-and-testability).
+[Atlas Clean Architecture](atlas/50-processes/Clean%20Architecture.md).
 Concrete test paths → [CONTRIBUTING.md#testability-in-this-repo](CONTRIBUTING.md#testability-in-this-repo).
 
 ### Mechanics
@@ -129,7 +129,7 @@ Concrete test paths → [CONTRIBUTING.md#testability-in-this-repo](CONTRIBUTING.
 - Prefer **props and injected dependencies** over module-level singletons (mirrors backend DI)
 - Colocate tests next to source (`*.test.ts` / `*.test.tsx`); Testing Library — behaviour, not implementation
 - Apps are thin: routing, inject real client, pass props to library components
-- Full web rules → [docs/architecture.md#modular-web-packages](docs/architecture.md#modular-web-packages)
+- Full web rules → [Atlas Clean Architecture](atlas/50-processes/Clean%20Architecture.md)
 
 ---
 
@@ -148,7 +148,17 @@ Reject changes that:
 - **Web:** package importing from an app; deep-importing another package's internals; live API calls in unit tests; shipping dev-only demo code in library `dist`
 - **Web:** library component fetching without injected client; app duplicating library UI instead of composing exports; client implementation outside a dedicated client package, or coupled to app routing or env
 
-Rationale for each → [docs/architecture.md](docs/architecture.md).
+Rationale for each → [Atlas Clean Architecture](atlas/50-processes/Clean%20Architecture.md).
+
+---
+
+## Review contract
+
+- AI-authored code requires review by a different person, Bot, or fresh temporary reviewer.
+- Reviews lead with the strongest material objection, if one exists; otherwise they state what they tried to falsify and the residual risk. Use tests, measurements, code, or documented constraints as evidence.
+- Authors evaluate feedback rather than accepting it reflexively; reviewers withdraw findings disproved by evidence.
+- Unresolved routine technical disagreements go to Aster. Product direction, major architecture, irreversible migrations, security posture, cost, and priority go to Arno.
+- Full workflow: [Code Review and Constructive Challenge](atlas/50-processes/Code%20Review%20and%20Constructive%20Challenge.md).
 
 ---
 
@@ -158,7 +168,7 @@ Repo-specific detail lives in `docs/` — read when the task touches that area:
 
 | Guideline | When to read |
 |-----------|--------------|
-| [docs/architecture.md](docs/architecture.md) | Layer boundaries, DI, testability, web package design |
+| [Atlas Clean Architecture](atlas/50-processes/Clean%20Architecture.md) | Layer boundaries, DI, testability, web package design |
 | [docs/python.md](docs/python.md) | Domain entities, value objects, use cases |
 | [docs/setup.md](docs/setup.md) | Database setup, schema, Supabase |
 | [docs/sources.md](docs/sources.md) | Scrapers, source adapters, registry |
