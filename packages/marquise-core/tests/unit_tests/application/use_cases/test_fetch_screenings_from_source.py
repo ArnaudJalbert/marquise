@@ -131,7 +131,7 @@ async def test_fetch_handles_missing_movie_detail_gracefully() -> None:
     mock_registry.fetch_showtimes.return_value = raw_rows
     mock_registry.fetch_movie_detail.side_effect = [
         MovieEnrichmentData(description="Movie A desc"),
-        RuntimeError("API error"),
+        OSError("API error"),
     ]
 
     query = FetchScreeningsFromSourceQuery(
@@ -297,12 +297,15 @@ async def test_fetch_bounds_movie_detail_concurrency() -> None:
 
     mock_registry.fetch_movie_detail.side_effect = fetch_detail
     query = FetchScreeningsFromSourceQuery(
-        mock_cinema_repo, mock_assignment_repo, mock_registry, enrichment_concurrency=2
+        mock_cinema_repo, mock_assignment_repo, mock_registry
     )
 
     result = await query.execute(
         FetchScreeningsFromSourceQuery.InputData(
-            cinema_id="cin-123", start_date=date(2026, 6, 7), end_date=date(2026, 6, 7)
+            cinema_id="cin-123",
+            start_date=date(2026, 6, 7),
+            end_date=date(2026, 6, 7),
+            enrichment_concurrency=2,
         )
     )
 
@@ -314,10 +317,10 @@ async def test_fetch_bounds_movie_detail_concurrency() -> None:
 async def test_fetch_rejects_non_positive_enrichment_concurrency() -> None:
     """Test that an invalid enrichment limit fails during use-case construction."""
     with pytest.raises(ValueError, match="positive"):
-        FetchScreeningsFromSourceQuery(
-            create_autospec(CinemaRepository, instance=True),
-            create_autospec(CinemaSourceAssignmentRepository, instance=True),
-            create_autospec(SourceRegistryQuery, instance=True),
+        FetchScreeningsFromSourceQuery.InputData(
+            cinema_id="cin-123",
+            start_date=date(2026, 6, 7),
+            end_date=date(2026, 6, 7),
             enrichment_concurrency=0,
         )
 
