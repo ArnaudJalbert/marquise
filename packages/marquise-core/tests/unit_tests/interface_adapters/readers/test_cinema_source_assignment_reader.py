@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from marquise.application.repositories import CinemaSourceAssignmentData
+from marquise.application.readers import CinemaSourceAssignmentData
 from marquise.interface_adapters.readers.cinema_source_assignment_reader import (
     SupabaseCinemaSourceAssignmentReader,
 )
