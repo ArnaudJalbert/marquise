@@ -83,6 +83,7 @@ async def test_run_import_cinema_looks_up_source_and_spins_full_import(
 ) -> None:
     """Verify source lookup and full import retain direct DTOs, spinner, and cleanup."""
     get_source_use_case = create_autospec(GetCinemaSourceUseCase, instance=True)
+    get_source_use_case.InputData = MagicMock(wraps=GetCinemaSourceUseCase.InputData)
     get_source_use_case.execute = AsyncMock(
         return_value=GetCinemaSourceUseCase.OutputData(
             cinema_id="cin-001",
@@ -124,6 +125,7 @@ async def test_run_import_cinema_looks_up_source_and_spins_full_import(
     get_source_use_case.execute.assert_awaited_once_with(
         GetCinemaSourceUseCase.InputData(cinema_id="cin-001")
     )
+    get_source_use_case.InputData.assert_called_once_with(cinema_id="cin-001")
     import_screenings.assert_awaited_once_with(
         mock_factory,
         "cin-001",

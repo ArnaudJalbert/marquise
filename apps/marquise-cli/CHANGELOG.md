@@ -2,6 +2,10 @@
 
 ## 2026-08-29
 
+### v0.1.13
+
+- **Use the shared import workflow**: single-cinema and bulk imports now execute the factory-provided `ImportScreeningsCommand` instead of duplicating orchestration in the CLI.
+
 ### v0.1.12
 
 - **Bound bulk import concurrency**: limit active cinema pipelines to two so scheduled imports do not overwhelm the database pool. Closes #198.
