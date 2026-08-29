@@ -113,6 +113,16 @@ async def db_pool(
             )
             """
         )
+    async with pool.acquire() as conn:
+        await conn.execute(
+            f'''TRUNCATE TABLE
+                "{TEST_SCHEMA}".screenings,
+                "{TEST_SCHEMA}".cinema_source_assignments,
+                "{TEST_SCHEMA}".movies,
+                "{TEST_SCHEMA}".cinemas,
+                "{TEST_SCHEMA}".source_definitions
+                CASCADE'''
+        )
     yield pool
     await pool.close()
 

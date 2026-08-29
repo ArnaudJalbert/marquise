@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, date, datetime
 from unittest.mock import create_autospec
 
@@ -130,7 +131,7 @@ async def test_fetch_handles_missing_movie_detail_gracefully() -> None:
     mock_registry.fetch_showtimes.return_value = raw_rows
     mock_registry.fetch_movie_detail.side_effect = [
         MovieEnrichmentData(description="Movie A desc"),
-        RuntimeError("API error"),
+        OSError("API error"),
     ]
 
     query = FetchScreeningsFromSourceQuery(
@@ -267,6 +268,60 @@ async def test_fetch_raises_when_cinema_not_found() -> None:
                 start_date=date(2026, 6, 7),
                 end_date=date(2026, 6, 7),
             )
+        )
+
+
+@pytest.mark.asyncio
+async def test_fetch_bounds_movie_detail_concurrency() -> None:
+    """Test that movie detail requests never exceed the configured concurrency."""
+    mock_cinema_repo = create_autospec(CinemaRepository, instance=True)
+    mock_assignment_repo = create_autospec(
+        CinemaSourceAssignmentRepository, instance=True
+    )
+    mock_registry = create_autospec(SourceRegistryQuery, instance=True)
+    mock_cinema_repo.find_by_id.return_value = CINEMA
+    mock_assignment_repo.find_by_cinema_id.return_value = ASSIGNMENT
+    mock_registry.fetch_showtimes.return_value = [
+        _make_showtime(f"Movie {index}", identifier=f"id-{index}") for index in range(5)
+    ]
+    active = 0
+    maximum = 0
+
+    async def fetch_detail(_source: str, _identifier: str) -> MovieEnrichmentData:
+        nonlocal active, maximum
+        active += 1
+        maximum = max(maximum, active)
+        await asyncio.sleep(0)
+        active -= 1
+        return MovieEnrichmentData(description="detail")
+
+    mock_registry.fetch_movie_detail.side_effect = fetch_detail
+    query = FetchScreeningsFromSourceQuery(
+        mock_cinema_repo, mock_assignment_repo, mock_registry
+    )
+
+    result = await query.execute(
+        FetchScreeningsFromSourceQuery.InputData(
+            cinema_id="cin-123",
+            start_date=date(2026, 6, 7),
+            end_date=date(2026, 6, 7),
+            enrichment_concurrency=2,
+        )
+    )
+
+    assert len(result.movies) == 5
+    assert maximum == 2
+
+
+@pytest.mark.asyncio
+async def test_fetch_rejects_non_positive_enrichment_concurrency() -> None:
+    """Test that an invalid enrichment limit fails during use-case construction."""
+    with pytest.raises(ValueError, match="positive"):
+        FetchScreeningsFromSourceQuery.InputData(
+            cinema_id="cin-123",
+            start_date=date(2026, 6, 7),
+            end_date=date(2026, 6, 7),
+            enrichment_concurrency=0,
         )
 
 

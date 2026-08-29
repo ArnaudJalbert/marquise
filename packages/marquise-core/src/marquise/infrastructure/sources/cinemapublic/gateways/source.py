@@ -18,6 +18,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from urllib.parse import urljoin, urlparse
 
 import certifi
 
@@ -44,6 +45,22 @@ _VENUE_FRAGMENTS: dict[str, str] = {
 }
 
 _WEEKS_PER_OFFSET = 2
+_CINEMA_PUBLIC_ORIGIN = "https://cinemapublic.ca"
+
+
+def _normalize_ticket_url(ticket_url: str) -> str:
+    """Normalize Cinema Public booking URLs emitted by the source."""
+    if not ticket_url:
+        return ticket_url
+    if ticket_url.startswith("https:///"):
+        return urljoin(_CINEMA_PUBLIC_ORIGIN, ticket_url[len("https://") :])
+    if ticket_url.startswith(("/", "./")):
+        return urljoin(_CINEMA_PUBLIC_ORIGIN, ticket_url)
+    parsed = urlparse(ticket_url)
+    if parsed.scheme in {"http", "https"} and parsed.hostname == "en":
+        query = f"?{parsed.query}" if parsed.query else ""
+        return urljoin(_CINEMA_PUBLIC_ORIGIN, f"/en{parsed.path}{query}")
+    return ticket_url
 
 
 def _fetch(url: str, data: bytes | None = None) -> str:
@@ -238,8 +255,7 @@ def _parse_jsonld_showtimes(
         movie_url: str = work_presented.get("url", "")
 
         ticket_url: str = event.get("offers", {}).get("url", "")
-        if ticket_url.startswith("https:///"):
-            ticket_url = ticket_url.replace("https:///", "https://")
+        ticket_url = _normalize_ticket_url(ticket_url)
 
         by_date.setdefault(date_key, []).append(
             {
@@ -391,10 +407,7 @@ def fetch_showtimes(
                 except urllib.error.HTTPError:
                     continue
                 for ev in events:
-                    if ev["ticket_url"].startswith("https:///"):
-                        ev["ticket_url"] = ev["ticket_url"].replace(
-                            "https:///", "https://"
-                        )
+                    ev["ticket_url"] = _normalize_ticket_url(ev["ticket_url"])
                     date_key = ev["showtime"][:10]
                     ajax_results_by_date.setdefault(date_key, []).append(ev)
 
