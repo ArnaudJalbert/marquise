@@ -4,6 +4,10 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-08-29
 
+### v0.2.19
+
+- **Centralize cinema screening imports**: move fetch, movie reconciliation, title mapping, and screening persistence into one injected application command used by both CLI import paths.
+
 ### v0.2.18
 
 - **Use readers for cinema and movie screening lists**: replace entity-backed listing use cases with configured queries backed by `ScreeningReader`. Closes #208.

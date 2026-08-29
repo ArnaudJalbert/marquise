@@ -20,6 +20,7 @@ EXPECTED_PUBLIC_SURFACE: set[str] = {
     "CreateCinemaUseCase",
     "CreateMissingMoviesCommand",
     "CreateScreeningsCommand",
+    "ImportScreeningsCommand",
     "CreateSourceUseCase",
     "DeleteCinemaUseCase",
     "DeleteSourceUseCase",
