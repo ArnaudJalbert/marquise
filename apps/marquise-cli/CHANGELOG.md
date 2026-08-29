@@ -4,7 +4,7 @@
 
 ### v0.1.13
 
-- **Add `data audit` and guarded `data reconcile` commands** for showtime reliability operations.
+- **Add `data audit` and guarded `data reconcile` commands** for showtime reliability operations. Reconcile apply mode now accepts exactly one correction to avoid unsafe partial writes; dry-run remains batch-capable and missing IDs return deterministic `not-found` results.
 
 ### v0.1.12
 

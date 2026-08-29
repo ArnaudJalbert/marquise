@@ -4,15 +4,21 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
+from marquise.application.exceptions import ScreeningNotFoundError
 from marquise.application.readers import ScreeningReader
 from marquise.application.repositories import ScreeningRepository
 from marquise.domain.value_objects import ScreeningId
 
 
 class ScreeningDataAuditQuery:
-    """Inspect screening projections for actionable reliability findings."""
+    """Inspect screening projections for actionable reliability findings.
+
+    Timestamp provenance is intentionally not audited: the production schema
+    stores ``TIMESTAMP WITHOUT TIME ZONE`` and the reader normalizes values to
+    UTC before this query receives them.
+    """
 
     @dataclass(frozen=True, slots=True)
     class InputData:
@@ -87,22 +93,6 @@ class ScreeningDataAuditQuery:
                         "ticket URL is empty",
                     )
                 )
-            if row.showtime.tzinfo is None:
-                findings.append(
-                    self.Finding(
-                        "naive_showtime",
-                        row.id,
-                        "showtime has no timezone",
-                    )
-                )
-            elif row.showtime.utcoffset() != timedelta(0):
-                findings.append(
-                    self.Finding(
-                        "non_utc_showtime",
-                        row.id,
-                        "showtime is not represented in UTC",
-                    )
-                )
             if (
                 not row.movie_id.strip()
                 or not row.cinema_id.strip()
@@ -171,17 +161,33 @@ class ReconcileScreeningsCommand:
         """Validate all corrections, then write only with two explicit guards."""
         if request.apply and request.confirmation != "RECONCILE":
             raise ValueError("confirmation must be RECONCILE when apply is enabled")
+        if request.apply and len(request.corrections) != 1:
+            raise ValueError("apply mode requires exactly one correction")
         results: list[ReconcileScreeningsCommand.ItemResult] = []
         changed = 0
         for correction in request.corrections:
-            screening = await self._repository.find_by_id(
-                ScreeningId(value=correction.screening_id)
-            )
+            try:
+                screening = await self._repository.find_by_id(
+                    ScreeningId(value=correction.screening_id)
+                )
+            except ScreeningNotFoundError:
+                results.append(
+                    self.ItemResult(
+                        correction.screening_id,
+                        "not-found",
+                        "screening was not found",
+                    )
+                )
+                continue
             if request.apply:
-                screening.external_id = correction.external_id or screening.external_id
-                screening.ticket_url = correction.ticket_url or screening.ticket_url
-                screening.room = correction.room or screening.room
-                screening.language = correction.language or screening.language
+                if correction.external_id is not None:
+                    screening.external_id = correction.external_id
+                if correction.ticket_url is not None:
+                    screening.ticket_url = correction.ticket_url
+                if correction.room is not None:
+                    screening.room = correction.room
+                if correction.language is not None:
+                    screening.language = correction.language
                 updated = await self._repository.update(screening)
                 if updated is None:
                     results.append(

@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import argparse
-from unittest.mock import Mock
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from marquise_cli.data_commands import audit, reconcile
+from marquise import ReconcileScreeningsCommand, ScreeningNotFoundError
+from marquise_cli.data_commands import audit, reconcile, run_reconcile
 from marquise_cli.import_commands import import_cinema
 from marquise_cli.routing import create_parser, dispatch
 
@@ -80,3 +83,30 @@ def test_dispatch_passes_parsed_arguments_to_handler() -> None:
 
     assert dispatch(parser, []) == 0
     handler.assert_called_once_with(days=7)
+
+
+@pytest.mark.asyncio
+async def test_reconcile_cli_prints_not_found_without_traceback(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A missing screening is reported as JSON rather than a traceback."""
+
+    class MissingRepository:
+        async def find_by_id(self, _screening_id: str) -> None:
+            raise ScreeningNotFoundError("missing")
+
+    plan = tmp_path / "plan.json"
+    plan.write_text(
+        '[{"screening_id": "missing", "ticket_url": "https://example.test"}]'
+    )
+    factory = SimpleNamespace(
+        initialize=AsyncMock(),
+        shutdown=AsyncMock(),
+        reconcile_screenings_command=ReconcileScreeningsCommand(MissingRepository()),
+    )
+
+    await run_reconcile(factory, str(plan), False, None)
+
+    captured = capsys.readouterr()
+    assert "not-found" in captured.out
+    assert captured.err == ""

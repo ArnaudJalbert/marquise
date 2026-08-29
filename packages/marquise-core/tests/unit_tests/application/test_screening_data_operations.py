@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, create_autospec
 
 import pytest
 
+from marquise.application.exceptions import ScreeningNotFoundError
 from marquise.application.queries.screening_data_operations import (
     ReconcileScreeningsCommand,
     ScreeningDataAuditQuery,
@@ -66,6 +67,27 @@ async def test_audit_reports_duplicate_stale_and_missing_ticket_findings() -> No
 
 
 @pytest.mark.asyncio
+async def test_audit_does_not_claim_timestamp_provenance_checks() -> None:
+    """Timestamp-without-time-zone rows are not misreported after normalization."""
+    reader = create_autospec(ScreeningReader, instance=True)
+    reader.search = AsyncMock(
+        return_value=type(
+            "Page",
+            (),
+            {"items": [_row("screening-1", datetime(2026, 8, 29, 14))], "total": 1},
+        )()
+    )
+
+    result = await ScreeningDataAuditQuery(
+        reader, clock=lambda: datetime(2026, 8, 29, 12)
+    ).execute(ScreeningDataAuditQuery.InputData())
+
+    assert {finding.code for finding in result.findings}.isdisjoint(
+        {"naive_showtime", "non_utc_showtime"}
+    )
+
+
+@pytest.mark.asyncio
 async def test_reconcile_dry_run_never_updates_repository() -> None:
     """The default reconciliation mode only validates and previews changes."""
     repository = create_autospec(ScreeningRepository, instance=True)
@@ -102,3 +124,84 @@ async def test_reconcile_requires_apply_and_confirmation_for_writes() -> None:
         await command.execute(
             ReconcileScreeningsCommand.InputData(corrections=(), apply=True)
         )
+
+
+@pytest.mark.asyncio
+async def test_reconcile_returns_not_found_when_repository_raises() -> None:
+    """A missing repository row becomes a deterministic item result."""
+    repository = create_autospec(ScreeningRepository, instance=True)
+    repository.find_by_id = AsyncMock(
+        side_effect=ScreeningNotFoundError("screening missing")
+    )
+
+    result = await ReconcileScreeningsCommand(repository).execute(
+        ReconcileScreeningsCommand.InputData(
+            corrections=(
+                ReconcileScreeningsCommand.Correction(
+                    screening_id="missing", ticket_url="https://tickets.example/new"
+                ),
+            )
+        )
+    )
+
+    assert result == ReconcileScreeningsCommand.OutputData(
+        items=(
+            ReconcileScreeningsCommand.ItemResult(
+                "missing", "not-found", "screening was not found"
+            ),
+        ),
+        changed_count=0,
+    )
+    repository.update.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_reconcile_apply_rejects_multiple_corrections_before_reading() -> None:
+    """Apply mode refuses partial-write plans before touching the repository."""
+    repository = create_autospec(ScreeningRepository, instance=True)
+    corrections = tuple(
+        ReconcileScreeningsCommand.Correction(
+            screening_id=f"screening-{index}", ticket_url="https://tickets.example/new"
+        )
+        for index in range(2)
+    )
+
+    with pytest.raises(ValueError, match="exactly one"):
+        await ReconcileScreeningsCommand(repository).execute(
+            ReconcileScreeningsCommand.InputData(
+                corrections=corrections, apply=True, confirmation="RECONCILE"
+            )
+        )
+
+    repository.find_by_id.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_reconcile_apply_preserves_explicit_empty_string() -> None:
+    """None means unchanged while an empty string is an explicit correction."""
+    repository = create_autospec(ScreeningRepository, instance=True)
+    screening = Screening(
+        id=ScreeningId(value="screening-1"),
+        movie=Movie(id=MovieId(value="movie-1"), title="Film"),
+        cinema=Cinema(id=CinemaId(value="cinema-1"), name="Cinema"),
+        showtime=Showtime(value=datetime(2026, 8, 29, 14, tzinfo=UTC)),
+        ticket_url="https://tickets.example/old",
+        room="Room 1",
+    )
+    repository.find_by_id = AsyncMock(return_value=screening)
+    repository.update = AsyncMock(return_value=screening)
+
+    await ReconcileScreeningsCommand(repository).execute(
+        ReconcileScreeningsCommand.InputData(
+            corrections=(
+                ReconcileScreeningsCommand.Correction(
+                    screening_id="screening-1", ticket_url="", room=None
+                ),
+            ),
+            apply=True,
+            confirmation="RECONCILE",
+        )
+    )
+
+    assert screening.ticket_url == ""
+    assert screening.room == "Room 1"

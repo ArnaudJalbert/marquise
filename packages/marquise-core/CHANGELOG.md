@@ -6,7 +6,7 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ### v0.2.19
 
-- **Add screening data operations**: expose a read-only audit for stale, duplicate, malformed, timezone, and missing-booking-link records, plus an ID-scoped metadata reconciliation command that is dry-run by default and requires explicit confirmation to write.
+- **Add screening data operations**: expose a read-only audit for stale, duplicate, malformed, and missing-booking-link records, plus an ID-scoped metadata reconciliation command that is dry-run by default and requires explicit confirmation to write. Timestamp provenance checks are intentionally omitted because the production `TIMESTAMP WITHOUT TIME ZONE` column is normalized to UTC at the reader boundary.
 - **Add showtime-leading index** for deterministic, date-range-oriented listings and audits.
 
 ### v0.2.18
