@@ -119,8 +119,9 @@ class FetchScreeningsFromSourceQuery:
             end_date=end_dt,
         )
         logger.info(
-            "Fetched %d showtime rows for cinema '%s' from source '%s'",
+            "Fetched %d showtime rows for cinema '%s' (%s) from source '%s'",
             len(raw_rows),
+            cinema.name,
             request.cinema_id,
             source_name,
         )
