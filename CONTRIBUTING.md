@@ -1,8 +1,6 @@
 # Contributing to Marquise
 
-This repository — setup, commands, paths, and CI. For the operating process see
-[Atlas Documentation and Delivery Workflow](atlas/50-processes/Documentation%20and%20Delivery%20Workflow.md); for design principles see
-[Atlas Clean Architecture](atlas/50-processes/Clean%20Architecture.md). For enforced rules see [AGENTS.md](AGENTS.md).
+Repository setup, commands, paths, and CI. See [Atlas Documentation and Delivery Workflow](atlas/50-processes/Documentation%20and%20Delivery%20Workflow.md) for delivery process, [Atlas Clean Architecture](atlas/50-processes/Clean%20Architecture.md) for design rules, and [AGENTS.md](AGENTS.md) for enforced rules.
 
 ---
 
