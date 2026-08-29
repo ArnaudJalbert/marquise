@@ -1,37 +1,14 @@
-## Outcome
+# Summary
 
-<!-- What user or operational outcome does this change deliver? -->
+- Imperative sentence that describes one change made in this PR.
+- One line for each change that has been done.
+- This list needs be extremely concise and precise, but also complete.
 
-## Context
+# Verification
 
-- Issue: <!-- `Closes #N`, or explain why this is a small docs/metadata change -->
-- Atlas brief/decision/process: <!-- link, or `N/A` -->
-- Acceptance criteria:
-  - [ ]
+- List all the verification to minimize the risk done by this change, such as tests, linting, reformats, and similar checks.
+- One line for each verification.
 
-## Scope
+Outcome of the verification
 
-- Included:
-- Not included:
-
-## Risk and rollout
-
-- Risks / data or migration impact:
-- Rollback or recovery plan:
-- Documentation or Atlas impact:
-
-## Verification
-
-- [ ] Relevant tests/checks run (list below)
-- [ ] Current-head CI checked
-- [ ] Independent review requested (AI-authored work must have a different reviewer)
-
-Checks run:
-
-```text
-<!-- command → result -->
-```
-
-## Reviewer handoff
-
-<!-- Call out the weakest assumption, residual risk, and anything that needs focused review. -->
+Closes #*** where *** is the issue number.
