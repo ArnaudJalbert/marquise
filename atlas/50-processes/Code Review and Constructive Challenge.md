@@ -29,7 +29,7 @@ The primary reviewer cannot adjudicate their own unresolved finding. Use a fresh
 ## Workflow
 
 1. **Prepare:** PR body contains the issue or, for trivial docs/metadata, acceptance criteria; focused scope; checks; risks; and migration/rollback notes where relevant.
-2. **Review:** use concise comments prefixed `Blocker`, `Challenge`, `Suggestion`, or `Question`. Include evidence, impact, and next action. If no material objection exists, state what was tested and the residual risk.
+2. **Review:** use concise comments prefixed `Blocker`, `Challenge`, `Suggestion`, or `Question`. Include evidence, impact, and next action. Check inward dependency direction, layer ownership, injection, DTO/public-facade boundaries, and unjustified abstractions or dependencies. If no material objection exists, state what was tested and the residual risk.
 3. **Resolve:** fix valid findings and reply with commit plus verification. For disagreement, provide evidence. If uncertain, run one smallest time-boxed experiment.
 4. **Close:** every substantive comment gets one disposition: `fixed`, `withdrawn`, `accepted-risk`, `escalated-and-decided`, or `non-blocking follow-up`. Questions and suggestions do not require code when their rationale is recorded.
 5. **Re-review:** inspect the changed diff, not just replies. A substantive push requires re-review of its changed range.

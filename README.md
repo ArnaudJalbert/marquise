@@ -10,6 +10,6 @@ Live API: [marquise-api.fly.dev/docs](https://marquise-api.fly.dev/docs)
 
 | Document | Purpose |
 |----------|---------|
-| [docs/architecture.md](docs/architecture.md) | Design principles: layers, DI, testability |
+| [Atlas Clean Architecture](atlas/50-processes/Clean%20Architecture.md) | Design principles: layers, DI, testability |
 | [AGENTS.md](AGENTS.md) | Enforced rules for developers and AI assistants |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Setup, commands, paths, CI |

@@ -1,7 +1,7 @@
 # Contributing to Marquise
 
 This repository — setup, commands, paths, and CI. For design principles see
-[docs/architecture.md](docs/architecture.md). For enforced rules see [AGENTS.md](AGENTS.md).
+[Atlas Clean Architecture](atlas/50-processes/Clean%20Architecture.md). For enforced rules see [AGENTS.md](AGENTS.md).
 
 ---
 
@@ -132,7 +132,7 @@ web/
 
 ### Web package roles
 
-Design rules → [docs/architecture.md](docs/architecture.md) and [web/README.md](web/README.md).
+Design rules → [Atlas Clean Architecture](atlas/50-processes/Clean%20Architecture.md) and [web/README.md](web/README.md).
 
 | Package | Role |
 |---------|------|
@@ -240,7 +240,7 @@ Never use `npm` or `yarn` in `web/` — pnpm only.
 
 ## Testability in this repo
 
-Maps [docs/architecture.md](docs/architecture.md) testability rules to concrete paths.
+Maps [Atlas Clean Architecture](atlas/50-processes/Clean%20Architecture.md) testability rules to concrete paths.
 
 ### Test layout
 
@@ -332,6 +332,7 @@ Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
 
 - [ ] Issue linked (`Closes #N`), or the PR body records the acceptance criteria for a trivial documentation/metadata change
 - [ ] Independently reviewed under the [Code Review and Constructive Challenge](atlas/50-processes/Code%20Review%20and%20Constructive%20Challenge.md) process
+- [ ] Clean Architecture check passes: inward dependencies, correct layer ownership, injectable collaborators, public facades/DTOs, and no unjustified abstraction or dependency
 - [ ] Current-head CI is green and no blocking review thread remains unresolved
 
 ## Reporting issues
@@ -344,7 +345,7 @@ Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
 
 ### Documentation
 
-- [docs/architecture.md](docs/architecture.md) — layer diagram, DI, testability boundary
+- [Atlas Clean Architecture](atlas/50-processes/Clean%20Architecture.md) — layer diagram, DI, testability boundary
 - [AGENTS.md](AGENTS.md) — enforced rules and agent context
 - [docs/python.md](docs/python.md) — Python entity and use-case conventions
 - [docs/setup.md](docs/setup.md) — database schema bootstrap
