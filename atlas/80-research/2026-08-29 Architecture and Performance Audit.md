@@ -234,9 +234,11 @@ The database query already joins full movie and cinema rows: `infrastructure/sup
 
 Client requests are not abortable (`http-client.ts:256-262`); `useMovieFilters` only ignores stale responses after they complete: `web/packages/components/src/components/movie/use-movie-filters.ts:190-228`. Date results are not cached, so back-and-forth date navigation refetches them.
 
+The browser's most expensive endpoint also bypasses the configured API response cache: `apps/marquise-api/src/marquise_api/routers/screenings.py:23-29`. This is intentional enough to be locked by `apps/marquise-api/tests/test_api.py:1250-1263`, while comparable movie endpoints use `@cache()`.
+
 **Why it matters**
 
-This adds avoidable round trips, repeated JSON/Pydantic/domain mapping, and database work on the critical path. The API cache reduces database load for repeated identical URLs but cannot remove browser-to-server latency or the multi-request waterfall.
+This adds avoidable round trips, repeated JSON/Pydantic/domain mapping, and database work on the critical path. Repeated identical listing URLs currently repeat that database work as well. A server cache can reduce backend work, but it cannot remove browser-to-server latency or the multi-request waterfall.
 
 **Recommendation**
 
@@ -244,11 +246,13 @@ Use the architecture’s documented read-adapter pattern for a purpose-built lis
 
 Add an `AbortSignal` to the client protocol and cancel stale date loads. Add a small in-memory promise/result cache keyed by date (with explicit invalidation/TTL aligned to import freshness).
 
+Cache the purpose-built listings response with an explicit freshness policy. A short TTL is the smallest change; an import-generation key or invalidation signal is preferable if newly imported showtimes must become visible immediately. If the generic `/v1/screenings` endpoint remains uncached for freshness, document that trade-off rather than relying on an unexplained decorator omission.
+
 Keep detailed movie and screening endpoints for their own routes; do not make the generic endpoints serve every UI shape.
 
 **Acceptance signal**
 
-The first listings render uses one API request, changing dates aborts superseded work, and returning to a recently viewed date does not refetch within the cache window.
+The first listings render uses one API request, changing dates aborts superseded work, returning to a recently viewed date does not refetch within the browser cache window, and repeated server requests follow the documented freshness/cache policy.
 
 ---
 
@@ -288,6 +292,8 @@ The production web build is a single hashed JS bundle of **343.36 kB / 107.12 kB
 
 The app currently ships one route bundle (`web/apps/marquise-interface/src/App.tsx:1-349`); the movie-detail component is imported eagerly at `App.tsx:3-11` even though only one route is shown at a time.
 
+`MoviePoster` always emits `loading="lazy"` and `fetchPriority="low"` (`web/packages/components/src/components/movie/MoviePoster.tsx:46-54`), including the prominent direct-route poster in `MovieDetailPage.tsx:385-390`. That can deprioritize a likely largest-contentful-paint image.
+
 **Recommendation**
 
 First configure Nginx to:
@@ -297,6 +303,8 @@ First configure Nginx to:
 - serve `index.html` with no-cache/revalidation.
 
 Only add route-level lazy loading for `MovieDetailPage` if bundle analysis shows a meaningful split after compression. At the current 107 kB gzip total, caching/compression is higher leverage than component-level micro-optimization.
+
+Expose image loading/fetch-priority props on `MoviePoster`: retain lazy/low for grid cards and use eager/high for the detail hero.
 
 ---
 
@@ -374,7 +382,7 @@ The source catalog should be code-level and immutable. Persistent `source_defini
 
 1. Implement batch movie reconciliation and screening upsert in one transaction per cinema.
 2. Replace blocking transports with a shared injected async HTTP client and coalesced/batch enrichment.
-3. Add the listings projection endpoint, browser cancellation, and short-lived date cache.
+3. Add the listings projection endpoint, browser cancellation, a short-lived browser date cache, and an explicit server freshness/cache policy.
 4. Validate the primary screening query plan, add a showtime-leading index where confirmed, and introduce deterministic cursor pagination where exact totals are unnecessary.
 5. Add Nginx compression and immutable hashed-asset caching.
 
