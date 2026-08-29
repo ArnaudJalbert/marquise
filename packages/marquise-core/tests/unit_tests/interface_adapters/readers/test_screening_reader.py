@@ -80,6 +80,18 @@ async def test_search_maps_projection_and_filters() -> None:
 
 
 @pytest.mark.asyncio
+async def test_search_uses_stable_order_for_equal_showtimes() -> None:
+    """Paginated searches use screening ID to break showtime ties."""
+    connection = AsyncMock()
+    connection.fetch.return_value = [{**_row(), "__total": 1}]
+
+    await SupabaseScreeningReader(_pool(connection)).search(limit=5)
+
+    sql = connection.fetch.await_args.args[0]
+    assert "ORDER BY s.showtime, s.id" in sql
+
+
+@pytest.mark.asyncio
 async def test_search_without_limit_uses_returned_row_count() -> None:
     """Unpaginated search reports total from returned rows."""
     connection = AsyncMock()

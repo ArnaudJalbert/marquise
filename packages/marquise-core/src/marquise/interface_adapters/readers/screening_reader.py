@@ -83,7 +83,7 @@ class SupabaseScreeningReader(ScreeningReader):
                     JOIN "{self._schema}".movies m ON s.movie_id = m.id
                     JOIN "{self._schema}".cinemas c ON s.cinema_id = c.id
                     {where}
-                    ORDER BY s.showtime
+                    ORDER BY s.showtime, s.id
                     """,
                     *params,
                 )
@@ -96,7 +96,7 @@ class SupabaseScreeningReader(ScreeningReader):
                     JOIN "{self._schema}".movies m ON s.movie_id = m.id
                     JOIN "{self._schema}".cinemas c ON s.cinema_id = c.id
                     {where}
-                    ORDER BY s.showtime
+                    ORDER BY s.showtime, s.id
                     LIMIT ${len(params) + 1} OFFSET ${len(params) + 2}
                     """,
                     *params,
