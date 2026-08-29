@@ -32,6 +32,16 @@ Use the issue body for the problem, proposal, research findings, acceptance crit
 
 Use milestones only for outcomes that group several issues. Acceptance criteria must be testable; include relevant error, empty, permission, freshness, and rollback cases.
 
+## Agent tags
+
+Start every Bot-authored Issue, PR, or comment with `[agent:<name>]`. Use `[[to:<name>]]` only when that Bot must review or respond. One target per tag.
+
+```text
+[agent:mara] [[to:orson]] Review request: source markup changed.
+```
+
+Aster’s router forwards tagged requests. Untagged comments do not notify Bots.
+
 ## Pull requests
 
 Keep one focused change per PR. Use the [PR template](../../.github/PULL_REQUEST_TEMPLATE.md). Keep PR discussion, commits, checks, and review state in GitHub. Put only durable decisions and learnings in Atlas.
