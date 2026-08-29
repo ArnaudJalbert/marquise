@@ -13,6 +13,19 @@ Make every code change more correct and more defensible without turning review i
 
 ## Philosophy
 
+This process uses **Ponytail** in its default `full` mode: question whether the change needs to exist, reuse what is already present, prefer standard-library or native capabilities, and choose the shortest complete implementation. Ponytail governs implementation scope and design economy—not safety, correctness, Clean Architecture, or required tests.
+
+The priority order is:
+
+1. Preserve safety, correctness, data integrity, Clean Architecture, and explicit acceptance criteria.
+2. Remove the requirement if evidence shows it is unnecessary.
+3. Reuse existing code and platform capabilities.
+4. Prefer standard library or existing dependencies before adding one.
+5. Implement the smallest change that fully satisfies the requirement.
+6. Add abstractions, dependencies, or flexibility only when current evidence requires them.
+
+A shorter diff is not automatically better. The author must explain any complexity that remains, and the reviewer must challenge complexity that lacks a concrete payoff.
+
 - **No rubber stamps.** Approval means the reviewer would be comfortable owning the change.
 - **Challenge the work, not the person.** Direct disagreement is expected; defensiveness and performative politeness are not useful.
 - **Lead with the strongest objection, if one exists.** If no material objection remains, state what was tested or attempted to falsify and the principal residual risk.
