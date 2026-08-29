@@ -2,6 +2,10 @@
 
 ## 2026-08-29
 
+### v0.1.13
+
+- **Add `data audit` and guarded `data reconcile` commands** for showtime reliability operations.
+
 ### v0.1.12
 
 - **Bound bulk import concurrency**: limit active cinema pipelines to two so scheduled imports do not overwhelm the database pool. Closes #198.

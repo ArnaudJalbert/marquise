@@ -6,6 +6,7 @@ import argparse
 from collections.abc import Callable, Sequence
 
 from marquise_cli.cinema_commands import create, delete, list_cinemas, update
+from marquise_cli.data_commands import audit, reconcile
 from marquise_cli.import_commands import import_all, import_cinema
 from marquise_cli.source_commands import (
     assign,
@@ -108,6 +109,28 @@ def create_parser() -> argparse.ArgumentParser:
         type=_positive_int,
         default=7,
         help="Days to import, starting today",
+    )
+
+    data = groups.add_parser("data", help="Audit and reconcile showtime data")
+    data_commands = data.add_subparsers(required=True, title="commands")
+    _command(
+        data_commands, "audit", audit, "Audit showtime data for suspicious records."
+    )
+    reconcile_command = _command(
+        data_commands,
+        "reconcile",
+        reconcile,
+        "Preview or apply an explicit JSON correction plan.",
+        ("plan", "apply", "confirmation"),
+    )
+    reconcile_command.add_argument("plan", help="JSON list of metadata corrections")
+    reconcile_command.add_argument(
+        "--apply",
+        action="store_true",
+        help="Actually write corrections (off by default)",
+    )
+    reconcile_command.add_argument(
+        "--confirm", dest="confirmation", help="Must be exactly RECONCILE when applying"
     )
 
     return parser

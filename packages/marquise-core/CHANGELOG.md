@@ -4,6 +4,11 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-08-29
 
+### v0.2.19
+
+- **Add screening data operations**: expose a read-only audit for stale, duplicate, malformed, timezone, and missing-booking-link records, plus an ID-scoped metadata reconciliation command that is dry-run by default and requires explicit confirmation to write.
+- **Add showtime-leading index** for deterministic, date-range-oriented listings and audits.
+
 ### v0.2.18
 
 - **Use readers for cinema and movie screening lists**: replace entity-backed listing use cases with configured queries backed by `ScreeningReader`. Closes #208.

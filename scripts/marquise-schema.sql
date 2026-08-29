@@ -65,3 +65,8 @@ CREATE INDEX IF NOT EXISTS idx_screenings_cinema_showtime
 
 CREATE INDEX IF NOT EXISTS idx_screenings_movie_showtime
     ON marquise.screenings(movie_id, showtime);
+
+-- The primary listings and reliability audit filter by time before either
+-- foreign key. Keep the identifier as a deterministic tie-breaker.
+CREATE INDEX IF NOT EXISTS idx_screenings_showtime_id
+    ON marquise.screenings(showtime, id);

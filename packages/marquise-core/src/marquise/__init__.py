@@ -28,6 +28,10 @@ from marquise.application.queries.get_movie_screenings import GetMovieScreenings
 from marquise.application.queries.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
+from marquise.application.queries.screening_data_operations import (
+    ReconcileScreeningsCommand,
+    ScreeningDataAuditQuery,
+)
 from marquise.application.queries.search_screenings import SearchScreeningsQuery
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
@@ -91,6 +95,8 @@ __all__ = [
     "ScreeningAlreadyExistsError",
     "ScreeningNotFoundError",
     "SearchScreeningsQuery",
+    "ScreeningDataAuditQuery",
+    "ReconcileScreeningsCommand",
     "SourceAlreadyExistsError",
     "SourceNotFoundError",
     "TooManyMovieIdsError",

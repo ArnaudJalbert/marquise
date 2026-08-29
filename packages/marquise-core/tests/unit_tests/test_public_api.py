@@ -43,6 +43,8 @@ EXPECTED_PUBLIC_SURFACE: set[str] = {
     "ScreeningAlreadyExistsError",
     "ScreeningNotFoundError",
     "SearchScreeningsQuery",
+    "ScreeningDataAuditQuery",
+    "ReconcileScreeningsCommand",
     "SourceAlreadyExistsError",
     "SourceNotFoundError",
     "TooManyMovieIdsError",

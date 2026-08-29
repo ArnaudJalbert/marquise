@@ -18,6 +18,10 @@ from marquise.application.queries.get_movie_screenings import GetMovieScreenings
 from marquise.application.queries.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
+from marquise.application.queries.screening_data_operations import (
+    ReconcileScreeningsCommand,
+    ScreeningDataAuditQuery,
+)
 from marquise.application.queries.search_screenings import SearchScreeningsQuery
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
@@ -50,6 +54,8 @@ from marquise.infrastructure.di.queries import (
     build_get_cinema_screenings_query,
     build_get_movie_screenings_query,
     build_list_cinema_source_assignments_query,
+    build_reconcile_screenings_command,
+    build_screening_data_audit_query,
     build_search_screenings_query,
 )
 from marquise.infrastructure.di.source_management import (
@@ -339,6 +345,14 @@ class Container:
     def _get_movie_screenings_query(self) -> GetMovieScreeningsQuery:
         return build_get_movie_screenings_query(self._pool_property, self._schema)
 
+    @property
+    def _screening_data_audit_query(self) -> ScreeningDataAuditQuery:
+        return build_screening_data_audit_query(self._pool_property, self._schema)
+
+    @property
+    def _reconcile_screenings_command(self) -> ReconcileScreeningsCommand:
+        return build_reconcile_screenings_command(self._pool_property, self._schema)
+
     # ------------------------------------------------------------------
     # Public use cases
     # ------------------------------------------------------------------
@@ -455,6 +469,16 @@ class Container:
     def get_movie_screenings_query(self) -> GetMovieScreeningsQuery:
         """Public movie-screenings query (no authentication required)."""
         return self._get_movie_screenings_query
+
+    @property
+    def screening_data_audit_query(self) -> ScreeningDataAuditQuery:
+        """Public read-only screening data audit query."""
+        return self._screening_data_audit_query
+
+    @property
+    def reconcile_screenings_command(self) -> ReconcileScreeningsCommand:
+        """Public guarded screening reconciliation command."""
+        return self._reconcile_screenings_command
 
     @property
     def get_cinema_movies_use_case(self) -> GetCinemaMoviesUseCase:

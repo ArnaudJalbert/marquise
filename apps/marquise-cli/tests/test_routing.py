@@ -7,11 +7,12 @@ from unittest.mock import Mock
 
 import pytest
 
+from marquise_cli.data_commands import audit, reconcile
 from marquise_cli.import_commands import import_cinema
 from marquise_cli.routing import create_parser, dispatch
 
 
-@pytest.mark.parametrize("group", ["cinema", "source", "import"])
+@pytest.mark.parametrize("group", ["cinema", "source", "import", "data"])
 def test_group_help(group: str, capsys: pytest.CaptureFixture[str]) -> None:
     """Each top-level command group prints argparse help."""
     with pytest.raises(SystemExit) as error:
@@ -26,6 +27,14 @@ def test_import_cinema_routes_to_single_cinema_handler() -> None:
     namespace = create_parser().parse_args(["import", "cinema"])
 
     assert namespace.handler is import_cinema
+
+
+def test_data_commands_route_to_reliability_handlers() -> None:
+    """Audit and reconcile are exposed under the data command group."""
+    assert create_parser().parse_args(["data", "audit"]).handler is audit
+    namespace = create_parser().parse_args(["data", "reconcile", "plan.json"])
+    assert namespace.handler is reconcile
+    assert namespace.apply is False
 
 
 def test_root_help_lists_command_groups(capsys: pytest.CaptureFixture[str]) -> None:
