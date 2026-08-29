@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, date, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
@@ -276,3 +277,34 @@ async def test_run_import_all_passes_inclusive_date_window() -> None:
 
     request = factory.fetch_screenings_use_case.InputData.call_args.kwargs
     assert (request["end_date"] - request["start_date"]).days == 2
+
+
+@pytest.mark.asyncio
+async def test_run_import_all_limits_active_cinema_pipelines() -> None:
+    """Bulk import never has more than two active cinema pipelines."""
+    cinemas = [
+        SimpleNamespace(id=f"cin-{index}", name=f"Cinema {index}") for index in range(4)
+    ]
+    factory = _make_factory(cinemas, fetch_side_effect=[])
+    active = 0
+    maximum = 0
+
+    async def fetch(
+        request: FetchScreeningsFromSourceQuery.InputData,
+    ) -> FetchScreeningsFromSourceQuery.OutputData:
+        nonlocal active, maximum
+        active += 1
+        maximum = max(maximum, active)
+        await asyncio.sleep(0)
+        active -= 1
+        return _fetched(request.cinema_id, request.cinema_id)
+
+    factory.fetch_screenings_use_case.execute.side_effect = fetch
+    factory.create_screenings_use_case.execute.side_effect = lambda _request: (
+        _screenings_output(1, 0)
+    )
+
+    results = await run_import_all(factory, days=1)
+
+    assert len(results) == 4
+    assert maximum == 2

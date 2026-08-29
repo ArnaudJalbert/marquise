@@ -69,7 +69,7 @@ async def run_import_all(
             list_cinemas_use_case.InputData()
         )
 
-        async def _import_cinema(
+        async def _import_one(
             cinema: ListCinemasUseCase.CinemaData,
         ) -> CinemaImportResult:
             print(f"  Importing {cinema.name}...")
@@ -152,6 +152,14 @@ async def run_import_all(
                     updated_count=output.updated_count,
                     skipped_screenings_count=output.skipped_count,
                 )
+
+        semaphore = asyncio.Semaphore(2)
+
+        async def _import_cinema(
+            cinema: ListCinemasUseCase.CinemaData,
+        ) -> CinemaImportResult:
+            async with semaphore:
+                return await _import_one(cinema)
 
         return list(
             await asyncio.gather(*[_import_cinema(c) for c in cinemas_response.cinemas])
