@@ -43,6 +43,7 @@ from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseC
 from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
 from marquise.application.use_cases.get_movie import GetMovieUseCase
 from marquise.application.use_cases.get_screening import GetScreeningUseCase
+from marquise.application.use_cases.import_screenings import ImportScreeningsCommand
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.application.use_cases.list_movies import ListMoviesUseCase
 from marquise.application.use_cases.list_registry_sources import (
@@ -68,6 +69,7 @@ __all__ = [
     "CreateCinemaUseCase",
     "CreateMissingMoviesCommand",
     "CreateScreeningsCommand",
+    "ImportScreeningsCommand",
     "CreateSourceUseCase",
     "DeleteCinemaUseCase",
     "DeleteSourceUseCase",
