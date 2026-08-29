@@ -1,13 +1,10 @@
 # Changelog
 
-## 2026-08-27
-
-### v0.1.8
-
-- **Use configured screening-list queries**: cinema and movie screening routes execute reader-backed queries directly. Closes #208.
+## 2026-08-29
 
 ### v0.1.7
 
+- **Use configured screening-list queries**: cinema and movie screening routes execute reader-backed queries directly. Closes #208.
 - **Execute configured read use cases directly**: cinema, movie, and screening routes now construct use-case DTOs without pass-through controllers. Closes #188.
 - **Cache screening search**: `GET /v1/screenings` responses use a bounded in-memory cache (default 1-hour TTL), with separate fixed-length keys for each query string. Closes #205.
 
