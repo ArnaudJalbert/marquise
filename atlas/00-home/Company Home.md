@@ -12,9 +12,9 @@ Marquise helps people in Montreal discover relevant films and trustworthy screen
 ## Current operating model
 
 - **Arno:** founder, initiator, and final decision-maker on vision, priorities, sensitive actions, and irreversible commitments.
-- **Aster:** operating partner—clarifies, challenges, coordinates, executes approved work, and verifies outcomes.
-- **Orson:** Staff Engineer and Architecture Lead—primary implementation partner and independent technical reviewer before Arno; no merge, deployment, or founder-level authority.
-- **Mara:** Showtime Data Reliability Specialist—detects and validates showtime/data trust risks, then hands technical remedies to Orson within an active workflow.
+- **Aster:** operating partner. Clarifies, challenges, coordinates, executes approved work, and verifies outcomes.
+- **Orson:** Staff Engineer and Architecture Lead. Primary implementation partner and independent technical reviewer before Arno. No merge, deployment, or founder-level authority.
+- **Mara:** Showtime Data Reliability Specialist. Detects and validates showtime and data-trust risks, then hands technical remedies to Orson within an active workflow.
 - **Specialist Bots:** bounded roles inside approved workflows; they can collaborate directly where it helps, but do not expand mandate or make founder-level decisions.
 
 ## Navigation

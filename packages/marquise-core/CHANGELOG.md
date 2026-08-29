@@ -6,7 +6,7 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ### v0.2.19
 
-- **Centralize cinema screening imports**: move fetch, movie reconciliation, title mapping, and screening persistence into one injected application command used by both CLI import paths.
+- **Centralize cinema screening imports**: use one injected application command for fetch, movie reconciliation, title mapping, and screening persistence in both CLI import paths.
 
 ### v0.2.18
 

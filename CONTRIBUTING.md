@@ -286,9 +286,9 @@ Component tests use **Vitest** + **Testing Library**. No live HTTP in unit tests
 
 Pull requests to `main` run the repository workflows:
 
-- `quality`: `ruff format --check`, `ruff check`, `ty check packages/marquise-core/src`, and core unit tests with the 70% coverage gate. Import-boundary validation remains a local/documented architectural check, not a current CI step.
-- `integration`: `packages/marquise-core/tests/integration_tests/`, after verifying the required `DATABASE_URL`, `SUPABASE_URL`, and `SUPABASE_PUBLISHABLE_KEY` secrets.
-- `release-validation`: release/package validation checks.
+- `quality`: `ruff format --check`, `ruff check`, `ty check packages/marquise-core/src`, and core unit tests with the 70% coverage gate. Import-boundary validation remains a local architectural check, not a CI step.
+- `integration`: `packages/marquise-core/tests/integration_tests/`, after verifying `DATABASE_URL`, `SUPABASE_URL`, and `SUPABASE_PUBLISHABLE_KEY`.
+- `release-validation`: release and package checks.
 
 The exact trigger, command, blocking behavior, and environment wiring are defined by the workflow files in [`.github/workflows/`](.github/workflows/). In particular, `ty` is currently a blocking quality step; do not describe it as advisory here. The integration workflow is pull-request-triggered, not a manual-only job.
 
@@ -341,7 +341,7 @@ Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
 
 ### Delivery process
 
-- [Atlas Documentation and Delivery Workflow](atlas/50-processes/Documentation%20and%20Delivery%20Workflow.md) — issue planning, PRs, review, and verification gates
+- [Atlas Documentation and Delivery Workflow](atlas/50-processes/Documentation%20and%20Delivery%20Workflow.md): issue planning, PRs, review, and verification gates
 - [Pull request template](.github/PULL_REQUEST_TEMPLATE.md)
 
 ### Documentation
