@@ -7,6 +7,8 @@ review_date:
 
 # Project: <name>
 
+Use this only for work spanning several GitHub issues or PRs. It records why the work matters, its boundaries, and how success is measured.
+
 ## Outcome
 
 - Problem:
