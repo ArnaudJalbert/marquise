@@ -7,7 +7,7 @@ review_date: 2026-09-30
 
 # Code Review and Constructive Challenge
 
-Use [[Documentation and Delivery Workflow]] for the repository PR template, story/brief handoff, and verification gates.
+Use [[Documentation and Delivery Workflow]] for the PR template, issue handoff, and verification gates.
 
 ## Rule
 

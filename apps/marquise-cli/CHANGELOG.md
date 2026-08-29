@@ -4,7 +4,7 @@
 
 ### v0.1.13
 
-- **Use the shared import workflow**: single-cinema and bulk imports now execute the factory-provided `ImportScreeningsCommand` instead of duplicating orchestration in the CLI.
+- **Use the shared import workflow**: single-cinema and bulk imports now use the factory-provided `ImportScreeningsCommand`.
 
 ### v0.1.12
 

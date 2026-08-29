@@ -48,7 +48,7 @@ From `web/`: `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
 
 ## Documentation
 
-- [CONTRIBUTING.md](CONTRIBUTING.md) — setup, commands, and CI
-- [AGENTS.md](AGENTS.md) — developer and AI-assistant rules
-- [Atlas Documentation and Delivery Workflow](atlas/50-processes/Documentation%20and%20Delivery%20Workflow.md) — issue planning, PRs, review, and verification
-- [docs/](docs/) — detailed setup, sources, release, and deployment notes
+- [CONTRIBUTING.md](CONTRIBUTING.md): setup, commands, and CI
+- [AGENTS.md](AGENTS.md): developer and AI-assistant rules
+- [Atlas Documentation and Delivery Workflow](atlas/50-processes/Documentation%20and%20Delivery%20Workflow.md): issue planning, PRs, review, and verification
+- [docs/](docs/): detailed setup, sources, release, and deployment notes

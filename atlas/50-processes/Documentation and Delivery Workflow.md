@@ -5,7 +5,7 @@ owner: Aster
 review_date: 2026-09-30
 ---
 
-# Documentation and Delivery Workflow
+# Documentation and delivery workflow
 
 Rules for keeping Atlas and GitHub useful.
 
@@ -40,7 +40,7 @@ Start every Bot-authored Issue, PR, or comment with `[agent:<name>]`. Use `[[to:
 [agent:mara] [[to:orson]] Review request: source markup changed.
 ```
 
-Aster’s router forwards tagged requests. Untagged comments do not notify Bots.
+Aster's router forwards tagged requests. Untagged comments do not notify Bots.
 
 ## Pull requests
 
