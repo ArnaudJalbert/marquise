@@ -152,6 +152,16 @@ Rationale for each → [docs/architecture.md](docs/architecture.md).
 
 ---
 
+## Review contract
+
+- AI-authored code requires review by a different person, Bot, or fresh temporary reviewer.
+- Reviews lead with the strongest material objection, if one exists; otherwise they state what they tried to falsify and the residual risk. Use tests, measurements, code, or documented constraints as evidence.
+- Authors evaluate feedback rather than accepting it reflexively; reviewers withdraw findings disproved by evidence.
+- Unresolved routine technical disagreements go to Aster. Product direction, major architecture, irreversible migrations, security posture, cost, and priority go to Arno.
+- Full workflow: [Code Review and Constructive Challenge](atlas/50-processes/Code%20Review%20and%20Constructive%20Challenge.md).
+
+---
+
 ## Detailed guidelines
 
 Repo-specific detail lives in `docs/` — read when the task touches that area:

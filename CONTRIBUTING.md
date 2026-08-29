@@ -330,7 +330,9 @@ Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
 
 ### All changes
 
-- [ ] Issue linked (`Closes #N`)
+- [ ] Issue linked (`Closes #N`), or the PR body records the acceptance criteria for a trivial documentation/metadata change
+- [ ] Independently reviewed under the [Code Review and Constructive Challenge](atlas/50-processes/Code%20Review%20and%20Constructive%20Challenge.md) process
+- [ ] Current-head CI is green and no blocking review thread remains unresolved
 
 ## Reporting issues
 
