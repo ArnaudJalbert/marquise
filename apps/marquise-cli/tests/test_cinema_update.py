@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from cli_helpers import make_cinema_data, mock_use_case
+from conftest import make_cinema_data, mock_use_case
 from marquise import CinemaNotFoundError, ListCinemasUseCase, UpdateCinemaUseCase
 from marquise_cli.cinema_commands.update_command import run_update
 
