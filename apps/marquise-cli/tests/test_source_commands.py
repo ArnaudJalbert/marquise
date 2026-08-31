@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 
 import pytest
 
-from conftest import make_cinema_data, mock_use_case
+from cli_helpers import make_cinema_data, mock_use_case
 from marquise import (
     AssignSourceUseCase,
     CreateSourceUseCase,
