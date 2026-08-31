@@ -45,8 +45,6 @@ async def test_cinema_list_success(
         ListCinemasUseCase.OutputData(cinemas=cinemas, total=len(cinemas))
     )
     mock_factory.list_cinemas_use_case = list_cinemas_use_case
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
 
     await run_list_cinemas(mock_factory)
 
@@ -74,8 +72,6 @@ async def test_cinema_list_empty(
         ListCinemasUseCase.OutputData(cinemas=[], total=0)
     )
     mock_factory.list_cinemas_use_case = list_cinemas_use_case
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
 
     await run_list_cinemas(mock_factory)
 
@@ -95,8 +91,6 @@ async def test_cinema_list_failure(
     )
     list_cinemas_use_case.execute.side_effect = ValueError("Something went wrong")
     mock_factory.list_cinemas_use_case = list_cinemas_use_case
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
 
     with pytest.raises(ValueError, match="Something went wrong"):
         await run_list_cinemas(mock_factory)
@@ -146,8 +140,6 @@ async def test_cinema_list_verbose(
     )
     mock_factory.list_cinemas_use_case = list_cinemas_use_case
     mock_factory.list_cinema_source_assignments_query = mock_assignment_query
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
 
     await run_list_cinemas(mock_factory, verbose=True)
 
@@ -184,8 +176,6 @@ async def test_cinema_list_renders_markup_like_cinema_name(
         )
     )
     mock_factory.list_cinemas_use_case = list_cinemas_use_case
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
 
     await run_list_cinemas(mock_factory)
 
@@ -220,8 +210,6 @@ async def test_cinema_list_with_name_filter(
         ListCinemasUseCase.OutputData(cinemas=[], total=0)
     )
     mock_factory.list_cinemas_use_case = list_cinemas_use_case
-    mock_factory.initialize = AsyncMock()
-    mock_factory.shutdown = AsyncMock()
 
     await run_list_cinemas(mock_factory, name="Parc")
 
