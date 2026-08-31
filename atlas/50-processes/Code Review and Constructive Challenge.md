@@ -7,6 +7,8 @@ review_date: 2026-09-30
 
 # Code Review and Constructive Challenge
 
+Use [[Documentation and Delivery Workflow]] for the PR template, issue handoff, and verification gates.
+
 ## Rule
 
 No rubber stamps. The author and reviewer challenge the work, not each other. Evidence beats confidence; changing your mind is good work.

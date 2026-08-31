@@ -4,6 +4,7 @@ Enforced standards for contributors and AI assistants.
 
 | Document | Purpose |
 |----------|---------|
+| [Atlas Documentation and Delivery Workflow](atlas/50-processes/Documentation%20and%20Delivery%20Workflow.md) | Issue planning, PRs, reviews, verification gates |
 | [Atlas Clean Architecture](atlas/50-processes/Clean%20Architecture.md) | Design principles: layers, DI, testability |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | This repository: setup, commands, paths, CI |
 | [docs/](docs/) | Detailed repo-specific guidelines (read on demand) |

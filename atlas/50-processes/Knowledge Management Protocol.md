@@ -6,19 +6,19 @@ owner: Aster
 
 # Knowledge Management Protocol
 
-This protocol implements the source-of-truth boundary established by [[../70-decisions-and-reviews/Marquise Atlas as Company Knowledge Base]] and supports the navigation conventions in [[../README]].
+This protocol implements the source-of-truth boundary established by [[../70-decisions-and-reviews/Marquise Atlas as Company Knowledge Base]] and supports the navigation conventions in [[../README]]. The practical execution loop is [[Documentation and Delivery Workflow]].
 
 ## Source-of-truth boundaries
 
-- **GitHub (`ArnaudJalbert/marquise`)**: code, issues, PRs, CI, releases, deployments, and implementation-level records.
-- **Marquise Atlas**: strategic context, operating procedures, decision records, research, agent charters, and project briefs.
-- **Personal vault**: private founder thinking and personal notes.
+- **GitHub Issues**: planning, brainstorming, research, proposals, task context, and implementation records.
+- **GitHub PRs**: code review, checks, and delivery history.
+- **Marquise Atlas**: broad strategy, principles, operating procedures, agent charters, durable decisions, and validated learning.
 
 ## Rules
 
-1. Link GitHub records; do not manually mirror their live status in Atlas.
-2. Record decisions that are durable, consequential, or likely to be revisited.
-3. Give active notes a status and owner where useful.
+1. Keep active planning in GitHub Issues; use `type:idea`, `type:research`, or `type:proposal` as appropriate.
+2. Link GitHub records; do not manually mirror their live status in Atlas.
+3. Record only durable, consequential decisions and validated learning in Atlas.
 4. Archive rather than delete superseded organizational knowledge when history matters.
 5. Keep sensitive material out of broadly accessible notes and repositories.
 
