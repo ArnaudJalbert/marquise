@@ -64,7 +64,7 @@ Use `/opt/data/bin/gh issue` and `/opt/data/bin/gh api` with the explicit reposi
 
 ## Pull requests and code
 
-Follow [[Opening a Pull Request]] for branching, worktrees, tests, commits, PR creation, CI checks, and merge boundaries. Follow [[Bug Finding to Issue and PR]] for validated data-reliability findings.
+Follow [[Documentation and Delivery Workflow]] for the PR template, acceptance criteria, review, CI, and verification gates. Use [[../../CONTRIBUTING|CONTRIBUTING.md]] for branching, test, and commit commands.
 
 Never treat a PR as proof that a bug is fixed. Verification requires the relevant review, merge, deployment, and post-merge checks when those actions are authorized.
 
@@ -80,6 +80,6 @@ Never treat a PR as proof that a bug is fixed. Verification requires the relevan
 
 ## Related processes
 
-- [[Opening a Pull Request]]
-- [[Bug Finding to Issue and PR]]
+- [[Documentation and Delivery Workflow]]
 - [[Knowledge Management Protocol]]
+- [[Code Review and Constructive Challenge]]

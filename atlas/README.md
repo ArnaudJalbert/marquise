@@ -8,13 +8,12 @@ It is the source of truth for strategy, product and operational context, agent c
 
 - **This vault:** company knowledge and operating context.
 - **`ArnaudJalbert/marquise`:** code, issues, pull requests, CI, releases, deployments, and implementation history.
-- **Arno’s personal vault:** private founder thinking and personal notes.
 
 Do not duplicate GitHub records here. Link to the relevant GitHub URL instead.
 
 ## Navigation
 
-Start at [[00-home/Company Home]].
+Start at [[00-home/Company Home]]. Read [[50-processes/Documentation and Delivery Workflow]] for the execution loop.
 
 ## Folder map
 

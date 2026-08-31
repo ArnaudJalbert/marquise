@@ -1,7 +1,6 @@
 # Contributing to Marquise
 
-This repository — setup, commands, paths, and CI. For design principles see
-[Atlas Clean Architecture](atlas/50-processes/Clean%20Architecture.md). For enforced rules see [AGENTS.md](AGENTS.md).
+Repository setup, commands, paths, and CI. See [Atlas Documentation and Delivery Workflow](atlas/50-processes/Documentation%20and%20Delivery%20Workflow.md) for delivery process, [Atlas Clean Architecture](atlas/50-processes/Clean%20Architecture.md) for design rules, and [AGENTS.md](AGENTS.md) for enforced rules.
 
 ---
 
@@ -285,16 +284,13 @@ Component tests use **Vitest** + **Testing Library**. No live HTTP in unit tests
 
 ## CI pipeline
 
-Every push and PR to `main` runs the `quality` job:
+Pull requests to `main` run the repository workflows:
 
-1. `ruff format --check`
-2. `ruff check`
-3. `ty check packages/marquise-core/src` — non-blocking (see #34)
-4. `pytest packages/marquise-core/tests/unit_tests/ --cov=marquise --cov-fail-under=70`
-5. Import boundary check (import-linter)
+- `quality`: `ruff format --check`, `ruff check`, `ty check packages/marquise-core/src`, and core unit tests with the 70% coverage gate. Import-boundary validation remains a local architectural check, not a CI step.
+- `integration`: `packages/marquise-core/tests/integration_tests/`, after verifying `DATABASE_URL`, `SUPABASE_URL`, and `SUPABASE_PUBLISHABLE_KEY`.
+- `release-validation`: release and package checks.
 
-The `integration` job (manual trigger) runs
-`packages/marquise-core/tests/integration_tests/` with secret `DATABASE_URL`.
+The exact trigger, command, blocking behavior, and environment wiring are defined by the workflow files in [`.github/workflows/`](.github/workflows/). In particular, `ty` is currently a blocking quality step; do not describe it as advisory here. The integration workflow is pull-request-triggered, not a manual-only job.
 
 **CI gate**: 70% minimum. **Target**: 80%+ overall, 100% for `domain/` and
 `application/`.
@@ -342,6 +338,11 @@ Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
 - **Security**: private vulnerability report on GitHub — no public issues
 
 ## Further reading
+
+### Delivery process
+
+- [Atlas Documentation and Delivery Workflow](atlas/50-processes/Documentation%20and%20Delivery%20Workflow.md): issue planning, PRs, review, and verification gates
+- [Pull request template](.github/PULL_REQUEST_TEMPLATE.md)
 
 ### Documentation
 
