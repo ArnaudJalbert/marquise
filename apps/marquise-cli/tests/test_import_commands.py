@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 
 import pytest
 
-from cli_helpers import make_cinema_data
+from conftest import make_cinema_data
 from marquise import (
     CinemaNotFoundError,
     CinemaSourceAssignmentNotFoundError,

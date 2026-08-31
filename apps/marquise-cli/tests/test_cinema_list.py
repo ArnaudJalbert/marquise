@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, create_autospec
 
 import pytest
 
-from cli_helpers import make_cinema_data, mock_use_case
+from conftest import make_cinema_data, mock_use_case
 from marquise import ListCinemaSourceAssignmentsQuery, ListCinemasUseCase
 from marquise_cli.cinema_commands.list_command import run_list_cinemas
 
