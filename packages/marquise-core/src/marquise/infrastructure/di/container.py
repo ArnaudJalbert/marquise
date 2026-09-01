@@ -42,10 +42,9 @@ from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
-from marquise.application.use_cases.patch_screening import PatchScreeningUseCase
-from marquise.application.use_cases.replace_screening import ReplaceScreeningUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
+from marquise.application.use_cases.update_screening import UpdateScreeningUseCase
 from marquise.infrastructure.di.import_use_cases import (
     build_create_movies_use_case,
     build_create_screenings_use_case,
@@ -358,12 +357,8 @@ class Container:
         )
 
     @property
-    def _patch_screening_use_case(self) -> PatchScreeningUseCase:
-        return PatchScreeningUseCase(screening_repository=self._screening_repository)
-
-    @property
-    def _replace_screening_use_case(self) -> ReplaceScreeningUseCase:
-        return ReplaceScreeningUseCase(
+    def _update_screening_use_case(self) -> UpdateScreeningUseCase:
+        return UpdateScreeningUseCase(
             screening_repository=self._screening_repository,
             movie_repository=self._movie_repository,
             cinema_repository=self._cinema_repository,
@@ -500,14 +495,9 @@ class Container:
         return self._create_screening_use_case
 
     @property
-    def patch_screening_use_case(self) -> PatchScreeningUseCase:
-        """Public patch-screening use case."""
-        return self._patch_screening_use_case
-
-    @property
-    def replace_screening_use_case(self) -> ReplaceScreeningUseCase:
-        """Public replace-screening use case."""
-        return self._replace_screening_use_case
+    def update_screening_use_case(self) -> UpdateScreeningUseCase:
+        """Public update-screening use case."""
+        return self._update_screening_use_case
 
     @property
     def delete_screening_use_case(self) -> DeleteScreeningUseCase:

@@ -6,7 +6,7 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ### v0.2.20
 
-- **Add screening mutation use cases**: `CreateScreeningUseCase`, `PatchScreeningUseCase`, `ReplaceScreeningUseCase`, and `DeleteScreeningUseCase` are exposed through `MarquiseFactory` and the public facade. DELETE is a hard delete. Closes #248.
+- **Add screening mutation use cases**: `CreateScreeningUseCase`, `UpdateScreeningUseCase`, and `DeleteScreeningUseCase` are exposed through `MarquiseFactory` and the public facade. Update supports partial or full field changes via omitted vs explicit values. DELETE is a hard delete. Closes #248.
 
 ## 2026-08-29
 

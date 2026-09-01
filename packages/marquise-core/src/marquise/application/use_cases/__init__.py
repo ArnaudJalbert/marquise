@@ -22,10 +22,9 @@ from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
-from marquise.application.use_cases.patch_screening import PatchScreeningUseCase
-from marquise.application.use_cases.replace_screening import ReplaceScreeningUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
+from marquise.application.use_cases.update_screening import UpdateScreeningUseCase
 
 __all__ = [
     "AssignSourceUseCase",
@@ -44,8 +43,7 @@ __all__ = [
     "ListCinemasUseCase",
     "ListRegistrySourcesUseCase",
     "ListSourcesUseCase",
-    "PatchScreeningUseCase",
-    "ReplaceScreeningUseCase",
+    "UpdateScreeningUseCase",
     "UnassignSourceUseCase",
     "UpdateCinemaUseCase",
 ]
