@@ -464,3 +464,118 @@ async def test_find_distinct_movies_by_cinema_with_limit_and_offset(
 
     assert page.total == 3
     assert len(page.rows) == 2
+
+
+@pytest.mark.asyncio
+async def test_replace_updates_all_fields_by_id(
+    screening_gateway: SupabaseScreeningGateway,
+    gateway: SupabaseCinemaGateway,
+    movie_gateway: SupabaseMovieGateway,
+) -> None:
+    """Verify replace writes identity and optional fields for a known ID."""
+    await _seed_parents(gateway, movie_gateway)
+    await screening_gateway.save(
+        screening_id="scr-replace-001",
+        movie_id="mov-001",
+        cinema_id="cin-001",
+        showtime=datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC),
+        ticket_url="https://old.example/t",
+        room="Salle 1",
+        language="V.F.",
+    )
+
+    replaced = await screening_gateway.replace(
+        screening_id="scr-replace-001",
+        movie_id="mov-002",
+        cinema_id="cin-003",
+        showtime=datetime(2026, 6, 8, 21, 0, 0, tzinfo=UTC),
+        ticket_url=None,
+        room="Salle 9",
+        language="V.O.",
+    )
+
+    assert replaced is not None
+    assert replaced["id"] == "scr-replace-001"
+    assert replaced["movie_id"] == "mov-002"
+    assert replaced["cinema_id"] == "cin-003"
+    assert replaced["ticket_url"] is None
+    assert replaced["room"] == "Salle 9"
+    assert replaced["language"] == "V.O."
+
+    found = await screening_gateway.find_by_id("scr-replace-001")
+    assert found is not None
+    assert found["movie__id"] == "mov-002"
+    assert found["cinema__id"] == "cin-003"
+
+
+@pytest.mark.asyncio
+async def test_replace_missing_returns_none(
+    screening_gateway: SupabaseScreeningGateway,
+) -> None:
+    """Verify replace returns None when the screening ID does not exist."""
+    result = await screening_gateway.replace(
+        screening_id="scr-replace-missing",
+        movie_id="mov-001",
+        cinema_id="cin-001",
+        showtime=datetime(2026, 6, 8, 21, 0, 0, tzinfo=UTC),
+    )
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_replace_raises_on_identity_conflict(
+    screening_gateway: SupabaseScreeningGateway,
+    gateway: SupabaseCinemaGateway,
+    movie_gateway: SupabaseMovieGateway,
+) -> None:
+    """Verify replace raises GatewayError when identity collides."""
+    await _seed_parents(gateway, movie_gateway)
+    showtime = datetime(2026, 6, 9, 19, 0, 0, tzinfo=UTC)
+    await screening_gateway.save(
+        screening_id="scr-replace-conflict-a",
+        movie_id="mov-001",
+        cinema_id="cin-001",
+        showtime=showtime,
+    )
+    await screening_gateway.save(
+        screening_id="scr-replace-conflict-b",
+        movie_id="mov-002",
+        cinema_id="cin-001",
+        showtime=datetime(2026, 6, 10, 19, 0, 0, tzinfo=UTC),
+    )
+
+    with pytest.raises(GatewayError):
+        await screening_gateway.replace(
+            screening_id="scr-replace-conflict-b",
+            movie_id="mov-001",
+            cinema_id="cin-001",
+            showtime=showtime,
+        )
+
+
+@pytest.mark.asyncio
+async def test_delete_removes_row(
+    screening_gateway: SupabaseScreeningGateway,
+    gateway: SupabaseCinemaGateway,
+    movie_gateway: SupabaseMovieGateway,
+) -> None:
+    """Verify delete removes the screening and returns True."""
+    await _seed_parents(gateway, movie_gateway)
+    await screening_gateway.save(
+        screening_id="scr-delete-001",
+        movie_id="mov-001",
+        cinema_id="cin-001",
+        showtime=datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC),
+    )
+
+    deleted = await screening_gateway.delete("scr-delete-001")
+    assert deleted is True
+    assert await screening_gateway.find_by_id("scr-delete-001") is None
+
+
+@pytest.mark.asyncio
+async def test_delete_missing_returns_false(
+    screening_gateway: SupabaseScreeningGateway,
+) -> None:
+    """Verify delete returns False when the screening ID does not exist."""
+    assert await screening_gateway.delete("scr-delete-missing") is False

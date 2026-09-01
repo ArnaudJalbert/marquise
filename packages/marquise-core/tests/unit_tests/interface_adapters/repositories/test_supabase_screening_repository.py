@@ -412,3 +412,100 @@ async def test_find_distinct_movies_by_cinema_empty() -> None:
 
     assert result.items == []
     assert result.total == 0
+
+
+@pytest.mark.asyncio
+async def test_replace(
+    sample_screening: Screening,
+    sample_cinema: Cinema,
+    sample_movie: Movie,
+) -> None:
+    """Test replace delegates to the gateway and maps the result."""
+    mock_gateway = create_autospec(ScreeningGateway, instance=True)
+    mock_gateway.replace.return_value = {
+        "id": "scr-123",
+        "movie_id": "mov-456",
+        "cinema_id": "cin-789",
+        "showtime": datetime(2026, 6, 8, 21, 0, 0),
+        "external_id": None,
+        "ticket_url": "https://tickets.example/1",
+        "room": "Salle 4",
+        "language": "V.O.",
+    }
+    updated = Screening(
+        id=sample_screening.id,
+        movie=sample_movie,
+        cinema=sample_cinema,
+        showtime=Showtime(value=datetime(2026, 6, 8, 21, 0, 0, tzinfo=UTC)),
+        ticket_url="https://tickets.example/1",
+        room="Salle 4",
+        language="V.O.",
+    )
+
+    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    result = await repo.replace(updated)
+
+    assert result.id == ScreeningId(value="scr-123")
+    assert result.movie == sample_movie
+    assert result.cinema == sample_cinema
+    assert result.showtime.value == datetime(2026, 6, 8, 21, 0, 0, tzinfo=UTC)
+    assert result.ticket_url == "https://tickets.example/1"
+    mock_gateway.replace.assert_awaited_once_with(
+        screening_id="scr-123",
+        movie_id="mov-456",
+        cinema_id="cin-789",
+        showtime=datetime(2026, 6, 8, 21, 0, 0, tzinfo=UTC),
+        external_id=None,
+        ticket_url="https://tickets.example/1",
+        room="Salle 4",
+        language="V.O.",
+    )
+
+
+@pytest.mark.asyncio
+async def test_replace_raises_not_found(sample_screening: Screening) -> None:
+    """Test replace raises ScreeningNotFoundError when the gateway misses."""
+    mock_gateway = create_autospec(ScreeningGateway, instance=True)
+    mock_gateway.replace.return_value = None
+
+    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    with pytest.raises(ScreeningNotFoundError, match="scr-123"):
+        await repo.replace(sample_screening)
+
+
+@pytest.mark.asyncio
+async def test_replace_raises_already_exists_on_gateway_error(
+    sample_screening: Screening,
+) -> None:
+    """Test replace translates a unique-constraint GatewayError."""
+    mock_gateway = create_autospec(ScreeningGateway, instance=True)
+    mock_gateway.replace.side_effect = GatewayError("already exists")
+
+    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    with pytest.raises(ScreeningAlreadyExistsError, match="already exists"):
+        await repo.replace(sample_screening)
+
+
+@pytest.mark.asyncio
+async def test_delete_delegates_to_gateway() -> None:
+    """Test delete delegates to the gateway and returns True on success."""
+    mock_gateway = create_autospec(ScreeningGateway, instance=True)
+    mock_gateway.delete.return_value = True
+
+    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    result = await repo.delete(ScreeningId(value="scr-123"))
+
+    assert result is True
+    mock_gateway.delete.assert_awaited_once_with(screening_id="scr-123")
+
+
+@pytest.mark.asyncio
+async def test_delete_missing() -> None:
+    """Test delete returns False when the gateway returns False."""
+    mock_gateway = create_autospec(ScreeningGateway, instance=True)
+    mock_gateway.delete.return_value = False
+
+    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    result = await repo.delete(ScreeningId(value="scr-missing"))
+
+    assert result is False

@@ -24,9 +24,11 @@ from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.create_missing_movies import (
     CreateMissingMoviesCommand,
 )
+from marquise.application.use_cases.create_screening import CreateScreeningUseCase
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
+from marquise.application.use_cases.delete_screening import DeleteScreeningUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
 from marquise.application.use_cases.get_cinema import GetCinemaUseCase
 from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
@@ -40,6 +42,8 @@ from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
+from marquise.application.use_cases.patch_screening import PatchScreeningUseCase
+from marquise.application.use_cases.replace_screening import ReplaceScreeningUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.infrastructure.di.import_use_cases import (
@@ -346,6 +350,30 @@ class Container:
         return GetScreeningUseCase(screening_repository=self._screening_repository)
 
     @property
+    def _create_screening_use_case(self) -> CreateScreeningUseCase:
+        return CreateScreeningUseCase(
+            screening_repository=self._screening_repository,
+            movie_repository=self._movie_repository,
+            cinema_repository=self._cinema_repository,
+        )
+
+    @property
+    def _patch_screening_use_case(self) -> PatchScreeningUseCase:
+        return PatchScreeningUseCase(screening_repository=self._screening_repository)
+
+    @property
+    def _replace_screening_use_case(self) -> ReplaceScreeningUseCase:
+        return ReplaceScreeningUseCase(
+            screening_repository=self._screening_repository,
+            movie_repository=self._movie_repository,
+            cinema_repository=self._cinema_repository,
+        )
+
+    @property
+    def _delete_screening_use_case(self) -> DeleteScreeningUseCase:
+        return DeleteScreeningUseCase(screening_repository=self._screening_repository)
+
+    @property
     def _get_movie_screenings_query(self) -> GetMovieScreeningsQuery:
         return build_get_movie_screenings_query(self._pool_property, self._schema)
 
@@ -465,6 +493,26 @@ class Container:
     def get_screening_use_case(self) -> GetScreeningUseCase:
         """Public get-screening use case (no authentication required)."""
         return self._get_screening_use_case
+
+    @property
+    def create_screening_use_case(self) -> CreateScreeningUseCase:
+        """Public create-screening use case."""
+        return self._create_screening_use_case
+
+    @property
+    def patch_screening_use_case(self) -> PatchScreeningUseCase:
+        """Public patch-screening use case."""
+        return self._patch_screening_use_case
+
+    @property
+    def replace_screening_use_case(self) -> ReplaceScreeningUseCase:
+        """Public replace-screening use case."""
+        return self._replace_screening_use_case
+
+    @property
+    def delete_screening_use_case(self) -> DeleteScreeningUseCase:
+        """Public delete-screening use case."""
+        return self._delete_screening_use_case
 
     @property
     def get_movie_screenings_query(self) -> GetMovieScreeningsQuery:

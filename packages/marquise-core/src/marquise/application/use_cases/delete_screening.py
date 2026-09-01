@@ -1,0 +1,75 @@
+"""Delete screening use case."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from marquise.application.exceptions import ScreeningNotFoundError
+from marquise.application.repositories import ScreeningRepository
+from marquise.domain.value_objects import ScreeningId
+
+
+class DeleteScreeningUseCase:
+    """Use case for permanently deleting a screening by its ID.
+
+    This is a hard delete: the row is removed. Reversible suppression
+    is out of scope for the first screening-write release.
+    """
+
+    @dataclass(frozen=True, slots=True)
+    class InputData:
+        """Input data for deleting a screening.
+
+        Attributes:
+            screening_id: The unique identifier of the screening to delete.
+        """
+
+        screening_id: str
+
+        def __post_init__(self) -> None:
+            """Validate input data.
+
+            Raises:
+                ValueError: If the screening_id is empty or whitespace-only.
+            """
+            if not self.screening_id.strip():
+                raise ValueError("screening_id must not be empty")
+
+    @dataclass(frozen=True, slots=True)
+    class OutputData:
+        """Output data returned after successful screening deletion.
+
+        Attributes:
+            screening_id: The ID of the deleted screening.
+        """
+
+        screening_id: str
+
+    def __init__(self, screening_repository: ScreeningRepository) -> None:
+        """Initialize the use case.
+
+        Args:
+            screening_repository: A repository for screening persistence.
+        """
+        self.screening_repository = screening_repository
+
+    async def execute(self, request: InputData) -> OutputData:
+        """Permanently delete a screening by its ID.
+
+        Args:
+            request: The input data containing the screening ID.
+
+        Returns:
+            The output data containing the deleted screening's ID.
+
+        Raises:
+            ScreeningNotFoundError: If no screening with the given ID exists.
+        """
+        deleted = await self.screening_repository.delete(
+            screening_id=ScreeningId(value=request.screening_id)
+        )
+        if not deleted:
+            raise ScreeningNotFoundError(
+                f"A screening with ID '{request.screening_id}' was not found"
+            )
+        return self.OutputData(screening_id=request.screening_id)

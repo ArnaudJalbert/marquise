@@ -22,9 +22,11 @@ from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.create_missing_movies import (
     CreateMissingMoviesCommand,
 )
+from marquise.application.use_cases.create_screening import CreateScreeningUseCase
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
+from marquise.application.use_cases.delete_screening import DeleteScreeningUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
 from marquise.application.use_cases.get_cinema import GetCinemaUseCase
 from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
@@ -38,6 +40,8 @@ from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
+from marquise.application.use_cases.patch_screening import PatchScreeningUseCase
+from marquise.application.use_cases.replace_screening import ReplaceScreeningUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.infrastructure.di.container import Container
@@ -151,6 +155,26 @@ class MarquiseFactory:
     def get_screening_use_case(self) -> GetScreeningUseCase:
         """Configured use case for retrieving one screening."""
         return self._container.get_screening_use_case
+
+    @property
+    def create_screening_use_case(self) -> CreateScreeningUseCase:
+        """Configured use case for creating one screening."""
+        return self._container.create_screening_use_case
+
+    @property
+    def patch_screening_use_case(self) -> PatchScreeningUseCase:
+        """Configured use case for partially updating one screening."""
+        return self._container.patch_screening_use_case
+
+    @property
+    def replace_screening_use_case(self) -> ReplaceScreeningUseCase:
+        """Configured use case for fully replacing one screening."""
+        return self._container.replace_screening_use_case
+
+    @property
+    def delete_screening_use_case(self) -> DeleteScreeningUseCase:
+        """Configured use case for deleting one screening."""
+        return self._container.delete_screening_use_case
 
     @property
     def list_cinema_source_assignments_query(
