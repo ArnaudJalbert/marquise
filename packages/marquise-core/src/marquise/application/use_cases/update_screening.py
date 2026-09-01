@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from typing import cast
 
 from marquise.application.exceptions import CinemaNotFoundError, MovieNotFoundError
 from marquise.application.repositories import (
@@ -13,9 +14,9 @@ from marquise.application.repositories import (
 )
 from marquise.application.use_cases._screening_helpers import (
     UNSET,
-    as_provided_datetime,
-    as_provided_optional_str,
+    ScreeningDetailOutput,
     is_provided,
+    keep,
     reject_blank_when_provided,
     require_non_empty,
     require_timezone_aware_showtime,
@@ -74,47 +75,13 @@ class UpdateScreeningUseCase:
             if is_provided(self.cinema_id):
                 require_non_empty(str(self.cinema_id), "cinema_id")
             if is_provided(self.showtime):
-                require_timezone_aware_showtime(as_provided_datetime(self.showtime))
-            if is_provided(self.ticket_url):
-                reject_blank_when_provided(
-                    as_provided_optional_str(self.ticket_url), "ticket_url"
-                )
-            if is_provided(self.room):
-                reject_blank_when_provided(as_provided_optional_str(self.room), "room")
-            if is_provided(self.language):
-                reject_blank_when_provided(
-                    as_provided_optional_str(self.language), "language"
-                )
-            if is_provided(self.external_id):
-                reject_blank_when_provided(
-                    as_provided_optional_str(self.external_id), "external_id"
-                )
+                require_timezone_aware_showtime(cast(datetime, self.showtime))
+            for name in ("ticket_url", "room", "language", "external_id"):
+                value = getattr(self, name)
+                if is_provided(value):
+                    reject_blank_when_provided(cast(str | None, value), name)
 
-    @dataclass(frozen=True, slots=True)
-    class OutputData:
-        """Output data returned after a successful update.
-
-        Attributes:
-            id: The unique identifier of the updated screening.
-            movie_id: The screened movie's ID.
-            movie_title: The screened movie's title.
-            cinema_id: The hosting cinema's ID.
-            cinema_name: The hosting cinema's display name.
-            showtime: The screening time.
-            ticket_url: Link to purchase tickets (optional).
-            room: Room or auditorium name (optional).
-            language: Language or subtitle version (optional).
-        """
-
-        id: str
-        movie_id: str
-        movie_title: str
-        cinema_id: str
-        cinema_name: str
-        showtime: datetime
-        ticket_url: str | None = None
-        room: str | None = None
-        language: str | None = None
+    OutputData = ScreeningDetailOutput
 
     def __init__(
         self,
@@ -157,27 +124,7 @@ class UpdateScreeningUseCase:
         showtime = (
             existing.showtime
             if not is_provided(request.showtime)
-            else Showtime(value=as_provided_datetime(request.showtime))
-        )
-        external_id = (
-            existing.external_id
-            if not is_provided(request.external_id)
-            else as_provided_optional_str(request.external_id)
-        )
-        ticket_url = (
-            existing.ticket_url
-            if not is_provided(request.ticket_url)
-            else as_provided_optional_str(request.ticket_url)
-        )
-        room = (
-            existing.room
-            if not is_provided(request.room)
-            else as_provided_optional_str(request.room)
-        )
-        language = (
-            existing.language
-            if not is_provided(request.language)
-            else as_provided_optional_str(request.language)
+            else Showtime(value=cast(datetime, request.showtime))
         )
 
         updated = await self.screening_repository.replace(
@@ -186,14 +133,14 @@ class UpdateScreeningUseCase:
                 movie=movie,
                 cinema=cinema,
                 showtime=showtime,
-                external_id=external_id,
-                ticket_url=ticket_url,
-                room=room,
-                language=language,
+                external_id=keep(existing.external_id, request.external_id),
+                ticket_url=keep(existing.ticket_url, request.ticket_url),
+                room=keep(existing.room, request.room),
+                language=keep(existing.language, request.language),
             )
         )
 
-        return screening_output_data(self.OutputData, updated)
+        return screening_output_data(updated)
 
     async def _resolve_movie(self, movie_id: str | object, existing: Movie) -> Movie:
         if not is_provided(movie_id):

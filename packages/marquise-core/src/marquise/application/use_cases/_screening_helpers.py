@@ -2,18 +2,39 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 from typing import TypeVar, cast
 
 from marquise.domain.entities import Screening
 
-_OutputData = TypeVar("_OutputData")
+T = TypeVar("T")
 UNSET: object = object()
+
+
+@dataclass(frozen=True, slots=True)
+class ScreeningDetailOutput:
+    """Screening fields returned by create, get, and update."""
+
+    id: str
+    movie_id: str
+    movie_title: str
+    cinema_id: str
+    cinema_name: str
+    showtime: datetime
+    ticket_url: str | None = None
+    room: str | None = None
+    language: str | None = None
 
 
 def is_provided(value: object) -> bool:
     """Return whether an update input field was explicitly provided."""
     return value is not UNSET
+
+
+def keep(existing: T, incoming: object) -> T:
+    """Return ``existing`` when ``incoming`` was omitted, else ``incoming``."""
+    return existing if not is_provided(incoming) else cast(T, incoming)
 
 
 def reject_blank_when_provided(value: str | None, field_name: str) -> None:
@@ -34,22 +55,9 @@ def require_timezone_aware_showtime(showtime: datetime) -> None:
         raise ValueError("showtime must be timezone-aware")
 
 
-def as_provided_datetime(value: datetime | object) -> datetime:
-    """Narrow a provided update field to ``datetime`` after an ``is_provided`` check."""
-    return cast(datetime, value)
-
-
-def as_provided_optional_str(value: str | None | object) -> str | None:
-    """Narrow a provided optional string field after an ``is_provided`` check."""
-    return cast(str | None, value)
-
-
-def screening_output_data(
-    output_data_cls: type[_OutputData],
-    screening: Screening,
-) -> _OutputData:
-    """Build a screening use-case OutputData instance from a domain entity."""
-    return output_data_cls(
+def screening_output_data(screening: Screening) -> ScreeningDetailOutput:
+    """Build screening output data from a domain entity."""
+    return ScreeningDetailOutput(
         id=str(screening.id),
         movie_id=str(screening.movie.id),
         movie_title=screening.movie.title,
