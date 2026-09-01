@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 from unittest.mock import create_autospec
 
@@ -24,19 +25,25 @@ from marquise.domain.value_objects import CinemaId, MovieId, ScreeningId, Showti
 SHOWTIME = datetime(2026, 6, 27, 19, 30, tzinfo=UTC)
 
 
-def _movie() -> Movie:
+@pytest.fixture
+def movie() -> Movie:
+    """Provide a sample movie for create tests."""
     return Movie(id=MovieId(value="mov-1"), title="The Odyssey")
 
 
-def _cinema() -> Cinema:
+@pytest.fixture
+def cinema() -> Cinema:
+    """Provide a sample cinema for create tests."""
     return Cinema(id=CinemaId(value="cin-1"), name="Cinema One")
 
 
-def _screening() -> Screening:
+@pytest.fixture
+def screening(movie: Movie, cinema: Cinema) -> Screening:
+    """Provide a persisted screening returned by save."""
     return Screening(
         id=ScreeningId(value="scr-1"),
-        movie=_movie(),
-        cinema=_cinema(),
+        movie=movie,
+        cinema=cinema,
         showtime=Showtime(value=SHOWTIME),
         ticket_url="https://tickets.example/1",
         room="Salle 4",
@@ -44,49 +51,73 @@ def _screening() -> Screening:
     )
 
 
-def _input(**overrides: object) -> CreateScreeningUseCase.InputData:
-    values: dict[str, object] = {
-        "movie_id": "mov-1",
-        "cinema_id": "cin-1",
-        "showtime": SHOWTIME,
-        "ticket_url": "https://tickets.example/1",
-        "room": "Salle 4",
-        "language": "V.O.",
-    }
-    values.update(overrides)
-    return CreateScreeningUseCase.InputData(**values)  # type: ignore[arg-type]
+@pytest.fixture
+def screening_repository(screening: Screening) -> ScreeningRepository:
+    """Provide an autospecced screening repository with a successful save."""
+    repository = create_autospec(ScreeningRepository, instance=True)
+    repository.save.return_value = screening
+    return repository
 
 
-def _use_case() -> tuple[
-    CreateScreeningUseCase,
-    ScreeningRepository,
-    MovieRepository,
-    CinemaRepository,
-]:
-    screening_repo = create_autospec(ScreeningRepository, instance=True)
-    movie_repo = create_autospec(MovieRepository, instance=True)
-    cinema_repo = create_autospec(CinemaRepository, instance=True)
-    movie_repo.find_by_id.return_value = _movie()
-    cinema_repo.find_by_id.return_value = _cinema()
-    screening_repo.save.return_value = _screening()
-    return (
-        CreateScreeningUseCase(
-            screening_repository=screening_repo,
-            movie_repository=movie_repo,
-            cinema_repository=cinema_repo,
-        ),
-        screening_repo,
-        movie_repo,
-        cinema_repo,
+@pytest.fixture
+def movie_repository(movie: Movie) -> MovieRepository:
+    """Provide an autospecced movie repository that finds the sample movie."""
+    repository = create_autospec(MovieRepository, instance=True)
+    repository.find_by_id.return_value = movie
+    return repository
+
+
+@pytest.fixture
+def cinema_repository(cinema: Cinema) -> CinemaRepository:
+    """Provide an autospecced cinema repository that finds the sample cinema."""
+    repository = create_autospec(CinemaRepository, instance=True)
+    repository.find_by_id.return_value = cinema
+    return repository
+
+
+@pytest.fixture
+def use_case(
+    screening_repository: ScreeningRepository,
+    movie_repository: MovieRepository,
+    cinema_repository: CinemaRepository,
+) -> CreateScreeningUseCase:
+    """Provide a configured create-screening use case."""
+    return CreateScreeningUseCase(
+        screening_repository=screening_repository,
+        movie_repository=movie_repository,
+        cinema_repository=cinema_repository,
     )
 
 
-@pytest.mark.asyncio
-async def test_creates_screening_and_returns_output() -> None:
-    """A valid create looks up parents, saves, and returns output data."""
-    use_case, screening_repo, movie_repo, cinema_repo = _use_case()
+@pytest.fixture
+def create_input() -> Callable[..., CreateScreeningUseCase.InputData]:
+    """Build create input data with optional field overrides."""
 
-    result = await use_case.execute(_input())
+    def _create_input(**overrides: object) -> CreateScreeningUseCase.InputData:
+        values: dict[str, object] = {
+            "movie_id": "mov-1",
+            "cinema_id": "cin-1",
+            "showtime": SHOWTIME,
+            "ticket_url": "https://tickets.example/1",
+            "room": "Salle 4",
+            "language": "V.O.",
+        }
+        values.update(overrides)
+        return CreateScreeningUseCase.InputData(**values)  # type: ignore[arg-type]
+
+    return _create_input
+
+
+@pytest.mark.asyncio
+async def test_creates_screening_and_returns_output(
+    use_case: CreateScreeningUseCase,
+    screening_repository: ScreeningRepository,
+    movie_repository: MovieRepository,
+    cinema_repository: CinemaRepository,
+    create_input: Callable[..., CreateScreeningUseCase.InputData],
+) -> None:
+    """A valid create looks up parents, saves, and returns output data."""
+    result = await use_case.execute(create_input())
 
     assert result.id == "scr-1"
     assert result.movie_id == "mov-1"
@@ -97,70 +128,89 @@ async def test_creates_screening_and_returns_output() -> None:
     assert result.ticket_url == "https://tickets.example/1"
     assert result.room == "Salle 4"
     assert result.language == "V.O."
-    movie_repo.find_by_id.assert_awaited_once_with(MovieId(value="mov-1"))
-    cinema_repo.find_by_id.assert_awaited_once_with(CinemaId(value="cin-1"))
-    screening_repo.save.assert_awaited_once()
-    saved = screening_repo.save.await_args.args[0]
+    movie_repository.find_by_id.assert_awaited_once_with(MovieId(value="mov-1"))
+    cinema_repository.find_by_id.assert_awaited_once_with(CinemaId(value="cin-1"))
+    screening_repository.save.assert_awaited_once()
+    saved = screening_repository.save.await_args.args[0]
     assert saved.movie.id == MovieId(value="mov-1")
     assert saved.cinema.id == CinemaId(value="cin-1")
     assert saved.showtime.value == SHOWTIME
 
 
 @pytest.mark.asyncio
-async def test_raises_when_movie_missing() -> None:
+async def test_raises_when_movie_missing(
+    use_case: CreateScreeningUseCase,
+    screening_repository: ScreeningRepository,
+    movie_repository: MovieRepository,
+    create_input: Callable[..., CreateScreeningUseCase.InputData],
+) -> None:
     """Unknown movie IDs are rejected before save."""
-    use_case, screening_repo, movie_repo, _cinema_repo = _use_case()
-    movie_repo.find_by_id.return_value = None
+    movie_repository.find_by_id.return_value = None
 
     with pytest.raises(MovieNotFoundError, match="mov-1"):
-        await use_case.execute(_input())
+        await use_case.execute(create_input())
 
-    screening_repo.save.assert_not_awaited()
+    screening_repository.save.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_raises_when_cinema_missing() -> None:
+async def test_raises_when_cinema_missing(
+    use_case: CreateScreeningUseCase,
+    screening_repository: ScreeningRepository,
+    cinema_repository: CinemaRepository,
+    create_input: Callable[..., CreateScreeningUseCase.InputData],
+) -> None:
     """Unknown cinema IDs are rejected before save."""
-    use_case, screening_repo, _movie_repo, cinema_repo = _use_case()
-    cinema_repo.find_by_id.return_value = None
+    cinema_repository.find_by_id.return_value = None
 
     with pytest.raises(CinemaNotFoundError, match="cin-1"):
-        await use_case.execute(_input())
+        await use_case.execute(create_input())
 
-    screening_repo.save.assert_not_awaited()
+    screening_repository.save.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_raises_when_screening_already_exists() -> None:
+async def test_raises_when_screening_already_exists(
+    use_case: CreateScreeningUseCase,
+    screening_repository: ScreeningRepository,
+    create_input: Callable[..., CreateScreeningUseCase.InputData],
+) -> None:
     """A duplicate screening surfaces ScreeningAlreadyExistsError."""
-    use_case, screening_repo, _movie_repo, _cinema_repo = _use_case()
-    screening_repo.save.side_effect = ScreeningAlreadyExistsError("already exists")
+    screening_repository.save.side_effect = ScreeningAlreadyExistsError(
+        "already exists"
+    )
 
     with pytest.raises(ScreeningAlreadyExistsError, match="already exists"):
-        await use_case.execute(_input())
+        await use_case.execute(create_input())
 
 
-def test_input_rejects_empty_ids() -> None:
+def test_input_rejects_empty_ids(
+    create_input: Callable[..., CreateScreeningUseCase.InputData],
+) -> None:
     """Empty movie_id or cinema_id is rejected."""
     with pytest.raises(ValueError, match="movie_id must not be empty"):
-        _input(movie_id="  ")
+        create_input(movie_id="  ")
     with pytest.raises(ValueError, match="cinema_id must not be empty"):
-        _input(cinema_id="")
+        create_input(cinema_id="")
 
 
-def test_input_rejects_naive_showtime() -> None:
+def test_input_rejects_naive_showtime(
+    create_input: Callable[..., CreateScreeningUseCase.InputData],
+) -> None:
     """Naive showtimes are rejected at the use-case boundary."""
     with pytest.raises(ValueError, match="showtime must be timezone-aware"):
-        _input(showtime=datetime(2026, 6, 27, 19, 30))
+        create_input(showtime=datetime(2026, 6, 27, 19, 30))
 
 
-def test_input_rejects_blank_optionals_when_provided() -> None:
+def test_input_rejects_blank_optionals_when_provided(
+    create_input: Callable[..., CreateScreeningUseCase.InputData],
+) -> None:
     """Provided optional strings must not be whitespace-only."""
     with pytest.raises(ValueError, match="ticket_url must not be empty when provided"):
-        _input(ticket_url="  ")
+        create_input(ticket_url="  ")
     with pytest.raises(ValueError, match="room must not be empty when provided"):
-        _input(room="")
+        create_input(room="")
     with pytest.raises(ValueError, match="language must not be empty when provided"):
-        _input(language=" ")
+        create_input(language=" ")
     with pytest.raises(ValueError, match="external_id must not be empty when provided"):
-        _input(external_id="")
+        create_input(external_id="")

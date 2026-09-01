@@ -12,36 +12,50 @@ from marquise.application.use_cases.delete_screening import DeleteScreeningUseCa
 from marquise.domain.value_objects import ScreeningId
 
 
+@pytest.fixture
+def screening_repository() -> ScreeningRepository:
+    """Provide an autospecced screening repository for delete tests."""
+    return create_autospec(ScreeningRepository, instance=True)
+
+
+@pytest.fixture
+def use_case(screening_repository: ScreeningRepository) -> DeleteScreeningUseCase:
+    """Provide a configured delete-screening use case."""
+    return DeleteScreeningUseCase(screening_repository=screening_repository)
+
+
 @pytest.mark.asyncio
-async def test_deletes_and_returns_id() -> None:
+async def test_deletes_and_returns_id(
+    use_case: DeleteScreeningUseCase,
+    screening_repository: ScreeningRepository,
+) -> None:
     """A successful hard delete returns the deleted screening ID."""
-    screening_repo = create_autospec(ScreeningRepository, instance=True)
-    screening_repo.delete.return_value = True
-    use_case = DeleteScreeningUseCase(screening_repository=screening_repo)
+    screening_repository.delete.return_value = True
 
     result = await use_case.execute(
         DeleteScreeningUseCase.InputData(screening_id="scr-1")
     )
 
     assert result.screening_id == "scr-1"
-    screening_repo.delete.assert_awaited_once_with(
+    screening_repository.delete.assert_awaited_once_with(
         screening_id=ScreeningId(value="scr-1")
     )
 
 
 @pytest.mark.asyncio
-async def test_raises_when_screening_missing() -> None:
+async def test_raises_when_screening_missing(
+    use_case: DeleteScreeningUseCase,
+    screening_repository: ScreeningRepository,
+) -> None:
     """Deleting an unknown screening raises ScreeningNotFoundError."""
-    screening_repo = create_autospec(ScreeningRepository, instance=True)
-    screening_repo.delete.return_value = False
-    use_case = DeleteScreeningUseCase(screening_repository=screening_repo)
+    screening_repository.delete.return_value = False
 
     with pytest.raises(ScreeningNotFoundError, match="scr-missing"):
         await use_case.execute(
             DeleteScreeningUseCase.InputData(screening_id="scr-missing")
         )
 
-    screening_repo.delete.assert_awaited_once_with(
+    screening_repository.delete.assert_awaited_once_with(
         screening_id=ScreeningId(value="scr-missing")
     )
 
