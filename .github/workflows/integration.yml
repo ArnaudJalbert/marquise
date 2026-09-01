@@ -1,8 +1,10 @@
 name: Integration
 
 on:
-  pull_request:
-    branches: [main]
+  schedule:
+    # Nightly at 08:17 UTC (≈ 03:17–04:17 America/Montreal); offset avoids top-of-hour load
+    - cron: "17 8 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: read
