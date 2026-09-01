@@ -7,6 +7,11 @@ from datetime import datetime
 
 from marquise.application.exceptions import ScreeningNotFoundError
 from marquise.application.repositories import ScreeningRepository
+from marquise.application.use_cases._screening_helpers import (
+    reject_blank_when_provided,
+    require_non_empty,
+    screening_output_data,
+)
 from marquise.domain.entities import Screening
 from marquise.domain.value_objects import ScreeningId
 
@@ -44,16 +49,11 @@ class PatchScreeningUseCase:
                 ValueError: If screening_id is empty, or optional strings
                     are provided but whitespace-only.
             """
-            if not self.screening_id.strip():
-                raise ValueError("screening_id must not be empty")
-            if self.ticket_url is not None and not self.ticket_url.strip():
-                raise ValueError("ticket_url must not be empty when provided")
-            if self.room is not None and not self.room.strip():
-                raise ValueError("room must not be empty when provided")
-            if self.language is not None and not self.language.strip():
-                raise ValueError("language must not be empty when provided")
-            if self.external_id is not None and not self.external_id.strip():
-                raise ValueError("external_id must not be empty when provided")
+            require_non_empty(self.screening_id, "screening_id")
+            reject_blank_when_provided(self.ticket_url, "ticket_url")
+            reject_blank_when_provided(self.room, "room")
+            reject_blank_when_provided(self.language, "language")
+            reject_blank_when_provided(self.external_id, "external_id")
 
     @dataclass(frozen=True, slots=True)
     class OutputData:
@@ -114,10 +114,22 @@ class PatchScreeningUseCase:
                 movie=existing.movie,
                 cinema=existing.cinema,
                 showtime=existing.showtime,
-                external_id=request.external_id,
-                ticket_url=request.ticket_url,
-                room=request.room,
-                language=request.language,
+                external_id=(
+                    request.external_id
+                    if request.external_id is not None
+                    else existing.external_id
+                ),
+                ticket_url=(
+                    request.ticket_url
+                    if request.ticket_url is not None
+                    else existing.ticket_url
+                ),
+                room=request.room if request.room is not None else existing.room,
+                language=(
+                    request.language
+                    if request.language is not None
+                    else existing.language
+                ),
             )
         )
         if updated is None:
@@ -125,14 +137,4 @@ class PatchScreeningUseCase:
                 f"A screening with ID '{request.screening_id}' was not found"
             )
 
-        return self.OutputData(
-            id=str(updated.id),
-            movie_id=str(updated.movie.id),
-            movie_title=updated.movie.title,
-            cinema_id=str(updated.cinema.id),
-            cinema_name=updated.cinema.name,
-            showtime=updated.showtime.value,
-            ticket_url=updated.ticket_url,
-            room=updated.room,
-            language=updated.language,
-        )
+        return screening_output_data(self.OutputData, updated)

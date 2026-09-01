@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from marquise.application.exceptions import ScreeningNotFoundError
 from marquise.application.repositories import ScreeningRepository
+from marquise.application.use_cases._screening_helpers import require_non_empty
 from marquise.domain.value_objects import ScreeningId
 
 
@@ -32,8 +33,7 @@ class DeleteScreeningUseCase:
             Raises:
                 ValueError: If the screening_id is empty or whitespace-only.
             """
-            if not self.screening_id.strip():
-                raise ValueError("screening_id must not be empty")
+            require_non_empty(self.screening_id, "screening_id")
 
     @dataclass(frozen=True, slots=True)
     class OutputData:
