@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-01
+
+### v0.1.14
+
+- **Add user and role CLI commands**: create, search, update, and delete Supabase auth users; create and list roles stored in the database schema.
+
 ## 2026-08-29
 
 ### v0.1.13
