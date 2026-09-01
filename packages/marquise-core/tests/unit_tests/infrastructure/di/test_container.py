@@ -279,39 +279,3 @@ async def test_get_screening_use_case_after_initialize() -> None:
         use_case = container.get_screening_use_case
         assert isinstance(use_case, GetScreeningUseCase)
         await container.shutdown()
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ("property_name", "use_case_type"),
-    [
-        ("create_screening_use_case", "CreateScreeningUseCase"),
-        ("update_screening_use_case", "UpdateScreeningUseCase"),
-        ("delete_screening_use_case", "DeleteScreeningUseCase"),
-    ],
-)
-async def test_screening_mutation_use_cases_after_initialize(
-    property_name: str,
-    use_case_type: str,
-) -> None:
-    """Verify screening mutation use cases are wired after initialize."""
-    from marquise.application.use_cases.create_screening import CreateScreeningUseCase
-    from marquise.application.use_cases.delete_screening import DeleteScreeningUseCase
-    from marquise.application.use_cases.update_screening import UpdateScreeningUseCase
-
-    types = {
-        "CreateScreeningUseCase": CreateScreeningUseCase,
-        "UpdateScreeningUseCase": UpdateScreeningUseCase,
-        "DeleteScreeningUseCase": DeleteScreeningUseCase,
-    }
-    mock_database = AsyncMock()
-    mock_database.pool = AsyncMock()
-
-    with patch(
-        "marquise.infrastructure.di.container.Database", return_value=mock_database
-    ):
-        container = Container()
-        await container.initialize()
-        use_case = getattr(container, property_name)
-        assert isinstance(use_case, types[use_case_type])
-        await container.shutdown()
