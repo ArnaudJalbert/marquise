@@ -14,7 +14,6 @@ from marquise.application.repositories import (
 )
 from marquise.application.use_cases._screening_helpers import (
     UNSET,
-    ScreeningDetailOutput,
     is_provided,
     keep,
     reject_blank_when_provided,
@@ -81,7 +80,31 @@ class UpdateScreeningUseCase:
                 if is_provided(value):
                     reject_blank_when_provided(cast(str | None, value), name)
 
-    OutputData = ScreeningDetailOutput
+    @dataclass(frozen=True, slots=True)
+    class OutputData:
+        """Output data returned after a successful update.
+
+        Attributes:
+            id: The unique identifier of the updated screening.
+            movie_id: The screened movie's ID.
+            movie_title: The screened movie's title.
+            cinema_id: The hosting cinema's ID.
+            cinema_name: The hosting cinema's display name.
+            showtime: The screening time.
+            ticket_url: Link to purchase tickets (optional).
+            room: Room or auditorium name (optional).
+            language: Language or subtitle version (optional).
+        """
+
+        id: str
+        movie_id: str
+        movie_title: str
+        cinema_id: str
+        cinema_name: str
+        showtime: datetime
+        ticket_url: str | None = None
+        room: str | None = None
+        language: str | None = None
 
     def __init__(
         self,
@@ -140,7 +163,7 @@ class UpdateScreeningUseCase:
             )
         )
 
-        return screening_output_data(updated)
+        return screening_output_data(self.OutputData, updated)
 
     async def _resolve_movie(self, movie_id: str | object, existing: Movie) -> Movie:
         if not is_provided(movie_id):

@@ -13,7 +13,6 @@ from marquise.application.repositories import (
     ScreeningRepository,
 )
 from marquise.application.use_cases._screening_helpers import (
-    ScreeningDetailOutput,
     reject_blank_when_provided,
     require_non_empty,
     require_timezone_aware_showtime,
@@ -67,7 +66,31 @@ class CreateScreeningUseCase:
             reject_blank_when_provided(self.language, "language")
             reject_blank_when_provided(self.external_id, "external_id")
 
-    OutputData = ScreeningDetailOutput
+    @dataclass(frozen=True, slots=True)
+    class OutputData:
+        """Output data returned after successful screening creation.
+
+        Attributes:
+            id: The generated unique ID of the screening.
+            movie_id: The screened movie's ID.
+            movie_title: The screened movie's title.
+            cinema_id: The hosting cinema's ID.
+            cinema_name: The hosting cinema's display name.
+            showtime: The screening time.
+            ticket_url: Link to purchase tickets (optional).
+            room: Room or auditorium name (optional).
+            language: Language or subtitle version (optional).
+        """
+
+        id: str
+        movie_id: str
+        movie_title: str
+        cinema_id: str
+        cinema_name: str
+        showtime: datetime
+        ticket_url: str | None = None
+        room: str | None = None
+        language: str | None = None
 
     def __init__(
         self,
@@ -127,4 +150,4 @@ class CreateScreeningUseCase:
         )
         saved = await self.screening_repository.save(screening)
 
-        return screening_output_data(saved)
+        return screening_output_data(self.OutputData, saved)

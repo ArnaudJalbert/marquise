@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from marquise.application.repositories import ScreeningRepository
 from marquise.application.use_cases._screening_helpers import (
-    ScreeningDetailOutput,
     require_non_empty,
     screening_output_data,
 )
@@ -34,7 +34,31 @@ class GetScreeningUseCase:
             """
             require_non_empty(self.screening_id, "screening_id")
 
-    OutputData = ScreeningDetailOutput
+    @dataclass(frozen=True, slots=True)
+    class OutputData:
+        """The retrieved screening's output data.
+
+        Attributes:
+            id: Unique identifier of the screening.
+            movie_id: The screened movie's ID.
+            movie_title: The screened movie's title.
+            cinema_id: The hosting cinema's ID.
+            cinema_name: The hosting cinema's display name.
+            showtime: The screening time.
+            ticket_url: Link to purchase tickets (optional).
+            room: Room or auditorium name (optional).
+            language: Language or subtitle version (optional).
+        """
+
+        id: str
+        movie_id: str
+        movie_title: str
+        cinema_id: str
+        cinema_name: str
+        showtime: datetime
+        ticket_url: str | None = None
+        room: str | None = None
+        language: str | None = None
 
     def __init__(self, screening_repository: ScreeningRepository) -> None:
         """Initialize the use case.
@@ -60,4 +84,4 @@ class GetScreeningUseCase:
             ScreeningId(value=request.screening_id)
         )
 
-        return screening_output_data(screening)
+        return screening_output_data(self.OutputData, screening)
