@@ -40,10 +40,9 @@ from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
-from marquise.application.use_cases.patch_screening import PatchScreeningUseCase
-from marquise.application.use_cases.replace_screening import ReplaceScreeningUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
+from marquise.application.use_cases.update_screening import UpdateScreeningUseCase
 from marquise.infrastructure.di.container import Container
 
 
@@ -162,14 +161,9 @@ class MarquiseFactory:
         return self._container.create_screening_use_case
 
     @property
-    def patch_screening_use_case(self) -> PatchScreeningUseCase:
-        """Configured use case for partially updating one screening."""
-        return self._container.patch_screening_use_case
-
-    @property
-    def replace_screening_use_case(self) -> ReplaceScreeningUseCase:
-        """Configured use case for fully replacing one screening."""
-        return self._container.replace_screening_use_case
+    def update_screening_use_case(self) -> UpdateScreeningUseCase:
+        """Configured use case for updating one screening."""
+        return self._container.update_screening_use_case
 
     @property
     def delete_screening_use_case(self) -> DeleteScreeningUseCase:

@@ -286,8 +286,7 @@ async def test_get_screening_use_case_after_initialize() -> None:
     ("property_name", "use_case_type"),
     [
         ("create_screening_use_case", "CreateScreeningUseCase"),
-        ("patch_screening_use_case", "PatchScreeningUseCase"),
-        ("replace_screening_use_case", "ReplaceScreeningUseCase"),
+        ("update_screening_use_case", "UpdateScreeningUseCase"),
         ("delete_screening_use_case", "DeleteScreeningUseCase"),
     ],
 )
@@ -298,13 +297,11 @@ async def test_screening_mutation_use_cases_after_initialize(
     """Verify screening mutation use cases are wired after initialize."""
     from marquise.application.use_cases.create_screening import CreateScreeningUseCase
     from marquise.application.use_cases.delete_screening import DeleteScreeningUseCase
-    from marquise.application.use_cases.patch_screening import PatchScreeningUseCase
-    from marquise.application.use_cases.replace_screening import ReplaceScreeningUseCase
+    from marquise.application.use_cases.update_screening import UpdateScreeningUseCase
 
     types = {
         "CreateScreeningUseCase": CreateScreeningUseCase,
-        "PatchScreeningUseCase": PatchScreeningUseCase,
-        "ReplaceScreeningUseCase": ReplaceScreeningUseCase,
+        "UpdateScreeningUseCase": UpdateScreeningUseCase,
         "DeleteScreeningUseCase": DeleteScreeningUseCase,
     }
     mock_database = AsyncMock()

@@ -3,11 +3,17 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TypeVar
+from typing import TypeVar, cast
 
 from marquise.domain.entities import Screening
 
 _OutputData = TypeVar("_OutputData")
+UNSET: object = object()
+
+
+def is_provided(value: object) -> bool:
+    """Return whether an update input field was explicitly provided."""
+    return value is not UNSET
 
 
 def reject_blank_when_provided(value: str | None, field_name: str) -> None:
@@ -26,6 +32,16 @@ def require_timezone_aware_showtime(showtime: datetime) -> None:
     """Reject naive datetimes for screening showtimes."""
     if showtime.tzinfo is None:
         raise ValueError("showtime must be timezone-aware")
+
+
+def as_provided_datetime(value: datetime | object) -> datetime:
+    """Narrow a provided update field to ``datetime`` after an ``is_provided`` check."""
+    return cast(datetime, value)
+
+
+def as_provided_optional_str(value: str | None | object) -> str | None:
+    """Narrow a provided optional string field after an ``is_provided`` check."""
+    return cast(str | None, value)
 
 
 def screening_output_data(
