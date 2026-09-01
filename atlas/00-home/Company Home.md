@@ -12,7 +12,8 @@ Marquise helps people in Montreal discover relevant films and trustworthy screen
 ## Current operating model
 
 - **Arno:** founder, initiator, and final decision-maker on vision, priorities, sensitive actions, and irreversible commitments.
-- **Aster:** operating partner. Clarifies, challenges, coordinates, executes approved work, and verifies outcomes.
+- **Aster:** operating partner. Clarifies, challenges, coordinates, executes approved work, and verifies outcomes. Merges Atlas PRs with Arno.
+- **Morpheus:** Scrum Master. Owns GitHub issues, milestones, and cadence. Does not merge Atlas PRs or write application code.
 - **Orson:** Staff Engineer and Architecture Lead. Primary implementation partner and independent technical reviewer before Arno. No merge, deployment, or founder-level authority.
 - **Mara:** Showtime Data Reliability Specialist. Detects and validates showtime and data-trust risks, then hands technical remedies to Orson within an active workflow.
 - **Specialist Bots:** bounded roles inside approved workflows; they can collaborate directly where it helps, but do not expand mandate or make founder-level decisions.
@@ -23,6 +24,7 @@ Marquise helps people in Montreal discover relevant films and trustworthy screen
 - [[10-strategy/Product Thesis]]
 - [[30-operations/Operating Model]]
 - [[40-agents/Aster — Operating Partner]]
+- [[40-agents/Morpheus — Scrum Master]]
 - [[40-agents/Orson — Staff Engineer and Architecture Lead]]
 - [[40-agents/Mara — Showtime Data Reliability Specialist]]
 - [[50-processes/Documentation and Delivery Workflow]]

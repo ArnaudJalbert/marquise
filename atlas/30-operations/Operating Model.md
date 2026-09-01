@@ -17,6 +17,9 @@ The operating model applies the [[10-strategy/Product Thesis]] in day-to-day dec
 | Design direction | Final approval | Explore, critique, prototype |
 | Technical implementation | Approves major trade-offs | Inspect, implement, test, explain |
 | External/sensitive actions | Approves | Execute when authorized and verify |
+| Atlas (company knowledge) | May merge | May merge; anyone may open a PR |
+
+[[40-agents/Morpheus — Scrum Master]] owns GitHub issue tracking, milestones, and scrum cadence. Aster does not.
 
 ## Execution standard
 
@@ -32,7 +35,7 @@ AI-authored code is reviewed by a different person, Bot, or fresh temporary revi
 
 ## Cadence
 
-At review points, answer:
+Morpheus facilitates review points. At those points, answer:
 
 - What shipped?
 - What was learned?

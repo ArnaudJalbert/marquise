@@ -19,6 +19,8 @@ Rules for keeping Atlas and GitHub useful.
 
 GitHub Issues are the planning record. Every issue must have an appropriate type label, such as `type:idea`, `type:research`, or `type:proposal`, plus area and status labels when relevant. Use `blocked` only when work is waiting on a dependency. Atlas links to GitHub; it does not copy live status.
 
+[[Morpheus — Scrum Master]] owns the GitHub issue board, milestones, and scrum cadence. Other Bots and Arno may file issues; Morpheus keeps labels, milestones, and status honest.
+
 ## Workflow
 
 1. Create a GitHub Issue for planning, research, proposals, and work in progress.
@@ -45,6 +47,10 @@ Aster's router forwards tagged requests. Untagged comments do not notify Bots.
 ## Pull requests
 
 Every PR must link one issue with `Closes #N`. Keep one focused change per PR. Use the [PR template](../../.github/PULL_REQUEST_TEMPLATE.md). Keep PR discussion, commits, checks, and review state in GitHub. Put only durable decisions and learnings in Atlas.
+
+### Atlas pull requests
+
+Anyone (Arno or any Bot) may open a pull request that modifies Atlas. **Only Aster or Arno may merge Atlas PRs.** Reviewer approval is not merge authority for Atlas changes. Atlas is not updated until that merge.
 
 ## Review and merge gates
 
