@@ -9,7 +9,7 @@ review_date: 2026-09-30
 
 ## Purpose
 
-Provide the shared, verified procedure for Aster and specialist Bots to interact with GitHub. This process covers authentication, repository access, read operations, external changes, and read-back verification. Workflow-specific procedures add their own acceptance criteria and decision gates.
+Provide the shared, verified procedure for Aster, Morpheus, and specialist Bots to interact with GitHub. This process covers authentication, repository access, read operations, external changes, and read-back verification. Workflow-specific procedures add their own acceptance criteria and decision gates.
 
 GitHub is the source of truth for Marquise code, issues, pull requests, reviews, CI, releases, deployments, and implementation history.
 
@@ -53,20 +53,22 @@ Use `/opt/data/bin/gh issue` and `/opt/data/bin/gh api` with the explicit reposi
 - Use the smallest useful issue body with evidence, user impact, expected/actual behavior, scope, and acceptance criteria.
 - Read back the created issue or milestone and record its URL/number.
 
-### Milestone authority and naming
+### Milestone and issue authority
 
-- **Aster is the only agent authorized to create, rename, close, or reopen milestones.** Specialist Bots may recommend a milestone or provide its proposed title, description, and rationale, but they must not mutate milestone records.
-- Arno retains final authority over milestone priorities and scope. Aster may execute an approved milestone change and is responsible for checking that it is needed, non-duplicative, and correctly named.
+- **Morpheus is the agent authorized to create, rename, close, or reopen milestones, and to triage, label, rewrite, open, and close issues.** Specialist Bots may recommend an issue or milestone or provide a proposed title, description, and rationale, but they must not mutate those records unless Morpheus has delegated a specific write.
+- Arno retains final authority over priorities and scope. Morpheus may execute an approved issue or milestone change and is responsible for checking that it is needed, non-duplicative, and correctly named.
 - Milestone titles contain only the human-readable outcome. Do not add priority or sequencing prefixes such as `P1:`, `P2:`, `P3:`, or `P3.1 —`. Priority belongs in the planning decision or issue labels, not in the milestone title.
-- Before creation, Aster searches open and closed milestones for exact and near-duplicate titles, confirms the intended title and description, and uses explicit fields for the write.
-- After creation or any rename, Aster reads the exact milestone back and verifies its number, title, description, state, URL, and issue relationship. A successful write command alone is not completion evidence.
-- If another agent reports that it created or changed a milestone, Aster treats the report as unverified, checks GitHub directly, and corrects or escalates the record as appropriate.
+- Before creation, Morpheus searches open and closed milestones and issues for exact and near-duplicate titles, confirms the intended title and description, and uses explicit fields for the write.
+- After creation or any rename, Morpheus reads the exact record back and verifies its number, title, description, state, URL, and relationships. A successful write command alone is not completion evidence.
+- If another agent reports that it created or changed an issue or milestone, Morpheus treats the report as unverified, checks GitHub directly, and corrects or escalates the record as appropriate.
 
 ## Pull requests and code
 
 Follow [[Documentation and Delivery Workflow]] for the PR template, acceptance criteria, review, CI, and verification gates. Use [[../../CONTRIBUTING|CONTRIBUTING.md]] for branching, test, and commit commands.
 
 Never treat a PR as proof that a bug is fixed. Verification requires the relevant review, merge, deployment, and post-merge checks when those actions are authorized.
+
+Atlas pull requests follow the same branch-and-PR path. Anyone may open them. **Only Aster or Arno may merge Atlas PRs.**
 
 ## Secrets and failure handling
 
@@ -83,3 +85,4 @@ Never treat a PR as proof that a bug is fixed. Verification requires the relevan
 - [[Documentation and Delivery Workflow]]
 - [[Knowledge Management Protocol]]
 - [[Code Review and Constructive Challenge]]
+- [[Morpheus — Scrum Master]]
