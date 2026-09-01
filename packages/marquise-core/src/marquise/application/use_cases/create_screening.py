@@ -12,6 +12,12 @@ from marquise.application.repositories import (
     MovieRepository,
     ScreeningRepository,
 )
+from marquise.application.use_cases._screening_helpers import (
+    reject_blank_when_provided,
+    require_non_empty,
+    require_timezone_aware_showtime,
+    screening_output_data,
+)
 from marquise.domain.entities import Screening
 from marquise.domain.value_objects import CinemaId, MovieId, ScreeningId, Showtime
 
@@ -52,20 +58,13 @@ class CreateScreeningUseCase:
                 ValueError: If required IDs are empty, showtime is naive, or
                     optional strings are provided but whitespace-only.
             """
-            if not self.movie_id.strip():
-                raise ValueError("movie_id must not be empty")
-            if not self.cinema_id.strip():
-                raise ValueError("cinema_id must not be empty")
-            if self.showtime.tzinfo is None:
-                raise ValueError("showtime must be timezone-aware")
-            if self.ticket_url is not None and not self.ticket_url.strip():
-                raise ValueError("ticket_url must not be empty when provided")
-            if self.room is not None and not self.room.strip():
-                raise ValueError("room must not be empty when provided")
-            if self.language is not None and not self.language.strip():
-                raise ValueError("language must not be empty when provided")
-            if self.external_id is not None and not self.external_id.strip():
-                raise ValueError("external_id must not be empty when provided")
+            require_non_empty(self.movie_id, "movie_id")
+            require_non_empty(self.cinema_id, "cinema_id")
+            require_timezone_aware_showtime(self.showtime)
+            reject_blank_when_provided(self.ticket_url, "ticket_url")
+            reject_blank_when_provided(self.room, "room")
+            reject_blank_when_provided(self.language, "language")
+            reject_blank_when_provided(self.external_id, "external_id")
 
     @dataclass(frozen=True, slots=True)
     class OutputData:
@@ -151,14 +150,4 @@ class CreateScreeningUseCase:
         )
         saved = await self.screening_repository.save(screening)
 
-        return self.OutputData(
-            id=str(saved.id),
-            movie_id=str(saved.movie.id),
-            movie_title=saved.movie.title,
-            cinema_id=str(saved.cinema.id),
-            cinema_name=saved.cinema.name,
-            showtime=saved.showtime.value,
-            ticket_url=saved.ticket_url,
-            room=saved.room,
-            language=saved.language,
-        )
+        return screening_output_data(self.OutputData, saved)

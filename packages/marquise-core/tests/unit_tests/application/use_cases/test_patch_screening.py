@@ -71,9 +71,9 @@ async def test_patches_provided_fields_and_keeps_identity() -> None:
     assert submitted.cinema.id == CinemaId(value="cin-1")
     assert submitted.showtime.value == SHOWTIME
     assert submitted.ticket_url == "https://new.example/t"
-    assert submitted.room is None
-    assert submitted.language is None
-    assert submitted.external_id is None
+    assert submitted.room == "Salle 1"
+    assert submitted.language == "V.F."
+    assert submitted.external_id == "ext-1"
 
 
 @pytest.mark.asyncio

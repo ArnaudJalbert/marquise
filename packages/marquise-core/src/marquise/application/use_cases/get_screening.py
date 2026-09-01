@@ -6,6 +6,10 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from marquise.application.repositories import ScreeningRepository
+from marquise.application.use_cases._screening_helpers import (
+    require_non_empty,
+    screening_output_data,
+)
 from marquise.domain.value_objects import ScreeningId
 
 
@@ -28,8 +32,7 @@ class GetScreeningUseCase:
             Raises:
                 ValueError: If screening_id is empty or whitespace-only.
             """
-            if not self.screening_id.strip():
-                raise ValueError("screening_id must not be empty")
+            require_non_empty(self.screening_id, "screening_id")
 
     @dataclass(frozen=True, slots=True)
     class OutputData:
@@ -81,14 +84,4 @@ class GetScreeningUseCase:
             ScreeningId(value=request.screening_id)
         )
 
-        return self.OutputData(
-            id=str(screening.id),
-            movie_id=str(screening.movie.id),
-            movie_title=screening.movie.title,
-            cinema_id=str(screening.cinema.id),
-            cinema_name=screening.cinema.name,
-            showtime=screening.showtime.value,
-            ticket_url=screening.ticket_url,
-            room=screening.room,
-            language=screening.language,
-        )
+        return screening_output_data(self.OutputData, screening)
