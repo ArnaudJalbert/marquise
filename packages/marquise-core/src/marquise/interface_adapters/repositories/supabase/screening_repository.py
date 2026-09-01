@@ -168,6 +168,59 @@ class SupabaseScreeningRepository(ScreeningRepository):
             language=data.get("language"),
         )
 
+    async def replace(self, screening: Screening) -> Screening:
+        """Replace all fields of a screening identified by ID.
+
+        Args:
+            screening: The screening with replacement values.
+
+        Returns:
+            The replaced screening entity.
+
+        Raises:
+            ScreeningNotFoundError: If no screening with the given ID exists.
+            ScreeningAlreadyExistsError: If the replacement identity
+                collides with another screening.
+        """
+        try:
+            data = await self._gateway.replace(
+                screening_id=str(screening.id),
+                movie_id=str(screening.movie.id),
+                cinema_id=str(screening.cinema.id),
+                showtime=screening.showtime.value,
+                external_id=screening.external_id,
+                ticket_url=screening.ticket_url,
+                room=screening.room,
+                language=screening.language,
+            )
+        except GatewayError as exc:
+            raise ScreeningAlreadyExistsError(str(exc)) from exc
+        if data is None:
+            raise ScreeningNotFoundError(
+                f"A screening with ID '{screening.id}' was not found"
+            )
+        return Screening(
+            id=ScreeningId(value=data["id"]),
+            movie=screening.movie,
+            cinema=screening.cinema,
+            showtime=Showtime(value=_parse_datetime(data["showtime"])),
+            external_id=data.get("external_id"),
+            ticket_url=data.get("ticket_url"),
+            room=data.get("room"),
+            language=data.get("language"),
+        )
+
+    async def delete(self, screening_id: ScreeningId) -> bool:
+        """Permanently delete a screening by its unique identifier.
+
+        Args:
+            screening_id: The ID of the screening to delete.
+
+        Returns:
+            True if a screening was deleted, False otherwise.
+        """
+        return await self._gateway.delete(screening_id=str(screening_id))
+
     async def find_by_id(self, screening_id: ScreeningId) -> Screening:
         """Retrieve a screening by ID.
 

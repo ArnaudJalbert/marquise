@@ -24,9 +24,11 @@ from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.create_missing_movies import (
     CreateMissingMoviesCommand,
 )
+from marquise.application.use_cases.create_screening import CreateScreeningUseCase
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
+from marquise.application.use_cases.delete_screening import DeleteScreeningUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
 from marquise.application.use_cases.get_cinema import GetCinemaUseCase
 from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
@@ -39,6 +41,8 @@ from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
+from marquise.application.use_cases.patch_screening import PatchScreeningUseCase
+from marquise.application.use_cases.replace_screening import ReplaceScreeningUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.bootstrap import MarquiseFactory, create_factory, create_factory_session
@@ -251,6 +255,10 @@ async def test_list_assignments_query_returns_configured_query() -> None:
         "fetch_screenings_use_case",
         "create_movies_use_case",
         "create_screenings_use_case",
+        "create_screening_use_case",
+        "patch_screening_use_case",
+        "replace_screening_use_case",
+        "delete_screening_use_case",
         "get_cinema_use_case",
         "get_cinema_screenings_query",
         "get_cinema_movies_use_case",
@@ -283,6 +291,10 @@ def test_configured_use_cases_require_initialize(property_name: str) -> None:
         ("fetch_screenings_use_case", FetchScreeningsFromSourceQuery),
         ("create_movies_use_case", CreateMissingMoviesCommand),
         ("create_screenings_use_case", CreateScreeningsCommand),
+        ("create_screening_use_case", CreateScreeningUseCase),
+        ("patch_screening_use_case", PatchScreeningUseCase),
+        ("replace_screening_use_case", ReplaceScreeningUseCase),
+        ("delete_screening_use_case", DeleteScreeningUseCase),
         ("get_cinema_use_case", GetCinemaUseCase),
         ("get_cinema_screenings_query", GetCinemaScreeningsQuery),
         ("get_cinema_movies_use_case", GetCinemaMoviesUseCase),

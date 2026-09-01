@@ -34,9 +34,11 @@ from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.create_missing_movies import (
     CreateMissingMoviesCommand,
 )
+from marquise.application.use_cases.create_screening import CreateScreeningUseCase
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
+from marquise.application.use_cases.delete_screening import DeleteScreeningUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
 from marquise.application.use_cases.get_cinema import GetCinemaUseCase
 from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
@@ -50,6 +52,8 @@ from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
+from marquise.application.use_cases.patch_screening import PatchScreeningUseCase
+from marquise.application.use_cases.replace_screening import ReplaceScreeningUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.bootstrap import (
@@ -68,10 +72,12 @@ __all__ = [
     "CinemaSourceAssignmentNotFoundError",
     "CreateCinemaUseCase",
     "CreateMissingMoviesCommand",
+    "CreateScreeningUseCase",
     "CreateScreeningsCommand",
     "ImportScreeningsCommand",
     "CreateSourceUseCase",
     "DeleteCinemaUseCase",
+    "DeleteScreeningUseCase",
     "DeleteSourceUseCase",
     "FetchScreeningsFromSourceQuery",
     "GetCinemaMoviesUseCase",
@@ -90,6 +96,8 @@ __all__ = [
     "ListSourcesUseCase",
     "MarquiseFactory",
     "MovieNotFoundError",
+    "PatchScreeningUseCase",
+    "ReplaceScreeningUseCase",
     "ScreeningAlreadyExistsError",
     "ScreeningNotFoundError",
     "SearchScreeningsQuery",

@@ -91,6 +91,49 @@ class ScreeningGateway(Protocol):
         """
         ...
 
+    async def replace(
+        self,
+        screening_id: str,
+        movie_id: str,
+        cinema_id: str,
+        showtime: datetime,
+        external_id: str | None = None,
+        ticket_url: str | None = None,
+        room: str | None = None,
+        language: str | None = None,
+    ) -> dict | None:
+        """Replace all fields of a screening identified by ID.
+
+        Args:
+            screening_id: The unique identifier of the row to replace.
+            movie_id: Replacement movie ID.
+            cinema_id: Replacement cinema ID.
+            showtime: Replacement screening time.
+            external_id: Replacement source-native key (optional).
+            ticket_url: Replacement ticket URL (optional).
+            room: Replacement room name (optional).
+            language: Replacement language (optional).
+
+        Returns:
+            The updated row as a dict, or None if no matching row exists.
+
+        Raises:
+            GatewayError: On data-layer failure, including unique-constraint
+                collisions with another screening.
+        """
+        ...
+
+    async def delete(self, screening_id: str) -> bool:
+        """Permanently delete a screening by its ID.
+
+        Args:
+            screening_id: The unique identifier of the row to delete.
+
+        Returns:
+            True if a row was deleted, False otherwise.
+        """
+        ...
+
     async def find_by_id(self, screening_id: str) -> dict | None:
         """Find a screening by its ID.
 

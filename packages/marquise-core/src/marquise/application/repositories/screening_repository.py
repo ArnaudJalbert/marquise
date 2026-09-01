@@ -45,6 +45,37 @@ class ScreeningRepository(ABC):
         ...
 
     @abstractmethod
+    async def replace(self, screening: Screening) -> Screening:
+        """Replace all fields of a screening identified by ID.
+
+        Args:
+            screening: The screening with replacement values. The ID must
+                match an existing row.
+
+        Returns:
+            The replaced screening entity.
+
+        Raises:
+            ScreeningNotFoundError: If no screening with the given ID exists.
+            ScreeningAlreadyExistsError: If the replacement identity
+                collides with another screening.
+        """
+        ...
+
+    @abstractmethod
+    async def delete(self, screening_id: ScreeningId) -> bool:
+        """Permanently delete a screening by its unique identifier.
+
+        Args:
+            screening_id: The ID of the screening to delete.
+
+        Returns:
+            True if a screening was deleted, False if no screening with
+            that ID was found.
+        """
+        ...
+
+    @abstractmethod
     async def find_by_id(self, screening_id: ScreeningId) -> Screening:
         """Retrieve a screening by its unique identifier.
 

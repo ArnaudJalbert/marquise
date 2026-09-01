@@ -206,6 +206,83 @@ class SupabaseScreeningGateway:
             )
         return dict(row) if row is not None else None
 
+    async def replace(
+        self,
+        screening_id: str,
+        movie_id: str,
+        cinema_id: str,
+        showtime: datetime,
+        external_id: str | None = None,
+        ticket_url: str | None = None,
+        room: str | None = None,
+        language: str | None = None,
+    ) -> dict | None:
+        """Replace all fields of a screening identified by ID.
+
+        Args:
+            screening_id: The unique identifier of the row to replace.
+            movie_id: Replacement movie ID.
+            cinema_id: Replacement cinema ID.
+            showtime: Replacement screening time.
+            external_id: Replacement source-native key (optional).
+            ticket_url: Replacement ticket URL (optional).
+            room: Replacement room name (optional).
+            language: Replacement language (optional).
+
+        Returns:
+            The updated row as a dict, or None if no matching row exists.
+
+        Raises:
+            GatewayError: On unique-constraint collision with another row.
+        """
+        async with self._pool.acquire() as conn:
+            try:
+                row = await conn.fetchrow(
+                    f"""
+                    UPDATE {self._table}
+                    SET
+                        movie_id = $2,
+                        cinema_id = $3,
+                        showtime = $4,
+                        external_id = $5,
+                        ticket_url = $6,
+                        room = $7,
+                        language = $8
+                    WHERE id = $1
+                    RETURNING {_COLUMNS}
+                    """,
+                    screening_id,
+                    movie_id,
+                    cinema_id,
+                    _naive_utc(showtime),
+                    external_id,
+                    ticket_url,
+                    room,
+                    language,
+                )
+            except asyncpg.exceptions.UniqueViolationError as exc:
+                raise GatewayError(
+                    f"A screening already exists for cinema '{cinema_id}'"
+                    f", movie '{movie_id}' at {showtime}"
+                ) from exc
+        return dict(row) if row is not None else None
+
+    async def delete(self, screening_id: str) -> bool:
+        """Permanently delete a screening by its ID.
+
+        Args:
+            screening_id: The unique identifier of the row to delete.
+
+        Returns:
+            True if a row was deleted, False otherwise.
+        """
+        async with self._pool.acquire() as conn:
+            result = await conn.execute(
+                f"DELETE FROM {self._table} WHERE id = $1",
+                screening_id,
+            )
+        return result != "DELETE 0"
+
     async def find_by_id(self, screening_id: str) -> dict | None:
         """Find a screening by its ID.
 
