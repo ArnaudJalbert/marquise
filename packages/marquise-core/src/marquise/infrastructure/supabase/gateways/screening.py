@@ -267,21 +267,22 @@ class SupabaseScreeningGateway:
                 ) from exc
         return dict(row) if row is not None else None
 
-    async def delete(self, screening_id: str) -> bool:
+    async def delete(self, screening_id: str) -> None:
         """Permanently delete a screening by its ID.
 
         Args:
             screening_id: The unique identifier of the row to delete.
 
-        Returns:
-            True if a row was deleted, False otherwise.
+        Raises:
+            GatewayError: If no row has the given ID.
         """
         async with self._pool.acquire() as conn:
-            result = await conn.execute(
-                f"DELETE FROM {self._table} WHERE id = $1",
+            row = await conn.fetchrow(
+                f"DELETE FROM {self._table} WHERE id = $1 RETURNING id",
                 screening_id,
             )
-        return result != "DELETE 0"
+        if row is None:
+            raise GatewayError(f"A screening with ID '{screening_id}' was not found")
 
     async def find_by_id(self, screening_id: str) -> dict | None:
         """Find a screening by its ID.

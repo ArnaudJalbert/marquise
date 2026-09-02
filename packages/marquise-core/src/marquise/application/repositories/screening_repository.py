@@ -63,15 +63,14 @@ class ScreeningRepository(ABC):
         ...
 
     @abstractmethod
-    async def delete(self, screening_id: ScreeningId) -> bool:
+    async def delete(self, screening_id: ScreeningId) -> None:
         """Permanently delete a screening by its unique identifier.
 
         Args:
             screening_id: The ID of the screening to delete.
 
-        Returns:
-            True if a screening was deleted, False if no screening with
-            that ID was found.
+        Raises:
+            ScreeningNotFoundError: If no screening with the given ID exists.
         """
         ...
 

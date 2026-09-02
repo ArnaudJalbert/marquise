@@ -54,6 +54,10 @@ class SupabaseMovieRepository(MovieRepository):
         )
         return self._to_entity(data)
 
+    async def delete_if_orphan(self, movie_id: MovieId) -> None:
+        """Delete movie only when no screening references it."""
+        await self._gateway.delete_if_orphan(movie_id=str(movie_id))
+
     async def find_by_id(self, movie_id: MovieId) -> Movie | None:
         """Retrieve a movie by ID.
 

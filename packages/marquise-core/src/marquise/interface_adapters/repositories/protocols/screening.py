@@ -123,14 +123,14 @@ class ScreeningGateway(Protocol):
         """
         ...
 
-    async def delete(self, screening_id: str) -> bool:
+    async def delete(self, screening_id: str) -> None:
         """Permanently delete a screening by its ID.
 
         Args:
             screening_id: The unique identifier of the row to delete.
 
-        Returns:
-            True if a row was deleted, False otherwise.
+        Raises:
+            GatewayError: If no row has the given ID.
         """
         ...
 

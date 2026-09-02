@@ -35,6 +35,37 @@ def _row() -> dict:
 
 
 @pytest.mark.asyncio
+async def test_get_by_id_maps_projection() -> None:
+    """Reader fetches one projection by screening primary key."""
+    connection = AsyncMock()
+    connection.fetchrow.return_value = _row()
+
+    result = await SupabaseScreeningReader(_pool(connection)).get_by_id("scr-1")
+
+    assert result == ScreeningReader.ScreeningData(
+        id="scr-1",
+        movie_id="mov-1",
+        movie_title="The Odyssey",
+        cinema_id="cin-1",
+        cinema_name="Cinema One",
+        showtime=datetime(2026, 6, 27, 19, 30, tzinfo=UTC),
+        language="V.O.",
+    )
+    connection.fetchrow.assert_awaited_once_with(ANY, "scr-1")
+
+
+@pytest.mark.asyncio
+async def test_get_by_id_returns_none_when_missing() -> None:
+    """Reader returns None when screening ID does not exist."""
+    connection = AsyncMock()
+    connection.fetchrow.return_value = None
+
+    result = await SupabaseScreeningReader(_pool(connection)).get_by_id("missing")
+
+    assert result is None
+
+
+@pytest.mark.asyncio
 async def test_search_maps_projection_and_filters() -> None:
     """Reader maps selected fields and parameterizes every filter."""
     connection = AsyncMock()

@@ -93,17 +93,24 @@ def use_case(
 def create_input() -> Callable[..., CreateScreeningUseCase.InputData]:
     """Build create input data with optional field overrides."""
 
-    def _create_input(**overrides: object) -> CreateScreeningUseCase.InputData:
-        values: dict[str, object] = {
-            "movie_id": "mov-1",
-            "cinema_id": "cin-1",
-            "showtime": SHOWTIME,
-            "ticket_url": "https://tickets.example/1",
-            "room": "Salle 4",
-            "language": "V.O.",
-        }
-        values.update(overrides)
-        return CreateScreeningUseCase.InputData(**values)  # type: ignore[arg-type]
+    def _create_input(
+        movie_id: str = "mov-1",
+        cinema_id: str = "cin-1",
+        showtime: datetime = SHOWTIME,
+        ticket_url: str | None = "https://tickets.example/1",
+        room: str | None = "Salle 4",
+        language: str | None = "V.O.",
+        external_id: str | None = None,
+    ) -> CreateScreeningUseCase.InputData:
+        return CreateScreeningUseCase.InputData(
+            movie_id=movie_id,
+            cinema_id=cinema_id,
+            showtime=showtime,
+            ticket_url=ticket_url,
+            room=room,
+            language=language,
+            external_id=external_id,
+        )
 
     return _create_input
 

@@ -25,6 +25,15 @@ class MovieRepository(ABC):
         ...
 
     @abstractmethod
+    async def delete_if_orphan(self, movie_id: MovieId) -> None:
+        """Delete movie only when no screening references it.
+
+        Args:
+            movie_id: Movie eligible for orphan cleanup.
+        """
+        ...
+
+    @abstractmethod
     async def find_by_id(self, movie_id: MovieId) -> Movie | None:
         """Retrieve a movie by its unique identifier.
 

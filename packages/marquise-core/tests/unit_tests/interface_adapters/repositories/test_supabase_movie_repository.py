@@ -374,3 +374,16 @@ async def test_find_all_returns_empty_page() -> None:
 
     assert result.items == []
     assert result.total == 0
+
+
+@pytest.mark.asyncio
+async def test_delete_if_orphan_delegates_to_gateway() -> None:
+    """Verify delete_if_orphan forwards the movie ID to the gateway."""
+    mock_gateway = create_autospec(MovieGateway, instance=True)
+    mock_gateway.delete_if_orphan.return_value = None
+
+    await SupabaseMovieRepository(gateway=mock_gateway).delete_if_orphan(
+        MovieId(value="mov-456")
+    )
+
+    mock_gateway.delete_if_orphan.assert_awaited_once_with("mov-456")

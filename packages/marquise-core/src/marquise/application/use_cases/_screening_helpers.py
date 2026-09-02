@@ -3,23 +3,30 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TypeVar, cast
+from typing import TypeGuard, TypeVar
 
 from marquise.domain.entities import Screening
 
 T = TypeVar("T")
-_OutputData = TypeVar("_OutputData")
-UNSET: object = object()
 
 
-def is_provided(value: object) -> bool:
+class _Unset:
+    """Marker for omitted update fields."""
+
+    __slots__ = ()
+
+
+UNSET = _Unset()
+
+
+def is_provided(value: T | _Unset) -> TypeGuard[T]:
     """Return whether an update input field was explicitly provided."""
-    return value is not UNSET
+    return not isinstance(value, _Unset)
 
 
-def keep(existing: T, incoming: object) -> T:
-    """Return ``existing`` when ``incoming`` was omitted, else ``incoming``."""
-    return existing if not is_provided(incoming) else cast(T, incoming)
+def keep(existing: T, incoming: T | _Unset) -> T:
+    """Return existing value when incoming value was omitted."""
+    return incoming if is_provided(incoming) else existing
 
 
 def reject_blank_when_provided(value: str | None, field_name: str) -> None:
@@ -40,19 +47,16 @@ def require_timezone_aware_showtime(showtime: datetime) -> None:
         raise ValueError("showtime must be timezone-aware")
 
 
-def screening_output_data(
-    output_data_cls: type[_OutputData],
-    screening: Screening,
-) -> _OutputData:
-    """Build a screening use-case OutputData instance from a domain entity."""
-    return output_data_cls(
-        id=str(screening.id),
-        movie_id=str(screening.movie.id),
-        movie_title=screening.movie.title,
-        cinema_id=str(screening.cinema.id),
-        cinema_name=screening.cinema.name,
-        showtime=screening.showtime.value,
-        ticket_url=screening.ticket_url,
-        room=screening.room,
-        language=screening.language,
-    )
+def screening_output_dict(screening: Screening) -> dict:
+    """Return screening fields for a use-case-local OutputData."""
+    return {
+        "id": str(screening.id),
+        "movie_id": str(screening.movie.id),
+        "movie_title": screening.movie.title,
+        "cinema_id": str(screening.cinema.id),
+        "cinema_name": screening.cinema.name,
+        "showtime": screening.showtime.value,
+        "ticket_url": screening.ticket_url,
+        "room": screening.room,
+        "language": screening.language,
+    }
