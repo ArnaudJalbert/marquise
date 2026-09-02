@@ -11,7 +11,7 @@ from fastapi import Depends, HTTPException, Request, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 MarquiseRole = Literal["member", "editor", "administrator"]
-_VALID_ROLES: set[str] = {"member", "editor", "administrator"}
+_VALID_ROLES = ("member", "editor", "administrator")
 _bearer = HTTPBearer(auto_error=False)
 
 
