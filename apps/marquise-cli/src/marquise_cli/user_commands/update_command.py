@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import asyncio
-import getpass
 import sys
 
 from marquise_cli.auth import AuthClient, AuthSettings, RoleStore, load_auth_settings
-from marquise_cli.helpers import run_spinner
+from marquise_cli.helpers import prompt_password, run_spinner
 
 
 async def _resolve_user_id(
@@ -106,7 +105,7 @@ def update(
     if new_email is None and password is None and role is None and not clear_role:
         new_email_input = input("New email (leave blank to keep): ")
         new_email = new_email_input.strip() or None
-        password_input = getpass.getpass("New password (leave blank to keep): ")
+        password_input = prompt_password("New password (leave blank to keep): ")
         password = password_input or None
         role_input = input("Role (leave blank to keep, 'none' to clear): ")
         if role_input.strip().lower() == "none":

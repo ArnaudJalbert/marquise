@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-02
+
+### v0.1.14
+
+- **Mask password prompts**: interactive user password entry echoes asterisks instead of staying blank, so callers can confirm they typed.
+
 ## 2026-09-01
 
 ### v0.1.14

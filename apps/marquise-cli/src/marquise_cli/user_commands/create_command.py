@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import asyncio
-import getpass
 import sys
 
 from marquise_cli.auth import AuthClient, AuthSettings, RoleStore, load_auth_settings
-from marquise_cli.helpers import run_spinner
+from marquise_cli.helpers import prompt_password, run_spinner
 
 
 async def run_create(
@@ -56,7 +55,7 @@ def create(
         raise SystemExit(1) from error
 
     email = email or input("Email: ")
-    password = password or getpass.getpass("Password: ")
+    password = password or prompt_password("Password: ")
     if role is None:
         role_input = input("Role (optional): ")
         role = role_input.strip() or None
