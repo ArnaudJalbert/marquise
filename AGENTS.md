@@ -163,6 +163,22 @@ Rationale for each → [Atlas Clean Architecture](atlas/50-processes/Clean%20Arc
 
 ---
 
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues for `ArnaudJalbert/marquise`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Triage uses mapped GitHub labels. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Domain documentation uses a multi-context layout. See `docs/agents/domain.md`.
+
+---
+
 ## Detailed guidelines
 
 Repo-specific detail lives in `docs/` — read when the task touches that area:
