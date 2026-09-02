@@ -7,7 +7,12 @@ import os
 import sys
 from dataclasses import dataclass
 
-from marquise import ApplicationError, AuthFactory
+from marquise import (
+    ApplicationError,
+    AuthenticationError,
+    AuthFactory,
+    AuthorizationError,
+)
 from marquise_cli.helpers import prompt_password, run_spinner
 
 
@@ -46,6 +51,26 @@ def _administrator_credentials() -> tuple[str, str]:
     if email and password:
         return email, password
     return input("Administrator email: "), prompt_password("Administrator password: ")
+
+
+async def run_login(
+    factory: AuthFactory,
+    *,
+    administrator_email: str,
+    administrator_password: str,
+) -> None:
+    """Verify credentials have Administrator access without retaining a session."""
+    authenticate = factory.authenticate_administrator_use_case
+    await run_spinner(
+        authenticate.execute(
+            authenticate.InputData(
+                email=administrator_email,
+                password=administrator_password,
+            )
+        ),
+        description="Authenticating Administrator...",
+    )
+    print("Authenticated as Administrator.")
 
 
 async def run_invite(
@@ -116,6 +141,26 @@ def _factory(settings: AuthSettings) -> AuthFactory:
     )
 
 
+def login() -> None:
+    """Verify local credentials have Administrator access."""
+    try:
+        settings = load_auth_settings()
+        administrator_email, administrator_password = _administrator_credentials()
+        asyncio.run(
+            run_login(
+                _factory(settings),
+                administrator_email=administrator_email,
+                administrator_password=administrator_password,
+            )
+        )
+    except (AuthenticationError, AuthorizationError, ValueError) as exc:
+        print(f"Failed to authenticate Administrator: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+    except (ApplicationError, RuntimeError) as exc:
+        print(f"Failed to log in: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+
 def invite(email: str, role: str) -> None:
     """Invite a human account with a fixed Marquise role."""
     try:
@@ -130,6 +175,9 @@ def invite(email: str, role: str) -> None:
                 role=role,
             )
         )
+    except (AuthenticationError, AuthorizationError) as exc:
+        print(f"Failed to authenticate Administrator: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
     except (ApplicationError, RuntimeError, ValueError) as exc:
         print(f"Failed to invite user: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
@@ -151,6 +199,9 @@ def set_role(email: str, role: str | None, clear_role: bool) -> None:
                 role=None if clear_role else role,
             )
         )
+    except (AuthenticationError, AuthorizationError) as exc:
+        print(f"Failed to authenticate Administrator: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
     except (ApplicationError, RuntimeError, ValueError) as exc:
         print(f"Failed to update user role: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc

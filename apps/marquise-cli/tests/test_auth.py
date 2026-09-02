@@ -8,6 +8,7 @@ import pytest
 
 from marquise import (
     AuthenticateAdministratorUseCase,
+    AuthenticationError,
     AuthFactory,
     AuthorizationError,
     InviteAuthUserUseCase,
@@ -16,8 +17,10 @@ from marquise import (
 from marquise_cli.auth_commands import (
     AuthSettings,
     _administrator_credentials,
+    invite,
     load_auth_settings,
     run_invite,
+    run_login,
     run_set_role,
 )
 
@@ -137,6 +140,52 @@ async def test_invite_stops_when_caller_is_not_administrator() -> None:
         )
 
     invite.execute.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_login_authenticates_administrator(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Login confirms that supplied credentials have Administrator access."""
+    factory, authenticate, _, _ = _factory()
+
+    await run_login(
+        factory,
+        administrator_email="admin@example.com",
+        administrator_password="secret",
+    )
+
+    authenticate.execute.assert_awaited_once()
+    assert capsys.readouterr().out == "Authenticated as Administrator.\n"
+
+
+def test_invite_labels_administrator_authentication_failure(
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Credential failures identify Administrator authentication, not invitation."""
+    monkeypatch.setattr(
+        "marquise_cli.auth_commands.load_auth_settings",
+        lambda: AuthSettings("https://project.supabase.co", "key", "service"),
+    )
+    monkeypatch.setattr(
+        "marquise_cli.auth_commands._administrator_credentials",
+        lambda: ("admin@example.com", "secret"),
+    )
+    factory, authenticate, _, _ = _factory()
+    authenticate.execute.side_effect = AuthenticationError(
+        "Email or password is invalid"
+    )
+    monkeypatch.setattr("marquise_cli.auth_commands._factory", lambda _: factory)
+
+    with pytest.raises(SystemExit) as error:
+        invite("user@example.com", "editor")
+
+    assert error.value.code == 1
+    assert (
+        capsys.readouterr().err
+        == "Failed to authenticate Administrator: Email or password is invalid\n"
+    )
 
 
 @pytest.mark.asyncio

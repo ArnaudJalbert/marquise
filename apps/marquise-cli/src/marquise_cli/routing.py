@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 from collections.abc import Callable, Sequence
 
-from marquise_cli.auth_commands import invite, set_role
+from marquise_cli.auth_commands import invite, login, set_role
 from marquise_cli.cinema_commands import create, delete, list_cinemas, update
 from marquise_cli.import_commands import import_all, import_cinema
 from marquise_cli.source_commands import (
@@ -115,6 +115,12 @@ def create_parser() -> argparse.ArgumentParser:
 
     auth = groups.add_parser("auth", help="Manage authenticated accounts")
     auth_commands = auth.add_subparsers(required=True, title="commands")
+    _command(
+        auth_commands,
+        "login",
+        login,
+        "Verify local Administrator credentials.",
+    )
     invite_command = _command(
         auth_commands,
         "invite",

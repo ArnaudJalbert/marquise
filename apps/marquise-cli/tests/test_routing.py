@@ -7,6 +7,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from marquise_cli.auth_commands import login
 from marquise_cli.import_commands import import_cinema
 from marquise_cli.routing import create_parser, dispatch
 
@@ -26,6 +27,13 @@ def test_import_cinema_routes_to_single_cinema_handler() -> None:
     namespace = create_parser().parse_args(["import", "cinema"])
 
     assert namespace.handler is import_cinema
+
+
+def test_auth_login_routes_to_administrator_verification() -> None:
+    """Auth login invokes the standalone Administrator credential check."""
+    namespace = create_parser().parse_args(["auth", "login"])
+
+    assert namespace.handler is login
 
 
 def test_root_help_lists_command_groups(capsys: pytest.CaptureFixture[str]) -> None:

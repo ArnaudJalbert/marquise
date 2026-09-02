@@ -4,7 +4,7 @@
 
 ### v0.1.14
 
-- **Add authenticated account administration**: `auth invite` and `auth set-role` verify Administrator credentials before updating fixed roles in protected Supabase application metadata. Password prompts remain masked and privileged credentials never become command arguments. Closes #264 and #266.
+- **Add authenticated account administration**: `auth login` verifies Administrator credentials without retaining a session; `auth invite` and `auth set-role` authenticate before updating fixed roles in protected Supabase application metadata. Authentication failures now identify the failed Administrator check. Password prompts remain masked and privileged credentials never become command arguments. Closes #264 and #266.
 
 ## 2026-08-29
 
