@@ -179,7 +179,7 @@ class SupabaseAuthAdminGateway(_SupabaseHttpGateway, AuthAdminGateway):
 
     def __init__(self, supabase_url: str, service_role_key: str) -> None:
         """Initialize trusted Auth Admin endpoint."""
-        super().__init__(f"{supabase_url.rstrip('/')}/auth/v1/admin", service_role_key)
+        super().__init__(f"{supabase_url.rstrip('/')}/auth/v1", service_role_key)
 
     async def invite(self, email: str) -> dict:
         """Send invitation and return invited user."""
@@ -194,7 +194,7 @@ class SupabaseAuthAdminGateway(_SupabaseHttpGateway, AuthAdminGateway):
     async def find_by_email(self, email: str) -> dict | None:
         """Find one user by exact case-insensitive email."""
         query = urllib.parse.urlencode({"filter": email})
-        payload = await self._request("GET", f"users?{query}", authorize=True)
+        payload = await self._request("GET", f"admin/users?{query}", authorize=True)
         users = payload.get("users")
         if not isinstance(users, list):
             raise AuthGatewayError("Supabase user search returned invalid data")
@@ -214,11 +214,11 @@ class SupabaseAuthAdminGateway(_SupabaseHttpGateway, AuthAdminGateway):
         """Set or remove ``app_metadata.marquise_role``."""
         await self._request(
             "PUT",
-            f"users/{user_id}",
+            f"admin/users/{user_id}",
             {"app_metadata": {"marquise_role": role}},
             authorize=True,
         )
 
     async def delete(self, user_id: str) -> None:
         """Delete one user."""
-        await self._request("DELETE", f"users/{user_id}", authorize=True)
+        await self._request("DELETE", f"admin/users/{user_id}", authorize=True)

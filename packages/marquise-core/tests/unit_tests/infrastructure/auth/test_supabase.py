@@ -161,7 +161,12 @@ async def test_admin_gateway_invites_and_updates_protected_metadata() -> None:
     invite_request = urlopen.call_args_list[0].args[0]
     role_request = urlopen.call_args_list[1].args[0]
     clear_request = urlopen.call_args_list[2].args[0]
+    assert invite_request.full_url == "https://project.supabase.co/auth/v1/invite"
     assert json.loads(invite_request.data) == {"email": "user@example.com"}
+    assert (
+        role_request.full_url
+        == "https://project.supabase.co/auth/v1/admin/users/user-id"
+    )
     assert json.loads(role_request.data) == {
         "app_metadata": {"marquise_role": "editor"}
     }
