@@ -1,0 +1,4 @@
+[auth]
+enable_signup = false
+enable_anonymous_sign_ins = true
+jwt_expiry = 900
