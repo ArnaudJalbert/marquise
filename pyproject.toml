@@ -41,16 +41,17 @@ extend-select = [
 ]
 
 [tool.importlinter]
-root_package = "marquise"
+root_packages = ["marquise", "marquise_api", "marquise_cli"]
 source_roots = ["."]
 
 [[tool.importlinter.contracts]]
 name = "apps-use-public-surface-only"
 type = "forbidden"
-source_modules = ["apps"]
+source_modules = ["marquise_api", "marquise_cli"]
 forbidden_modules = [
     "marquise.domain",
     "marquise.application",
     "marquise.interface_adapters",
     "marquise.infrastructure",
 ]
+allow_indirect_imports = true
