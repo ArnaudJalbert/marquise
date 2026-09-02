@@ -48,10 +48,5 @@ source_roots = ["."]
 name = "apps-use-public-surface-only"
 type = "forbidden"
 source_modules = ["marquise_api", "marquise_cli"]
-forbidden_modules = [
-    "marquise.domain",
-    "marquise.application",
-    "marquise.interface_adapters",
-    "marquise.infrastructure",
-]
+forbidden_modules = ["marquise.*"]
 allow_indirect_imports = true
