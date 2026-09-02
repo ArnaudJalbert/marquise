@@ -11,7 +11,7 @@ from marquise_cli.import_commands import import_cinema
 from marquise_cli.routing import create_parser, dispatch
 
 
-@pytest.mark.parametrize("group", ["cinema", "source", "import"])
+@pytest.mark.parametrize("group", ["cinema", "source", "import", "role", "user"])
 def test_group_help(group: str, capsys: pytest.CaptureFixture[str]) -> None:
     """Each top-level command group prints argparse help."""
     with pytest.raises(SystemExit) as error:
@@ -38,6 +38,8 @@ def test_root_help_lists_command_groups(capsys: pytest.CaptureFixture[str]) -> N
     assert "cinema" in output
     assert "source" in output
     assert "import" in output
+    assert "role" in output
+    assert "user" in output
 
 
 @pytest.mark.parametrize(
