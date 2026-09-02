@@ -16,38 +16,32 @@ Optional: `DATABASE_SCHEMA` (default `marquise`).
 
 ## Auth
 
-[`supabase/config.toml`](../supabase/config.toml) is the checked-in Auth
-baseline. After linking target project, apply it with:
+[`supabase/config.toml`](../supabase/config.toml) is source of truth. Link
+target project, then run:
 
 ```bash
 supabase config push
 ```
 
-Confirm matching dashboard settings:
+Check dashboard: disable public signup, enable Anonymous Sign-Ins, and set JWT
+expiry to 900 seconds (15 minutes).
 
-- **Auth > Providers**: disable public sign-ups and enable Anonymous Sign-Ins.
-- **Auth > Sessions**: set JWT expiry to 900 seconds (15 minutes).
-
-Invited humans complete email/password signup. Do not enable public signup for
-them. Provision a Bot with anonymous sign-in, then use trusted server-side
-Supabase administration credentials to set its `app_metadata.marquise_role`.
-An anonymous Bot is unprivileged until that metadata is assigned.
-
-`app_metadata.marquise_role` has exactly three values: `member`, `editor`, or
-`administrator`. Leave Supabase's reserved JWT `role` claim unchanged.
-Metadata and role changes take effect after token refresh or next sign-in.
+Invited humans set an email and password. Bots start with anonymous sign-in and
+have no Marquise access until trusted server code sets
+`app_metadata.marquise_role` to `member`, `editor`, or `administrator`. Leave
+Supabase's reserved JWT `role` unchanged. Role changes apply after token refresh
+or next sign-in.
 
 ### Project settings and secrets
 
-Record no credential values in this repository. Keep the Supabase project URL,
-publishable key, database connection string, and service-role key in the
-project's secret manager. The project URL and publishable key may be supplied
-to public clients; the database connection string and service-role key are
-server-only. Never expose the service-role key or add it to `.env.example`.
+Keep project URL, publishable key, database connection string, and service-role
+key in secret manager. URL and publishable key can reach public clients;
+database and service-role credentials stay server-side. Never commit values or
+put service-role key in `.env.example`.
 
-GitHub Actions integration tests require `DATABASE_URL`, `SUPABASE_URL`, and
-`SUPABASE_PUBLISHABLE_KEY` secrets. Scheduled imports continue to use their
-existing database credentials and do not authenticate through Supabase Auth.
+GitHub Actions integration tests need `DATABASE_URL`, `SUPABASE_URL`, and
+`SUPABASE_PUBLISHABLE_KEY`. Scheduled imports keep existing database
+credentials and do not use Supabase Auth.
 
 ## Integration tests
 
