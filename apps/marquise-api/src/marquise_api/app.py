@@ -21,6 +21,7 @@ import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+import jwt
 from fastapi import APIRouter, Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_cache import FastAPICache
@@ -108,7 +109,7 @@ def create_app(
         issuer = f"{supabase_url}/auth/v1"
         token_verifier = SupabaseJwtVerifier(
             signing_key_provider=SupabaseSigningKeyProvider(
-                f"{issuer}/.well-known/jwks.json"
+                jwt.PyJWKClient(f"{issuer}/.well-known/jwks.json")
             ),
             issuer=issuer,
         )

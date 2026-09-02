@@ -100,11 +100,9 @@ def test_verifier_rejects_bad_signatures_and_missing_roles(
         verifier.verify(_token(private_key, role="owner"))
 
 
-def test_fastapi_dependencies_authorize_roles(
-    verifier: SupabaseJwtVerifier,
-    private_key: rsa.RSAPrivateKey,
-) -> None:
-    """Editor dependency accepts Editors and Administrators but not Members."""
+@pytest.fixture
+def auth_client(verifier: SupabaseJwtVerifier) -> TestClient:
+    """Provide test-only routes protected by each reusable dependency."""
     app = create_app(token_verifier=verifier)
 
     @app.get("/_test/authenticated")
@@ -123,44 +121,82 @@ def test_fastapi_dependencies_authorize_roles(
     ) -> dict[str, str]:
         return {"subject": caller.subject, "role": caller.role}
 
-    client = TestClient(app)
+    return TestClient(app)
+
+
+def test_fastapi_dependencies_authorize_roles(
+    auth_client: TestClient,
+    private_key: rsa.RSAPrivateKey,
+) -> None:
+    """Role dependencies enforce authenticated, Editor, and Administrator access."""
     editor_token = _token(private_key, "editor")
     administrator_token = _token(private_key, "administrator")
     member_token = _token(private_key, "member")
 
-    response = client.get(
+    response = auth_client.get(
         "/_test/authenticated", headers={"Authorization": f"Bearer {member_token}"}
     )
     assert response.json() == {"subject": "user-1", "role": "member"}
-    assert client.get("/_test/editor").status_code == 401
-    malformed = client.get("/_test/editor", headers={"Authorization": "Bad"})
-    invalid = client.get("/_test/editor", headers={"Authorization": "Bearer not-a-jwt"})
-    assert malformed.status_code == 401
-    assert invalid.status_code == 401
+    assert auth_client.get("/_test/editor").status_code == 401
     assert (
-        client.get(
+        auth_client.get("/_test/editor", headers={"Authorization": "Bad"}).status_code
+        == 401
+    )
+    assert (
+        auth_client.get(
+            "/_test/editor", headers={"Authorization": "Bearer not-a-jwt"}
+        ).status_code
+        == 401
+    )
+    assert (
+        auth_client.get(
             "/_test/editor", headers={"Authorization": f"Bearer {editor_token}"}
         ).status_code
         == 200
     )
     assert (
-        client.get(
+        auth_client.get(
             "/_test/editor", headers={"Authorization": f"Bearer {administrator_token}"}
         ).status_code
         == 200
     )
     assert (
-        client.get(
+        auth_client.get(
             "/_test/editor", headers={"Authorization": f"Bearer {member_token}"}
         ).status_code
         == 403
     )
     assert (
-        client.get(
+        auth_client.get(
             "/_test/administrator", headers={"Authorization": f"Bearer {editor_token}"}
         ).status_code
         == 403
     )
+
+
+@pytest.mark.parametrize(
+    ("role", "claims"),
+    [
+        ("editor", {"exp": (datetime.now(UTC) - timedelta(minutes=5)).timestamp()}),
+        ("editor", {"iss": "https://other.supabase.co/auth/v1"}),
+        ("editor", {"aud": "other"}),
+        (None, {}),
+    ],
+)
+def test_fastapi_boundary_rejects_invalid_claims(
+    auth_client: TestClient,
+    private_key: rsa.RSAPrivateKey,
+    role: str | None,
+    claims: dict,
+) -> None:
+    """Expired, wrong-scope, and roleless JWTs receive unauthorized responses."""
+    token = _token(private_key, role, **claims)
+
+    response = auth_client.get(
+        "/_test/editor", headers={"Authorization": f"Bearer {token}"}
+    )
+
+    assert response.status_code == 401
 
 
 def test_public_routes_ignore_missing_credentials() -> None:

@@ -44,10 +44,10 @@ class TokenVerifier(ABC):
 
 
 class SupabaseSigningKeyProvider(SigningKeyProvider):
-    """Resolve and cache signing keys from Supabase JWKS endpoint."""
+    """Resolve signing keys through an injected Supabase JWKS client."""
 
-    def __init__(self, jwks_url: str) -> None:
-        self._client = jwt.PyJWKClient(jwks_url)
+    def __init__(self, client: jwt.PyJWKClient) -> None:
+        self._client = client
 
     def get_signing_key(self, token: str) -> jwt.PyJWK:
         """Return signing key selected by token key ID."""
