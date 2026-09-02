@@ -13,6 +13,9 @@ MARQUISE_API_RATE_LIMIT
     syntax (default: ``60/minute``). Example: ``120/minute``.
 SUPABASE_URL
     Supabase project URL used to discover JWT signing keys for protected routes.
+SUPABASE_PUBLISHABLE_KEY
+    Supabase publishable key used by ``/v1/auth/login`` to issue access
+    tokens via GoTrue. When unset, the login endpoint returns 503.
 """
 
 from __future__ import annotations
@@ -36,6 +39,8 @@ from marquise import ApplicationError, MarquiseFactory, create_factory
 from marquise_api.auth import (
     SupabaseJwtVerifier,
     SupabaseSigningKeyProvider,
+    SupabaseTokenIssuer,
+    TokenIssuer,
     TokenVerifier,
 )
 from marquise_api.dependencies import get_factory
@@ -50,6 +55,7 @@ from marquise_api.logging_middleware import (
 )
 from marquise_api.rate_limit import limiter
 from marquise_api.routers import (
+    auth_router,
     cinemas_router,
     movies_router,
     screenings_router,
@@ -88,6 +94,7 @@ def _parse_cors_origins(raw: str | None) -> list[str]:
 def create_app(
     factory: MarquiseFactory | None = None,
     token_verifier: TokenVerifier | None = None,
+    token_issuer: TokenIssuer | None = None,
 ) -> FastAPI:
     """Build the FastAPI application.
 
@@ -98,6 +105,10 @@ def create_app(
             and its database pool is opened on startup and closed on shutdown.
         token_verifier: Optional injected access-token verifier. When omitted,
             Supabase verification is configured from ``SUPABASE_URL`` if set.
+        token_issuer: Optional injected access-token issuer for the login
+            endpoint. When omitted, a Supabase GoTrue issuer is configured
+            from ``SUPABASE_URL`` and ``SUPABASE_PUBLISHABLE_KEY`` when both
+            are set.
 
     Returns:
         A configured ``FastAPI`` instance.
@@ -113,6 +124,10 @@ def create_app(
             ),
             issuer=issuer,
         )
+
+    publishable_key = os.environ.get("SUPABASE_PUBLISHABLE_KEY", "").strip()
+    if token_issuer is None and supabase_url and publishable_key:
+        token_issuer = SupabaseTokenIssuer(supabase_url, publishable_key)
 
     cache_ttl_seconds = int(
         os.environ.get("MARQUISE_API_CACHE_TTL_SECONDS", DEFAULT_CACHE_TTL_SECONDS)
@@ -142,8 +157,12 @@ multiple cinema chains and independent theatres.
 
 ## Authentication
 
-Current read endpoints under `/v1`, plus `/health` and `/ready`, are public.
-Write endpoints may require a Supabase bearer token carrying a Marquise role.
+The current read endpoints under ``/v1``, plus ``/health`` and ``/ready``,
+are public. ``POST /v1/auth/login`` exchanges an email and password for a
+Supabase access token when authentication is configured. ``GET /v1/auth/me``
+requires a bearer token carrying a Marquise role and returns the caller's
+subject and role. Write endpoints may require a Supabase bearer token
+carrying a Marquise role.
 
 ## Rate limiting
 
@@ -182,6 +201,7 @@ Server operators can allow specific origins via `MARQUISE_API_CORS_ORIGINS`.
     )
 
     app.state.token_verifier = token_verifier
+    app.state.token_issuer = token_issuer
 
     # When a factory is injected (e.g. in tests), make it available even if
     # the lifespan startup is not run by the test client.
@@ -221,7 +241,7 @@ Server operators can allow specific origins via `MARQUISE_API_CORS_ORIGINS`.
             CORSMiddleware,
             allow_origins=cors_origins,
             allow_credentials=True,
-            allow_methods=["GET"],
+            allow_methods=["GET", "POST"],
             allow_headers=["*"],
         )
 
@@ -254,6 +274,7 @@ Server operators can allow specific origins via `MARQUISE_API_CORS_ORIGINS`.
         return JSONResponse({"status": "unavailable"}, status_code=503)
 
     v1_router = APIRouter(prefix="/v1")
+    v1_router.include_router(auth_router)
     v1_router.include_router(cinemas_router)
     v1_router.include_router(movies_router)
     v1_router.include_router(screenings_router)

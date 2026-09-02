@@ -14,8 +14,12 @@ from fastapi.testclient import TestClient
 from marquise_api.app import create_app
 from marquise_api.auth import (
     AuthenticatedCaller,
+    InvalidCredentialsError,
+    IssuedSession,
     SigningKeyProvider,
     SupabaseJwtVerifier,
+    TokenIssuanceError,
+    TokenIssuer,
     TokenVerificationError,
     TokenVerifier,
     require_administrator,
@@ -204,3 +208,116 @@ def test_public_routes_ignore_missing_credentials() -> None:
     app = create_app(token_verifier=create_autospec(TokenVerifier, instance=True))
 
     assert TestClient(app).get("/health").status_code == 200
+
+
+def test_me_route_returns_authenticated_caller(
+    auth_client: TestClient, private_key: rsa.RSAPrivateKey
+) -> None:
+    """GET /v1/auth/me reports the caller's subject and role."""
+    response = auth_client.get(
+        "/v1/auth/me",
+        headers={"Authorization": f"Bearer {_token(private_key, 'editor')}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"subject": "user-1", "role": "editor"}
+
+
+@pytest.mark.parametrize(
+    "headers",
+    [None, {"Authorization": "Bearer not-a-jwt"}],
+)
+def test_me_route_rejects_missing_or_invalid_token(
+    auth_client: TestClient, headers: dict[str, str] | None
+) -> None:
+    """Missing or malformed bearer tokens receive unauthorized responses."""
+    response = auth_client.get("/v1/auth/me", headers=headers)
+
+    assert response.status_code == 401
+
+
+def test_login_route_returns_issued_session() -> None:
+    """POST /v1/auth/login returns the session issued by the token issuer."""
+    issuer = create_autospec(TokenIssuer, instance=True)
+    issuer.issue.return_value = IssuedSession(
+        access_token="access-token",
+        refresh_token="refresh-token",
+        expires_in=900,
+    )
+    app = create_app(
+        token_verifier=create_autospec(TokenVerifier, instance=True),
+        token_issuer=issuer,
+    )
+
+    response = TestClient(app).post(
+        "/v1/auth/login",
+        json={"email": "user@example.com", "password": "secret"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "access_token": "access-token",
+        "refresh_token": "refresh-token",
+        "expires_in": 900,
+        "token_type": "bearer",
+    }
+    issuer.issue.assert_awaited_once_with("user@example.com", "secret")
+
+
+@pytest.mark.parametrize(
+    ("side_effect", "expected_status"),
+    [
+        (InvalidCredentialsError("rejected"), 401),
+        (TokenIssuanceError("provider down"), 503),
+    ],
+)
+def test_login_route_maps_issuer_failures_to_status_codes(
+    side_effect: Exception, expected_status: int
+) -> None:
+    """Rejected credentials and provider failures map to 401 and 503."""
+    issuer = create_autospec(TokenIssuer, instance=True)
+    issuer.issue.side_effect = side_effect
+    app = create_app(
+        token_verifier=create_autospec(TokenVerifier, instance=True),
+        token_issuer=issuer,
+    )
+
+    response = TestClient(app).post(
+        "/v1/auth/login",
+        json={"email": "user@example.com", "password": "secret"},
+    )
+
+    assert response.status_code == expected_status
+
+
+def test_login_route_reports_unconfigured_authentication(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Login returns 503 when no token issuer is configured."""
+    monkeypatch.delenv("SUPABASE_URL", raising=False)
+    monkeypatch.delenv("SUPABASE_PUBLISHABLE_KEY", raising=False)
+    app = create_app(token_verifier=create_autospec(TokenVerifier, instance=True))
+
+    response = TestClient(app).post(
+        "/v1/auth/login",
+        json={"email": "user@example.com", "password": "secret"},
+    )
+
+    assert response.status_code == 503
+
+
+def test_login_route_validates_credentials_shape() -> None:
+    """Malformed login bodies receive validation errors."""
+    issuer = create_autospec(TokenIssuer, instance=True)
+    app = create_app(
+        token_verifier=create_autospec(TokenVerifier, instance=True),
+        token_issuer=issuer,
+    )
+
+    response = TestClient(app).post(
+        "/v1/auth/login",
+        json={"email": "not-an-email", "password": ""},
+    )
+
+    assert response.status_code == 422
+    issuer.issue.assert_not_awaited()

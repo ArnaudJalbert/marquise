@@ -618,6 +618,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "fastapi-cache2" },
     { name = "fastapi-pagination" },
+    { name = "httpx2" },
     { name = "marquise-core" },
     { name = "pyjwt", extra = ["crypto"] },
     { name = "slowapi" },
@@ -629,6 +630,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.138.1" },
     { name = "fastapi-cache2", specifier = ">=0.2.2" },
     { name = "fastapi-pagination", specifier = ">=0.15.15" },
+    { name = "httpx2", specifier = ">=2.12.0" },
     { name = "marquise-core", editable = "packages/marquise-core" },
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.10.1" },
     { name = "slowapi", specifier = ">=0.1.10" },
@@ -637,7 +639,7 @@ requires-dist = [
 
 [[package]]
 name = "marquise-cli"
-version = "0.1.13"
+version = "0.1.14"
 source = { editable = "apps/marquise-cli" }
 dependencies = [
     { name = "marquise-core" },

@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Literal
 
+import httpx2 as httpx
 import jwt
 from fastapi import Depends, HTTPException, Request, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -153,3 +154,79 @@ def require_administrator(
             detail="Administrator role required",
         )
     return caller
+
+
+class TokenIssuanceError(RuntimeError):
+    """Raised when the authentication provider cannot issue a token."""
+
+
+class InvalidCredentialsError(TokenIssuanceError):
+    """Raised when the provider rejects the supplied credentials."""
+
+
+@dataclass(frozen=True)
+class IssuedSession:
+    """Session tokens returned by an authentication provider."""
+
+    access_token: str
+    refresh_token: str | None
+    expires_in: int
+    token_type: str = "bearer"
+
+
+class TokenIssuer(ABC):
+    """Exchange credentials for provider-issued session tokens."""
+
+    @abstractmethod
+    async def issue(self, email: str, password: str) -> IssuedSession:
+        """Validate credentials and return an issued session."""
+
+
+class SupabaseTokenIssuer(TokenIssuer):
+    """Issue access tokens through the Supabase GoTrue password grant."""
+
+    def __init__(self, supabase_url: str, publishable_key: str) -> None:
+        """Point the issuer at a Supabase project's GoTrue endpoint."""
+        self._token_endpoint = f"{supabase_url.rstrip('/')}/auth/v1/token"
+        self._publishable_key = publishable_key
+
+    async def issue(self, email: str, password: str) -> IssuedSession:
+        """Exchange email and password for a GoTrue access token."""
+        headers = {"apikey": self._publishable_key}
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.post(
+                    self._token_endpoint,
+                    params={"grant_type": "password"},
+                    json={"email": email, "password": password},
+                    headers=headers,
+                )
+        except httpx.HTTPError as exc:
+            raise TokenIssuanceError(
+                "The authentication provider could not be reached"
+            ) from exc
+
+        if response.status_code == 200:
+            data = response.json()
+            return IssuedSession(
+                access_token=data["access_token"],
+                refresh_token=data.get("refresh_token"),
+                expires_in=int(data["expires_in"]),
+                token_type=str(data.get("token_type", "bearer")),
+            )
+        if response.status_code in {400, 401, 422}:
+            raise InvalidCredentialsError("Credentials were rejected")
+        raise TokenIssuanceError(
+            f"The authentication provider returned status {response.status_code}"
+        )
+
+
+def get_token_issuer(request: Request) -> TokenIssuer:
+    """Return the token issuer configured at the composition root."""
+    issuer: TokenIssuer | None = request.app.state.token_issuer
+    if issuer is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication is not configured",
+        )
+    return issuer
