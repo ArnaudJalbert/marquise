@@ -4,14 +4,12 @@ version = "0.1.8"
 description = "Marquise read-only REST API"
 requires-python = ">=3.13"
 dependencies = [
-    "marquise-core>=0.2.18",
+    "marquise-core>=0.2.20",
     "fastapi>=0.138.1",
     "fastapi-cache2>=0.2.2",
     "fastapi-pagination>=0.15.15",
     "slowapi>=0.1.10",
     "uvicorn[standard]>=0.49.0",
-    "pyjwt[crypto]>=2.10.1",
-    "httpx2>=2.12.0",
 ]
 
 [project.urls]

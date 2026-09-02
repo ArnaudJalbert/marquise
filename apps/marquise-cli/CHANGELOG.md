@@ -4,13 +4,7 @@
 
 ### v0.1.14
 
-- **Mask password prompts**: interactive user password entry echoes asterisks instead of staying blank, so callers can confirm they typed.
-
-## 2026-09-01
-
-### v0.1.14
-
-- **Add user and role CLI commands**: create, search, update, and delete Supabase auth users; create and list roles stored in the database schema.
+- **Add authenticated account administration**: `auth invite` and `auth set-role` verify Administrator credentials before updating fixed roles in protected Supabase application metadata. Password prompts remain masked and privileged credentials never become command arguments. Closes #264 and #266.
 
 ## 2026-08-29
 

@@ -4,8 +4,7 @@
 
 ### v0.1.8
 
-- **Add Supabase JWT authorization dependencies**: verify signatures and required claims through injected collaborators, with reusable authenticated, Editor, and Administrator authorization. Current public routes remain unauthenticated. Closes #263.
-- **Add auth endpoints**: `POST /v1/auth/login` exchanges an email and password for a Supabase access token via GoTrue, and `GET /v1/auth/me` returns the authenticated caller's subject and Marquise role from a bearer token. CORS now allows `POST` for the login route.
+- **Prepare Supabase JWT authorization**: reusable FastAPI dependencies call the core token-verification query for authenticated, Editor, and Administrator access. No current endpoint uses them, so all existing routes remain public. Closes #263.
 
 ## 2026-08-29
 

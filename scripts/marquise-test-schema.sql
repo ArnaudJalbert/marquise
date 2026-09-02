@@ -66,14 +66,3 @@ CREATE INDEX IF NOT EXISTS idx_screenings_cinema_showtime
 
 CREATE INDEX IF NOT EXISTS idx_screenings_movie_showtime
     ON "marquise-test".screenings(movie_id, showtime);
-
-CREATE TABLE IF NOT EXISTS "marquise-test".roles (
-    name        TEXT PRIMARY KEY,
-    description TEXT
-);
-
-CREATE TABLE IF NOT EXISTS "marquise-test".user_roles (
-    user_id   UUID PRIMARY KEY,
-    role_name TEXT NOT NULL
-        REFERENCES "marquise-test".roles(name) ON DELETE RESTRICT
-);

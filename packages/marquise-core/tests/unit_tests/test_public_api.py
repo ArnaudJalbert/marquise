@@ -12,6 +12,12 @@ import marquise
 EXPECTED_PUBLIC_SURFACE: set[str] = {
     "ApplicationError",
     "AssignSourceUseCase",
+    "AuthenticateAdministratorUseCase",
+    "AuthAdministrationError",
+    "AuthFactory",
+    "AuthenticationError",
+    "AuthorizationError",
+    "AuthUserNotFoundError",
     "CinemaAlreadyExistsError",
     "CinemaIdAlreadyExistsError",
     "CinemaNotFoundError",
@@ -21,6 +27,7 @@ EXPECTED_PUBLIC_SURFACE: set[str] = {
     "CreateMissingMoviesCommand",
     "CreateScreeningsCommand",
     "ImportScreeningsCommand",
+    "InviteAuthUserUseCase",
     "CreateSourceUseCase",
     "DeleteCinemaUseCase",
     "DeleteSourceUseCase",
@@ -43,12 +50,15 @@ EXPECTED_PUBLIC_SURFACE: set[str] = {
     "MovieNotFoundError",
     "ScreeningAlreadyExistsError",
     "ScreeningNotFoundError",
+    "SelfDemotionError",
+    "SetAuthUserRoleUseCase",
     "SearchScreeningsQuery",
     "SourceAlreadyExistsError",
     "SourceNotFoundError",
     "TooManyMovieIdsError",
     "UnassignSourceUseCase",
     "UpdateCinemaUseCase",
+    "VerifyAccessTokenQuery",
 }
 
 

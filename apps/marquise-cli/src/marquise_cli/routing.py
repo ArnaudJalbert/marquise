@@ -5,10 +5,9 @@ from __future__ import annotations
 import argparse
 from collections.abc import Callable, Sequence
 
+from marquise_cli.auth_commands import invite, set_role
 from marquise_cli.cinema_commands import create, delete, list_cinemas, update
 from marquise_cli.import_commands import import_all, import_cinema
-from marquise_cli.role_commands import create as create_role
-from marquise_cli.role_commands import list_roles
 from marquise_cli.source_commands import (
     assign,
     list_registered_sources,
@@ -16,20 +15,10 @@ from marquise_cli.source_commands import (
     unassign,
     unregister_sources,
 )
-from marquise_cli.user_commands import (
-    create as create_user,
-)
-from marquise_cli.user_commands import (
-    delete as delete_user,
-)
-from marquise_cli.user_commands import (
-    search as search_users,
-)
-from marquise_cli.user_commands import (
-    update as update_user,
-)
 
 Handler = Callable[..., None]
+
+_ROLES = ("member", "editor", "administrator")
 
 
 def _positive_int(value: str) -> int:
@@ -124,72 +113,33 @@ def create_parser() -> argparse.ArgumentParser:
         help="Days to import, starting today",
     )
 
-    role = groups.add_parser("role", help="Manage user roles")
-    role_commands = role.add_subparsers(required=True, title="commands")
-    create_role_command = _command(
-        role_commands,
-        "create",
-        create_role,
-        "Create a role.",
-        ("name", "description"),
+    auth = groups.add_parser("auth", help="Manage authenticated accounts")
+    auth_commands = auth.add_subparsers(required=True, title="commands")
+    invite_command = _command(
+        auth_commands,
+        "invite",
+        invite,
+        "Invite a human account.",
+        ("email", "role"),
     )
-    create_role_command.add_argument("--name", help="Role slug")
-    create_role_command.add_argument("--description", help="Role description")
-    _command(role_commands, "list", list_roles, "List roles.")
+    invite_command.add_argument("email", help="Account email")
+    invite_command.add_argument("--role", required=True, choices=_ROLES)
 
-    user = groups.add_parser("user", help="Manage auth users")
-    user_commands = user.add_subparsers(required=True, title="commands")
-    create_user_command = _command(
-        user_commands,
-        "create",
-        create_user,
-        "Create a user and optionally assign a role.",
-        ("email", "password", "role"),
+    set_role_command = _command(
+        auth_commands,
+        "set-role",
+        set_role,
+        "Set or clear a human account role.",
+        ("email", "role", "clear_role"),
     )
-    create_user_command.add_argument("--email", help="User email")
-    create_user_command.add_argument("--password", help="User password")
-    create_user_command.add_argument("--role", help="Role to assign")
-    search_user_command = _command(
-        user_commands,
-        "search",
-        search_users,
-        "Search users by email or query.",
-        ("email", "query", "verbose"),
-    )
-    search_user_command.add_argument("--email", help="Exact email match")
-    search_user_command.add_argument("--query", "-q", help="Email substring search")
-    search_user_command.add_argument(
-        "--verbose",
-        "-v",
-        action="store_true",
-        help="Show user ID and created timestamp",
-    )
-    update_user_command = _command(
-        user_commands,
-        "update",
-        update_user,
-        "Update a user's email, password, and/or role.",
-        ("user_id", "email", "new_email", "password", "role", "clear_role"),
-    )
-    update_user_command.add_argument("--id", dest="user_id", help="User UUID")
-    update_user_command.add_argument("--email", help="Current user email")
-    update_user_command.add_argument("--new-email", dest="new_email", help="New email")
-    update_user_command.add_argument("--password", help="New password")
-    update_user_command.add_argument("--role", help="Role to assign")
-    update_user_command.add_argument(
+    set_role_command.add_argument("email", help="Account email")
+    role_selection = set_role_command.add_mutually_exclusive_group(required=True)
+    role_selection.add_argument("--role", choices=_ROLES)
+    role_selection.add_argument(
         "--clear-role",
         action="store_true",
-        help="Remove the user's role assignment",
+        help="Remove Marquise access",
     )
-    delete_user_command = _command(
-        user_commands,
-        "delete",
-        delete_user,
-        "Delete a user.",
-        ("user_id", "email"),
-    )
-    delete_user_command.add_argument("--id", dest="user_id", help="User UUID")
-    delete_user_command.add_argument("--email", help="User email")
 
     return parser
 

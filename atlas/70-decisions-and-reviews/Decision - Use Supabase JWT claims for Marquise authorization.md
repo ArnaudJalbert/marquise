@@ -14,7 +14,7 @@ Marquise needs authenticated API writes for humans and Bots while keeping public
 
 ## Decision
 
-Use short-lived Supabase access JWTs for API identity. Verify asymmetric signature, issuer, audience, expiry, subject, and `app_metadata.marquise_role` at API boundary. Valid Marquise roles are Member, Editor, and Administrator; Administrator includes Editor authorization. Keep Supabase reserved `role` unchanged.
+Use short-lived Supabase access JWTs for API identity. Verify asymmetric signature, issuer, audience, expiry, subject, and `app_metadata.marquise_role` at API boundary through the core access-token query and dedicated user identity reader. Valid Marquise roles are Member, Editor, and Administrator; Administrator includes Editor authorization. Keep Supabase reserved `role` unchanged. Do not duplicate role assignments in Marquise database tables.
 
 ## Rationale and trade-offs
 
@@ -23,7 +23,7 @@ Supabase remains identity provider and signing-key authority, avoiding another c
 ## Consequences
 
 - Public read, health, and readiness routes remain unauthenticated.
-- Protected routes depend on reusable injected token-verification collaborators.
+- Protected routes depend on reusable injected token-verification collaborators; existing business use cases remain authentication-agnostic.
 - API needs project URL and asymmetric Supabase signing keys, not service-role key.
 - Immediate role revocation and legacy HS256 verification remain out of scope.
 

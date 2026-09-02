@@ -1,86 +1,162 @@
-"""Tests for Supabase auth helpers."""
+"""Tests for Administrator-authenticated account commands."""
 
 from __future__ import annotations
 
-import json
-from io import BytesIO
-from unittest.mock import patch
+from unittest.mock import create_autospec, patch
 
 import pytest
 
-from marquise_cli.auth.client import AuthClient, AuthError
-from marquise_cli.auth.config import AuthSettings, load_auth_settings
-from marquise_cli.auth.store import validate_role_name
+from marquise import (
+    AuthenticateAdministratorUseCase,
+    AuthFactory,
+    AuthorizationError,
+    InviteAuthUserUseCase,
+    SetAuthUserRoleUseCase,
+)
+from marquise_cli.auth_commands import (
+    AuthSettings,
+    _administrator_credentials,
+    load_auth_settings,
+    run_invite,
+    run_set_role,
+)
 
 
-def test_validate_role_name_normalizes_and_accepts_slug() -> None:
-    assert validate_role_name(" Admin ") == "admin"
-    assert validate_role_name("editor-in-chief") == "editor-in-chief"
-
-
-@pytest.mark.parametrize("name", ["", "1bad", "Has Space", "a" * 65])
-def test_validate_role_name_rejects_invalid_names(name: str) -> None:
-    with pytest.raises(ValueError):
-        validate_role_name(name)
-
-
-def test_load_auth_settings_reads_environment(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co/")
-    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
-    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost/db")
-    monkeypatch.setenv("DATABASE_SCHEMA", "marquise-test")
-
-    settings = load_auth_settings()
-
-    assert settings == AuthSettings(
-        supabase_url="https://example.supabase.co",
-        service_role_key="service-key",
-        database_url="postgresql://u:p@localhost/db",
-        schema="marquise-test",
-    )
-
-
-def test_load_auth_settings_reports_missing_variables(
+def test_load_auth_settings_requires_only_supabase_auth_configuration(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.delenv("SUPABASE_URL", raising=False)
-    monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+    """Auth administration does not require database configuration."""
+    monkeypatch.setenv("SUPABASE_URL", "https://project.supabase.co/")
+    monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "publishable")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service")
     monkeypatch.delenv("DATABASE_URL", raising=False)
 
-    with pytest.raises(RuntimeError, match="SUPABASE_URL"):
-        load_auth_settings()
-
-
-def test_auth_client_create_user_parses_response() -> None:
-    payload = {
-        "id": "user-123",
-        "email": "user@example.com",
-        "created_at": "2026-01-01T00:00:00Z",
-    }
-    client = AuthClient("https://example.supabase.co", "service-key")
-
-    with patch("urllib.request.urlopen") as urlopen:
-        urlopen.return_value.__enter__.return_value.read.return_value = json.dumps(
-            payload
-        ).encode()
-        user = client.create_user(email="user@example.com", password="secret")
-
-    assert user.id == "user-123"
-    assert user.email == "user@example.com"
-
-
-def test_auth_client_raises_auth_error_on_http_failure() -> None:
-    import urllib.error
-
-    client = AuthClient("https://example.supabase.co", "service-key")
-    error = urllib.error.HTTPError(
-        url="https://example.supabase.co/auth/v1/admin/users",
-        code=422,
-        msg="Unprocessable Entity",
-        hdrs=None,
-        fp=BytesIO(b'{"message":"User already registered"}'),
+    assert load_auth_settings() == AuthSettings(
+        supabase_url="https://project.supabase.co",
+        publishable_key="publishable",
+        service_role_key="service",
     )
 
-    with patch("urllib.request.urlopen", side_effect=error):
-        with pytest.raises(AuthError, match="User already registered"):
-            client.create_user(email="user@example.com", password="secret")
+
+def test_configured_administrator_credentials_avoid_prompts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Complete configured credentials avoid interactive input."""
+    monkeypatch.setenv("MARQUISE_EMAIL", "admin@example.com")
+    monkeypatch.setenv("MARQUISE_PASSWORD", "secret")
+
+    with (
+        patch("builtins.input") as input_prompt,
+        patch("marquise_cli.auth_commands.prompt_password") as password_prompt,
+    ):
+        assert _administrator_credentials() == ("admin@example.com", "secret")
+
+    input_prompt.assert_not_called()
+    password_prompt.assert_not_called()
+
+
+def test_incomplete_administrator_credentials_prompt_for_both(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Partial environment configuration does not mix credential sources."""
+    monkeypatch.setenv("MARQUISE_EMAIL", "configured@example.com")
+    monkeypatch.delenv("MARQUISE_PASSWORD", raising=False)
+
+    with (
+        patch("builtins.input", return_value="prompted@example.com"),
+        patch(
+            "marquise_cli.auth_commands.prompt_password", return_value="prompted-secret"
+        ),
+    ):
+        assert _administrator_credentials() == (
+            "prompted@example.com",
+            "prompted-secret",
+        )
+
+
+def _factory() -> tuple[
+    AuthFactory,
+    AuthenticateAdministratorUseCase,
+    InviteAuthUserUseCase,
+    SetAuthUserRoleUseCase,
+]:
+    factory = create_autospec(AuthFactory, instance=True)
+    authenticate = create_autospec(AuthenticateAdministratorUseCase, instance=True)
+    authenticate.InputData = AuthenticateAdministratorUseCase.InputData
+    authenticate.execute.return_value = AuthenticateAdministratorUseCase.OutputData(
+        subject="admin-id"
+    )
+    invite = create_autospec(InviteAuthUserUseCase, instance=True)
+    invite.InputData = InviteAuthUserUseCase.InputData
+    invite.execute.return_value = InviteAuthUserUseCase.OutputData(
+        user_id="user-id", email="user@example.com", role="editor"
+    )
+    set_role = create_autospec(SetAuthUserRoleUseCase, instance=True)
+    set_role.InputData = SetAuthUserRoleUseCase.InputData
+    set_role.execute.return_value = SetAuthUserRoleUseCase.OutputData(
+        user_id="user-id", email="user@example.com", role=None
+    )
+    factory.authenticate_administrator_use_case = authenticate
+    factory.invite_auth_user_use_case = invite
+    factory.set_auth_user_role_use_case = set_role
+    return factory, authenticate, invite, set_role
+
+
+@pytest.mark.asyncio
+async def test_invite_authenticates_before_invitation() -> None:
+    """CLI verifies Administrator before invoking invitation use case."""
+    factory, authenticate, invite, _ = _factory()
+
+    await run_invite(
+        factory,
+        administrator_email="admin@example.com",
+        administrator_password="secret",
+        email="user@example.com",
+        role="editor",
+    )
+
+    authenticate.execute.assert_awaited_once()
+    invite.execute.assert_awaited_once_with(
+        InviteAuthUserUseCase.InputData(email="user@example.com", role="editor")
+    )
+
+
+@pytest.mark.asyncio
+async def test_invite_stops_when_caller_is_not_administrator() -> None:
+    """Failed Administrator authorization prevents privileged invitation."""
+    factory, authenticate, invite, _ = _factory()
+    authenticate.execute.side_effect = AuthorizationError("Administrator required")
+
+    with pytest.raises(AuthorizationError):
+        await run_invite(
+            factory,
+            administrator_email="member@example.com",
+            administrator_password="secret",
+            email="user@example.com",
+            role="member",
+        )
+
+    invite.execute.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_set_role_passes_authenticated_actor_identity() -> None:
+    """Role update receives actor ID needed for self-demotion protection."""
+    factory, authenticate, _, set_role = _factory()
+
+    await run_set_role(
+        factory,
+        administrator_email="admin@example.com",
+        administrator_password="secret",
+        email="user@example.com",
+        role=None,
+    )
+
+    authenticate.execute.assert_awaited_once()
+    set_role.execute.assert_awaited_once_with(
+        SetAuthUserRoleUseCase.InputData(
+            actor_user_id="admin-id",
+            email="user@example.com",
+            role=None,
+        )
+    )

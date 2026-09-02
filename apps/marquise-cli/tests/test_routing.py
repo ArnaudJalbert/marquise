@@ -11,7 +11,7 @@ from marquise_cli.import_commands import import_cinema
 from marquise_cli.routing import create_parser, dispatch
 
 
-@pytest.mark.parametrize("group", ["cinema", "source", "import", "role", "user"])
+@pytest.mark.parametrize("group", ["cinema", "source", "import", "auth"])
 def test_group_help(group: str, capsys: pytest.CaptureFixture[str]) -> None:
     """Each top-level command group prints argparse help."""
     with pytest.raises(SystemExit) as error:
@@ -38,8 +38,7 @@ def test_root_help_lists_command_groups(capsys: pytest.CaptureFixture[str]) -> N
     assert "cinema" in output
     assert "source" in output
     assert "import" in output
-    assert "role" in output
-    assert "user" in output
+    assert "auth" in output
 
 
 @pytest.mark.parametrize(
@@ -52,6 +51,8 @@ def test_root_help_lists_command_groups(capsys: pytest.CaptureFixture[str]) -> N
         (["source", "list-assignments"], "invalid choice"),
         (["source", "import"], "invalid choice"),
         (["import", "all", "--days", "0"], "must be greater than zero"),
+        (["auth", "invite", "user@example.com", "--role", "owner"], "invalid choice"),
+        (["auth", "set-role", "user@example.com"], "one of the arguments"),
     ],
 )
 def test_invalid_paths_use_argparse_errors(

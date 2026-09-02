@@ -6,6 +6,9 @@ from marquise.application.repositories.cinema_source_assignment_repository impor
 )
 from marquise.application.repositories.movie_repository import MovieRepository
 from marquise.application.repositories.page import Page
+from marquise.application.repositories.password_authentication_repository import (
+    PasswordAuthenticationRepository,
+)
 from marquise.application.repositories.screening_repository import ScreeningRepository
 from marquise.application.repositories.source_definition_repository import (
     SourceDefinitionRepository,
@@ -16,6 +19,9 @@ from marquise.application.repositories.source_registry_query import (
     ShowtimeRow,
     SourceRegistryQuery,
 )
+from marquise.application.repositories.user_identity_repository import (
+    UserIdentityRepository,
+)
 
 __all__ = [
     "CinemaRepository",
@@ -23,9 +29,11 @@ __all__ = [
     "MovieEnrichmentData",
     "MovieRepository",
     "Page",
+    "PasswordAuthenticationRepository",
     "RegistrySourceEntry",
     "ScreeningRepository",
     "ShowtimeRow",
     "SourceDefinitionRepository",
     "SourceRegistryQuery",
+    "UserIdentityRepository",
 ]

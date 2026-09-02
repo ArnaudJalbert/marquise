@@ -21,7 +21,8 @@ Optional: `DATABASE_SCHEMA` (default `marquise`).
 to push it safely. `supabase config push` applies defaults for omitted keys, so
 do not remove existing settings from the file.
 
-Invited humans set an email and password. Bots start with anonymous sign-in and
+Invited humans receive Supabase's account-setup email and choose a password.
+Bots start with anonymous sign-in and
 have no Marquise access until trusted server code sets
 `app_metadata.marquise_role` to `member`, `editor`, or `administrator`. Leave
 Supabase's reserved JWT `role` unchanged. Role changes apply after token refresh
@@ -33,6 +34,12 @@ Set `SUPABASE_URL` for API JWT verification. The API discovers signing keys at
 the project's Auth JWKS endpoint and does not need a service-role key. Supabase
 project must use asymmetric JWT signing keys; legacy HS256 projects do not
 publish verification keys.
+
+CLI account administration requires `SUPABASE_URL`,
+`SUPABASE_PUBLISHABLE_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`. It uses
+`MARQUISE_EMAIL` and `MARQUISE_PASSWORD` only when both are configured;
+otherwise it prompts for Administrator credentials. The service-role key and
+Administrator password are never CLI arguments.
 
 Keep project URL, publishable key, database connection string, and service-role
 key in secret manager. URL and publishable key can reach public clients;
