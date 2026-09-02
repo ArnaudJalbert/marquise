@@ -16,15 +16,10 @@ Optional: `DATABASE_SCHEMA` (default `marquise`).
 
 ## Auth
 
-[`supabase/config.toml`](../supabase/config.toml) is source of truth. Link
-target project, then run:
-
-```bash
-supabase config push
-```
-
-Check dashboard: disable public signup, enable Anonymous Sign-Ins, and set JWT
-expiry to 900 seconds (15 minutes).
+[`supabase/config.toml`](../supabase/config.toml) is source of truth. Use
+[Supabase Auth configuration](../atlas/50-processes/Supabase%20Auth%20configuration.md)
+to push it safely. `supabase config push` applies defaults for omitted keys, so
+do not remove existing settings from the file.
 
 Invited humans set an email and password. Bots start with anonymous sign-in and
 have no Marquise access until trusted server code sets
