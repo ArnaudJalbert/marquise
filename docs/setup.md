@@ -29,6 +29,11 @@ or next sign-in.
 
 ### Project settings and secrets
 
+Set `SUPABASE_URL` for API JWT verification. The API discovers signing keys at
+the project's Auth JWKS endpoint and does not need a service-role key. Supabase
+project must use asymmetric JWT signing keys; legacy HS256 projects do not
+publish verification keys.
+
 Keep project URL, publishable key, database connection string, and service-role
 key in secret manager. URL and publishable key can reach public clients;
 database and service-role credentials stay server-side. Never commit values or

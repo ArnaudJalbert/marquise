@@ -1,6 +1,6 @@
 [project]
 name = "marquise-api"
-version = "0.1.7"
+version = "0.1.8"
 description = "Marquise read-only REST API"
 requires-python = ">=3.13"
 dependencies = [
@@ -10,6 +10,7 @@ dependencies = [
     "fastapi-pagination>=0.15.15",
     "slowapi>=0.1.10",
     "uvicorn[standard]>=0.49.0",
+    "pyjwt[crypto]>=2.10.1",
 ]
 
 [project.urls]

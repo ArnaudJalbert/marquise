@@ -33,3 +33,4 @@ review_date: YYYY-MM-DD
 
 - [[Marquise Atlas as Company Knowledge Base]]
 - [[Decision - Establish Orson as Staff Engineer and Architecture Lead]]
+- [[Decision - Use Supabase JWT claims for Marquise authorization]]

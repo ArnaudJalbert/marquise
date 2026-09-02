@@ -146,6 +146,7 @@ Design rules → [Atlas Clean Architecture](atlas/50-processes/Clean%20Architect
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `SUPABASE_URL` | Protected API routes only | Supabase project URL for JWT signing-key discovery |
 | `CINEPLEX_API_KEY` | No | Cineplex API subscription key |
 | `DATABASE_SCHEMA` | No | Schema name (default: `marquise`) |
 | `MARQUISE_API_CACHE_TTL_SECONDS` | No | API in-memory cache TTL (default: 3600) |

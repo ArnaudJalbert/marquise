@@ -11,6 +11,8 @@ MARQUISE_API_CORS_ORIGINS
 MARQUISE_API_RATE_LIMIT
     Per-IP request rate limit, in slowapi's ``<count>/<period>`` string
     syntax (default: ``60/minute``). Example: ``120/minute``.
+SUPABASE_URL
+    Supabase project URL used to discover JWT signing keys for protected routes.
 """
 
 from __future__ import annotations
@@ -30,6 +32,11 @@ from slowapi.middleware import SlowAPIMiddleware
 from starlette.responses import JSONResponse, Response
 
 from marquise import ApplicationError, MarquiseFactory, create_factory
+from marquise_api.auth import (
+    SupabaseJwtVerifier,
+    SupabaseSigningKeyProvider,
+    TokenVerifier,
+)
 from marquise_api.dependencies import get_factory
 from marquise_api.exception_handlers import (
     application_error_handler,
@@ -77,19 +84,34 @@ def _parse_cors_origins(raw: str | None) -> list[str]:
     return [origin.strip() for origin in raw.split(",") if origin.strip()]
 
 
-def create_app(factory: MarquiseFactory | None = None) -> FastAPI:
-    """Build the read-only FastAPI application.
+def create_app(
+    factory: MarquiseFactory | None = None,
+    token_verifier: TokenVerifier | None = None,
+) -> FastAPI:
+    """Build the FastAPI application.
 
     Args:
         factory: An optional pre-built factory. When provided (e.g. in
             tests), it is used as-is and its lifecycle is the caller's
             responsibility. When omitted, a ``MarquiseFactory`` is created
             and its database pool is opened on startup and closed on shutdown.
+        token_verifier: Optional injected access-token verifier. When omitted,
+            Supabase verification is configured from ``SUPABASE_URL`` if set.
 
     Returns:
         A configured ``FastAPI`` instance.
     """
     configure_logging()
+
+    supabase_url = os.environ.get("SUPABASE_URL", "").rstrip("/")
+    if token_verifier is None and supabase_url:
+        issuer = f"{supabase_url}/auth/v1"
+        token_verifier = SupabaseJwtVerifier(
+            signing_key_provider=SupabaseSigningKeyProvider(
+                f"{issuer}/.well-known/jwks.json"
+            ),
+            issuer=issuer,
+        )
 
     cache_ttl_seconds = int(
         os.environ.get("MARQUISE_API_CACHE_TTL_SECONDS", DEFAULT_CACHE_TTL_SECONDS)
@@ -119,9 +141,8 @@ multiple cinema chains and independent theatres.
 
 ## Authentication
 
-None. Every endpoint under `/v1` is public and read-only — there is no API
-key, token, or account system. Do not send credentials; there is nothing to
-authenticate.
+Current read endpoints under `/v1`, plus `/health` and `/ready`, are public.
+Write endpoints may require a Supabase bearer token carrying a Marquise role.
 
 ## Rate limiting
 
@@ -158,6 +179,8 @@ Server operators can allow specific origins via `MARQUISE_API_CORS_ORIGINS`.
         version="1.0.0",
         lifespan=lifespan,
     )
+
+    app.state.token_verifier = token_verifier
 
     # When a factory is injected (e.g. in tests), make it available even if
     # the lifespan startup is not run by the test client.

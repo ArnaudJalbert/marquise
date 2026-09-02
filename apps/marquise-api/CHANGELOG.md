@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-02
+
+### v0.1.8
+
+- **Add Supabase JWT authorization dependencies**: verify signatures and required claims through injected collaborators, with reusable authenticated, Editor, and Administrator authorization. Current public routes remain unauthenticated. Closes #263.
+
 ## 2026-08-29
 
 ### v0.1.7
