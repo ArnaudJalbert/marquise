@@ -7,14 +7,14 @@ from unittest.mock import create_autospec
 import pytest
 
 from marquise.application.queries import VerifyAccessTokenQuery
-from marquise.application.readers import UserIdentityReader
+from marquise.application.readers import AccountIdentityReader
 
 
 @pytest.mark.asyncio
 async def test_verify_access_token_returns_delivery_dto() -> None:
     """Verified reader projection is copied into query output data."""
-    identities = create_autospec(UserIdentityReader, instance=True)
-    identities.read.return_value = UserIdentityReader.IdentityData(
+    identities = create_autospec(AccountIdentityReader, instance=True)
+    identities.read.return_value = AccountIdentityReader.IdentityData(
         subject="admin-id", role="administrator"
     )
     query = VerifyAccessTokenQuery(identities)

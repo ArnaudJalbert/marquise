@@ -7,22 +7,22 @@ from unittest.mock import create_autospec
 import pytest
 
 from marquise.application.exceptions import (
+    AccountNotFoundError,
     AuthAdministrationError,
     AuthorizationError,
-    AuthUserNotFoundError,
     SelfDemotionError,
 )
-from marquise.application.readers import UserIdentityReader
+from marquise.application.readers import AccountIdentityReader
 from marquise.application.repositories import (
+    AccountRepository,
     PasswordAuthenticationRepository,
-    UserIdentityRepository,
 )
 from marquise.application.use_cases import (
     AuthenticateAdministratorUseCase,
-    InviteAuthUserUseCase,
-    SetAuthUserRoleUseCase,
+    InviteAccountUseCase,
+    SetAccountRoleUseCase,
 )
-from marquise.domain.entities import UserIdentity
+from marquise.domain.entities import Account
 from marquise.domain.value_objects import MarquiseRole
 
 
@@ -30,9 +30,9 @@ from marquise.domain.value_objects import MarquiseRole
 async def test_authenticate_administrator_verifies_issued_token() -> None:
     """Password authentication is followed by shared identity reading."""
     passwords = create_autospec(PasswordAuthenticationRepository, instance=True)
-    identities = create_autospec(UserIdentityReader, instance=True)
+    identities = create_autospec(AccountIdentityReader, instance=True)
     passwords.issue_access_token.return_value = "signed-token"
-    identities.read.return_value = UserIdentityReader.IdentityData(
+    identities.read.return_value = AccountIdentityReader.IdentityData(
         subject="admin-id", role="administrator"
     )
     use_case = AuthenticateAdministratorUseCase(passwords, identities)
@@ -50,9 +50,9 @@ async def test_authenticate_administrator_verifies_issued_token() -> None:
 async def test_authenticate_administrator_rejects_other_roles() -> None:
     """Valid Member credentials cannot authorize account administration."""
     passwords = create_autospec(PasswordAuthenticationRepository, instance=True)
-    identities = create_autospec(UserIdentityReader, instance=True)
+    identities = create_autospec(AccountIdentityReader, instance=True)
     passwords.issue_access_token.return_value = "signed-token"
-    identities.read.return_value = UserIdentityReader.IdentityData(
+    identities.read.return_value = AccountIdentityReader.IdentityData(
         subject="member-id", role="member"
     )
     use_case = AuthenticateAdministratorUseCase(passwords, identities)
@@ -64,94 +64,94 @@ async def test_authenticate_administrator_rejects_other_roles() -> None:
 
 
 @pytest.mark.asyncio
-async def test_invite_user_sets_role_metadata() -> None:
-    """Invitation assigns selected protected role after user creation."""
-    users = create_autospec(UserIdentityRepository, instance=True)
-    users.invite.return_value = UserIdentity(id="user-id", email="user@example.com")
-    use_case = InviteAuthUserUseCase(users)
+async def test_invite_account_sets_role_metadata() -> None:
+    """Invitation assigns selected protected role after account creation."""
+    accounts = create_autospec(AccountRepository, instance=True)
+    accounts.invite.return_value = Account(id="account-id", email="user@example.com")
+    use_case = InviteAccountUseCase(accounts)
 
     result = await use_case.execute(
         use_case.InputData(email="USER@example.com", role="editor")
     )
 
     assert result == use_case.OutputData(
-        user_id="user-id", email="user@example.com", role="editor"
+        account_id="account-id", email="user@example.com", role="editor"
     )
-    users.invite.assert_awaited_once_with("user@example.com")
-    users.set_role.assert_awaited_once_with("user-id", MarquiseRole.EDITOR)
-    users.delete.assert_not_awaited()
+    accounts.invite.assert_awaited_once_with("user@example.com")
+    accounts.set_role.assert_awaited_once_with("account-id", MarquiseRole.EDITOR)
+    accounts.delete.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_invite_user_rolls_back_failed_role_assignment() -> None:
+async def test_invite_account_rolls_back_failed_role_assignment() -> None:
     """Failed metadata assignment removes newly invited role-less account."""
-    users = create_autospec(UserIdentityRepository, instance=True)
-    users.invite.return_value = UserIdentity(id="user-id", email="user@example.com")
-    users.set_role.side_effect = AuthAdministrationError("provider failed")
-    use_case = InviteAuthUserUseCase(users)
+    accounts = create_autospec(AccountRepository, instance=True)
+    accounts.invite.return_value = Account(id="account-id", email="user@example.com")
+    accounts.set_role.side_effect = AuthAdministrationError("provider failed")
+    use_case = InviteAccountUseCase(accounts)
 
     with pytest.raises(AuthAdministrationError, match="provider failed"):
         await use_case.execute(
             use_case.InputData(email="user@example.com", role="member")
         )
 
-    users.delete.assert_awaited_once_with("user-id")
+    accounts.delete.assert_awaited_once_with("account-id")
 
 
 @pytest.mark.asyncio
-async def test_set_user_role_updates_other_account() -> None:
+async def test_set_account_role_updates_other_account() -> None:
     """Administrator can clear another account's Marquise access."""
-    users = create_autospec(UserIdentityRepository, instance=True)
-    users.find_by_email.return_value = UserIdentity(
+    accounts = create_autospec(AccountRepository, instance=True)
+    accounts.find_by_email.return_value = Account(
         id="target-id", email="user@example.com"
     )
-    use_case = SetAuthUserRoleUseCase(users)
+    use_case = SetAccountRoleUseCase(accounts)
 
     result = await use_case.execute(
         use_case.InputData(
-            actor_user_id="admin-id", email="user@example.com", role=None
+            actor_account_id="admin-id", email="user@example.com", role=None
         )
     )
 
     assert result.role is None
-    users.set_role.assert_awaited_once_with("target-id", None)
+    accounts.set_role.assert_awaited_once_with("target-id", None)
 
 
 @pytest.mark.asyncio
-async def test_set_user_role_blocks_self_demotion() -> None:
+async def test_set_account_role_blocks_self_demotion() -> None:
     """Administrator cannot clear or downgrade their own role."""
-    users = create_autospec(UserIdentityRepository, instance=True)
-    users.find_by_email.return_value = UserIdentity(
+    accounts = create_autospec(AccountRepository, instance=True)
+    accounts.find_by_email.return_value = Account(
         id="admin-id", email="admin@example.com"
     )
-    use_case = SetAuthUserRoleUseCase(users)
+    use_case = SetAccountRoleUseCase(accounts)
 
     with pytest.raises(SelfDemotionError, match="own role"):
         await use_case.execute(
             use_case.InputData(
-                actor_user_id="admin-id",
+                actor_account_id="admin-id",
                 email="admin@example.com",
                 role="editor",
             )
         )
 
-    users.set_role.assert_not_awaited()
+    accounts.set_role.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_set_user_role_rejects_unknown_email() -> None:
+async def test_set_account_role_rejects_unknown_email() -> None:
     """Unknown target email fails without attempting metadata update."""
-    users = create_autospec(UserIdentityRepository, instance=True)
-    users.find_by_email.return_value = None
-    use_case = SetAuthUserRoleUseCase(users)
+    accounts = create_autospec(AccountRepository, instance=True)
+    accounts.find_by_email.return_value = None
+    use_case = SetAccountRoleUseCase(accounts)
 
-    with pytest.raises(AuthUserNotFoundError, match="No user"):
+    with pytest.raises(AccountNotFoundError, match="No account"):
         await use_case.execute(
             use_case.InputData(
-                actor_user_id="admin-id",
+                actor_account_id="admin-id",
                 email="missing@example.com",
                 role="member",
             )
         )
 
-    users.set_role.assert_not_awaited()
+    accounts.set_role.assert_not_awaited()

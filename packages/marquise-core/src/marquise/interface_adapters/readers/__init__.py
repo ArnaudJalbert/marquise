@@ -1,7 +1,7 @@
 """Read adapter implementations."""
 
-from marquise.interface_adapters.readers.user_identity_reader import (
-    GatewayUserIdentityReader,
+from marquise.interface_adapters.readers.account_identity_reader import (
+    GatewayAccountIdentityReader,
 )
 
-__all__ = ["GatewayUserIdentityReader"]
+__all__ = ["GatewayAccountIdentityReader"]

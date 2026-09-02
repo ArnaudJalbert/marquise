@@ -8,22 +8,22 @@ from marquise.application.queries.verify_access_token import VerifyAccessTokenQu
 from marquise.application.use_cases.authenticate_administrator import (
     AuthenticateAdministratorUseCase,
 )
-from marquise.application.use_cases.invite_auth_user import InviteAuthUserUseCase
-from marquise.application.use_cases.set_auth_user_role import SetAuthUserRoleUseCase
+from marquise.application.use_cases.invite_account import InviteAccountUseCase
+from marquise.application.use_cases.set_account_role import SetAccountRoleUseCase
 from marquise.infrastructure.auth.supabase import (
     SupabaseAuthAdminGateway,
     SupabaseJwtGateway,
     SupabasePasswordAuthGateway,
     SupabaseSigningKeyProvider,
 )
-from marquise.interface_adapters.readers.user_identity_reader import (
-    GatewayUserIdentityReader,
+from marquise.interface_adapters.readers.account_identity_reader import (
+    GatewayAccountIdentityReader,
+)
+from marquise.interface_adapters.repositories.account_repository import (
+    GatewayAccountRepository,
 )
 from marquise.interface_adapters.repositories.password_auth_repository import (
     GatewayPasswordAuthenticationRepository,
-)
-from marquise.interface_adapters.repositories.user_identity_repository import (
-    GatewayUserIdentityRepository,
 )
 
 
@@ -51,7 +51,7 @@ class AuthFactory:
             ),
             issuer=issuer,
         )
-        self._identities = GatewayUserIdentityReader(gateway)
+        self._identities = GatewayAccountIdentityReader(gateway)
 
     @property
     def verify_access_token_query(self) -> VerifyAccessTokenQuery:
@@ -71,19 +71,19 @@ class AuthFactory:
         return AuthenticateAdministratorUseCase(passwords, self._identities)
 
     @property
-    def invite_auth_user_use_case(self) -> InviteAuthUserUseCase:
+    def invite_account_use_case(self) -> InviteAccountUseCase:
         """Configured human invitation use case."""
-        return InviteAuthUserUseCase(self._auth_users)
+        return InviteAccountUseCase(self._accounts)
 
     @property
-    def set_auth_user_role_use_case(self) -> SetAuthUserRoleUseCase:
+    def set_account_role_use_case(self) -> SetAccountRoleUseCase:
         """Configured human role-change use case."""
-        return SetAuthUserRoleUseCase(self._auth_users)
+        return SetAccountRoleUseCase(self._accounts)
 
     @property
-    def _auth_users(self) -> GatewayUserIdentityRepository:
+    def _accounts(self) -> GatewayAccountRepository:
         if not self._service_role_key:
             raise RuntimeError("SUPABASE_SERVICE_ROLE_KEY is required")
-        return GatewayUserIdentityRepository(
+        return GatewayAccountRepository(
             SupabaseAuthAdminGateway(self._supabase_url, self._service_role_key)
         )

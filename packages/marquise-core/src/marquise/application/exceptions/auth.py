@@ -15,8 +15,8 @@ class AuthAdministrationError(ApplicationError):
     """Supabase account administration failed."""
 
 
-class AuthUserNotFoundError(AuthAdministrationError):
-    """Requested Supabase Auth user does not exist."""
+class AccountNotFoundError(AuthAdministrationError):
+    """Requested Supabase Auth account does not exist."""
 
 
 class SelfDemotionError(AuthAdministrationError):

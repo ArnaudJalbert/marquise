@@ -11,8 +11,8 @@ from marquise import (
     AuthenticationError,
     AuthFactory,
     AuthorizationError,
-    InviteAuthUserUseCase,
-    SetAuthUserRoleUseCase,
+    InviteAccountUseCase,
+    SetAccountRoleUseCase,
 )
 from marquise_cli.auth_commands import (
     AuthSettings,
@@ -80,8 +80,8 @@ def test_incomplete_administrator_credentials_prompt_for_both(
 def _factory() -> tuple[
     AuthFactory,
     AuthenticateAdministratorUseCase,
-    InviteAuthUserUseCase,
-    SetAuthUserRoleUseCase,
+    InviteAccountUseCase,
+    SetAccountRoleUseCase,
 ]:
     factory = create_autospec(AuthFactory, instance=True)
     authenticate = create_autospec(AuthenticateAdministratorUseCase, instance=True)
@@ -89,19 +89,19 @@ def _factory() -> tuple[
     authenticate.execute.return_value = AuthenticateAdministratorUseCase.OutputData(
         subject="admin-id"
     )
-    invite = create_autospec(InviteAuthUserUseCase, instance=True)
-    invite.InputData = InviteAuthUserUseCase.InputData
-    invite.execute.return_value = InviteAuthUserUseCase.OutputData(
-        user_id="user-id", email="user@example.com", role="editor"
+    invite = create_autospec(InviteAccountUseCase, instance=True)
+    invite.InputData = InviteAccountUseCase.InputData
+    invite.execute.return_value = InviteAccountUseCase.OutputData(
+        account_id="account-id", email="user@example.com", role="editor"
     )
-    set_role = create_autospec(SetAuthUserRoleUseCase, instance=True)
-    set_role.InputData = SetAuthUserRoleUseCase.InputData
-    set_role.execute.return_value = SetAuthUserRoleUseCase.OutputData(
-        user_id="user-id", email="user@example.com", role=None
+    set_role = create_autospec(SetAccountRoleUseCase, instance=True)
+    set_role.InputData = SetAccountRoleUseCase.InputData
+    set_role.execute.return_value = SetAccountRoleUseCase.OutputData(
+        account_id="account-id", email="user@example.com", role=None
     )
     factory.authenticate_administrator_use_case = authenticate
-    factory.invite_auth_user_use_case = invite
-    factory.set_auth_user_role_use_case = set_role
+    factory.invite_account_use_case = invite
+    factory.set_account_role_use_case = set_role
     return factory, authenticate, invite, set_role
 
 
@@ -120,7 +120,7 @@ async def test_invite_authenticates_before_invitation() -> None:
 
     authenticate.execute.assert_awaited_once()
     invite.execute.assert_awaited_once_with(
-        InviteAuthUserUseCase.InputData(email="user@example.com", role="editor")
+        InviteAccountUseCase.InputData(email="user@example.com", role="editor")
     )
 
 
@@ -203,8 +203,8 @@ async def test_set_role_passes_authenticated_actor_identity() -> None:
 
     authenticate.execute.assert_awaited_once()
     set_role.execute.assert_awaited_once_with(
-        SetAuthUserRoleUseCase.InputData(
-            actor_user_id="admin-id",
+        SetAccountRoleUseCase.InputData(
+            actor_account_id="admin-id",
             email="user@example.com",
             role=None,
         )

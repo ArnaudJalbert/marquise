@@ -5,11 +5,11 @@ use cases through this supported facade. Internal package modules are private.
 """
 
 from marquise.application.exceptions import (
+    AccountNotFoundError,
     ApplicationError,
     AuthAdministrationError,
     AuthenticationError,
     AuthorizationError,
-    AuthUserNotFoundError,
     CinemaAlreadyExistsError,
     CinemaIdAlreadyExistsError,
     CinemaNotFoundError,
@@ -53,14 +53,14 @@ from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseC
 from marquise.application.use_cases.get_movie import GetMovieUseCase
 from marquise.application.use_cases.get_screening import GetScreeningUseCase
 from marquise.application.use_cases.import_screenings import ImportScreeningsCommand
-from marquise.application.use_cases.invite_auth_user import InviteAuthUserUseCase
+from marquise.application.use_cases.invite_account import InviteAccountUseCase
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.application.use_cases.list_movies import ListMoviesUseCase
 from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
-from marquise.application.use_cases.set_auth_user_role import SetAuthUserRoleUseCase
+from marquise.application.use_cases.set_account_role import SetAccountRoleUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.auth_factory import AuthFactory
@@ -78,7 +78,7 @@ __all__ = [
     "AuthFactory",
     "AuthenticationError",
     "AuthorizationError",
-    "AuthUserNotFoundError",
+    "AccountNotFoundError",
     "CinemaAlreadyExistsError",
     "CinemaIdAlreadyExistsError",
     "CinemaNotFoundError",
@@ -88,7 +88,7 @@ __all__ = [
     "CreateMissingMoviesCommand",
     "CreateScreeningsCommand",
     "ImportScreeningsCommand",
-    "InviteAuthUserUseCase",
+    "InviteAccountUseCase",
     "CreateSourceUseCase",
     "DeleteCinemaUseCase",
     "DeleteSourceUseCase",
@@ -112,7 +112,7 @@ __all__ = [
     "ScreeningAlreadyExistsError",
     "ScreeningNotFoundError",
     "SelfDemotionError",
-    "SetAuthUserRoleUseCase",
+    "SetAccountRoleUseCase",
     "SearchScreeningsQuery",
     "SourceAlreadyExistsError",
     "SourceNotFoundError",

@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from marquise.application.readers.user_identity_reader import UserIdentityReader
+from marquise.application.readers.account_identity_reader import (
+    AccountIdentityReader,
+)
 
 
 class VerifyAccessTokenQuery:
@@ -29,7 +31,7 @@ class VerifyAccessTokenQuery:
         subject: str
         role: str
 
-    def __init__(self, identities: UserIdentityReader) -> None:
+    def __init__(self, identities: AccountIdentityReader) -> None:
         """Initialize with authenticated identity reader."""
         self._identities = identities
 

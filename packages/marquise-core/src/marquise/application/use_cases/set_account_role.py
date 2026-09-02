@@ -5,60 +5,61 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from marquise.application.exceptions.auth import (
-    AuthUserNotFoundError,
+    AccountNotFoundError,
     SelfDemotionError,
 )
-from marquise.application.repositories.user_identity_repository import (
-    UserIdentityRepository,
-)
+from marquise.application.repositories.account_repository import AccountRepository
 from marquise.application.use_cases._auth_validation import normalize_email
 from marquise.domain.value_objects.marquise_role import MarquiseRole
 
 
-class SetAuthUserRoleUseCase:
+class SetAccountRoleUseCase:
     """Change protected role metadata while preventing self-demotion."""
 
     @dataclass(frozen=True, slots=True)
     class InputData:
         """Actor, target email, and replacement role."""
 
-        actor_user_id: str
+        actor_account_id: str
         email: str
         role: str | None
 
         def __post_init__(self) -> None:
             """Validate actor, email, and optional role."""
-            if not self.actor_user_id:
-                raise ValueError("actor_user_id must not be empty")
+            if not self.actor_account_id:
+                raise ValueError("actor_account_id must not be empty")
             object.__setattr__(self, "email", normalize_email(self.email))
             if self.role is not None:
                 MarquiseRole(self.role)
 
     @dataclass(frozen=True, slots=True)
     class OutputData:
-        """Updated user role details."""
+        """Updated account role details."""
 
-        user_id: str
+        account_id: str
         email: str
         role: str | None
 
-    def __init__(self, users: UserIdentityRepository) -> None:
-        """Initialize with Auth user repository."""
-        self._users = users
+    def __init__(self, accounts: AccountRepository) -> None:
+        """Initialize with Auth account repository."""
+        self._accounts = accounts
 
     async def execute(self, request: InputData) -> OutputData:
         """Resolve target, prevent self-demotion, and update role metadata."""
-        user = await self._users.find_by_email(request.email)
-        if user is None:
-            raise AuthUserNotFoundError(f'No user found with email "{request.email}"')
+        account = await self._accounts.find_by_email(request.email)
+        if account is None:
+            raise AccountNotFoundError(f'No account found with email "{request.email}"')
 
         role = MarquiseRole(request.role) if request.role is not None else None
-        if user.id == request.actor_user_id and role is not MarquiseRole.ADMINISTRATOR:
+        if (
+            account.id == request.actor_account_id
+            and role is not MarquiseRole.ADMINISTRATOR
+        ):
             raise SelfDemotionError("Administrators cannot remove their own role")
 
-        await self._users.set_role(user.id, role)
+        await self._accounts.set_role(account.id, role)
         return self.OutputData(
-            user_id=user.id,
-            email=user.email,
+            account_id=account.id,
+            email=account.email,
             role=role.value if role is not None else None,
         )

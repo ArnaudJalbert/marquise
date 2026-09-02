@@ -1,5 +1,6 @@
 """Repository interface re-exports."""
 
+from marquise.application.repositories.account_repository import AccountRepository
 from marquise.application.repositories.cinema_repository import CinemaRepository
 from marquise.application.repositories.cinema_source_assignment_repository import (
     CinemaSourceAssignmentRepository,
@@ -19,9 +20,6 @@ from marquise.application.repositories.source_registry_query import (
     ShowtimeRow,
     SourceRegistryQuery,
 )
-from marquise.application.repositories.user_identity_repository import (
-    UserIdentityRepository,
-)
 
 __all__ = [
     "CinemaRepository",
@@ -35,5 +33,5 @@ __all__ = [
     "ShowtimeRow",
     "SourceDefinitionRepository",
     "SourceRegistryQuery",
-    "UserIdentityRepository",
+    "AccountRepository",
 ]

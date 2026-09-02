@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 
-class UserIdentityReader(ABC):
+class AccountIdentityReader(ABC):
     """Verify an access token and return only authorization data."""
 
     @dataclass(frozen=True, slots=True)

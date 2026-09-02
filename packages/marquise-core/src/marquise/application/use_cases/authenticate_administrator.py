@@ -5,7 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from marquise.application.exceptions.auth import AuthorizationError
-from marquise.application.readers.user_identity_reader import UserIdentityReader
+from marquise.application.readers.account_identity_reader import (
+    AccountIdentityReader,
+)
 from marquise.application.repositories.password_authentication_repository import (
     PasswordAuthenticationRepository,
 )
@@ -38,7 +40,7 @@ class AuthenticateAdministratorUseCase:
     def __init__(
         self,
         passwords: PasswordAuthenticationRepository,
-        identities: UserIdentityReader,
+        identities: AccountIdentityReader,
     ) -> None:
         """Initialize with password and token repositories."""
         self._passwords = passwords

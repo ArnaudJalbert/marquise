@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from marquise.application.exceptions.auth import AuthenticationError
-from marquise.application.readers.user_identity_reader import UserIdentityReader
+from marquise.application.readers.account_identity_reader import AccountIdentityReader
 from marquise.domain.value_objects.marquise_role import MarquiseRole
 from marquise.interface_adapters.repositories.protocols.auth import (
     AccessTokenGateway,
@@ -11,14 +11,14 @@ from marquise.interface_adapters.repositories.protocols.auth import (
 )
 
 
-class GatewayUserIdentityReader(UserIdentityReader):
+class GatewayAccountIdentityReader(AccountIdentityReader):
     """Map verified plain JWT claims to minimal read data."""
 
     def __init__(self, gateway: AccessTokenGateway) -> None:
         """Initialize with access-token gateway."""
         self._gateway = gateway
 
-    async def read(self, token: str) -> UserIdentityReader.IdentityData:
+    async def read(self, token: str) -> AccountIdentityReader.IdentityData:
         """Verify token and map only subject and Marquise role."""
         try:
             claims = await self._gateway.verify(token)

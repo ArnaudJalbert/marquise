@@ -92,9 +92,9 @@ async def run_invite(
         ),
         description="Authenticating Administrator...",
     )
-    invite_user = factory.invite_auth_user_use_case
+    invite_account = factory.invite_account_use_case
     result = await run_spinner(
-        invite_user.execute(invite_user.InputData(email=email, role=role)),
+        invite_account.execute(invite_account.InputData(email=email, role=role)),
         description="Inviting user...",
     )
     print(f'Invited "{result.email}" as {result.role}.')
@@ -119,11 +119,11 @@ async def run_set_role(
         ),
         description="Authenticating Administrator...",
     )
-    set_role_use_case = factory.set_auth_user_role_use_case
+    set_role_use_case = factory.set_account_role_use_case
     result = await run_spinner(
         set_role_use_case.execute(
             set_role_use_case.InputData(
-                actor_user_id=administrator.subject,
+                actor_account_id=administrator.subject,
                 email=email,
                 role=role,
             )

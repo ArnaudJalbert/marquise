@@ -14,7 +14,7 @@ Marquise needs authenticated API writes for humans and Bots while keeping public
 
 ## Decision
 
-Use short-lived Supabase access JWTs for API identity. Verify asymmetric signature, issuer, audience, expiry, subject, and `app_metadata.marquise_role` at API boundary through the core access-token query and dedicated user identity reader. Valid Marquise roles are Member, Editor, and Administrator; Administrator includes Editor authorization. Keep Supabase reserved `role` unchanged. Do not duplicate role assignments in Marquise database tables.
+Use short-lived Supabase access JWTs for API identity. Verify asymmetric signature, issuer, audience, expiry, subject, and `app_metadata.marquise_role` at API boundary through the core access-token query and dedicated account identity reader. Valid Marquise roles are Member, Editor, and Administrator; Administrator includes Editor authorization. Keep Supabase reserved `role` unchanged. Do not duplicate role assignments in Marquise database tables.
 
 ## Rationale and trade-offs
 
