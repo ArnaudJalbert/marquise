@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import cast
 
 from marquise.application.exceptions import CinemaNotFoundError, MovieNotFoundError
 from marquise.application.repositories import (
@@ -14,12 +13,13 @@ from marquise.application.repositories import (
 )
 from marquise.application.use_cases._screening_helpers import (
     UNSET,
+    _Unset,
     is_provided,
     keep,
     reject_blank_when_provided,
     require_non_empty,
     require_timezone_aware_showtime,
-    screening_output_data,
+    screening_output_dict,
 )
 from marquise.domain.entities import Cinema, Movie, Screening
 from marquise.domain.value_objects import CinemaId, MovieId, ScreeningId, Showtime
@@ -53,13 +53,13 @@ class UpdateScreeningUseCase:
         """
 
         screening_id: str
-        movie_id: str | object = UNSET
-        cinema_id: str | object = UNSET
-        showtime: datetime | object = UNSET
-        ticket_url: str | None | object = UNSET
-        room: str | None | object = UNSET
-        language: str | None | object = UNSET
-        external_id: str | None | object = UNSET
+        movie_id: str | _Unset = UNSET
+        cinema_id: str | _Unset = UNSET
+        showtime: datetime | _Unset = UNSET
+        ticket_url: str | None | _Unset = UNSET
+        room: str | None | _Unset = UNSET
+        language: str | None | _Unset = UNSET
+        external_id: str | None | _Unset = UNSET
 
         def __post_init__(self) -> None:
             """Validate input data.
@@ -70,15 +70,19 @@ class UpdateScreeningUseCase:
             """
             require_non_empty(self.screening_id, "screening_id")
             if is_provided(self.movie_id):
-                require_non_empty(str(self.movie_id), "movie_id")
+                require_non_empty(self.movie_id, "movie_id")
             if is_provided(self.cinema_id):
-                require_non_empty(str(self.cinema_id), "cinema_id")
+                require_non_empty(self.cinema_id, "cinema_id")
             if is_provided(self.showtime):
-                require_timezone_aware_showtime(cast(datetime, self.showtime))
-            for name in ("ticket_url", "room", "language", "external_id"):
-                value = getattr(self, name)
-                if is_provided(value):
-                    reject_blank_when_provided(cast(str | None, value), name)
+                require_timezone_aware_showtime(self.showtime)
+            if is_provided(self.ticket_url):
+                reject_blank_when_provided(self.ticket_url, "ticket_url")
+            if is_provided(self.room):
+                reject_blank_when_provided(self.room, "room")
+            if is_provided(self.language):
+                reject_blank_when_provided(self.language, "language")
+            if is_provided(self.external_id):
+                reject_blank_when_provided(self.external_id, "external_id")
 
     @dataclass(frozen=True, slots=True)
     class OutputData:
@@ -147,7 +151,7 @@ class UpdateScreeningUseCase:
         showtime = (
             existing.showtime
             if not is_provided(request.showtime)
-            else Showtime(value=cast(datetime, request.showtime))
+            else Showtime(value=request.showtime)
         )
 
         updated = await self.screening_repository.replace(
@@ -163,9 +167,9 @@ class UpdateScreeningUseCase:
             )
         )
 
-        return screening_output_data(self.OutputData, updated)
+        return self.OutputData(**screening_output_dict(updated))
 
-    async def _resolve_movie(self, movie_id: str | object, existing: Movie) -> Movie:
+    async def _resolve_movie(self, movie_id: str | _Unset, existing: Movie) -> Movie:
         if not is_provided(movie_id):
             return existing
         if movie_id == str(existing.id):
@@ -176,7 +180,7 @@ class UpdateScreeningUseCase:
         return movie
 
     async def _resolve_cinema(
-        self, cinema_id: str | object, existing: Cinema
+        self, cinema_id: str | _Unset, existing: Cinema
     ) -> Cinema:
         if not is_provided(cinema_id):
             return existing

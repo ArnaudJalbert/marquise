@@ -10,7 +10,7 @@ from marquise import (
     GetCinemaUseCase,
     GetMovieScreeningsQuery,
     GetMovieUseCase,
-    GetScreeningUseCase,
+    GetScreeningQuery,
     ListCinemasUseCase,
     ListMoviesUseCase,
     MarquiseFactory,
@@ -63,6 +63,6 @@ def get_search_screenings_query(request: Request) -> SearchScreeningsQuery:
     return request.app.state.factory.search_screenings_query
 
 
-def get_screening_use_case(request: Request) -> GetScreeningUseCase:
-    """Return configured screening lookup use case."""
-    return request.app.state.factory.get_screening_use_case
+def get_screening_query(request: Request) -> GetScreeningQuery:
+    """Return configured screening lookup query."""
+    return request.app.state.factory.get_screening_query

@@ -559,7 +559,7 @@ async def test_delete_removes_row(
     gateway: SupabaseCinemaGateway,
     movie_gateway: SupabaseMovieGateway,
 ) -> None:
-    """Verify delete removes the screening and returns True."""
+    """Verify delete removes the screening and returns None."""
     await _seed_parents(gateway, movie_gateway)
     await screening_gateway.save(
         screening_id="scr-delete-001",
@@ -569,13 +569,62 @@ async def test_delete_removes_row(
     )
 
     deleted = await screening_gateway.delete("scr-delete-001")
-    assert deleted is True
+    assert deleted is None
     assert await screening_gateway.find_by_id("scr-delete-001") is None
 
 
 @pytest.mark.asyncio
-async def test_delete_missing_returns_false(
+async def test_delete_missing_raises_gateway_error(
     screening_gateway: SupabaseScreeningGateway,
 ) -> None:
-    """Verify delete returns False when the screening ID does not exist."""
-    assert await screening_gateway.delete("scr-delete-missing") is False
+    """Verify delete raises GatewayError when screening ID does not exist."""
+    with pytest.raises(GatewayError, match="scr-delete-missing"):
+        await screening_gateway.delete("scr-delete-missing")
+
+
+@pytest.mark.asyncio
+async def test_delete_if_orphan_removes_unreferenced_movie(
+    screening_gateway: SupabaseScreeningGateway,
+    gateway: SupabaseCinemaGateway,
+    movie_gateway: SupabaseMovieGateway,
+) -> None:
+    """Orphan cleanup deletes movie with no remaining screenings."""
+    await _seed_parents(gateway, movie_gateway)
+    await screening_gateway.save(
+        screening_id="scr-orphan-001",
+        movie_id="mov-003",
+        cinema_id="cin-001",
+        showtime=datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC),
+    )
+    await screening_gateway.delete("scr-orphan-001")
+
+    await movie_gateway.delete_if_orphan("mov-003")
+
+    assert await movie_gateway.find_by_id("mov-003") is None
+
+
+@pytest.mark.asyncio
+async def test_delete_if_orphan_keeps_shared_movie(
+    screening_gateway: SupabaseScreeningGateway,
+    gateway: SupabaseCinemaGateway,
+    movie_gateway: SupabaseMovieGateway,
+) -> None:
+    """Orphan cleanup keeps movie still referenced by another screening."""
+    await _seed_parents(gateway, movie_gateway)
+    await screening_gateway.save(
+        screening_id="scr-orphan-002",
+        movie_id="mov-001",
+        cinema_id="cin-001",
+        showtime=datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC),
+    )
+    await screening_gateway.save(
+        screening_id="scr-orphan-003",
+        movie_id="mov-001",
+        cinema_id="cin-003",
+        showtime=datetime(2026, 6, 8, 19, 30, 0, tzinfo=UTC),
+    )
+    await screening_gateway.delete("scr-orphan-002")
+
+    await movie_gateway.delete_if_orphan("mov-001")
+
+    assert await movie_gateway.find_by_id("mov-001") is not None

@@ -10,9 +10,9 @@ from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi_cache.decorator import cache
 from fastapi_pagination import Page, Params
 
-from marquise import GetScreeningUseCase, SearchScreeningsQuery
+from marquise import GetScreeningQuery, SearchScreeningsQuery
 from marquise_api.dependencies import (
-    get_screening_use_case,
+    get_screening_query,
     get_search_screenings_query,
 )
 from marquise_api.openapi_responses import error_responses
@@ -100,10 +100,10 @@ async def get_screening(
     request: Request,
     response: Response,
     screening_id: str,
-    use_case: GetScreeningUseCase = Depends(get_screening_use_case),
+    use_case: GetScreeningQuery = Depends(get_screening_query),
 ) -> ScreeningResponse:
     """Retrieve a single screening by its ID."""
     output = await use_case.execute(
-        GetScreeningUseCase.InputData(screening_id=screening_id)
+        GetScreeningQuery.InputData(screening_id=screening_id)
     )
     return ScreeningResponse.model_validate(output)

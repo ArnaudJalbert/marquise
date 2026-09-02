@@ -41,6 +41,23 @@ class SupabaseScreeningReader(ScreeningReader):
         self._pool = pool
         self._schema = schema
 
+    async def get_by_id(
+        self, screening_id: str
+    ) -> ScreeningReader.ScreeningData | None:
+        """Return one screening projection by primary key."""
+        async with self._pool.acquire() as connection:
+            row = await connection.fetchrow(
+                f"""
+                SELECT {_COLUMNS}
+                FROM "{self._schema}".screenings s
+                JOIN "{self._schema}".movies m ON s.movie_id = m.id
+                JOIN "{self._schema}".cinemas c ON s.cinema_id = c.id
+                WHERE s.id = $1
+                """,
+                screening_id,
+            )
+        return self._to_data(row) if row is not None else None
+
     async def search(
         self,
         movie_id: str | None = None,
@@ -117,20 +134,19 @@ class SupabaseScreeningReader(ScreeningReader):
                     )
                 )
 
-        return Page(
-            items=[
-                ScreeningReader.ScreeningData(
-                    id=row["id"],
-                    movie_id=row["movie_id"],
-                    movie_title=row["movie_title"],
-                    cinema_id=row["cinema_id"],
-                    cinema_name=row["cinema_name"],
-                    showtime=_aware_utc(row["showtime"]),
-                    ticket_url=row.get("ticket_url"),
-                    room=row.get("room"),
-                    language=row.get("language"),
-                )
-                for row in rows
-            ],
-            total=total,
+        return Page(items=[self._to_data(row) for row in rows], total=total)
+
+    @staticmethod
+    def _to_data(row: dict) -> ScreeningReader.ScreeningData:
+        """Map database row to screening projection."""
+        return ScreeningReader.ScreeningData(
+            id=row["id"],
+            movie_id=row["movie_id"],
+            movie_title=row["movie_title"],
+            cinema_id=row["cinema_id"],
+            cinema_name=row["cinema_name"],
+            showtime=_aware_utc(row["showtime"]),
+            ticket_url=row.get("ticket_url"),
+            room=row.get("room"),
+            language=row.get("language"),
         )

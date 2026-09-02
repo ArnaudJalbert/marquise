@@ -16,7 +16,7 @@ from marquise.application.use_cases._screening_helpers import (
     reject_blank_when_provided,
     require_non_empty,
     require_timezone_aware_showtime,
-    screening_output_data,
+    screening_output_dict,
 )
 from marquise.domain.entities import Screening
 from marquise.domain.value_objects import CinemaId, MovieId, ScreeningId, Showtime
@@ -150,4 +150,4 @@ class CreateScreeningUseCase:
         )
         saved = await self.screening_repository.save(screening)
 
-        return screening_output_data(self.OutputData, saved)
+        return self.OutputData(**screening_output_dict(saved))

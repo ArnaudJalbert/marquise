@@ -488,24 +488,25 @@ async def test_replace_raises_already_exists_on_gateway_error(
 
 @pytest.mark.asyncio
 async def test_delete_delegates_to_gateway() -> None:
-    """Test delete delegates to the gateway and returns True on success."""
+    """Test delete delegates to gateway and returns None on success."""
     mock_gateway = create_autospec(ScreeningGateway, instance=True)
-    mock_gateway.delete.return_value = True
+    mock_gateway.delete.return_value = None
 
     repo = SupabaseScreeningRepository(gateway=mock_gateway)
     result = await repo.delete(ScreeningId(value="scr-123"))
 
-    assert result is True
+    assert result is None
     mock_gateway.delete.assert_awaited_once_with(screening_id="scr-123")
 
 
 @pytest.mark.asyncio
-async def test_delete_missing() -> None:
-    """Test delete returns False when the gateway returns False."""
+async def test_delete_missing_raises_not_found() -> None:
+    """Test delete translates gateway miss into ScreeningNotFoundError."""
     mock_gateway = create_autospec(ScreeningGateway, instance=True)
-    mock_gateway.delete.return_value = False
+    mock_gateway.delete.side_effect = GatewayError(
+        "A screening with ID 'scr-missing' was not found"
+    )
 
     repo = SupabaseScreeningRepository(gateway=mock_gateway)
-    result = await repo.delete(ScreeningId(value="scr-missing"))
-
-    assert result is False
+    with pytest.raises(ScreeningNotFoundError, match="scr-missing"):
+        await repo.delete(ScreeningId(value="scr-missing"))

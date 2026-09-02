@@ -264,9 +264,9 @@ async def test_search_screenings_query_after_initialize() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_screening_use_case_after_initialize() -> None:
-    """Verify get_screening_use_case returns a GetScreeningUseCase."""
-    from marquise.application.use_cases.get_screening import GetScreeningUseCase
+async def test_get_screening_query_after_initialize() -> None:
+    """Verify get_screening_query returns a GetScreeningQuery."""
+    from marquise.application.queries.get_screening import GetScreeningQuery
 
     mock_database = AsyncMock()
     mock_database.pool = AsyncMock()
@@ -276,6 +276,6 @@ async def test_get_screening_use_case_after_initialize() -> None:
     ):
         container = Container()
         await container.initialize()
-        use_case = container.get_screening_use_case
-        assert isinstance(use_case, GetScreeningUseCase)
+        query = container.get_screening_query
+        assert isinstance(query, GetScreeningQuery)
         await container.shutdown()
