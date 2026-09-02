@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime, timedelta
+from io import BytesIO
 from unittest.mock import MagicMock, create_autospec, patch
+from urllib.error import HTTPError
 
 import jwt
 import pytest
@@ -119,6 +121,26 @@ async def test_password_gateway_posts_password_grant() -> None:
         "email": "admin@example.com",
         "password": "secret",
     }
+
+
+@pytest.mark.asyncio
+async def test_admin_gateway_keeps_safe_http_error_detail() -> None:
+    """Supabase error status and message remain available to CLI administrators."""
+    gateway = SupabaseAuthAdminGateway("https://project.supabase.co", "service-key")
+    error = HTTPError(
+        "https://project.supabase.co/auth/v1/admin/invite",
+        422,
+        "Unprocessable Entity",
+        None,
+        BytesIO(b'{"msg":"User already registered"}'),
+    )
+
+    with patch("urllib.request.urlopen", side_effect=error):
+        with pytest.raises(
+            AuthGatewayError,
+            match=r"Supabase Auth request failed \(422\): User already registered",
+        ):
+            await gateway.invite("user@example.com")
 
 
 @pytest.mark.asyncio

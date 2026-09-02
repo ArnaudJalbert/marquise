@@ -121,8 +121,28 @@ class _SupabaseHttpGateway:
         try:
             with urllib.request.urlopen(request, timeout=10) as response:  # noqa: S310
                 raw = response.read().decode()
-        except (urllib.error.HTTPError, urllib.error.URLError) as exc:
-            raise AuthGatewayError("Supabase Auth request failed") from exc
+        except urllib.error.HTTPError as exc:
+            detail = str(exc.reason)
+            try:
+                payload = json.loads(exc.read().decode())
+                if isinstance(payload, dict):
+                    message = (
+                        payload.get("msg")
+                        or payload.get("message")
+                        or payload.get("error_description")
+                        or payload.get("error")
+                    )
+                    if isinstance(message, str) and message:
+                        detail = message
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                pass
+            raise AuthGatewayError(
+                f"Supabase Auth request failed ({exc.code}): {detail}"
+            ) from exc
+        except urllib.error.URLError as exc:
+            raise AuthGatewayError(
+                f"Supabase Auth request failed: {exc.reason}"
+            ) from exc
         if not raw:
             return {}
         try:

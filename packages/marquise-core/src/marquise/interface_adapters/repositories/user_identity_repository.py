@@ -26,7 +26,7 @@ class GatewayUserIdentityRepository(UserIdentityRepository):
         try:
             return self._to_identity(await self._gateway.invite(email))
         except (AuthGatewayError, ValueError) as exc:
-            raise AuthAdministrationError("Unable to invite user") from exc
+            raise AuthAdministrationError(f"Unable to invite user: {exc}") from exc
 
     async def find_by_email(self, email: str) -> UserIdentity | None:
         """Find a user by exact email."""
@@ -34,7 +34,7 @@ class GatewayUserIdentityRepository(UserIdentityRepository):
             data = await self._gateway.find_by_email(email)
             return self._to_identity(data) if data is not None else None
         except (AuthGatewayError, ValueError) as exc:
-            raise AuthAdministrationError("Unable to find user") from exc
+            raise AuthAdministrationError(f"Unable to find user: {exc}") from exc
 
     async def set_role(self, user_id: str, role: MarquiseRole | None) -> None:
         """Set or clear protected Marquise role metadata."""
@@ -43,14 +43,14 @@ class GatewayUserIdentityRepository(UserIdentityRepository):
                 user_id, role.value if role is not None else None
             )
         except AuthGatewayError as exc:
-            raise AuthAdministrationError("Unable to update user role") from exc
+            raise AuthAdministrationError(f"Unable to update user role: {exc}") from exc
 
     async def delete(self, user_id: str) -> None:
         """Delete one user."""
         try:
             await self._gateway.delete(user_id)
         except AuthGatewayError as exc:
-            raise AuthAdministrationError("Unable to delete user") from exc
+            raise AuthAdministrationError(f"Unable to delete user: {exc}") from exc
 
     @staticmethod
     def _to_identity(data: dict) -> UserIdentity:

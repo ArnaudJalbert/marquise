@@ -8,7 +8,10 @@ import pytest
 
 from marquise.application.exceptions import AuthAdministrationError
 from marquise.domain.value_objects import MarquiseRole
-from marquise.interface_adapters.repositories.protocols.auth import AuthAdminGateway
+from marquise.interface_adapters.repositories.protocols.auth import (
+    AuthAdminGateway,
+    AuthGatewayError,
+)
 from marquise.interface_adapters.repositories.user_identity_repository import (
     GatewayUserIdentityRepository,
 )
@@ -28,6 +31,25 @@ async def test_user_identity_repository_maps_users_and_roles() -> None:
     assert user.id == "user-id"
     gateway.set_role.assert_any_await("user-id", "administrator")
     gateway.set_role.assert_any_await("user-id", None)
+
+
+@pytest.mark.asyncio
+async def test_user_identity_repository_keeps_invitation_provider_detail() -> None:
+    """Invitation failures retain safe provider status and message for the CLI."""
+    gateway = create_autospec(AuthAdminGateway, instance=True)
+    gateway.invite.side_effect = AuthGatewayError(
+        "Supabase Auth request failed (422): User already registered"
+    )
+    repository = GatewayUserIdentityRepository(gateway)
+
+    with pytest.raises(
+        AuthAdministrationError,
+        match=(
+            r"Unable to invite user: Supabase Auth request failed \(422\): "
+            "User already registered"
+        ),
+    ):
+        await repository.invite("user@example.com")
 
 
 @pytest.mark.asyncio
