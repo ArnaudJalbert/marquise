@@ -10,12 +10,14 @@ from __future__ import annotations
 import marquise
 
 EXPECTED_PUBLIC_SURFACE: set[str] = {
+    "AccountAlreadyExistsError",
     "ApplicationError",
     "AssignSourceUseCase",
     "AuthenticateAdministratorUseCase",
     "AuthAdministrationError",
     "AuthFactory",
     "AuthenticationError",
+    "AuthenticationServiceUnavailableError",
     "AuthorizationError",
     "AccountNotFoundError",
     "CinemaAlreadyExistsError",

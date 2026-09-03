@@ -5,10 +5,12 @@ use cases through this supported facade. Internal package modules are private.
 """
 
 from marquise.application.exceptions import (
+    AccountAlreadyExistsError,
     AccountNotFoundError,
     ApplicationError,
     AuthAdministrationError,
     AuthenticationError,
+    AuthenticationServiceUnavailableError,
     AuthorizationError,
     CinemaAlreadyExistsError,
     CinemaIdAlreadyExistsError,
@@ -71,12 +73,14 @@ from marquise.bootstrap import (
 )
 
 __all__ = [
+    "AccountAlreadyExistsError",
     "ApplicationError",
     "AssignSourceUseCase",
     "AuthenticateAdministratorUseCase",
     "AuthAdministrationError",
     "AuthFactory",
     "AuthenticationError",
+    "AuthenticationServiceUnavailableError",
     "AuthorizationError",
     "AccountNotFoundError",
     "CinemaAlreadyExistsError",

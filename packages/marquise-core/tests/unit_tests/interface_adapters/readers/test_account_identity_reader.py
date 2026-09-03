@@ -6,9 +6,15 @@ from unittest.mock import create_autospec
 
 import pytest
 
-from marquise.application.exceptions import AuthenticationError
+from marquise.application.exceptions import (
+    AuthenticationError,
+    AuthenticationServiceUnavailableError,
+)
 from marquise.interface_adapters.readers import GatewayAccountIdentityReader
-from marquise.interface_adapters.repositories.protocols.auth import AccessTokenGateway
+from marquise.interface_adapters.repositories.protocols.auth import (
+    AccessTokenGateway,
+    AuthGatewayUnavailableError,
+)
 
 
 @pytest.mark.asyncio
@@ -45,4 +51,18 @@ async def test_account_identity_reader_rejects_invalid_claims(
     reader = GatewayAccountIdentityReader(gateway)
 
     with pytest.raises(AuthenticationError):
+        await reader.read("token")
+
+
+@pytest.mark.asyncio
+async def test_account_identity_reader_preserves_provider_outage() -> None:
+    """Signing-key outages remain distinguishable from invalid credentials."""
+    gateway = create_autospec(AccessTokenGateway, instance=True)
+    gateway.verify.side_effect = AuthGatewayUnavailableError("JWKS unavailable")
+    reader = GatewayAccountIdentityReader(gateway)
+
+    with pytest.raises(
+        AuthenticationServiceUnavailableError,
+        match="unavailable",
+    ):
         await reader.read("token")

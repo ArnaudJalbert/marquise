@@ -8,11 +8,12 @@ from marquise.application.readers.account_identity_reader import (
     AccountIdentityReader,
 )
 
+from marquise.domain.value_objects.marquise_role import MarquiseRole
+
 
 class VerifyAccessTokenQuery:
     """Return trusted identity data for a verified access token."""
 
-    # noinspection package-requirements
     @dataclass(frozen=True, slots=True)
     class InputData:
         """Encoded bearer token to verify."""
@@ -30,6 +31,16 @@ class VerifyAccessTokenQuery:
 
         subject: str
         role: str
+
+        @property
+        def can_edit(self) -> bool:
+            """Return whether this caller may perform Editor operations."""
+            return MarquiseRole(self.role).includes(MarquiseRole.EDITOR)
+
+        @property
+        def can_administer(self) -> bool:
+            """Return whether this caller may perform Administrator operations."""
+            return MarquiseRole(self.role).includes(MarquiseRole.ADMINISTRATOR)
 
     def __init__(self, identities: AccountIdentityReader) -> None:
         """Initialize with authenticated identity reader."""

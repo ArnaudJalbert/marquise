@@ -9,6 +9,10 @@ class AuthGatewayError(RuntimeError):
     """External authentication provider request failed."""
 
 
+class AuthGatewayUnavailableError(AuthGatewayError):
+    """External authentication provider is temporarily unavailable."""
+
+
 class AccessTokenGateway(ABC):
     """Verify encoded access tokens and return plain claims."""
 
@@ -41,11 +45,6 @@ class AuthAdminGateway(ABC):
         ...
 
     @abstractmethod
-    async def set_role(self, user_id: str, role: str | None) -> None:
-        """Set or clear protected role metadata."""
-        ...
-
-    @abstractmethod
-    async def delete(self, user_id: str) -> None:
-        """Delete one user."""
+    async def set_role(self, user_id: str, role: str) -> None:
+        """Set protected role metadata."""
         ...
