@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-02
+
+### v0.1.14
+
+- **Add authenticated account administration**: `auth invite` and `auth set-role` each execute one Administrator-authorized application workflow before updating one of the three fixed roles in protected Supabase application metadata. Password prompts remain masked, privileged credentials never become command arguments, and account/provider failures retain actionable labels. Closes #264 and #266.
+
 ## 2026-08-29
 
 ### v0.1.13
@@ -80,3 +86,4 @@
 ### v0.1.0
 
 - **Extract CLI into a workspace package**: CLI code moved to `apps/marquise-cli/` with `MarquiseFactory`. Closes #105, #106.
+
