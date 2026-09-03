@@ -4,13 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from marquise.application.exceptions.auth import AccountAlreadyExistsError
+from marquise.application.repositories.account_repository import AccountRepository
 from marquise.application.use_cases._auth_validation import normalize_email
 from marquise.application.use_cases.authenticate_administrator import (
     AuthenticateAdministratorUseCase,
 )
-
-from marquise.application.exceptions.auth import AccountAlreadyExistsError
-from marquise.application.repositories.account_repository import AccountRepository
 from marquise.domain.value_objects.marquise_role import MarquiseRole
 
 

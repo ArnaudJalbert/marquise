@@ -5,7 +5,6 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 from marquise.domain.entities.account import Account
-
 from marquise.domain.value_objects.marquise_role import MarquiseRole
 
 
