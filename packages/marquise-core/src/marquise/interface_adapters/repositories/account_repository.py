@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from marquise.domain.entities.account import Account
-
 from marquise.application.exceptions.auth import AuthAdministrationError
 from marquise.application.repositories.account_repository import AccountRepository
+from marquise.domain.entities.account import Account
 from marquise.domain.value_objects.marquise_role import MarquiseRole
 from marquise.interface_adapters.repositories.protocols.auth import (
     AuthAdminGateway,

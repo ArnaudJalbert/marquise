@@ -24,7 +24,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.inmemory import InMemoryBackend
 from fastapi_pagination import add_pagination
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.responses import JSONResponse, Response
+
+from marquise import ApplicationError, MarquiseFactory, create_factory
 from marquise_api.dependencies import get_factory
+from marquise_api.exception_handlers import (
+    application_error_handler,
+    http_exception_handler,
+    unhandled_exception_handler,
+    value_error_handler,
+)
 from marquise_api.logging_middleware import (
     RequestLoggingMiddleware,
     configure_logging,
@@ -34,19 +47,6 @@ from marquise_api.routers import (
     cinemas_router,
     movies_router,
     screenings_router,
-)
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.responses import JSONResponse, Response
-
-from marquise import ApplicationError, MarquiseFactory, create_factory
-from marquise_api.exception_handlers import (
-    application_error_handler,
-    http_exception_handler,
-    unhandled_exception_handler,
-    value_error_handler,
 )
 
 #: Default in-memory response cache TTL, in seconds. The database is only

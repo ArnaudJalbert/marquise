@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from fastapi import Depends, HTTPException, Request, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from marquise_api.dependencies import get_factory
 
 from marquise import (
     AuthenticationError,
     AuthenticationServiceUnavailableError,
     VerifyAccessTokenQuery,
 )
+from marquise_api.dependencies import get_factory
 
 _bearer = HTTPBearer(auto_error=False)
 
