@@ -6,7 +6,7 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ### v0.2.20
 
-- **Add clean authentication core**: verify Supabase JWTs through a dedicated account identity reader and query, and expose separately configured Administrator authentication, invitation, and role-change use cases through `AuthFactory`. Roles live only in protected Supabase `app_metadata`. Invitations use Supabase's dedicated endpoint and retain HTTP status and safe provider detail for CLI diagnosis. Closes #263, #264, and #266.
+- **Add clean authentication core**: verify Supabase JWTs through a dedicated account identity reader and query, and expose configured Administrator authentication, invitation, and role-change use cases through `MarquiseFactory`. Roles live only in protected Supabase `app_metadata`. Invitations use Supabase's dedicated endpoint and retain HTTP status and safe provider detail for CLI diagnosis. Closes #263, #264, and #266.
 
 ## 2026-08-29
 

@@ -9,8 +9,8 @@ from marquise.application.exceptions.auth import (
     SelfDemotionError,
 )
 from marquise.application.repositories.account_repository import AccountRepository
-from marquise.application.use_cases._auth_validation import normalize_email
-from marquise.application.use_cases.authenticate_administrator import (
+from marquise.application.use_cases.auth._validation import normalize_email
+from marquise.application.use_cases.auth.authenticate_administrator import (
     AuthenticateAdministratorUseCase,
 )
 from marquise.domain.value_objects.marquise_role import MarquiseRole
@@ -29,16 +29,13 @@ class SetAccountRoleUseCase:
         role: str
 
         def __post_init__(self) -> None:
-            """Normalize emails and validate credentials and role."""
-            object.__setattr__(
-                self,
-                "administrator_email",
-                normalize_email(self.administrator_email),
-            )
+            """Validate credentials, target email, and role."""
+            normalize_email(self.administrator_email)
             if not self.administrator_password:
                 raise ValueError("administrator_password must not be empty")
-            object.__setattr__(self, "email", normalize_email(self.email))
-            MarquiseRole(self.role)
+            normalize_email(self.email)
+            if not MarquiseRole.is_valid(self.role):
+                raise ValueError(f'Unsupported Marquise role: "{self.role}"')
 
     @dataclass(frozen=True, slots=True)
     class OutputData:
@@ -58,16 +55,33 @@ class SetAccountRoleUseCase:
         self._authenticate_administrator = authenticate_administrator
 
     async def execute(self, request: InputData) -> OutputData:
-        """Authorize the actor, resolve the target, and update role metadata."""
+        """Authorize the actor, resolve the target, and update role metadata.
+
+        Administrator authentication is the authorization gate. If it fails,
+        no target-account lookup or privileged provider operation is attempted.
+
+        Raises:
+            AuthenticationError: If the Administrator credentials are invalid.
+            AuthenticationServiceUnavailableError: If authentication is unavailable.
+            AuthorizationError: If the actor is not an Administrator.
+            AccountNotFoundError: If the target account does not exist.
+            SelfDemotionError: If the actor attempts to remove their own role.
+            AuthAdministrationError: If the role update fails.
+        """
+        administrator_email = normalize_email(request.administrator_email)
+        email = normalize_email(request.email)
+
+        # This call fails before any privileged account operation when the actor
+        # cannot be authenticated and authorized as an Administrator.
         actor = await self._authenticate_administrator.execute(
             self._authenticate_administrator.InputData(
-                email=request.administrator_email,
+                email=administrator_email,
                 password=request.administrator_password,
             )
         )
-        account = await self._accounts.find_by_email(request.email)
+        account = await self._accounts.find_by_email(email)
         if account is None:
-            raise AccountNotFoundError(f'No account found with email "{request.email}"')
+            raise AccountNotFoundError(f'No account found with email "{email}"')
 
         role = MarquiseRole(request.role)
         if account.id == actor.subject and role is not MarquiseRole.ADMINISTRATOR:

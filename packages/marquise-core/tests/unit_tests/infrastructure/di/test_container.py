@@ -22,6 +22,30 @@ def test_pool_property_raises_before_initialize() -> None:
         _ = container._pool_property  # type: ignore[misc]
 
 
+def test_auth_query_does_not_require_database_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Auth composition is available without opening or configuring a database."""
+    monkeypatch.setenv("SUPABASE_URL", "https://project.supabase.co")
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+
+    container = Container()
+
+    assert container.verify_access_token_query is not None
+
+
+@pytest.mark.asyncio
+async def test_database_initialization_still_requires_database_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Deferring database configuration does not hide initialization errors."""
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    container = Container()
+
+    with pytest.raises(RuntimeError, match="DATABASE_URL"):
+        await container.initialize()
+
+
 @pytest.mark.asyncio
 async def test_initialize_and_shutdown() -> None:
     """Verify initialize opens the pool and shutdown closes it."""

@@ -184,6 +184,9 @@ Server operators can allow specific origins via `MARQUISE_API_CORS_ORIGINS`.
 
     # Global error-to-response mapping, in one place instead of per-router
     # try/except (see exception_handlers.py for the status/error_code table).
+    # Register the Starlette base class rather than FastAPI's subclass so
+    # framework-generated routing errors (including 404 and 405) use the same
+    # documented response envelope as explicitly raised HTTP exceptions.
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     app.add_exception_handler(ApplicationError, application_error_handler)
     app.add_exception_handler(ValueError, value_error_handler)

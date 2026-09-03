@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import types
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -20,6 +19,11 @@ from marquise.application.queries.list_cinema_source_assignments import (
 from marquise.application.queries.search_screenings import SearchScreeningsQuery
 from marquise.application.queries.verify_access_token import VerifyAccessTokenQuery
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
+from marquise.application.use_cases.auth import (
+    AuthenticateAdministratorUseCase,
+    InviteAccountUseCase,
+    SetAccountRoleUseCase,
+)
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.create_missing_movies import (
     CreateMissingMoviesCommand,
@@ -42,7 +46,6 @@ from marquise.application.use_cases.list_registry_sources import (
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
-from marquise.auth_factory import AuthFactory
 from marquise.infrastructure.di.container import Container
 
 
@@ -60,27 +63,30 @@ class MarquiseFactory:
             await factory.shutdown()
     """
 
-    def __init__(self, auth_factory: AuthFactory | None = None) -> None:
+    def __init__(self) -> None:
         self._container = Container()
-        self._auth_factory = auth_factory or self._auth_factory_from_environment()
-
-    @staticmethod
-    def _auth_factory_from_environment() -> AuthFactory | None:
-        supabase_url = os.environ.get("SUPABASE_URL", "").rstrip("/")
-        if not supabase_url:
-            return None
-        return AuthFactory(
-            supabase_url=supabase_url,
-            publishable_key=os.environ.get("SUPABASE_PUBLISHABLE_KEY"),
-            service_role_key=os.environ.get("SUPABASE_SERVICE_ROLE_KEY"),
-        )
 
     @property
     def verify_access_token_query(self) -> VerifyAccessTokenQuery:
         """Configured access-token verification query."""
-        if self._auth_factory is None:
-            raise RuntimeError("SUPABASE_URL is required")
-        return self._auth_factory.verify_access_token_query
+        return self._container.verify_access_token_query
+
+    @property
+    def authenticate_administrator_use_case(
+        self,
+    ) -> AuthenticateAdministratorUseCase:
+        """Configured Administrator authentication use case."""
+        return self._container.authenticate_administrator_use_case
+
+    @property
+    def invite_account_use_case(self) -> InviteAccountUseCase:
+        """Configured account invitation use case."""
+        return self._container.invite_account_use_case
+
+    @property
+    def set_account_role_use_case(self) -> SetAccountRoleUseCase:
+        """Configured account role-change use case."""
+        return self._container.set_account_role_use_case
 
     # ------------------------------------------------------------------
     # Lifecycle

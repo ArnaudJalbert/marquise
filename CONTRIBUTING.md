@@ -86,7 +86,7 @@ Defined in `packages/marquise-core/src/marquise/__init__.py` via `__all__`:
 
 - `MarquiseFactory`, `create_factory()`, `create_factory_session()`
 - `ApplicationError` and concrete application exception subclasses
-- `AuthFactory` with configured token query and account-administration use cases
+- Authentication token query and account-administration use cases through `MarquiseFactory`
 - Configured cinema, movie, screening, source, and import use cases required by delivery apps, including nested DTOs
 
 Apps may import only from `marquise` (top-level) — never from
@@ -272,7 +272,7 @@ mock gateway protocols.
 |---------------|---------------|------|
 | `domain/` | `unit_tests/domain/` | Nothing |
 | `application/` | `unit_tests/application/` | Repository ABCs via `create_autospec` |
-| `interface_adapters/` | `unit_tests/interface_adapters/` | Gateway protocols via `create_autospec` |
+| `interface_adapters/` | `unit_tests/interface_adapters/` | Gateway `Protocol`s via `create_autospec` |
 | `infrastructure/.../gateways/` | `integration_tests/infrastructure/` | Real database |
 | `apps/marquise-api/` | `apps/marquise-api/tests/` | `MarquiseFactory` |
 | `apps/marquise-cli/` | `apps/marquise-cli/tests/` | `MarquiseFactory` |

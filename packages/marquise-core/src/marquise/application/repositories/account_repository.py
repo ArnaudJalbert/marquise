@@ -9,7 +9,7 @@ from marquise.domain.value_objects.marquise_role import MarquiseRole
 
 
 class AccountRepository(ABC):
-    """Administer Supabase accounts."""
+    """Administer human accounts through the configured identity provider."""
 
     @abstractmethod
     async def invite(self, email: str) -> Account:

@@ -6,8 +6,8 @@ from dataclasses import dataclass
 
 from marquise.application.exceptions.auth import AccountAlreadyExistsError
 from marquise.application.repositories.account_repository import AccountRepository
-from marquise.application.use_cases._auth_validation import normalize_email
-from marquise.application.use_cases.authenticate_administrator import (
+from marquise.application.use_cases.auth._validation import normalize_email
+from marquise.application.use_cases.auth.authenticate_administrator import (
     AuthenticateAdministratorUseCase,
 )
 from marquise.domain.value_objects.marquise_role import MarquiseRole
@@ -26,16 +26,13 @@ class InviteAccountUseCase:
         role: str
 
         def __post_init__(self) -> None:
-            """Normalize emails and validate credentials and role."""
-            object.__setattr__(
-                self,
-                "administrator_email",
-                normalize_email(self.administrator_email),
-            )
+            """Validate credentials, target email, and role."""
+            normalize_email(self.administrator_email)
             if not self.administrator_password:
                 raise ValueError("administrator_password must not be empty")
-            object.__setattr__(self, "email", normalize_email(self.email))
-            MarquiseRole(self.role)
+            normalize_email(self.email)
+            if not MarquiseRole.is_valid(self.role):
+                raise ValueError(f'Unsupported Marquise role: "{self.role}"')
 
     @dataclass(frozen=True, slots=True)
     class OutputData:
@@ -55,20 +52,36 @@ class InviteAccountUseCase:
         self._authenticate_administrator = authenticate_administrator
 
     async def execute(self, request: InputData) -> OutputData:
-        """Authorize the actor, invite a new account, and attach its role."""
+        """Authorize the actor, invite a new account, and attach its role.
+
+        Administrator authentication is the authorization gate. If it fails,
+        no target-account lookup or privileged provider operation is attempted.
+
+        Raises:
+            AuthenticationError: If the Administrator credentials are invalid.
+            AuthenticationServiceUnavailableError: If authentication is unavailable.
+            AuthorizationError: If the actor is not an Administrator.
+            AccountAlreadyExistsError: If the target email already exists.
+            AuthAdministrationError: If invitation or role assignment fails.
+        """
+        administrator_email = normalize_email(request.administrator_email)
+        email = normalize_email(request.email)
+
+        # This call fails before any privileged account operation when the actor
+        # cannot be authenticated and authorized as an Administrator.
         await self._authenticate_administrator.execute(
             self._authenticate_administrator.InputData(
-                email=request.administrator_email,
+                email=administrator_email,
                 password=request.administrator_password,
             )
         )
-        if await self._accounts.find_by_email(request.email) is not None:
+        if await self._accounts.find_by_email(email) is not None:
             raise AccountAlreadyExistsError(
-                f'An account already exists with email "{request.email}"'
+                f'An account already exists with email "{email}"'
             )
 
         role = MarquiseRole(request.role)
-        account = await self._accounts.invite(request.email)
+        account = await self._accounts.invite(email)
         await self._accounts.set_role(account.id, role)
         return self.OutputData(
             account_id=account.id,

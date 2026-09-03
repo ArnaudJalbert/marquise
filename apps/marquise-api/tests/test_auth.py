@@ -45,7 +45,8 @@ def _auth_client(
             raise AuthenticationError("invalid")
         return VerifyAccessTokenQuery.OutputData(
             subject="user-id",
-            role=request.token,
+            can_edit=request.token in {"editor", "administrator"},
+            can_administer=request.token == "administrator",
         )
 
     query.execute.side_effect = verify
@@ -57,7 +58,7 @@ def _auth_client(
     async def authenticated(
         caller: AuthenticatedCaller = Depends(require_authenticated),
     ) -> dict[str, str]:
-        return {"subject": caller.subject, "role": caller.role}
+        return {"subject": caller.subject}
 
     @app.get("/_test/editor", dependencies=[Depends(require_editor)])
     async def editor() -> dict[str, str]:
@@ -99,7 +100,7 @@ def test_dependencies_authorize_fixed_roles() -> None:
         "/_test/authenticated",
         headers=_bearer("member"),
     )
-    assert response.json() == {"subject": "user-id", "role": "member"}
+    assert response.json() == {"subject": "user-id"}
     assert (
         client.get(
             "/_test/editor",

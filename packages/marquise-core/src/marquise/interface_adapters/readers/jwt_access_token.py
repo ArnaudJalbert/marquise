@@ -3,23 +3,14 @@
 from __future__ import annotations
 
 import asyncio
-from abc import ABC, abstractmethod
 
 import jwt
 
+from marquise.interface_adapters.exceptions.auth import AuthGatewayError
 from marquise.interface_adapters.repositories.protocols.auth import (
     AccessTokenGateway,
-    AuthGatewayError,
+    SigningKeyProvider,
 )
-
-
-class SigningKeyProvider(ABC):
-    """Resolve a trusted signing key for an encoded JWT."""
-
-    @abstractmethod
-    def get_signing_key(self, token: str) -> jwt.PyJWK:
-        """Return the key matching the token header."""
-        ...
 
 
 class JwtAccessTokenGateway(AccessTokenGateway):
