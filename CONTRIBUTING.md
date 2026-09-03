@@ -86,6 +86,7 @@ Defined in `packages/marquise-core/src/marquise/__init__.py` via `__all__`:
 
 - `MarquiseFactory`, `create_factory()`, `create_factory_session()`
 - `ApplicationError` and concrete application exception subclasses
+- `AuthFactory` with configured token query and account-administration use cases
 - Configured cinema, movie, screening, source, and import use cases required by delivery apps, including nested DTOs
 
 Apps may import only from `marquise` (top-level) — never from
@@ -146,6 +147,11 @@ Design rules → [Atlas Clean Architecture](atlas/50-processes/Clean%20Architect
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `SUPABASE_URL` | Protected API routes and account CLI | Supabase project URL |
+| `SUPABASE_PUBLISHABLE_KEY` | Account CLI only | Password authentication for Administrator verification |
+| `SUPABASE_SERVICE_ROLE_KEY` | Account CLI only | Privileged invitation and role metadata updates |
+| `MARQUISE_EMAIL` | No | Configured CLI Administrator email; prompts when either credential is absent |
+| `MARQUISE_PASSWORD` | No | Configured CLI Administrator password; prompts when either credential is absent |
 | `CINEPLEX_API_KEY` | No | Cineplex API subscription key |
 | `DATABASE_SCHEMA` | No | Schema name (default: `marquise`) |
 | `MARQUISE_API_CACHE_TTL_SECONDS` | No | API in-memory cache TTL (default: 3600) |

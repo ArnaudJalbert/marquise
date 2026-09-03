@@ -5,7 +5,11 @@ use cases through this supported facade. Internal package modules are private.
 """
 
 from marquise.application.exceptions import (
+    AccountNotFoundError,
     ApplicationError,
+    AuthAdministrationError,
+    AuthenticationError,
+    AuthorizationError,
     CinemaAlreadyExistsError,
     CinemaIdAlreadyExistsError,
     CinemaNotFoundError,
@@ -14,6 +18,7 @@ from marquise.application.exceptions import (
     MovieNotFoundError,
     ScreeningAlreadyExistsError,
     ScreeningNotFoundError,
+    SelfDemotionError,
     SourceAlreadyExistsError,
     SourceNotFoundError,
     TooManyMovieIdsError,
@@ -29,7 +34,11 @@ from marquise.application.queries.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
 from marquise.application.queries.search_screenings import SearchScreeningsQuery
+from marquise.application.queries.verify_access_token import VerifyAccessTokenQuery
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
+from marquise.application.use_cases.authenticate_administrator import (
+    AuthenticateAdministratorUseCase,
+)
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.create_missing_movies import (
     CreateMissingMoviesCommand,
@@ -44,14 +53,17 @@ from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseC
 from marquise.application.use_cases.get_movie import GetMovieUseCase
 from marquise.application.use_cases.get_screening import GetScreeningUseCase
 from marquise.application.use_cases.import_screenings import ImportScreeningsCommand
+from marquise.application.use_cases.invite_account import InviteAccountUseCase
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.application.use_cases.list_movies import ListMoviesUseCase
 from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
+from marquise.application.use_cases.set_account_role import SetAccountRoleUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
+from marquise.auth_factory import AuthFactory
 from marquise.bootstrap import (
     MarquiseFactory,
     create_factory,
@@ -61,6 +73,12 @@ from marquise.bootstrap import (
 __all__ = [
     "ApplicationError",
     "AssignSourceUseCase",
+    "AuthenticateAdministratorUseCase",
+    "AuthAdministrationError",
+    "AuthFactory",
+    "AuthenticationError",
+    "AuthorizationError",
+    "AccountNotFoundError",
     "CinemaAlreadyExistsError",
     "CinemaIdAlreadyExistsError",
     "CinemaNotFoundError",
@@ -70,6 +88,7 @@ __all__ = [
     "CreateMissingMoviesCommand",
     "CreateScreeningsCommand",
     "ImportScreeningsCommand",
+    "InviteAccountUseCase",
     "CreateSourceUseCase",
     "DeleteCinemaUseCase",
     "DeleteSourceUseCase",
@@ -92,10 +111,13 @@ __all__ = [
     "MovieNotFoundError",
     "ScreeningAlreadyExistsError",
     "ScreeningNotFoundError",
+    "SelfDemotionError",
+    "SetAccountRoleUseCase",
     "SearchScreeningsQuery",
     "SourceAlreadyExistsError",
     "SourceNotFoundError",
     "TooManyMovieIdsError",
     "UnassignSourceUseCase",
     "UpdateCinemaUseCase",
+    "VerifyAccessTokenQuery",
 ]
