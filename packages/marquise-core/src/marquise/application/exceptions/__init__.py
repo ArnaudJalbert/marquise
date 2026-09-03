@@ -1,5 +1,12 @@
 """Application exception re-exports."""
 
+from marquise.application.exceptions.auth import (
+    AccountNotFoundError,
+    AuthAdministrationError,
+    AuthenticationError,
+    AuthorizationError,
+    SelfDemotionError,
+)
 from marquise.application.exceptions.base import ApplicationError
 from marquise.application.exceptions.cinema import (
     CinemaAlreadyExistsError,
@@ -23,7 +30,11 @@ from marquise.application.exceptions.source import (
 )
 
 __all__ = [
+    "AccountNotFoundError",
     "ApplicationError",
+    "AuthAdministrationError",
+    "AuthenticationError",
+    "AuthorizationError",
     "CinemaAlreadyExistsError",
     "CinemaIdAlreadyExistsError",
     "CinemaNotFoundError",
@@ -33,6 +44,7 @@ __all__ = [
     "ScreeningAlreadyExistsError",
     "ScreeningNotFoundError",
     "ScreeningUpdateNotFoundError",
+    "SelfDemotionError",
     "SourceAlreadyExistsError",
     "SourceNotFoundError",
     "TooManyMovieIdsError",

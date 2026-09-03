@@ -16,9 +16,16 @@ from marquise_api.schemas import ErrorResponse
 #: code, keyed by status code. Extend when a new status code is documented
 #: on any endpoint.
 _DESCRIPTIONS: dict[int, str] = {
+    401: (
+        "The request is missing a valid bearer token, or the presented "
+        "credentials were rejected."
+    ),
     404: "The requested resource was not found.",
     422: "The request's query or path parameters failed validation.",
     429: "Too many requests — the per-IP rate limit was exceeded.",
+    503: (
+        "Authentication is not configured or the authentication service is unavailable."
+    ),
 }
 
 

@@ -1029,7 +1029,7 @@ def test_cors_preflight_when_configured(
 
     assert response.status_code == 200
     assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
-    assert response.headers["access-control-allow-methods"] == "GET"
+    assert response.headers["access-control-allow-methods"] == "GET, POST"
 
 
 def test_cors_origin_not_allowed_rejected(
