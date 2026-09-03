@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from marquise.application.readers.account_identity_reader import (
     AccountIdentityReader,
 )
-
 from marquise.domain.value_objects.marquise_role import MarquiseRole
 
 

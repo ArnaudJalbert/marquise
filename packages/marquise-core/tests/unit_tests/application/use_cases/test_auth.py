@@ -13,6 +13,7 @@ from marquise.application.exceptions import (
     AuthorizationError,
     SelfDemotionError,
 )
+from marquise.application.readers import AccountIdentityReader
 from marquise.application.repositories import (
     AccountRepository,
     PasswordAuthenticationRepository,
