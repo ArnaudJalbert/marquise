@@ -5,8 +5,6 @@ from __future__ import annotations
 from unittest.mock import create_autospec
 
 import pytest
-from marquise.application.readers import AccountIdentityReader
-from marquise.domain.entities import Account
 
 from marquise.application.exceptions import (
     AccountAlreadyExistsError,
@@ -24,6 +22,7 @@ from marquise.application.use_cases import (
     InviteAccountUseCase,
     SetAccountRoleUseCase,
 )
+from marquise.domain.entities import Account
 from marquise.domain.value_objects import MarquiseRole
 
 

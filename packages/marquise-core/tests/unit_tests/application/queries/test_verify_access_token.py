@@ -5,9 +5,9 @@ from __future__ import annotations
 from unittest.mock import create_autospec
 
 import pytest
-from marquise.application.readers import AccountIdentityReader
 
 from marquise.application.queries import VerifyAccessTokenQuery
+from marquise.application.readers import AccountIdentityReader
 
 
 @pytest.mark.asyncio

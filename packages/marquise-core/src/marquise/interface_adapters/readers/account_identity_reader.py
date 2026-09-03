@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from marquise.application.readers.account_identity_reader import AccountIdentityReader
-
 from marquise.application.exceptions.auth import (
     AuthenticationError,
     AuthenticationServiceUnavailableError,
 )
+from marquise.application.readers.account_identity_reader import AccountIdentityReader
 from marquise.domain.value_objects.marquise_role import MarquiseRole
 from marquise.interface_adapters.repositories.protocols.auth import (
     AccessTokenGateway,
