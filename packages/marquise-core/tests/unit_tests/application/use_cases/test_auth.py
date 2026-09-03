@@ -41,6 +41,37 @@ def _administrator_authentication(
     return authentication
 
 
+def test_auth_input_validation_does_not_mutate_delivery_values() -> None:
+    """Immutable auth input remains exactly as supplied by delivery."""
+    request = InviteAccountUseCase.InputData(
+        administrator_email=" ADMIN@example.com ",
+        administrator_password="secret",
+        email=" USER@example.com ",
+        role="editor",
+    )
+
+    assert request.administrator_email == " ADMIN@example.com "
+    assert request.email == " USER@example.com "
+
+
+@pytest.mark.parametrize(
+    "input_type",
+    [InviteAccountUseCase.InputData, SetAccountRoleUseCase.InputData],
+)
+def test_account_workflows_reject_unknown_role(
+    input_type: type[InviteAccountUseCase.InputData]
+    | type[SetAccountRoleUseCase.InputData],
+) -> None:
+    """Account workflows validate roles through the descriptive domain check."""
+    with pytest.raises(ValueError, match="Unsupported Marquise role"):
+        input_type(
+            administrator_email="admin@example.com",
+            administrator_password="secret",
+            email="user@example.com",
+            role="owner",
+        )
+
+
 @pytest.mark.asyncio
 async def test_authenticate_administrator_verifies_issued_token() -> None:
     """Password authentication is followed by shared identity reading."""

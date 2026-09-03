@@ -8,11 +8,11 @@ from marquise.application.exceptions.auth import (
 )
 from marquise.application.readers.account_identity_reader import AccountIdentityReader
 from marquise.domain.value_objects.marquise_role import MarquiseRole
-from marquise.interface_adapters.repositories.protocols.auth import (
-    AccessTokenGateway,
+from marquise.interface_adapters.exceptions.auth import (
     AuthGatewayError,
     AuthGatewayUnavailableError,
 )
+from marquise.interface_adapters.repositories.protocols.auth import AccessTokenGateway
 
 
 class GatewayAccountIdentityReader(AccountIdentityReader):

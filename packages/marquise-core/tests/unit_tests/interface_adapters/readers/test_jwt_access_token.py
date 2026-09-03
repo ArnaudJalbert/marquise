@@ -8,13 +8,13 @@ import jwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
 
+from marquise.interface_adapters.exceptions.auth import (
+    AuthGatewayError,
+    AuthGatewayUnavailableError,
+)
 from marquise.interface_adapters.readers import (
     JwtAccessTokenGateway,
     SigningKeyProvider,
-)
-from marquise.interface_adapters.repositories.protocols.auth import (
-    AuthGatewayError,
-    AuthGatewayUnavailableError,
 )
 
 ISSUER = "https://project.supabase.co/auth/v1"

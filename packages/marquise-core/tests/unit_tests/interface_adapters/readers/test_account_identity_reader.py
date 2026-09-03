@@ -10,10 +10,12 @@ from marquise.application.exceptions import (
     AuthenticationError,
     AuthenticationServiceUnavailableError,
 )
+from marquise.interface_adapters.exceptions.auth import (
+    AuthGatewayUnavailableError,
+)
 from marquise.interface_adapters.readers import GatewayAccountIdentityReader
 from marquise.interface_adapters.repositories.protocols.auth import (
     AccessTokenGateway,
-    AuthGatewayUnavailableError,
 )
 
 

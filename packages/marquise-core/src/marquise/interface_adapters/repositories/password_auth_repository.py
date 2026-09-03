@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
-from marquise.application.exceptions.auth import AuthenticationError
+from marquise.application.exceptions.auth import (
+    AuthenticationError,
+    AuthenticationServiceUnavailableError,
+)
 from marquise.application.repositories.password_authentication_repository import (
     PasswordAuthenticationRepository,
 )
-from marquise.interface_adapters.repositories.protocols.auth import (
+from marquise.interface_adapters.exceptions.auth import (
     AuthGatewayError,
-    PasswordAuthGateway,
+    AuthGatewayUnavailableError,
 )
+from marquise.interface_adapters.repositories.protocols.auth import PasswordAuthGateway
 
 
 class GatewayPasswordAuthenticationRepository(PasswordAuthenticationRepository):
@@ -23,5 +27,9 @@ class GatewayPasswordAuthenticationRepository(PasswordAuthenticationRepository):
         """Authenticate credentials and return access token."""
         try:
             return await self._gateway.issue_access_token(email, password)
+        except AuthGatewayUnavailableError as exc:
+            raise AuthenticationServiceUnavailableError(
+                "Authentication service is unavailable"
+            ) from exc
         except AuthGatewayError as exc:
             raise AuthenticationError("Email or password is invalid") from exc

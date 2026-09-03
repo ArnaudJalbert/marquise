@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import Depends, HTTPException, Request, Security, status
+from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from marquise import (
@@ -10,7 +10,7 @@ from marquise import (
     AuthenticationServiceUnavailableError,
     VerifyAccessTokenQuery,
 )
-from marquise_api.dependencies import get_factory
+from marquise_api.dependencies import get_verify_access_token_query
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -30,19 +30,6 @@ def _authentication_unavailable_error(detail: str) -> HTTPException:
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         detail=detail,
     )
-
-
-def get_verify_access_token_query(request: Request) -> VerifyAccessTokenQuery:
-    """Return token-verification query configured at composition root."""
-    try:
-        query = get_factory(request).verify_access_token_query
-    except RuntimeError as exc:
-        raise _authentication_unavailable_error(
-            "Authentication is not configured"
-        ) from exc
-    if query is None:
-        raise _authentication_unavailable_error("Authentication is not configured")
-    return query
 
 
 async def require_authenticated(

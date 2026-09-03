@@ -15,7 +15,6 @@ EXPECTED_PUBLIC_SURFACE: set[str] = {
     "AssignSourceUseCase",
     "AuthenticateAdministratorUseCase",
     "AuthAdministrationError",
-    "AuthFactory",
     "AuthenticationError",
     "AuthenticationServiceUnavailableError",
     "AuthorizationError",

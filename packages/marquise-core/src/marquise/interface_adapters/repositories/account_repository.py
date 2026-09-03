@@ -6,14 +6,12 @@ from marquise.application.exceptions.auth import AuthAdministrationError
 from marquise.application.repositories.account_repository import AccountRepository
 from marquise.domain.entities.account import Account
 from marquise.domain.value_objects.marquise_role import MarquiseRole
-from marquise.interface_adapters.repositories.protocols.auth import (
-    AuthAdminGateway,
-    AuthGatewayError,
-)
+from marquise.interface_adapters.exceptions.auth import AuthGatewayError
+from marquise.interface_adapters.repositories.protocols.auth import AuthAdminGateway
 
 
 class GatewayAccountRepository(AccountRepository):
-    """Map Supabase Admin gateway data to accounts."""
+    """Map identity-provider gateway data to accounts."""
 
     def __init__(self, gateway: AuthAdminGateway) -> None:
         """Initialize with Auth Admin gateway."""
@@ -48,6 +46,11 @@ class GatewayAccountRepository(AccountRepository):
         """Map plain gateway user data to domain entity."""
         account_id = data.get("id")
         email = data.get("email")
+        metadata = data.get("app_metadata")
+        role_value = (
+            metadata.get("marquise_role") if isinstance(metadata, dict) else None
+        )
         if not isinstance(account_id, str) or not isinstance(email, str):
             raise ValueError("invalid account identity")
-        return Account(id=account_id, email=email)
+        role = MarquiseRole(role_value) if role_value is not None else None
+        return Account(id=account_id, email=email, role=role)

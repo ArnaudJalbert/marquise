@@ -19,7 +19,13 @@ from marquise.application.queries.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
 from marquise.application.queries.search_screenings import SearchScreeningsQuery
+from marquise.application.queries.verify_access_token import VerifyAccessTokenQuery
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
+from marquise.application.use_cases.auth import (
+    AuthenticateAdministratorUseCase,
+    InviteAccountUseCase,
+    SetAccountRoleUseCase,
+)
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.create_missing_movies import (
     CreateMissingMoviesCommand,
@@ -42,6 +48,12 @@ from marquise.application.use_cases.list_registry_sources import (
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
+from marquise.infrastructure.di.auth import (
+    build_authenticate_administrator_use_case,
+    build_invite_account_use_case,
+    build_set_account_role_use_case,
+    build_verify_access_token_query,
+)
 from marquise.infrastructure.di.import_use_cases import (
     build_create_movies_use_case,
     build_create_screenings_use_case,
@@ -91,9 +103,12 @@ class SettingsProvider:
         import os
 
         self._settings = Settings(
-            database_url=os.environ["DATABASE_URL"],
+            database_url=os.environ.get("DATABASE_URL", ""),
             cineplex_api_key=os.environ.get("CINEPLEX_API_KEY", ""),
             schema=os.environ.get("DATABASE_SCHEMA", "marquise"),
+            supabase_url=os.environ.get("SUPABASE_URL", ""),
+            supabase_publishable_key=os.environ.get("SUPABASE_PUBLISHABLE_KEY", ""),
+            supabase_service_role_key=os.environ.get("SUPABASE_SERVICE_ROLE_KEY", ""),
         )
 
     @property
@@ -134,6 +149,8 @@ class Container:
         Safe to call multiple times (idempotent).
         """
         if self._database is None:
+            if not self._settings.database_url:
+                raise RuntimeError("DATABASE_URL is required")
             self._database = Database(self._settings)
             await self._database.connect()
             self._pool = self._database.pool
@@ -171,6 +188,39 @@ class Container:
     @property
     def _schema(self) -> str:
         return self._settings.schema
+
+    # ------------------------------------------------------------------
+    # Authentication (no database lifecycle required)
+    # ------------------------------------------------------------------
+
+    @property
+    def _verify_access_token_query(self) -> VerifyAccessTokenQuery:
+        return build_verify_access_token_query(self._settings.supabase_url)
+
+    @property
+    def _authenticate_administrator_use_case(
+        self,
+    ) -> AuthenticateAdministratorUseCase:
+        return build_authenticate_administrator_use_case(
+            self._settings.supabase_url,
+            self._settings.supabase_publishable_key,
+        )
+
+    @property
+    def _invite_account_use_case(self) -> InviteAccountUseCase:
+        return build_invite_account_use_case(
+            self._settings.supabase_url,
+            self._settings.supabase_publishable_key,
+            self._settings.supabase_service_role_key,
+        )
+
+    @property
+    def _set_account_role_use_case(self) -> SetAccountRoleUseCase:
+        return build_set_account_role_use_case(
+            self._settings.supabase_url,
+            self._settings.supabase_publishable_key,
+            self._settings.supabase_service_role_key,
+        )
 
     # ------------------------------------------------------------------
     # Database
@@ -352,6 +402,28 @@ class Container:
     # ------------------------------------------------------------------
     # Public use cases
     # ------------------------------------------------------------------
+
+    @property
+    def verify_access_token_query(self) -> VerifyAccessTokenQuery:
+        """Public configured access-token verification query."""
+        return self._verify_access_token_query
+
+    @property
+    def authenticate_administrator_use_case(
+        self,
+    ) -> AuthenticateAdministratorUseCase:
+        """Public configured Administrator authentication use case."""
+        return self._authenticate_administrator_use_case
+
+    @property
+    def invite_account_use_case(self) -> InviteAccountUseCase:
+        """Public configured account invitation use case."""
+        return self._invite_account_use_case
+
+    @property
+    def set_account_role_use_case(self) -> SetAccountRoleUseCase:
+        """Public configured account role-change use case."""
+        return self._set_account_role_use_case
 
     @property
     def create_cinema_use_case(self) -> CreateCinemaUseCase:

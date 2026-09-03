@@ -1,13 +1,9 @@
-"""Supabase authentication infrastructure."""
+"""Authentication infrastructure."""
 
-from marquise.infrastructure.auth.supabase import (
-    SupabaseAuthAdminGateway,
-    SupabasePasswordAuthGateway,
-    SupabaseSigningKeyProvider,
-)
+from marquise.infrastructure.auth.gotrue import GoTrueAuthGateway
+from marquise.infrastructure.auth.jwks import JwksSigningKeyProvider
 
 __all__ = [
-    "SupabaseAuthAdminGateway",
-    "SupabasePasswordAuthGateway",
-    "SupabaseSigningKeyProvider",
+    "GoTrueAuthGateway",
+    "JwksSigningKeyProvider",
 ]

@@ -26,20 +26,11 @@ class VerifyAccessTokenQuery:
 
     @dataclass(frozen=True, slots=True)
     class OutputData:
-        """Trusted caller identity exposed to delivery."""
+        """Trusted caller identity and authorization decisions for delivery."""
 
         subject: str
-        role: str
-
-        @property
-        def can_edit(self) -> bool:
-            """Return whether this caller may perform Editor operations."""
-            return MarquiseRole(self.role).includes(MarquiseRole.EDITOR)
-
-        @property
-        def can_administer(self) -> bool:
-            """Return whether this caller may perform Administrator operations."""
-            return MarquiseRole(self.role).includes(MarquiseRole.ADMINISTRATOR)
+        can_edit: bool
+        can_administer: bool
 
     def __init__(self, identities: AccountIdentityReader) -> None:
         """Initialize with authenticated identity reader."""
@@ -48,4 +39,9 @@ class VerifyAccessTokenQuery:
     async def execute(self, request: InputData) -> OutputData:
         """Verify token and return trusted caller identity."""
         identity = await self._identities.read(request.token)
-        return self.OutputData(subject=identity.subject, role=identity.role)
+        role = MarquiseRole(identity.role)
+        return self.OutputData(
+            subject=identity.subject,
+            can_edit=role.includes(MarquiseRole.EDITOR),
+            can_administer=role.includes(MarquiseRole.ADMINISTRATOR),
+        )

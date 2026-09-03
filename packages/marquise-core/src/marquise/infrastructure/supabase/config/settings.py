@@ -15,6 +15,9 @@ class Settings:
         cineplex_api_key: API key for the Cineplex theatrical API.
     """
 
-    database_url: str
+    database_url: str = ""
     cineplex_api_key: str = ""
     schema: str = "marquise"
+    supabase_url: str = ""
+    supabase_publishable_key: str = ""
+    supabase_service_role_key: str = ""
