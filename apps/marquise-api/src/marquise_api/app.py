@@ -11,8 +11,6 @@ MARQUISE_API_CORS_ORIGINS
 MARQUISE_API_RATE_LIMIT
     Per-IP request rate limit, in slowapi's ``<count>/<period>`` string
     syntax (default: ``60/minute``). Example: ``120/minute``.
-SUPABASE_URL
-    Supabase project URL used to discover JWT signing keys for protected routes.
 """
 
 from __future__ import annotations
@@ -26,24 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.inmemory import InMemoryBackend
 from fastapi_pagination import add_pagination
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
-from starlette.responses import JSONResponse, Response
-
-from marquise import (
-    ApplicationError,
-    AuthFactory,
-    MarquiseFactory,
-    VerifyAccessTokenQuery,
-    create_factory,
-)
 from marquise_api.dependencies import get_factory
-from marquise_api.exception_handlers import (
-    application_error_handler,
-    unhandled_exception_handler,
-    value_error_handler,
-)
 from marquise_api.logging_middleware import (
     RequestLoggingMiddleware,
     configure_logging,
@@ -53,6 +34,19 @@ from marquise_api.routers import (
     cinemas_router,
     movies_router,
     screenings_router,
+)
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.responses import JSONResponse, Response
+
+from marquise import ApplicationError, MarquiseFactory, create_factory
+from marquise_api.exception_handlers import (
+    application_error_handler,
+    http_exception_handler,
+    unhandled_exception_handler,
+    value_error_handler,
 )
 
 #: Default in-memory response cache TTL, in seconds. The database is only
@@ -85,29 +79,18 @@ def _parse_cors_origins(raw: str | None) -> list[str]:
     return [origin.strip() for origin in raw.split(",") if origin.strip()]
 
 
-def create_app(
-    factory: MarquiseFactory | None = None,
-    verify_access_token_query: VerifyAccessTokenQuery | None = None,
-) -> FastAPI:
+def create_app(factory: MarquiseFactory | None = None) -> FastAPI:
     """Build the FastAPI application.
 
     Args:
-        factory: An optional pre-built factory. When provided (e.g. in
-            tests), it is used as-is and its lifecycle is the caller's
-            responsibility. When omitted, a ``MarquiseFactory`` is created
-            and its database pool is opened on startup and closed on shutdown.
-        verify_access_token_query: Optional injected token-verification query.
-            When omitted, Supabase verification is configured from
-            ``SUPABASE_URL`` if set.
+        factory: An optional pre-built factory. When provided, it is used as-is
+            and its lifecycle is the caller's responsibility. When omitted, a
+            configured MarquiseFactory is created and managed by the app.
 
     Returns:
-        A configured ``FastAPI`` instance.
+        A configured FastAPI instance.
     """
     configure_logging()
-
-    supabase_url = os.environ.get("SUPABASE_URL", "").rstrip("/")
-    if verify_access_token_query is None and supabase_url:
-        verify_access_token_query = AuthFactory(supabase_url).verify_access_token_query
 
     cache_ttl_seconds = int(
         os.environ.get("MARQUISE_API_CACHE_TTL_SECONDS", DEFAULT_CACHE_TTL_SECONDS)
@@ -177,8 +160,6 @@ Server operators can allow specific origins via `MARQUISE_API_CORS_ORIGINS`.
         lifespan=lifespan,
     )
 
-    app.state.verify_access_token_query = verify_access_token_query
-
     # When a factory is injected (e.g. in tests), make it available even if
     # the lifespan startup is not run by the test client.
     if factory is not None:
@@ -203,6 +184,7 @@ Server operators can allow specific origins via `MARQUISE_API_CORS_ORIGINS`.
 
     # Global error-to-response mapping, in one place instead of per-router
     # try/except (see exception_handlers.py for the status/error_code table).
+    app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     app.add_exception_handler(ApplicationError, application_error_handler)
     app.add_exception_handler(ValueError, value_error_handler)
     app.add_exception_handler(Exception, unhandled_exception_handler)
@@ -217,7 +199,7 @@ Server operators can allow specific origins via `MARQUISE_API_CORS_ORIGINS`.
             CORSMiddleware,
             allow_origins=cors_origins,
             allow_credentials=True,
-            allow_methods=["GET", "POST"],
+            allow_methods=["GET"],
             allow_headers=["*"],
         )
 

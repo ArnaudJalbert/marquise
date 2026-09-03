@@ -1,27 +1,40 @@
-"""Invite a human account with a Marquise role."""
+"""Authenticate an Administrator and invite a human account."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from marquise.application.exceptions.auth import AuthAdministrationError
-from marquise.application.repositories.account_repository import AccountRepository
 from marquise.application.use_cases._auth_validation import normalize_email
+from marquise.application.use_cases.authenticate_administrator import (
+    AuthenticateAdministratorUseCase,
+)
+
+from marquise.application.exceptions.auth import AccountAlreadyExistsError
+from marquise.application.repositories.account_repository import AccountRepository
 from marquise.domain.value_objects.marquise_role import MarquiseRole
 
 
 class InviteAccountUseCase:
-    """Invite an account, assign protected role metadata, and roll back failures."""
+    """Authorize, invite a new account, and assign protected role metadata."""
 
     @dataclass(frozen=True, slots=True)
     class InputData:
-        """Invitation target and fixed Marquise role."""
+        """Administrator credentials, invitation target, and Marquise role."""
 
+        administrator_email: str
+        administrator_password: str
         email: str
         role: str
 
         def __post_init__(self) -> None:
-            """Normalize email and validate role."""
+            """Normalize emails and validate credentials and role."""
+            object.__setattr__(
+                self,
+                "administrator_email",
+                normalize_email(self.administrator_email),
+            )
+            if not self.administrator_password:
+                raise ValueError("administrator_password must not be empty")
             object.__setattr__(self, "email", normalize_email(self.email))
             MarquiseRole(self.role)
 
@@ -33,24 +46,33 @@ class InviteAccountUseCase:
         email: str
         role: str
 
-    def __init__(self, accounts: AccountRepository) -> None:
-        """Initialize with Auth account repository."""
+    def __init__(
+        self,
+        accounts: AccountRepository,
+        authenticate_administrator: AuthenticateAdministratorUseCase,
+    ) -> None:
+        """Initialize with account storage and Administrator authentication."""
         self._accounts = accounts
+        self._authenticate_administrator = authenticate_administrator
 
     async def execute(self, request: InputData) -> OutputData:
-        """Invite account and attach role metadata atomically where possible."""
+        """Authorize the actor, invite a new account, and attach its role."""
+        await self._authenticate_administrator.execute(
+            self._authenticate_administrator.InputData(
+                email=request.administrator_email,
+                password=request.administrator_password,
+            )
+        )
+        if await self._accounts.find_by_email(request.email) is not None:
+            raise AccountAlreadyExistsError(
+                f'An account already exists with email "{request.email}"'
+            )
+
         role = MarquiseRole(request.role)
         account = await self._accounts.invite(request.email)
-        try:
-            await self._accounts.set_role(account.id, role)
-        except AuthAdministrationError:
-            try:
-                await self._accounts.delete(account.id)
-            except AuthAdministrationError as rollback_exc:
-                raise AuthAdministrationError(
-                    "Invitation role assignment and rollback failed"
-                ) from rollback_exc
-            raise
+        await self._accounts.set_role(account.id, role)
         return self.OutputData(
-            account_id=account.id, email=account.email, role=role.value
+            account_id=account.id,
+            email=account.email,
+            role=role.value,
         )

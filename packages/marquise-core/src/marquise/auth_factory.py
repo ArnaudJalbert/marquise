@@ -12,12 +12,14 @@ from marquise.application.use_cases.invite_account import InviteAccountUseCase
 from marquise.application.use_cases.set_account_role import SetAccountRoleUseCase
 from marquise.infrastructure.auth.supabase import (
     SupabaseAuthAdminGateway,
-    SupabaseJwtGateway,
     SupabasePasswordAuthGateway,
     SupabaseSigningKeyProvider,
 )
 from marquise.interface_adapters.readers.account_identity_reader import (
     GatewayAccountIdentityReader,
+)
+from marquise.interface_adapters.readers.jwt_access_token import (
+    JwtAccessTokenGateway,
 )
 from marquise.interface_adapters.repositories.account_repository import (
     GatewayAccountRepository,
@@ -45,7 +47,7 @@ class AuthFactory:
         self._service_role_key = service_role_key
 
         issuer = f"{url}/auth/v1"
-        gateway = SupabaseJwtGateway(
+        gateway = JwtAccessTokenGateway(
             signing_keys=SupabaseSigningKeyProvider(
                 jwt.PyJWKClient(f"{issuer}/.well-known/jwks.json")
             ),
@@ -72,13 +74,19 @@ class AuthFactory:
 
     @property
     def invite_account_use_case(self) -> InviteAccountUseCase:
-        """Configured human invitation use case."""
-        return InviteAccountUseCase(self._accounts)
+        """Configured authorized human invitation use case."""
+        return InviteAccountUseCase(
+            self._accounts,
+            self.authenticate_administrator_use_case,
+        )
 
     @property
     def set_account_role_use_case(self) -> SetAccountRoleUseCase:
-        """Configured human role-change use case."""
-        return SetAccountRoleUseCase(self._accounts)
+        """Configured authorized human role-change use case."""
+        return SetAccountRoleUseCase(
+            self._accounts,
+            self.authenticate_administrator_use_case,
+        )
 
     @property
     def _accounts(self) -> GatewayAccountRepository:

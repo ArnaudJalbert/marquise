@@ -21,16 +21,17 @@ from marquise.interface_adapters.repositories.protocols.auth import (
 async def test_account_repository_maps_accounts_and_roles() -> None:
     """Admin gateway data and role values map across repository seam."""
     gateway = create_autospec(AuthAdminGateway, instance=True)
-    gateway.invite.return_value = {"id": "user-id", "email": "user@example.com"}
+    gateway.invite.return_value = {
+        "id": "user-id",
+        "email": "user@example.com",
+    }
     repository = GatewayAccountRepository(gateway)
 
     account = await repository.invite("user@example.com")
     await repository.set_role(account.id, MarquiseRole.ADMINISTRATOR)
-    await repository.set_role(account.id, None)
 
     assert account.id == "user-id"
-    gateway.set_role.assert_any_await("user-id", "administrator")
-    gateway.set_role.assert_any_await("user-id", None)
+    gateway.set_role.assert_awaited_once_with("user-id", "administrator")
 
 
 @pytest.mark.asyncio

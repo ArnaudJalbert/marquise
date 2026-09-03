@@ -11,3 +11,9 @@ class MarquiseRole(StrEnum):
     MEMBER = "member"
     EDITOR = "editor"
     ADMINISTRATOR = "administrator"
+
+    def includes(self, required: MarquiseRole) -> bool:
+        """Return whether this role includes the required authorization."""
+        return self is required or (
+            self is MarquiseRole.ADMINISTRATOR and required is MarquiseRole.EDITOR
+        )

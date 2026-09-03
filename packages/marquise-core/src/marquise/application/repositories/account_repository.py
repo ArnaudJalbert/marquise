@@ -5,6 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 from marquise.domain.entities.account import Account
+
 from marquise.domain.value_objects.marquise_role import MarquiseRole
 
 
@@ -22,11 +23,6 @@ class AccountRepository(ABC):
         ...
 
     @abstractmethod
-    async def set_role(self, account_id: str, role: MarquiseRole | None) -> None:
-        """Set or remove protected Marquise role metadata."""
-        ...
-
-    @abstractmethod
-    async def delete(self, account_id: str) -> None:
-        """Delete one account."""
+    async def set_role(self, account_id: str, role: MarquiseRole) -> None:
+        """Set protected Marquise role metadata."""
         ...

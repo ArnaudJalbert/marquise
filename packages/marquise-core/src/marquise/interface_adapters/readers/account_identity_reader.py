@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
-from marquise.application.exceptions.auth import AuthenticationError
 from marquise.application.readers.account_identity_reader import AccountIdentityReader
+
+from marquise.application.exceptions.auth import (
+    AuthenticationError,
+    AuthenticationServiceUnavailableError,
+)
 from marquise.domain.value_objects.marquise_role import MarquiseRole
 from marquise.interface_adapters.repositories.protocols.auth import (
     AccessTokenGateway,
     AuthGatewayError,
+    AuthGatewayUnavailableError,
 )
 
 
@@ -31,5 +36,9 @@ class GatewayAccountIdentityReader(AccountIdentityReader):
                 subject=subject,
                 role=MarquiseRole(role).value,
             )
+        except AuthGatewayUnavailableError as exc:
+            raise AuthenticationServiceUnavailableError(
+                "Authentication service is unavailable"
+            ) from exc
         except (AuthGatewayError, ValueError) as exc:
             raise AuthenticationError("Access token is invalid") from exc

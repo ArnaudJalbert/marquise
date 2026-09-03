@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from marquise.domain.entities.account import Account
+
 from marquise.application.exceptions.auth import AuthAdministrationError
 from marquise.application.repositories.account_repository import AccountRepository
-from marquise.domain.entities.account import Account
 from marquise.domain.value_objects.marquise_role import MarquiseRole
 from marquise.interface_adapters.repositories.protocols.auth import (
     AuthAdminGateway,
@@ -34,23 +35,14 @@ class GatewayAccountRepository(AccountRepository):
         except (AuthGatewayError, ValueError) as exc:
             raise AuthAdministrationError(f"Unable to find account: {exc}") from exc
 
-    async def set_role(self, account_id: str, role: MarquiseRole | None) -> None:
-        """Set or clear protected Marquise role metadata."""
+    async def set_role(self, account_id: str, role: MarquiseRole) -> None:
+        """Set protected Marquise role metadata."""
         try:
-            await self._gateway.set_role(
-                account_id, role.value if role is not None else None
-            )
+            await self._gateway.set_role(account_id, role.value)
         except AuthGatewayError as exc:
             raise AuthAdministrationError(
                 f"Unable to update account role: {exc}"
             ) from exc
-
-    async def delete(self, account_id: str) -> None:
-        """Delete one account."""
-        try:
-            await self._gateway.delete(account_id)
-        except AuthGatewayError as exc:
-            raise AuthAdministrationError(f"Unable to delete account: {exc}") from exc
 
     @staticmethod
     def _to_account(data: dict) -> Account:

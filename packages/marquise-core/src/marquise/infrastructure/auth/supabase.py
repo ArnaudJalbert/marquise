@@ -7,25 +7,17 @@ import json
 import urllib.error
 import urllib.parse
 import urllib.request
-from abc import ABC, abstractmethod
 
 import jwt
+from jwt.exceptions import PyJWKClientConnectionError
 
+from marquise.interface_adapters.readers.jwt_access_token import SigningKeyProvider
 from marquise.interface_adapters.repositories.protocols.auth import (
-    AccessTokenGateway,
     AuthAdminGateway,
     AuthGatewayError,
+    AuthGatewayUnavailableError,
     PasswordAuthGateway,
 )
-
-
-class SigningKeyProvider(ABC):
-    """Resolve a trusted signing key for an encoded JWT."""
-
-    @abstractmethod
-    def get_signing_key(self, token: str) -> jwt.PyJWK:
-        """Return key matching token header."""
-        ...
 
 
 class SupabaseSigningKeyProvider(SigningKeyProvider):
@@ -37,46 +29,12 @@ class SupabaseSigningKeyProvider(SigningKeyProvider):
 
     def get_signing_key(self, token: str) -> jwt.PyJWK:
         """Return trusted signing key selected by token key ID."""
-        return self._client.get_signing_key_from_jwt(token)
-
-
-class SupabaseJwtGateway(AccessTokenGateway):
-    """Verify Supabase access JWT signature and registered claims."""
-
-    def __init__(
-        self,
-        signing_keys: SigningKeyProvider,
-        issuer: str,
-        audience: str = "authenticated",
-    ) -> None:
-        """Initialize trusted key provider and expected claims."""
-        self._signing_keys = signing_keys
-        self._issuer = issuer
-        self._audience = audience
-
-    async def verify(self, token: str) -> dict:
-        """Verify token without blocking async delivery workers."""
-        return await asyncio.to_thread(self._verify, token)
-
-    def _verify(self, token: str) -> dict:
         try:
-            key = self._signing_keys.get_signing_key(token)
-            algorithm = key.algorithm_name
-            if algorithm not in {"RS256", "ES256"}:
-                raise AuthGatewayError("Unsupported JWT signing algorithm")
-            claims = jwt.decode(
-                token,
-                key=key,
-                algorithms=[algorithm],
-                issuer=self._issuer,
-                audience=self._audience,
-                options={"require": ["exp", "iss", "aud", "sub"]},
-            )
-            if not isinstance(claims, dict):
-                raise AuthGatewayError("Invalid JWT claims")
-            return claims
-        except (jwt.PyJWTError, ValueError) as exc:
-            raise AuthGatewayError("Access token verification failed") from exc
+            return self._client.get_signing_key_from_jwt(token)
+        except PyJWKClientConnectionError as exc:
+            raise AuthGatewayUnavailableError(
+                "Supabase signing keys are unavailable"
+            ) from exc
 
 
 class _SupabaseHttpGateway:
@@ -210,15 +168,11 @@ class SupabaseAuthAdminGateway(_SupabaseHttpGateway, AuthAdminGateway):
             None,
         )
 
-    async def set_role(self, user_id: str, role: str | None) -> None:
-        """Set or remove ``app_metadata.marquise_role``."""
+    async def set_role(self, user_id: str, role: str) -> None:
+        """Set protected application role metadata."""
         await self._request(
             "PUT",
             f"admin/users/{user_id}",
             {"app_metadata": {"marquise_role": role}},
             authorize=True,
         )
-
-    async def delete(self, user_id: str) -> None:
-        """Delete one user."""
-        await self._request("DELETE", f"admin/users/{user_id}", authorize=True)
