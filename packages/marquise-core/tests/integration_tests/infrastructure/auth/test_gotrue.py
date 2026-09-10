@@ -13,7 +13,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import pytest
 
 from marquise.infrastructure.auth.gotrue import GoTrueAuthGateway
-from marquise.interface_adapters.exceptions.auth import AuthGatewayUnavailableError
+from marquise.interface_adapters.exceptions.auth import (
+    AuthGatewayError,
+    AuthGatewayUnavailableError,
+)
 
 
 class _QuietHandler(BaseHTTPRequestHandler):
@@ -79,7 +82,9 @@ def _serve(handler: type[BaseHTTPRequestHandler]) -> Iterator[str]:
 async def test_http_503_is_reported_as_service_unavailable() -> None:
     """Provider HTTP 5xx responses preserve the availability failure contract."""
     with _serve(_ServiceUnavailableHandler) as auth_url:
-        gateway = GoTrueAuthGateway(auth_url, publishable_key="key")
+        gateway = GoTrueAuthGateway(
+            auth_url, publishable_key="key", allow_insecure_local_http=True
+        )
 
         with pytest.raises(AuthGatewayUnavailableError):
             await gateway.issue_access_token("admin@example.com", "secret")
@@ -93,6 +98,7 @@ async def test_read_timeout_is_reported_as_service_unavailable() -> None:
             auth_url,
             publishable_key="key",
             timeout_seconds=0.01,
+            allow_insecure_local_http=True,
         )
 
         with pytest.raises(AuthGatewayUnavailableError):
@@ -104,9 +110,63 @@ async def test_find_by_email_searches_until_exact_match() -> None:
     """Filtered account lookup checks later pages for an exact email match."""
     _PaginatedAccountsHandler.requested_pages = []
     with _serve(_PaginatedAccountsHandler) as auth_url:
-        gateway = GoTrueAuthGateway(auth_url, service_role_key="service-key")
+        gateway = GoTrueAuthGateway(
+            auth_url, service_role_key="service-key", allow_insecure_local_http=True
+        )
 
         account = await gateway.find_by_email("target@example.com")
 
     assert account == {"id": "expected", "email": "TARGET@example.com"}
     assert _PaginatedAccountsHandler.requested_pages == ["1", "2"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [301, 302, 303, 307, 308])
+@pytest.mark.parametrize("password_request", [False, True])
+@pytest.mark.parametrize("same_origin", [False, True])
+async def test_redirect_never_receives_credentials(
+    status: int, password_request: bool, same_origin: bool
+) -> None:
+    """Redirects never forward service keys or password requests to a target."""
+    received: list[str] = []
+
+    class Destination(_QuietHandler):
+        def do_GET(self) -> None:
+            received.append(self.path)
+            self.send_response(200)
+            self.end_headers()
+
+    with _serve(Destination) as destination:
+
+        class Redirect(_QuietHandler):
+            def do_GET(self) -> None:
+                if self.path == "/capture":
+                    received.append(self.path)
+                    self.send_response(200)
+                    self.end_headers()
+                    return
+                self.send_response(status)
+                self.send_header(
+                    "Location", "/capture" if same_origin else f"{destination}/capture"
+                )
+                self.end_headers()
+
+            def do_POST(self) -> None:
+                self.do_GET()
+
+        with _serve(Redirect) as origin:
+            gateway = GoTrueAuthGateway(
+                origin,
+                service_role_key="dummy-service-key",
+                publishable_key="dummy-publishable-key",
+                allow_insecure_local_http=True,
+            )
+            with pytest.raises(AuthGatewayError, match="redirects"):
+                if password_request:
+                    await gateway.issue_access_token(
+                        "user@example.com", "dummy-password"
+                    )
+                else:
+                    await gateway.find_by_email("user@example.com")
+
+    assert received == []

@@ -9,6 +9,10 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from marquise.infrastructure.auth.transport import (
+    RejectAuthRedirects,
+    validate_auth_url,
+)
 from marquise.interface_adapters.exceptions.auth import (
     AuthGatewayError,
     AuthGatewayUnavailableError,
@@ -26,9 +30,14 @@ class GoTrueAuthGateway:
         publishable_key: str = "",
         service_role_key: str = "",
         timeout_seconds: float = 10,
+        *,
+        allow_insecure_local_http: bool = False,
     ) -> None:
         """Initialize the provider endpoint and credentials."""
-        self._auth_url = auth_url.rstrip("/")
+        self._auth_url = validate_auth_url(
+            auth_url, allow_insecure_local_http=allow_insecure_local_http
+        )
+        self._opener = urllib.request.build_opener(RejectAuthRedirects())
         self._publishable_key = publishable_key
         self._service_role_key = service_role_key
         self._timeout_seconds = timeout_seconds
@@ -159,9 +168,7 @@ class GoTrueAuthGateway:
             headers=headers,
         )
         try:
-            with urllib.request.urlopen(  # noqa: S310
-                request, timeout=self._timeout_seconds
-            ) as response:
+            with self._opener.open(request, timeout=self._timeout_seconds) as response:
                 raw = response.read().decode()
         except urllib.error.HTTPError as exc:
             if 500 <= exc.code < 600:
