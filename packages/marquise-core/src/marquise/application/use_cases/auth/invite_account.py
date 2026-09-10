@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from marquise.application.exceptions.auth import AccountAlreadyExistsError
 from marquise.application.repositories.account_repository import AccountRepository
@@ -21,7 +21,7 @@ class InviteAccountUseCase:
         """Administrator credentials, invitation target, and Marquise role."""
 
         administrator_email: str
-        administrator_password: str
+        administrator_password: str = field(repr=False)
         email: str
         role: str
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from marquise.application.readers.account_identity_reader import (
     AccountIdentityReader,
@@ -17,7 +17,7 @@ class VerifyAccessTokenQuery:
     class InputData:
         """Encoded bearer token to verify."""
 
-        token: str
+        token: str = field(repr=False)
 
         def __post_init__(self) -> None:
             """Reject empty tokens."""

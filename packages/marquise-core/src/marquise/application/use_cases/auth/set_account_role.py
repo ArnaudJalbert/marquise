@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from marquise.application.exceptions.auth import (
     AccountNotFoundError,
@@ -24,7 +24,7 @@ class SetAccountRoleUseCase:
         """Administrator credentials, target email, and replacement role."""
 
         administrator_email: str
-        administrator_password: str
+        administrator_password: str = field(repr=False)
         email: str
         role: str
 
