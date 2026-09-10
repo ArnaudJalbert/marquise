@@ -4,14 +4,12 @@ from __future__ import annotations
 
 from typing import Protocol
 
-import jwt
-
 
 class SigningKeyProvider(Protocol):
-    """Resolve a trusted signing key for an encoded JWT."""
+    """Verify an encoded token through a trusted signing-key provider."""
 
-    def get_signing_key(self, token: str) -> jwt.PyJWK:
-        """Return the key matching the token header."""
+    def verify(self, token: str, issuer: str, audience: str) -> dict:
+        """Return plain verified claims."""
         ...
 
 

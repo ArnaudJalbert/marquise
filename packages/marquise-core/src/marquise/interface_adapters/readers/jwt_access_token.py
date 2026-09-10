@@ -4,9 +4,6 @@ from __future__ import annotations
 
 import asyncio
 
-import jwt
-
-from marquise.interface_adapters.exceptions.auth import AuthGatewayError
 from marquise.interface_adapters.repositories.protocols.auth import (
     AccessTokenGateway,
     SigningKeyProvider,
@@ -14,7 +11,7 @@ from marquise.interface_adapters.repositories.protocols.auth import (
 
 
 class JwtAccessTokenGateway(AccessTokenGateway):
-    """Verify JWT signatures and registered claims using injected keys."""
+    """Adapt a token verifier to the application access-token gateway."""
 
     def __init__(
         self,
@@ -22,31 +19,16 @@ class JwtAccessTokenGateway(AccessTokenGateway):
         issuer: str,
         audience: str = "authenticated",
     ) -> None:
-        """Initialize trusted key provider and expected claims."""
+        """Initialize trusted verifier and expected claims."""
         self._signing_keys = signing_keys
         self._issuer = issuer
         self._audience = audience
 
     async def verify(self, token: str) -> dict:
         """Verify a token without blocking async delivery workers."""
-        return await asyncio.to_thread(self._verify, token)
-
-    def _verify(self, token: str) -> dict:
-        try:
-            key = self._signing_keys.get_signing_key(token)
-            algorithm = key.algorithm_name
-            if algorithm not in {"RS256", "ES256"}:
-                raise AuthGatewayError("Unsupported JWT signing algorithm")
-            claims = jwt.decode(
-                token,
-                key=key,
-                algorithms=[algorithm],
-                issuer=self._issuer,
-                audience=self._audience,
-                options={"require": ["exp", "iss", "aud", "sub"]},
-            )
-            if not isinstance(claims, dict):
-                raise AuthGatewayError("Invalid JWT claims")
-            return claims
-        except (jwt.PyJWTError, ValueError) as exc:
-            raise AuthGatewayError("Access token verification failed") from exc
+        return await asyncio.to_thread(
+            self._signing_keys.verify,
+            token,
+            self._issuer,
+            self._audience,
+        )
