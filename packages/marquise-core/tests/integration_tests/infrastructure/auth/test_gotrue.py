@@ -50,9 +50,7 @@ class _PaginatedAccountsHandler(_QuietHandler):
         page = query["page"][0]
         self.requested_pages.append(page)
         if page == "1":
-            users = [
-                {"email": f"target+{index}@example.com"} for index in range(50)
-            ]
+            users = [{"email": f"target+{index}@example.com"} for index in range(50)]
         else:
             users = [{"id": "expected", "email": "TARGET@example.com"}]
         body = json.dumps({"users": users}).encode()
