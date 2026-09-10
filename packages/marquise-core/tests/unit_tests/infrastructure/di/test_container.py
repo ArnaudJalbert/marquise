@@ -303,3 +303,20 @@ async def test_get_screening_use_case_after_initialize() -> None:
         use_case = container.get_screening_use_case
         assert isinstance(use_case, GetScreeningUseCase)
         await container.shutdown()
+
+
+def test_auth_query_is_reused_within_container(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Repeated access retains the verifier and its JWKS client cache."""
+    monkeypatch.setenv("SUPABASE_URL", "https://project.supabase.co")
+    container = Container()
+
+    with patch(
+        "marquise.infrastructure.di.container.build_verify_access_token_query"
+    ) as build_query:
+        first = container.verify_access_token_query
+        second = container.verify_access_token_query
+
+    assert first is second
+    build_query.assert_called_once_with("https://project.supabase.co")
