@@ -147,7 +147,8 @@ Design rules → [Atlas Clean Architecture](atlas/50-processes/Clean%20Architect
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `DATABASE_URL` | Yes | PostgreSQL connection string |
-| `SUPABASE_URL` | Protected API routes and account CLI | Supabase project URL |
+| `SUPABASE_URL` | Protected API routes and account CLI | HTTPS Supabase project URL; userinfo, query strings, and fragments are rejected |
+| `MARQUISE_AUTH_ALLOW_LOCAL_HTTP` | No | Set exactly `1` for local development HTTP using a literal loopback IP (`127.0.0.1` or `::1`); hostnames and remote HTTP remain forbidden |
 | `SUPABASE_PUBLISHABLE_KEY` | Account CLI only | Password authentication for Administrator verification |
 | `SUPABASE_SERVICE_ROLE_KEY` | Account CLI only | Privileged invitation and role metadata updates |
 | `MARQUISE_EMAIL` | No | Configured CLI Administrator email; prompts when either credential is absent |
@@ -360,3 +361,10 @@ Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
 - [docs/sources.md](docs/sources.md) — showtime source scrapers
 - [docs/releasing.md](docs/releasing.md) — version bumps and releases
 - [web/README.md](web/README.md) — web workspace quick start
+
+### Authentication transport
+
+GoTrue credential-bearing requests reject redirects, including same-origin redirects.
+Configure the final HTTPS endpoint directly. TLS certificate verification remains enabled.
+The configured JWKS URL also requires HTTPS (or the explicit loopback development opt-in).
+This does not configure inbound API HTTPS; enforce that at the deployment proxy.

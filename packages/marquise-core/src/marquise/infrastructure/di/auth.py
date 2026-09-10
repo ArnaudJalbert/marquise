@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 import jwt
 
 from marquise.application.queries.verify_access_token import VerifyAccessTokenQuery
@@ -12,6 +14,7 @@ from marquise.application.use_cases.auth import (
 )
 from marquise.infrastructure.auth.gotrue import GoTrueAuthGateway
 from marquise.infrastructure.auth.jwks import JwksSigningKeyProvider
+from marquise.infrastructure.auth.transport import validate_auth_url
 from marquise.interface_adapters.readers.account_identity_reader import (
     GatewayAccountIdentityReader,
 )
@@ -35,7 +38,7 @@ def _require(value: str, environment_name: str) -> str:
 
 def _identity_reader(supabase_url: str) -> GatewayAccountIdentityReader:
     """Build the shared verified-identity reader."""
-    issuer = f"{_require(supabase_url, 'SUPABASE_URL').rstrip('/')}/auth/v1"
+    issuer = _auth_url(supabase_url)
     gateway = JwtAccessTokenGateway(
         signing_keys=JwksSigningKeyProvider(
             jwt.PyJWKClient(f"{issuer}/.well-known/jwks.json")
@@ -45,17 +48,31 @@ def _identity_reader(supabase_url: str) -> GatewayAccountIdentityReader:
     return GatewayAccountIdentityReader(gateway)
 
 
+def _auth_url(supabase_url: str) -> str:
+    """Validate the configured project URL before constructing either client."""
+    project_url = validate_auth_url(
+        _require(supabase_url, "SUPABASE_URL"),
+        allow_insecure_local_http=(
+            os.environ.get("MARQUISE_AUTH_ALLOW_LOCAL_HTTP") == "1"
+        ),
+    )
+    return f"{project_url}/auth/v1"
+
+
 def _gotrue_gateway(
     supabase_url: str,
     publishable_key: str = "",
     service_role_key: str = "",
 ) -> GoTrueAuthGateway:
     """Build the provider gateway used by local administration workflows."""
-    auth_url = f"{_require(supabase_url, 'SUPABASE_URL').rstrip('/')}/auth/v1"
+    auth_url = _auth_url(supabase_url)
     return GoTrueAuthGateway(
         auth_url=auth_url,
         publishable_key=publishable_key,
         service_role_key=service_role_key,
+        allow_insecure_local_http=(
+            os.environ.get("MARQUISE_AUTH_ALLOW_LOCAL_HTTP") == "1"
+        ),
     )
 
 
