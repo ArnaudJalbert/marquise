@@ -5,6 +5,8 @@ Central registry for application lifecycle and supported configured use cases.
 
 from __future__ import annotations
 
+from functools import cached_property
+
 import asyncpg
 from dotenv import load_dotenv
 
@@ -193,7 +195,7 @@ class Container:
     # Authentication (no database lifecycle required)
     # ------------------------------------------------------------------
 
-    @property
+    @cached_property
     def _verify_access_token_query(self) -> VerifyAccessTokenQuery:
         return build_verify_access_token_query(self._settings.supabase_url)
 
