@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import http.client
 import json
 import urllib.error
 import urllib.parse
@@ -17,16 +18,20 @@ from marquise.interface_adapters.exceptions.auth import (
 class GoTrueAuthGateway:
     """Authenticate and administer accounts through a GoTrue-compatible API."""
 
+    _ACCOUNT_PAGE_SIZE = 50
+
     def __init__(
         self,
         auth_url: str,
         publishable_key: str = "",
         service_role_key: str = "",
+        timeout_seconds: float = 10,
     ) -> None:
         """Initialize the provider endpoint and credentials."""
         self._auth_url = auth_url.rstrip("/")
         self._publishable_key = publishable_key
         self._service_role_key = service_role_key
+        self._timeout_seconds = timeout_seconds
 
     async def issue_access_token(self, email: str, password: str) -> str:
         """Authenticate password credentials and return an access token."""
@@ -60,30 +65,45 @@ class GoTrueAuthGateway:
         return account
 
     async def find_by_email(self, email: str) -> dict | None:
-        """Find one account by exact case-insensitive email."""
+        """Find one account by exact case-insensitive email across all pages."""
         if not self._service_role_key:
             raise RuntimeError("SUPABASE_SERVICE_ROLE_KEY is required")
-        query = urllib.parse.urlencode({"filter": email})
-        payload = await self._request(
-            "GET",
-            f"admin/users?{query}",
-            self._service_role_key,
-            authorize=True,
-        )
-        accounts = payload.get("users")
-        if not isinstance(accounts, list):
-            raise AuthGatewayError("Account search returned invalid data")
+
         normalized = email.casefold()
-        return next(
-            (
-                account
-                for account in accounts
-                if isinstance(account, dict)
-                and isinstance(account.get("email"), str)
-                and account["email"].casefold() == normalized
-            ),
-            None,
-        )
+        page = 1
+        while True:
+            query = urllib.parse.urlencode(
+                {
+                    "filter": email,
+                    "page": page,
+                    "per_page": self._ACCOUNT_PAGE_SIZE,
+                }
+            )
+            payload = await self._request(
+                "GET",
+                f"admin/users?{query}",
+                self._service_role_key,
+                authorize=True,
+            )
+            accounts = payload.get("users")
+            if not isinstance(accounts, list):
+                raise AuthGatewayError("Account search returned invalid data")
+
+            account = next(
+                (
+                    candidate
+                    for candidate in accounts
+                    if isinstance(candidate, dict)
+                    and isinstance(candidate.get("email"), str)
+                    and candidate["email"].casefold() == normalized
+                ),
+                None,
+            )
+            if account is not None:
+                return account
+            if len(accounts) < self._ACCOUNT_PAGE_SIZE:
+                return None
+            page += 1
 
     async def set_role(self, user_id: str, role: str) -> None:
         """Set protected application role metadata."""
@@ -139,9 +159,16 @@ class GoTrueAuthGateway:
             headers=headers,
         )
         try:
-            with urllib.request.urlopen(request, timeout=10) as response:  # noqa: S310
+            with urllib.request.urlopen(  # noqa: S310
+                request, timeout=self._timeout_seconds
+            ) as response:
                 raw = response.read().decode()
         except urllib.error.HTTPError as exc:
+            if 500 <= exc.code < 600:
+                raise AuthGatewayUnavailableError(
+                    f"Authentication service is unavailable ({exc.code})"
+                ) from exc
+
             detail = str(exc.reason)
             try:
                 payload = json.loads(exc.read().decode())
@@ -156,12 +183,17 @@ class GoTrueAuthGateway:
                         detail = message
             except (UnicodeDecodeError, json.JSONDecodeError):
                 pass
+            except (OSError, http.client.HTTPException) as read_error:
+                raise AuthGatewayUnavailableError(
+                    f"Authentication service is unavailable: {read_error}"
+                ) from read_error
             raise AuthGatewayError(
                 f"Authentication request failed ({exc.code}): {detail}"
             ) from exc
-        except urllib.error.URLError as exc:
+        except (urllib.error.URLError, OSError, http.client.HTTPException) as exc:
+            reason = getattr(exc, "reason", exc)
             raise AuthGatewayUnavailableError(
-                f"Authentication service is unavailable: {exc.reason}"
+                f"Authentication service is unavailable: {reason}"
             ) from exc
 
         if not raw:
