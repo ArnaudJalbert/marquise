@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from marquise.application.exceptions.auth import AuthorizationError
 from marquise.application.readers.account_identity_reader import (
@@ -23,7 +23,7 @@ class AuthenticateAdministratorUseCase:
         """Administrator email and password."""
 
         email: str
-        password: str
+        password: str = field(repr=False)
 
         def __post_init__(self) -> None:
             """Validate credentials without mutating delivery input."""
