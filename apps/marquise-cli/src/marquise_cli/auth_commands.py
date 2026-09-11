@@ -15,13 +15,37 @@ from marquise import (
 from marquise_cli.helpers import prompt_password, run_spinner
 
 
+class CredentialInputError(RuntimeError):
+    """Raised when Administrator credentials cannot be read interactively."""
+
+
+class CredentialPromptCancellationError(CredentialInputError):
+    """Raised when the Administrator cancels credential entry."""
+
+
 def _administrator_credentials() -> tuple[str, str]:
     """Use configured credentials only when both values exist."""
     email = os.environ.get("MARQUISE_EMAIL")
     password = os.environ.get("MARQUISE_PASSWORD")
     if email and password:
         return email, password
-    return input("Administrator email: "), prompt_password("Administrator password: ")
+    try:
+        email = input("Administrator email: ")
+        password = prompt_password("Administrator password: ")
+    except EOFError as exc:
+        raise CredentialInputError(
+            "Interactive input is unavailable. Set both MARQUISE_EMAIL and "
+            "MARQUISE_PASSWORD for noninteractive use."
+        ) from exc
+    except KeyboardInterrupt as exc:
+        raise CredentialPromptCancellationError(
+            "Administrator credential entry cancelled."
+        ) from exc
+    if not email or not password:
+        raise CredentialPromptCancellationError(
+            "Administrator credential entry cancelled."
+        )
+    return email, password
 
 
 async def run_invite(
@@ -88,6 +112,12 @@ def invite(email: str, role: str) -> None:
     except (AuthenticationError, AuthorizationError) as exc:
         print(f"Failed to authenticate Administrator: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
+    except CredentialPromptCancellationError as exc:
+        print(exc, file=sys.stderr)
+        raise SystemExit(130) from exc
+    except CredentialInputError as exc:
+        print(f"Failed to read Administrator credentials: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
     except (ApplicationError, RuntimeError, ValueError) as exc:
         print(f"Failed to invite account: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
@@ -108,6 +138,12 @@ def set_role(email: str, role: str) -> None:
         )
     except (AuthenticationError, AuthorizationError) as exc:
         print(f"Failed to authenticate Administrator: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+    except CredentialPromptCancellationError as exc:
+        print(exc, file=sys.stderr)
+        raise SystemExit(130) from exc
+    except CredentialInputError as exc:
+        print(f"Failed to read Administrator credentials: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
     except (ApplicationError, RuntimeError, ValueError) as exc:
         print(f"Failed to update account role: {exc}", file=sys.stderr)
