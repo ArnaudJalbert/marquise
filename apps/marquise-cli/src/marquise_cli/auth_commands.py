@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
+from collections.abc import Callable, Coroutine
 
 from marquise import (
     ApplicationError,
@@ -96,12 +97,18 @@ async def run_set_role(
     print(f'Updated account "{result.email}" role to {result.role}.')
 
 
-def invite(email: str, role: str) -> None:
-    """Invite a human account with a fixed Marquise role."""
+def _run_account_command(
+    workflow: Callable[..., Coroutine[object, object, None]],
+    *,
+    email: str,
+    role: str,
+    failure_action: str,
+) -> None:
+    """Run an Administrator-authenticated account command."""
     try:
         administrator_email, administrator_password = _administrator_credentials()
         asyncio.run(
-            run_invite(
+            workflow(
                 MarquiseFactory(),
                 administrator_email=administrator_email,
                 administrator_password=administrator_password,
@@ -119,32 +126,25 @@ def invite(email: str, role: str) -> None:
         print(f"Failed to read Administrator credentials: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
     except (ApplicationError, RuntimeError, ValueError) as exc:
-        print(f"Failed to invite account: {exc}", file=sys.stderr)
+        print(f"Failed to {failure_action}: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
+
+
+def invite(email: str, role: str) -> None:
+    """Invite a human account with a fixed Marquise role."""
+    _run_account_command(
+        run_invite,
+        email=email,
+        role=role,
+        failure_action="invite account",
+    )
 
 
 def set_role(email: str, role: str) -> None:
     """Set a human account's Marquise role."""
-    try:
-        administrator_email, administrator_password = _administrator_credentials()
-        asyncio.run(
-            run_set_role(
-                MarquiseFactory(),
-                administrator_email=administrator_email,
-                administrator_password=administrator_password,
-                email=email,
-                role=role,
-            )
-        )
-    except (AuthenticationError, AuthorizationError) as exc:
-        print(f"Failed to authenticate Administrator: {exc}", file=sys.stderr)
-        raise SystemExit(1) from exc
-    except CredentialPromptCancellationError as exc:
-        print(exc, file=sys.stderr)
-        raise SystemExit(130) from exc
-    except CredentialInputError as exc:
-        print(f"Failed to read Administrator credentials: {exc}", file=sys.stderr)
-        raise SystemExit(1) from exc
-    except (ApplicationError, RuntimeError, ValueError) as exc:
-        print(f"Failed to update account role: {exc}", file=sys.stderr)
-        raise SystemExit(1) from exc
+    _run_account_command(
+        run_set_role,
+        email=email,
+        role=role,
+        failure_action="update account role",
+    )
