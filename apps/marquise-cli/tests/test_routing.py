@@ -7,11 +7,12 @@ from unittest.mock import Mock
 
 import pytest
 
+from marquise_cli.auth_commands import invite, set_role
 from marquise_cli.import_commands import import_cinema
 from marquise_cli.routing import create_parser, dispatch
 
 
-@pytest.mark.parametrize("group", ["cinema", "source", "import"])
+@pytest.mark.parametrize("group", ["cinema", "source", "import", "auth"])
 def test_group_help(group: str, capsys: pytest.CaptureFixture[str]) -> None:
     """Each top-level command group prints argparse help."""
     with pytest.raises(SystemExit) as error:
@@ -28,7 +29,22 @@ def test_import_cinema_routes_to_single_cinema_handler() -> None:
     assert namespace.handler is import_cinema
 
 
-def test_root_help_lists_command_groups(capsys: pytest.CaptureFixture[str]) -> None:
+def test_auth_commands_route_to_authorized_workflows() -> None:
+    """Auth invite and set-role route to their account handlers."""
+    invite_namespace = create_parser().parse_args(
+        ["auth", "invite", "user@example.com", "--role", "member"]
+    )
+    role_namespace = create_parser().parse_args(
+        ["auth", "set-role", "user@example.com", "--role", "editor"]
+    )
+
+    assert invite_namespace.handler is invite
+    assert role_namespace.handler is set_role
+
+
+def test_root_help_lists_command_groups(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """Root help lists every supported command group."""
     with pytest.raises(SystemExit) as error:
         dispatch(create_parser(), ["--help"])
@@ -38,6 +54,7 @@ def test_root_help_lists_command_groups(capsys: pytest.CaptureFixture[str]) -> N
     assert "cinema" in output
     assert "source" in output
     assert "import" in output
+    assert "auth" in output
 
 
 @pytest.mark.parametrize(
@@ -50,10 +67,22 @@ def test_root_help_lists_command_groups(capsys: pytest.CaptureFixture[str]) -> N
         (["source", "list-assignments"], "invalid choice"),
         (["source", "import"], "invalid choice"),
         (["import", "all", "--days", "0"], "must be greater than zero"),
+        (["auth", "login"], "invalid choice"),
+        (
+            ["auth", "invite", "user@example.com", "--role", "owner"],
+            "invalid choice",
+        ),
+        (
+            ["auth", "set-role", "user@example.com", "--clear-role"],
+            "required",
+        ),
+        (["auth", "set-role", "user@example.com"], "required"),
     ],
 )
 def test_invalid_paths_use_argparse_errors(
-    argv: list[str], message: str, capsys: pytest.CaptureFixture[str]
+    argv: list[str],
+    message: str,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Missing and invalid arguments use argparse errors."""
     with pytest.raises(SystemExit) as error:
@@ -67,7 +96,11 @@ def test_dispatch_passes_parsed_arguments_to_handler() -> None:
     """Dispatch invokes handler with registered parser arguments."""
     handler = Mock()
     parser = argparse.ArgumentParser()
-    parser.set_defaults(handler=handler, handler_arguments=("days",), days=7)
+    parser.set_defaults(
+        handler=handler,
+        handler_arguments=("days",),
+        days=7,
+    )
 
     assert dispatch(parser, []) == 0
     handler.assert_called_once_with(days=7)

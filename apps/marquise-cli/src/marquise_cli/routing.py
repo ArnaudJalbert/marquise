@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from collections.abc import Callable, Sequence
 
+from marquise_cli.auth_commands import invite, set_role
 from marquise_cli.cinema_commands import create, delete, list_cinemas, update
 from marquise_cli.import_commands import import_all, import_cinema
 from marquise_cli.source_commands import (
@@ -16,6 +17,8 @@ from marquise_cli.source_commands import (
 )
 
 Handler = Callable[..., None]
+
+_ROLES = ("member", "editor", "administrator")
 
 
 def _positive_int(value: str) -> int:
@@ -67,11 +70,18 @@ def create_parser() -> argparse.ArgumentParser:
     _command(cinema_commands, "delete", delete, "Delete a cinema.")
     _command(cinema_commands, "update", update, "Update a cinema.")
     list_command = _command(
-        cinema_commands, "list", list_cinemas, "List cinemas.", ("name", "verbose")
+        cinema_commands,
+        "list",
+        list_cinemas,
+        "List cinemas.",
+        ("name", "verbose"),
     )
     list_command.add_argument("--name", "-n", help="Filter cinemas by name")
     list_command.add_argument(
-        "--verbose", "-v", action="store_true", help="Show detailed cinema information"
+        "--verbose",
+        "-v",
+        action="store_true",
+        help="Show detailed cinema information",
     )
 
     source = groups.add_parser("source", help="Manage showtime sources")
@@ -109,6 +119,28 @@ def create_parser() -> argparse.ArgumentParser:
         default=7,
         help="Days to import, starting today",
     )
+
+    auth = groups.add_parser("auth", help="Manage authenticated accounts")
+    auth_commands = auth.add_subparsers(required=True, title="commands")
+    invite_command = _command(
+        auth_commands,
+        "invite",
+        invite,
+        "Invite a human account.",
+        ("email", "role"),
+    )
+    invite_command.add_argument("email", help="Account email")
+    invite_command.add_argument("--role", required=True, choices=_ROLES)
+
+    set_role_command = _command(
+        auth_commands,
+        "set-role",
+        set_role,
+        "Set a human account role.",
+        ("email", "role"),
+    )
+    set_role_command.add_argument("email", help="Account email")
+    set_role_command.add_argument("--role", required=True, choices=_ROLES)
 
     return parser
 
