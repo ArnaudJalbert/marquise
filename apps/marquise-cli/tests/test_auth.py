@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from unittest.mock import create_autospec, patch
 
 import pytest
@@ -59,6 +60,100 @@ def test_incomplete_administrator_credentials_prompt_for_both(
             "prompted@example.com",
             "prompted-secret",
         )
+
+
+@pytest.mark.parametrize(
+    "command",
+    [invite, set_role],
+)
+@pytest.mark.parametrize(
+    ("expected_status", "prompt_error", "expected_error"),
+    [
+        (
+            1,
+            EOFError(),
+            "Failed to read Administrator credentials: "
+            "Interactive input is unavailable. "
+            "Set both MARQUISE_EMAIL and MARQUISE_PASSWORD for noninteractive use.\n",
+        ),
+        (
+            130,
+            KeyboardInterrupt(),
+            "Administrator credential entry cancelled.\n",
+        ),
+    ],
+)
+def test_commands_handle_unavailable_or_cancelled_credential_input(
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    command: Callable[[str, str], None],
+    expected_status: int,
+    prompt_error: BaseException,
+    expected_error: str,
+) -> None:
+    """Credential prompt failures exit cleanly before factory construction."""
+    monkeypatch.delenv("MARQUISE_EMAIL", raising=False)
+    monkeypatch.delenv("MARQUISE_PASSWORD", raising=False)
+
+    with (
+        patch("builtins.input", side_effect=prompt_error),
+        patch("marquise_cli.auth_commands.MarquiseFactory") as factory,
+    ):
+        with pytest.raises(SystemExit) as error:
+            command("user@example.com", "editor")
+
+    assert error.value.code == expected_status
+    assert capsys.readouterr().err == expected_error
+    factory.assert_not_called()
+
+
+@pytest.mark.parametrize("command", [invite, set_role])
+def test_commands_handle_cancelled_password_prompt(
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    command: Callable[[str, str], None],
+) -> None:
+    """Cancelling the password prompt exits before factory construction."""
+    monkeypatch.delenv("MARQUISE_EMAIL", raising=False)
+    monkeypatch.delenv("MARQUISE_PASSWORD", raising=False)
+
+    with (
+        patch("builtins.input", return_value="admin@example.com"),
+        patch("marquise_cli.auth_commands.prompt_password", return_value=""),
+        patch("marquise_cli.auth_commands.MarquiseFactory") as factory,
+    ):
+        with pytest.raises(SystemExit) as error:
+            command("user@example.com", "editor")
+
+    assert error.value.code == 130
+    assert capsys.readouterr().err == "Administrator credential entry cancelled.\n"
+    factory.assert_not_called()
+
+
+@pytest.mark.parametrize("command", [invite, set_role])
+def test_commands_handle_interrupted_password_prompt(
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    command: Callable[[str, str], None],
+) -> None:
+    """Interrupting the password prompt exits before factory construction."""
+    monkeypatch.delenv("MARQUISE_EMAIL", raising=False)
+    monkeypatch.delenv("MARQUISE_PASSWORD", raising=False)
+
+    with (
+        patch("builtins.input", return_value="admin@example.com"),
+        patch(
+            "marquise_cli.auth_commands.prompt_password",
+            side_effect=KeyboardInterrupt(),
+        ),
+        patch("marquise_cli.auth_commands.MarquiseFactory") as factory,
+    ):
+        with pytest.raises(SystemExit) as error:
+            command("user@example.com", "editor")
+
+    assert error.value.code == 130
+    assert capsys.readouterr().err == "Administrator credential entry cancelled.\n"
+    factory.assert_not_called()
 
 
 def _mock_factory() -> tuple[
