@@ -34,12 +34,13 @@ def test_openapi_schema_generation_succeeds(client: TestClient) -> None:
     assert schema["info"]["title"] == "Marquise API"
 
 
-def test_openapi_description_documents_no_auth(client: TestClient) -> None:
-    """The top-level description mentions there is no authentication."""
+def test_openapi_description_documents_public_reads(client: TestClient) -> None:
+    """Top-level description identifies current read endpoints as public."""
     schema = client.get("/openapi.json").json()
 
     assert "Authentication" in schema["info"]["description"]
-    assert "None" in schema["info"]["description"]
+    assert "read endpoints" in schema["info"]["description"]
+    assert "public" in schema["info"]["description"]
 
 
 @pytest.mark.parametrize(

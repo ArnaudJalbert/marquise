@@ -17,7 +17,13 @@ from marquise.application.queries.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
 from marquise.application.queries.search_screenings import SearchScreeningsQuery
+from marquise.application.queries.verify_access_token import VerifyAccessTokenQuery
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
+from marquise.application.use_cases.auth import (
+    AuthenticateAdministratorUseCase,
+    InviteAccountUseCase,
+    SetAccountRoleUseCase,
+)
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.create_missing_movies import (
     CreateMissingMoviesCommand,
@@ -59,6 +65,28 @@ class MarquiseFactory:
 
     def __init__(self) -> None:
         self._container = Container()
+
+    @property
+    def verify_access_token_query(self) -> VerifyAccessTokenQuery:
+        """Configured access-token verification query."""
+        return self._container.verify_access_token_query
+
+    @property
+    def authenticate_administrator_use_case(
+        self,
+    ) -> AuthenticateAdministratorUseCase:
+        """Configured Administrator authentication use case."""
+        return self._container.authenticate_administrator_use_case
+
+    @property
+    def invite_account_use_case(self) -> InviteAccountUseCase:
+        """Configured account invitation use case."""
+        return self._container.invite_account_use_case
+
+    @property
+    def set_account_role_use_case(self) -> SetAccountRoleUseCase:
+        """Configured account role-change use case."""
+        return self._container.set_account_role_use_case
 
     # ------------------------------------------------------------------
     # Lifecycle
