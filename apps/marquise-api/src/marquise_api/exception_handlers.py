@@ -9,10 +9,17 @@ from __future__ import annotations
 import logging
 
 from fastapi import Request
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import JSONResponse
 
 from marquise import (
+    AccountAlreadyExistsError,
+    AccountNotFoundError,
     ApplicationError,
+    AuthAdministrationError,
+    AuthenticationError,
+    AuthenticationServiceUnavailableError,
+    AuthorizationError,
     CinemaAlreadyExistsError,
     CinemaIdAlreadyExistsError,
     CinemaNotFoundError,
@@ -21,6 +28,7 @@ from marquise import (
     MovieNotFoundError,
     ScreeningAlreadyExistsError,
     ScreeningNotFoundError,
+    SelfDemotionError,
     SourceAlreadyExistsError,
     SourceNotFoundError,
     TooManyMovieIdsError,
@@ -33,6 +41,13 @@ logger = logging.getLogger(__name__)
 #: __all__ should have an explicit entry here; a subclass with no entry
 #: falls back to the constants below.
 _APPLICATION_ERROR_MAPPING: dict[type[ApplicationError], tuple[int, str]] = {
+    AccountAlreadyExistsError: (409, "conflict"),
+    AccountNotFoundError: (404, "not_found"),
+    AuthAdministrationError: (502, "auth_administration_error"),
+    AuthenticationError: (401, "authentication_error"),
+    AuthenticationServiceUnavailableError: (503, "service_unavailable"),
+    AuthorizationError: (403, "authorization_error"),
+    SelfDemotionError: (409, "conflict"),
     CinemaNotFoundError: (404, "not_found"),
     MovieNotFoundError: (404, "not_found"),
     ScreeningNotFoundError: (404, "not_found"),
@@ -49,6 +64,33 @@ _APPLICATION_ERROR_MAPPING: dict[type[ApplicationError], tuple[int, str]] = {
 }
 _DEFAULT_APPLICATION_ERROR_STATUS = 400
 _DEFAULT_APPLICATION_ERROR_CODE = "application_error"
+
+_HTTP_ERROR_CODES: dict[int, str] = {
+    401: "authentication_error",
+    403: "authorization_error",
+    404: "not_found",
+    405: "method_not_allowed",
+    503: "service_unavailable",
+}
+
+
+async def http_exception_handler(
+    request: Request,
+    exc: Exception,
+) -> JSONResponse:
+    """Map framework HTTP errors to the standard JSON envelope."""
+    assert isinstance(exc, StarletteHTTPException)
+    request_id = getattr(request.state, "request_id", None)
+    detail = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
+    return JSONResponse(
+        {
+            "detail": detail,
+            "error_code": _HTTP_ERROR_CODES.get(exc.status_code, "http_error"),
+            "request_id": request_id,
+        },
+        status_code=exc.status_code,
+        headers=exc.headers,
+    )
 
 
 async def application_error_handler(request: Request, exc: Exception) -> JSONResponse:

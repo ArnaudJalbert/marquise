@@ -27,12 +27,14 @@ from fastapi_pagination import add_pagination
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import JSONResponse, Response
 
 from marquise import ApplicationError, MarquiseFactory, create_factory
 from marquise_api.dependencies import get_factory
 from marquise_api.exception_handlers import (
     application_error_handler,
+    http_exception_handler,
     unhandled_exception_handler,
     value_error_handler,
 )
@@ -78,16 +80,15 @@ def _parse_cors_origins(raw: str | None) -> list[str]:
 
 
 def create_app(factory: MarquiseFactory | None = None) -> FastAPI:
-    """Build the read-only FastAPI application.
+    """Build the FastAPI application.
 
     Args:
-        factory: An optional pre-built factory. When provided (e.g. in
-            tests), it is used as-is and its lifecycle is the caller's
-            responsibility. When omitted, a ``MarquiseFactory`` is created
-            and its database pool is opened on startup and closed on shutdown.
+        factory: An optional pre-built factory. When provided, it is used as-is
+            and its lifecycle is the caller's responsibility. When omitted, a
+            configured MarquiseFactory is created and managed by the app.
 
     Returns:
-        A configured ``FastAPI`` instance.
+        A configured FastAPI instance.
     """
     configure_logging()
 
@@ -119,9 +120,9 @@ multiple cinema chains and independent theatres.
 
 ## Authentication
 
-None. Every endpoint under `/v1` is public and read-only — there is no API
-key, token, or account system. Do not send credentials; there is nothing to
-authenticate.
+The current read endpoints under ``/v1``, plus ``/health`` and ``/ready``,
+are public. Future write endpoints may require a Supabase bearer token carrying
+a Marquise role through reusable route dependencies.
 
 ## Rate limiting
 
@@ -183,6 +184,10 @@ Server operators can allow specific origins via `MARQUISE_API_CORS_ORIGINS`.
 
     # Global error-to-response mapping, in one place instead of per-router
     # try/except (see exception_handlers.py for the status/error_code table).
+    # Register the Starlette base class rather than FastAPI's subclass so
+    # framework-generated routing errors (including 404 and 405) use the same
+    # documented response envelope as explicitly raised HTTP exceptions.
+    app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     app.add_exception_handler(ApplicationError, application_error_handler)
     app.add_exception_handler(ValueError, value_error_handler)
     app.add_exception_handler(Exception, unhandled_exception_handler)
