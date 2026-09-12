@@ -1,10 +1,16 @@
 # Changelog
 
+## 2026-09-11
+
+### v0.1.9
+
+- **Execute the reader-backed screening query**: `GET /v1/screenings/{id}` now runs `GetScreeningQuery`, which projects the screening without building entities after the core `GetScreeningUseCase` was replaced. No endpoint behavior change. Closes #248.
+
 ## 2026-09-02
 
 ### v0.1.8
 
-- **Execute the reader-backed screening query**: `GET /v1/screenings/{id}` now runs `GetScreeningQuery`, which projects the screening without building entities after the core `GetScreeningUseCase` was replaced. No endpoint behavior change. Closes #248.
+- **Prepare Supabase JWT authorization**: reusable FastAPI dependencies call the core token-verification query for authenticated, Editor, and Administrator access. No current endpoint uses them, so all existing routes remain public. Closes #263.
 
 ## 2026-08-29
 

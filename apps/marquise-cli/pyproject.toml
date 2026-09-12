@@ -1,10 +1,10 @@
 [project]
 name = "marquise-cli"
-version = "0.1.13"
+version = "0.1.14"
 description = "Marquise administration CLI"
 requires-python = ">=3.13"
 dependencies = [
-    "marquise-core>=0.2.19",
+    "marquise-core>=0.2.20",
     "questionary>=2.1.1",
     "rich>=15.0.0",
 ]
@@ -28,3 +28,4 @@ packages = ["src/marquise_cli"]
 pythonpath = ["src", "tests"]
 testpaths = ["tests"]
 asyncio_default_fixture_loop_scope = "function"
+

@@ -1,6 +1,11 @@
 """Application use cases for Marquise."""
 
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
+from marquise.application.use_cases.auth import (
+    AuthenticateAdministratorUseCase,
+    InviteAccountUseCase,
+    SetAccountRoleUseCase,
+)
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.create_missing_movies import (
     CreateMissingMoviesCommand,
@@ -28,6 +33,7 @@ from marquise.application.use_cases.update_screening import UpdateScreeningUseCa
 
 __all__ = [
     "AssignSourceUseCase",
+    "AuthenticateAdministratorUseCase",
     "CreateCinemaUseCase",
     "CreateMissingMoviesCommand",
     "CreateScreeningUseCase",
@@ -40,10 +46,12 @@ __all__ = [
     "GetCinemaSourceUseCase",
     "ImportedScreeningData",
     "ImportScreeningsCommand",
+    "InviteAccountUseCase",
     "ListCinemasUseCase",
     "ListRegistrySourcesUseCase",
     "ListSourcesUseCase",
-    "UpdateScreeningUseCase",
+    "SetAccountRoleUseCase",
     "UnassignSourceUseCase",
     "UpdateCinemaUseCase",
+    "UpdateScreeningUseCase",
 ]
