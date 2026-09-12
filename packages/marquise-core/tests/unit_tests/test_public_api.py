@@ -10,8 +10,15 @@ from __future__ import annotations
 import marquise
 
 EXPECTED_PUBLIC_SURFACE: set[str] = {
+    "AccountAlreadyExistsError",
     "ApplicationError",
     "AssignSourceUseCase",
+    "AuthenticateAdministratorUseCase",
+    "AuthAdministrationError",
+    "AuthenticationError",
+    "AuthenticationServiceUnavailableError",
+    "AuthorizationError",
+    "AccountNotFoundError",
     "CinemaAlreadyExistsError",
     "CinemaIdAlreadyExistsError",
     "CinemaNotFoundError",
@@ -22,6 +29,7 @@ EXPECTED_PUBLIC_SURFACE: set[str] = {
     "CreateScreeningUseCase",
     "CreateScreeningsCommand",
     "ImportScreeningsCommand",
+    "InviteAccountUseCase",
     "CreateSourceUseCase",
     "DeleteCinemaUseCase",
     "DeleteScreeningUseCase",
@@ -46,12 +54,15 @@ EXPECTED_PUBLIC_SURFACE: set[str] = {
     "UpdateScreeningUseCase",
     "ScreeningAlreadyExistsError",
     "ScreeningNotFoundError",
+    "SelfDemotionError",
+    "SetAccountRoleUseCase",
     "SearchScreeningsQuery",
     "SourceAlreadyExistsError",
     "SourceNotFoundError",
     "TooManyMovieIdsError",
     "UnassignSourceUseCase",
     "UpdateCinemaUseCase",
+    "VerifyAccessTokenQuery",
 }
 
 

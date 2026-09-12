@@ -64,6 +64,20 @@ async def select_cinema(
     return selected
 
 
+def prompt_password(message: str) -> str:
+    """Prompt for a password with each typed character masked as an asterisk.
+
+    Args:
+        message: Prompt text shown to the user.
+
+    Returns:
+        The password the user typed. Empty string if the user cancels or
+        supplies nothing.
+    """
+    answer = questionary.password(message).ask()
+    return answer or ""
+
+
 async def run_spinner[T](coro: Awaitable[T], description: str = "Working") -> T:
     """Execute an awaitable while displaying a spinner animation.
 

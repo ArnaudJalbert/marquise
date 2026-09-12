@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import Request
+from fastapi import HTTPException, Request, status
 
 from marquise import (
     GetCinemaMoviesUseCase,
@@ -15,12 +15,30 @@ from marquise import (
     ListMoviesUseCase,
     MarquiseFactory,
     SearchScreeningsQuery,
+    VerifyAccessTokenQuery,
 )
 
 
 def get_factory(request: Request) -> MarquiseFactory:
     """Return initialized factory stored on application state."""
     return request.app.state.factory
+
+
+def get_verify_access_token_query(request: Request) -> VerifyAccessTokenQuery:
+    """Return the configured access-token query or report unavailable auth."""
+    try:
+        query = get_factory(request).verify_access_token_query
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication is not configured",
+        ) from exc
+    if query is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication is not configured",
+        )
+    return query
 
 
 def get_list_cinemas_use_case(request: Request) -> ListCinemasUseCase:
