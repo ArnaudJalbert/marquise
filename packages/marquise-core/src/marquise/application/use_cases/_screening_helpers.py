@@ -5,8 +5,6 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TypeGuard, TypeVar
 
-from marquise.domain.entities import Screening
-
 T = TypeVar("T")
 
 
@@ -45,18 +43,3 @@ def require_timezone_aware_showtime(showtime: datetime) -> None:
     """Reject naive datetimes for screening showtimes."""
     if showtime.tzinfo is None:
         raise ValueError("showtime must be timezone-aware")
-
-
-def screening_output_dict(screening: Screening) -> dict:
-    """Return screening fields for a use-case-local OutputData."""
-    return {
-        "id": str(screening.id),
-        "movie_id": str(screening.movie.id),
-        "movie_title": screening.movie.title,
-        "cinema_id": str(screening.cinema.id),
-        "cinema_name": screening.cinema.name,
-        "showtime": screening.showtime.value,
-        "ticket_url": screening.ticket_url,
-        "room": screening.room,
-        "language": screening.language,
-    }

@@ -86,6 +86,7 @@ def use_case(
         screening_repository=screening_repository,
         movie_repository=movie_repository,
         cinema_repository=cinema_repository,
+        id_factory=lambda: "scr-generated",
     )
 
 
@@ -139,6 +140,7 @@ async def test_creates_screening_and_returns_output(
     cinema_repository.find_by_id.assert_awaited_once_with(CinemaId(value="cin-1"))
     screening_repository.save.assert_awaited_once()
     saved = screening_repository.save.await_args.args[0]
+    assert saved.id == ScreeningId(value="scr-generated")
     assert saved.movie.id == MovieId(value="mov-1")
     assert saved.cinema.id == CinemaId(value="cin-1")
     assert saved.showtime.value == SHOWTIME

@@ -6,8 +6,7 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ### v0.2.21
 
-- **Add screening mutation use cases**: `CreateScreeningUseCase`, `UpdateScreeningUseCase`, and `DeleteScreeningUseCase` are exposed through `MarquiseFactory` and the public facade. Update supports partial or full field changes via omitted vs explicit values. DELETE is a hard delete and cleans up orphaned movies. Closes #248.
-- **Replace screening read use case with query**: `GetScreeningUseCase` becomes `GetScreeningQuery` backed by `ScreeningReader`, returning a projection without building entities.
+- **Add screening mutation use cases**: `CreateScreeningUseCase`, `UpdateScreeningUseCase`, and `DeleteScreeningUseCase` are exposed through `MarquiseFactory` and the public facade. Update supports partial or full field changes via omitted vs explicit values. Closes #248.
 
 ## 2026-09-02
 

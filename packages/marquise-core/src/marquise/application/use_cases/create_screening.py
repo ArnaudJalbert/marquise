@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from uuid import uuid4
 
 from marquise.application.exceptions import CinemaNotFoundError, MovieNotFoundError
 from marquise.application.repositories import (
@@ -16,7 +16,6 @@ from marquise.application.use_cases._screening_helpers import (
     reject_blank_when_provided,
     require_non_empty,
     require_timezone_aware_showtime,
-    screening_output_dict,
 )
 from marquise.domain.entities import Screening
 from marquise.domain.value_objects import CinemaId, MovieId, ScreeningId, Showtime
@@ -97,6 +96,7 @@ class CreateScreeningUseCase:
         screening_repository: ScreeningRepository,
         movie_repository: MovieRepository,
         cinema_repository: CinemaRepository,
+        id_factory: Callable[[], str],
     ) -> None:
         """Initialize the use case.
 
@@ -104,10 +104,12 @@ class CreateScreeningUseCase:
             screening_repository: A repository for persisting screenings.
             movie_repository: A repository for looking up movies.
             cinema_repository: A repository for looking up cinemas.
+            id_factory: A callable that returns a new screening ID.
         """
         self.screening_repository = screening_repository
         self.movie_repository = movie_repository
         self.cinema_repository = cinema_repository
+        self.id_factory = id_factory
 
     async def execute(self, request: InputData) -> OutputData:
         """Create a new screening.
@@ -139,7 +141,7 @@ class CreateScreeningUseCase:
             )
 
         screening = Screening(
-            id=ScreeningId(value=str(uuid4())),
+            id=ScreeningId(value=self.id_factory()),
             movie=movie,
             cinema=cinema,
             showtime=Showtime(value=request.showtime),
@@ -150,4 +152,14 @@ class CreateScreeningUseCase:
         )
         saved = await self.screening_repository.save(screening)
 
-        return self.OutputData(**screening_output_dict(saved))
+        return self.OutputData(
+            id=str(saved.id),
+            movie_id=str(saved.movie.id),
+            movie_title=saved.movie.title,
+            cinema_id=str(saved.cinema.id),
+            cinema_name=saved.cinema.name,
+            showtime=saved.showtime.value,
+            ticket_url=saved.ticket_url,
+            room=saved.room,
+            language=saved.language,
+        )

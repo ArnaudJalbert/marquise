@@ -6,6 +6,7 @@ Central registry for application lifecycle and supported configured use cases.
 from __future__ import annotations
 
 from functools import cached_property
+from uuid import uuid4
 
 import asyncpg
 from dotenv import load_dotenv
@@ -17,7 +18,6 @@ from marquise.application.queries.get_cinema_screenings import (
     GetCinemaScreeningsQuery,
 )
 from marquise.application.queries.get_movie_screenings import GetMovieScreeningsQuery
-from marquise.application.queries.get_screening import GetScreeningQuery
 from marquise.application.queries.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
@@ -43,6 +43,7 @@ from marquise.application.use_cases.get_cinema import GetCinemaUseCase
 from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
 from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
 from marquise.application.use_cases.get_movie import GetMovieUseCase
+from marquise.application.use_cases.get_screening import GetScreeningUseCase
 from marquise.application.use_cases.import_screenings import ImportScreeningsCommand
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.application.use_cases.list_movies import ListMoviesUseCase
@@ -68,7 +69,6 @@ from marquise.infrastructure.di.import_use_cases import (
 from marquise.infrastructure.di.queries import (
     build_get_cinema_screenings_query,
     build_get_movie_screenings_query,
-    build_get_screening_query,
     build_list_cinema_source_assignments_query,
     build_search_screenings_query,
 )
@@ -398,8 +398,8 @@ class Container:
         return build_search_screenings_query(self._pool_property, self._schema)
 
     @property
-    def _get_screening_query(self) -> GetScreeningQuery:
-        return build_get_screening_query(self._pool_property, self._schema)
+    def _get_screening_use_case(self) -> GetScreeningUseCase:
+        return GetScreeningUseCase(screening_repository=self._screening_repository)
 
     @property
     def _create_screening_use_case(self) -> CreateScreeningUseCase:
@@ -407,6 +407,7 @@ class Container:
             screening_repository=self._screening_repository,
             movie_repository=self._movie_repository,
             cinema_repository=self._cinema_repository,
+            id_factory=lambda: str(uuid4()),
         )
 
     @property
@@ -419,10 +420,7 @@ class Container:
 
     @property
     def _delete_screening_use_case(self) -> DeleteScreeningUseCase:
-        return DeleteScreeningUseCase(
-            screening_repository=self._screening_repository,
-            movie_repository=self._movie_repository,
-        )
+        return DeleteScreeningUseCase(screening_repository=self._screening_repository)
 
     @property
     def _get_movie_screenings_query(self) -> GetMovieScreeningsQuery:
@@ -563,9 +561,9 @@ class Container:
         return self._search_screenings_query
 
     @property
-    def get_screening_query(self) -> GetScreeningQuery:
-        """Public get-screening query (no authentication required)."""
-        return self._get_screening_query
+    def get_screening_use_case(self) -> GetScreeningUseCase:
+        """Public get-screening use case (no authentication required)."""
+        return self._get_screening_use_case
 
     @property
     def create_screening_use_case(self) -> CreateScreeningUseCase:

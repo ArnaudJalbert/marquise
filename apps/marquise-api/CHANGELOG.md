@@ -1,11 +1,5 @@
 # Changelog
 
-## 2026-09-11
-
-### v0.1.9
-
-- **Execute the reader-backed screening query**: `GET /v1/screenings/{id}` now runs `GetScreeningQuery`, which projects the screening without building entities after the core `GetScreeningUseCase` was replaced. No endpoint behavior change. Closes #248.
-
 ## 2026-09-02
 
 ### v0.1.8

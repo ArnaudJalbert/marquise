@@ -6,7 +6,6 @@ import asyncpg
 
 from marquise.application.queries.get_cinema_screenings import GetCinemaScreeningsQuery
 from marquise.application.queries.get_movie_screenings import GetMovieScreeningsQuery
-from marquise.application.queries.get_screening import GetScreeningQuery
 from marquise.application.queries.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
@@ -34,13 +33,6 @@ def build_get_cinema_screenings_query(
             gateway=SupabaseCinemaGateway(pool=pool, schema=schema)
         ),
         screening_reader=SupabaseScreeningReader(pool=pool, schema=schema),
-    )
-
-
-def build_get_screening_query(pool: asyncpg.Pool, schema: str) -> GetScreeningQuery:
-    """Build single-screening query."""
-    return GetScreeningQuery(
-        screening_reader=SupabaseScreeningReader(pool=pool, schema=schema)
     )
 
 
