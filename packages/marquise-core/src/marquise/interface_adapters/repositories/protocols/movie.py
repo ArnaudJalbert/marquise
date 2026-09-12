@@ -58,14 +58,6 @@ class MovieGateway(Protocol):
         """
         ...
 
-    async def delete_if_orphan(self, movie_id: str) -> None:
-        """Delete movie only when no screening references it.
-
-        Args:
-            movie_id: Movie eligible for orphan cleanup.
-        """
-        ...
-
     async def find_by_id(self, movie_id: str) -> dict | None:
         """Find a movie by its ID.
 

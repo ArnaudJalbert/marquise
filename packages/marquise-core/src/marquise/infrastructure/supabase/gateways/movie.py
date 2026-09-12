@@ -25,7 +25,6 @@ class SupabaseMovieGateway:
 
     def __init__(self, pool: asyncpg.Pool, schema: str = DEFAULT_SCHEMA) -> None:
         self._pool = pool
-        self._schema = schema
         self._table = f'"{schema}".movies'
 
     async def save(
@@ -117,21 +116,6 @@ class SupabaseMovieGateway:
                 origin_countries,
             )
         return dict(row)
-
-    async def delete_if_orphan(self, movie_id: str) -> None:
-        """Delete movie only when no screening references it."""
-        async with self._pool.acquire() as conn:
-            await conn.execute(
-                f"""
-                DELETE FROM {self._table}
-                WHERE id = $1
-                  AND NOT EXISTS (
-                      SELECT 1 FROM "{self._schema}".screenings s
-                      WHERE s.movie_id = $1
-                  )
-                """,
-                movie_id,
-            )
 
     async def find_by_id(self, movie_id: str) -> dict | None:
         """Find a movie by its ID.

@@ -27,11 +27,6 @@ class ScreeningReader(ABC):
         language: str | None = None
 
     @abstractmethod
-    async def get_by_id(self, screening_id: str) -> ScreeningData | None:
-        """Return one screening projection, or None when missing."""
-        ...
-
-    @abstractmethod
     async def search(
         self,
         movie_id: str | None = None,

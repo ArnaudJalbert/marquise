@@ -19,7 +19,6 @@ from marquise.application.use_cases._screening_helpers import (
     reject_blank_when_provided,
     require_non_empty,
     require_timezone_aware_showtime,
-    screening_output_dict,
 )
 from marquise.domain.entities import Cinema, Movie, Screening
 from marquise.domain.value_objects import CinemaId, MovieId, ScreeningId, Showtime
@@ -167,7 +166,17 @@ class UpdateScreeningUseCase:
             )
         )
 
-        return self.OutputData(**screening_output_dict(updated))
+        return self.OutputData(
+            id=str(updated.id),
+            movie_id=str(updated.movie.id),
+            movie_title=updated.movie.title,
+            cinema_id=str(updated.cinema.id),
+            cinema_name=updated.cinema.name,
+            showtime=updated.showtime.value,
+            ticket_url=updated.ticket_url,
+            room=updated.room,
+            language=updated.language,
+        )
 
     async def _resolve_movie(self, movie_id: str | _Unset, existing: Movie) -> Movie:
         if not is_provided(movie_id):
