@@ -6,7 +6,14 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
-from marquise.interface_adapters.repositories.protocols.base import GatewayPage
+from marquise.interface_adapters.repositories.protocols.base import (
+    GatewayError,
+    GatewayPage,
+)
+
+
+class ScreeningExternalIdConflictGatewayError(GatewayError):
+    """Raised when an external ID conflicts with another screening row."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,7 +66,9 @@ class ScreeningGateway(Protocol):
             a new row was created.
 
         Raises:
-            GatewayError: On data-layer failure.
+            ScreeningExternalIdConflictGatewayError: If the external ID
+                belongs to another screening.
+            GatewayError: On other data-layer failure.
         """
         ...
 
@@ -88,6 +97,10 @@ class ScreeningGateway(Protocol):
 
         Returns:
             The updated row as a dict, or None if no matching row exists.
+
+        Raises:
+            ScreeningExternalIdConflictGatewayError: If the external ID
+                belongs to another screening.
         """
         ...
 
