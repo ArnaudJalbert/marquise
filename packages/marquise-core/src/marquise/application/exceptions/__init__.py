@@ -21,6 +21,7 @@ from marquise.application.exceptions.movie import (
 )
 from marquise.application.exceptions.screening import (
     ScreeningAlreadyExistsError,
+    ScreeningExternalIdConflictError,
     ScreeningNotFoundError,
     ScreeningUpdateNotFoundError,
 )
@@ -46,6 +47,7 @@ __all__ = [
     "CinemaSourceAssignmentNotFoundError",
     "MovieNotFoundError",
     "ScreeningAlreadyExistsError",
+    "ScreeningExternalIdConflictError",
     "ScreeningNotFoundError",
     "ScreeningUpdateNotFoundError",
     "SelfDemotionError",
