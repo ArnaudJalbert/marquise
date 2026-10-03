@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 
 from marquise.application.exceptions import (
     ScreeningAlreadyExistsError,
+    ScreeningExternalIdConflictError,
     ScreeningNotFoundError,
 )
 from marquise.application.repositories import Page, ScreeningRepository
@@ -20,8 +21,8 @@ from marquise.domain.value_objects import (
     ScreeningId,
     Showtime,
 )
-from marquise.interface_adapters.repositories.protocols.base import GatewayError
 from marquise.interface_adapters.repositories.protocols.screening import (
+    ScreeningExternalIdConflictGatewayError,
     ScreeningGateway,
 )
 from marquise.interface_adapters.repositories.supabase._utils import (
@@ -107,6 +108,8 @@ class SupabaseScreeningRepository(ScreeningRepository):
         Raises:
             ScreeningAlreadyExistsError: If a screening with the same
                 (cinema_id, movie_id, showtime) already exists.
+            ScreeningExternalIdConflictError: If the external ID belongs
+                to a different screening.
         """
         try:
             outcome = await self._gateway.save(
@@ -119,8 +122,8 @@ class SupabaseScreeningRepository(ScreeningRepository):
                 room=screening.room,
                 language=screening.language,
             )
-        except GatewayError as exc:
-            raise ScreeningAlreadyExistsError(str(exc)) from exc
+        except ScreeningExternalIdConflictGatewayError as exc:
+            raise ScreeningExternalIdConflictError(str(exc)) from exc
         if not outcome.inserted:
             raise ScreeningAlreadyExistsError(
                 f"A screening already exists for cinema '{screening.cinema.id}'"
@@ -145,16 +148,23 @@ class SupabaseScreeningRepository(ScreeningRepository):
 
         Returns:
             The updated screening entity, or None if no match exists.
+
+        Raises:
+            ScreeningExternalIdConflictError: If the external ID belongs
+                to a different screening.
         """
-        data = await self._gateway.update(
-            cinema_id=str(screening.cinema.id),
-            movie_id=str(screening.movie.id),
-            showtime=screening.showtime.value,
-            external_id=screening.external_id,
-            ticket_url=screening.ticket_url,
-            room=screening.room,
-            language=screening.language,
-        )
+        try:
+            data = await self._gateway.update(
+                cinema_id=str(screening.cinema.id),
+                movie_id=str(screening.movie.id),
+                showtime=screening.showtime.value,
+                external_id=screening.external_id,
+                ticket_url=screening.ticket_url,
+                room=screening.room,
+                language=screening.language,
+            )
+        except ScreeningExternalIdConflictGatewayError as exc:
+            raise ScreeningExternalIdConflictError(str(exc)) from exc
         if data is None:
             return None
         return Screening(

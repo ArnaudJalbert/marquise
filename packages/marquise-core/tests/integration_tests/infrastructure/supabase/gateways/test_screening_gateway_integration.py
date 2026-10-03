@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import asyncpg
 import pytest
 
+from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.infrastructure.supabase.gateways.cinema import (
     SupabaseCinemaGateway,
 )
@@ -15,7 +17,12 @@ from marquise.infrastructure.supabase.gateways.movie import (
 from marquise.infrastructure.supabase.gateways.screening import (
     SupabaseScreeningGateway,
 )
-from marquise.interface_adapters.repositories.protocols.base import GatewayError
+from marquise.interface_adapters.repositories.protocols.screening import (
+    ScreeningExternalIdConflictGatewayError,
+)
+from marquise.interface_adapters.repositories.supabase.screening_repository import (
+    SupabaseScreeningRepository,
+)
 
 
 async def _seed_parents(
@@ -231,7 +238,7 @@ async def test_save_raises_gateway_error_on_external_id_conflict(
         external_id="ext-conflict",
     )
 
-    with pytest.raises(GatewayError, match="ext-conflict"):
+    with pytest.raises(ScreeningExternalIdConflictGatewayError, match="ext-conflict"):
         await screening_gateway.save(
             screening_id="scr-009",
             movie_id="mov-002",
@@ -239,6 +246,174 @@ async def test_save_raises_gateway_error_on_external_id_conflict(
             showtime=datetime(2026, 6, 12, 21, 0, 0, tzinfo=UTC),
             external_id="ext-conflict",
         )
+
+
+@pytest.mark.asyncio
+async def test_update_translates_external_id_conflict_without_changing_rows(
+    screening_gateway: SupabaseScreeningGateway,
+    gateway: SupabaseCinemaGateway,
+    movie_gateway: SupabaseMovieGateway,
+) -> None:
+    """Updating an existing row with another row's ID leaves both rows intact."""
+    await _seed_parents(gateway, movie_gateway)
+    showtime = datetime(2026, 6, 12, 21, tzinfo=UTC)
+    for screening_id, movie_id, external_id in (
+        ("owner", "mov-001", "494935"),
+        ("target", "mov-002", "old-id"),
+    ):
+        await screening_gateway.save(
+            screening_id=screening_id,
+            movie_id=movie_id,
+            cinema_id="cin-004",
+            showtime=showtime,
+            external_id=external_id,
+            room="Old room",
+        )
+    owner_before = await screening_gateway.find_by_id("owner")
+    target_before = await screening_gateway.find_by_id("target")
+
+    with pytest.raises(ScreeningExternalIdConflictGatewayError, match="494935"):
+        await screening_gateway.update(
+            cinema_id="cin-004",
+            movie_id="mov-002",
+            showtime=showtime,
+            external_id="494935",
+            room="New room",
+        )
+
+    assert await screening_gateway.find_by_id("owner") == owner_before
+    assert await screening_gateway.find_by_id("target") == target_before
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("existing_target", [False, True])
+async def test_import_skips_external_id_conflict_and_preserves_existing_data(
+    screening_gateway: SupabaseScreeningGateway,
+    gateway: SupabaseCinemaGateway,
+    movie_gateway: SupabaseMovieGateway,
+    existing_target: bool,
+) -> None:
+    """Real command/repository/gateway chain skips collisions and imports other rows."""
+    await _seed_parents(gateway, movie_gateway)
+    showtime = datetime(2026, 6, 12, 21, tzinfo=UTC)
+    await screening_gateway.save(
+        screening_id="owner",
+        movie_id="mov-001",
+        cinema_id="cin-004",
+        showtime=showtime,
+        external_id="494935",
+    )
+    if existing_target:
+        await screening_gateway.save(
+            screening_id="target",
+            movie_id="mov-002",
+            cinema_id="cin-004",
+            showtime=showtime,
+            external_id="old-id",
+            room="Old room",
+        )
+    owner_before = await screening_gateway.find_by_id("owner")
+    target_before = await screening_gateway.find_by_id("target")
+    command = CreateScreeningsCommand(SupabaseScreeningRepository(screening_gateway))
+
+    result = await command.execute(
+        command.InputData(
+            screenings=(
+                command.ScreeningInput(
+                    movie_id="mov-002",
+                    movie_title="Movie B",
+                    cinema_id="cin-004",
+                    cinema_name="Cinema Four",
+                    showtime=showtime,
+                    external_id="494935",
+                    room="New room",
+                ),
+                command.ScreeningInput(
+                    movie_id="mov-003",
+                    movie_title="Movie C",
+                    cinema_id="cin-004",
+                    cinema_name="Cinema Four",
+                    showtime=showtime,
+                    external_id="unrelated-id",
+                ),
+            )
+        )
+    )
+
+    assert result.skipped_count == 1
+    assert result.total_count == result.imported_count == 1
+    assert result.updated_count == 0
+    assert result.screenings[0].movie_title == "Movie C"
+    assert await screening_gateway.find_by_id("owner") == owner_before
+    assert await screening_gateway.find_by_id("target") == target_before
+    page = await screening_gateway.search(movie_id="mov-002")
+    assert page.total == int(existing_target)
+    page = await screening_gateway.search(movie_id="mov-003")
+    assert page.total == 1
+    assert page.rows[0]["external_id"] == "unrelated-id"
+
+
+@pytest.mark.asyncio
+async def test_save_does_not_misclassify_primary_key_conflict(
+    screening_gateway: SupabaseScreeningGateway,
+    gateway: SupabaseCinemaGateway,
+    movie_gateway: SupabaseMovieGateway,
+) -> None:
+    """An unrelated unique violation stays fatal, even when an external ID is set."""
+    await _seed_parents(gateway, movie_gateway)
+    showtime = datetime(2026, 6, 12, 21, tzinfo=UTC)
+    await screening_gateway.save(
+        screening_id="duplicate-primary-key",
+        movie_id="mov-001",
+        cinema_id="cin-004",
+        showtime=showtime,
+    )
+
+    with pytest.raises(asyncpg.UniqueViolationError) as raised:
+        await screening_gateway.save(
+            screening_id="duplicate-primary-key",
+            movie_id="mov-002",
+            cinema_id="cin-004",
+            showtime=showtime,
+            external_id="fresh-id",
+        )
+
+    assert raised.value.constraint_name == "screenings_pkey"
+
+
+@pytest.mark.asyncio
+async def test_update_preserves_unspecified_metadata(
+    screening_gateway: SupabaseScreeningGateway,
+    gateway: SupabaseCinemaGateway,
+    movie_gateway: SupabaseMovieGateway,
+) -> None:
+    """A normal update changes supplied metadata and preserves unspecified fields."""
+    await _seed_parents(gateway, movie_gateway)
+    showtime = datetime(2026, 6, 12, 21, tzinfo=UTC)
+    await screening_gateway.save(
+        screening_id="existing",
+        movie_id="mov-001",
+        cinema_id="cin-004",
+        showtime=showtime,
+        external_id="existing-id",
+        ticket_url="https://example.com/old-ticket",
+        room="Old room",
+        language="French",
+    )
+
+    updated = await screening_gateway.update(
+        cinema_id="cin-004",
+        movie_id="mov-001",
+        showtime=showtime,
+        room="New room",
+    )
+
+    assert updated is not None
+    assert updated["id"] == "existing"
+    assert updated["external_id"] == "existing-id"
+    assert updated["ticket_url"] == "https://example.com/old-ticket"
+    assert updated["room"] == "New room"
+    assert updated["language"] == "French"
 
 
 @pytest.mark.asyncio

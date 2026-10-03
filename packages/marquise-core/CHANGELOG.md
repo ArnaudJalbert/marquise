@@ -2,6 +2,12 @@
 
 Before 2026-07-15 this package was published as `marquise`.
 
+## 2026-10-03
+
+### v0.2.20
+
+- Skip screening external-ID conflicts on insert and update without modifying existing rows. Log each skipped row and keep unrelated database failures fatal. Add PostgreSQL regression tests to pull-request CI. Closes #278.
+
 ## 2026-08-29
 
 ### v0.2.19
