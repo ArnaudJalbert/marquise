@@ -14,12 +14,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[4]
 APPS_DIR = REPO_ROOT / "apps"
 
-FORBIDDEN_PREFIXES = (
-    "marquise.domain",
-    "marquise.application",
-    "marquise.interface_adapters",
-    "marquise.infrastructure",
-)
+FORBIDDEN_PREFIX = "marquise."
 
 
 def _extract_imports_from_file(filepath: Path) -> list[str]:
@@ -52,10 +47,7 @@ def _scan_directory_for_forbidden_imports(directory: Path) -> list[str]:
         rel = py_file.relative_to(directory)
         imports = _extract_imports_from_file(py_file)
         for mod in imports:
-            if any(
-                mod == prefix or mod.startswith(prefix + ".")
-                for prefix in FORBIDDEN_PREFIXES
-            ):
+            if mod.startswith(FORBIDDEN_PREFIX):
                 details.append(f"  {rel}: imports '{mod}'")
                 break
     return details
@@ -85,14 +77,14 @@ def test_scanner_catches_forbidden_import(tmp_path: Path) -> None:
     violating_dir.mkdir()
     (violating_dir / "bad_app.py").write_text(
         textwrap.dedent("""\
-            from marquise.infrastructure.di.container import Container
+            from marquise.bootstrap import create_factory
         """)
     )
 
     details = _scan_directory_for_forbidden_imports(violating_dir)
     assert len(details) > 0, "Expected scanner to catch the forbidden import"
     assert any("bad_app.py" in d for d in details)
-    assert any("marquise.infrastructure" in d for d in details)
+    assert any("marquise.bootstrap" in d for d in details)
 
 
 def test_scanner_allows_public_surface_imports(tmp_path: Path) -> None:

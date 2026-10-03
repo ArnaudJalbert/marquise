@@ -4,9 +4,19 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-10-03
 
-### v0.2.20
+### v0.2.21
 
 - Skip screening external-ID conflicts on insert and update without modifying existing rows. Log each skipped row and keep unrelated database failures fatal. Add PostgreSQL regression tests to pull-request CI. Closes #278.
+
+## 2026-09-02
+
+### v0.2.20
+
+- **Keep credential-bearing dataclass representations safe**: passwords, bearer tokens, database URLs, and API keys are excluded from diagnostic `repr` output.
+
+- **Harden authentication transport (2026-09-10)**: require HTTPS auth configuration, reject credential-bearing GoTrue redirects, and allow local HTTP only with an explicit literal-loopback development opt-in.
+
+- **Add clean authentication core**: verify Supabase JWTs through a dedicated account identity reader and query, and expose configured Administrator authentication, invitation, and role-change use cases through `MarquiseFactory`. Roles live only in protected Supabase `app_metadata`. Invitations use Supabase's dedicated endpoint and retain HTTP status and safe provider detail for CLI diagnosis. Closes #263, #264, and #266.
 
 ## 2026-08-29
 

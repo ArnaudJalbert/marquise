@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-02
+
+### v0.1.8
+
+- **Prepare Supabase JWT authorization**: reusable FastAPI dependencies call the core token-verification query for authenticated, Editor, and Administrator access. No current endpoint uses them, so all existing routes remain public. Closes #263.
+
 ## 2026-08-29
 
 ### v0.1.7

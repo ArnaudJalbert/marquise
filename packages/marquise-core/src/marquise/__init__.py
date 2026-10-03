@@ -5,7 +5,13 @@ use cases through this supported facade. Internal package modules are private.
 """
 
 from marquise.application.exceptions import (
+    AccountAlreadyExistsError,
+    AccountNotFoundError,
     ApplicationError,
+    AuthAdministrationError,
+    AuthenticationError,
+    AuthenticationServiceUnavailableError,
+    AuthorizationError,
     CinemaAlreadyExistsError,
     CinemaIdAlreadyExistsError,
     CinemaNotFoundError,
@@ -15,6 +21,7 @@ from marquise.application.exceptions import (
     ScreeningAlreadyExistsError,
     ScreeningExternalIdConflictError,
     ScreeningNotFoundError,
+    SelfDemotionError,
     SourceAlreadyExistsError,
     SourceNotFoundError,
     TooManyMovieIdsError,
@@ -30,7 +37,13 @@ from marquise.application.queries.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
 from marquise.application.queries.search_screenings import SearchScreeningsQuery
+from marquise.application.queries.verify_access_token import VerifyAccessTokenQuery
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
+from marquise.application.use_cases.auth import (
+    AuthenticateAdministratorUseCase,
+    InviteAccountUseCase,
+    SetAccountRoleUseCase,
+)
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.create_missing_movies import (
     CreateMissingMoviesCommand,
@@ -60,8 +73,15 @@ from marquise.bootstrap import (
 )
 
 __all__ = [
+    "AccountAlreadyExistsError",
     "ApplicationError",
     "AssignSourceUseCase",
+    "AuthenticateAdministratorUseCase",
+    "AuthAdministrationError",
+    "AuthenticationError",
+    "AuthenticationServiceUnavailableError",
+    "AuthorizationError",
+    "AccountNotFoundError",
     "CinemaAlreadyExistsError",
     "CinemaIdAlreadyExistsError",
     "CinemaNotFoundError",
@@ -71,6 +91,7 @@ __all__ = [
     "CreateMissingMoviesCommand",
     "CreateScreeningsCommand",
     "ImportScreeningsCommand",
+    "InviteAccountUseCase",
     "CreateSourceUseCase",
     "DeleteCinemaUseCase",
     "DeleteSourceUseCase",
@@ -94,10 +115,13 @@ __all__ = [
     "ScreeningAlreadyExistsError",
     "ScreeningExternalIdConflictError",
     "ScreeningNotFoundError",
+    "SelfDemotionError",
+    "SetAccountRoleUseCase",
     "SearchScreeningsQuery",
     "SourceAlreadyExistsError",
     "SourceNotFoundError",
     "TooManyMovieIdsError",
     "UnassignSourceUseCase",
     "UpdateCinemaUseCase",
+    "VerifyAccessTokenQuery",
 ]

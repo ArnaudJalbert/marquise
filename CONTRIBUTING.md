@@ -86,6 +86,7 @@ Defined in `packages/marquise-core/src/marquise/__init__.py` via `__all__`:
 
 - `MarquiseFactory`, `create_factory()`, `create_factory_session()`
 - `ApplicationError` and concrete application exception subclasses
+- Authentication token query and account-administration use cases through `MarquiseFactory`
 - Configured cinema, movie, screening, source, and import use cases required by delivery apps, including nested DTOs
 
 Apps may import only from `marquise` (top-level) — never from
@@ -146,6 +147,12 @@ Design rules → [Atlas Clean Architecture](atlas/50-processes/Clean%20Architect
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `SUPABASE_URL` | Protected API routes and account CLI | HTTPS Supabase project URL; userinfo, query strings, and fragments are rejected |
+| `MARQUISE_AUTH_ALLOW_LOCAL_HTTP` | No | Set exactly `1` for local development HTTP using a literal loopback IP (`127.0.0.1` or `::1`); hostnames and remote HTTP remain forbidden |
+| `SUPABASE_PUBLISHABLE_KEY` | Account CLI only | Password authentication for Administrator verification |
+| `SUPABASE_SERVICE_ROLE_KEY` | Account CLI only | Privileged invitation and role metadata updates |
+| `MARQUISE_EMAIL` | No | Configured CLI Administrator email; prompts when either credential is absent |
+| `MARQUISE_PASSWORD` | No | Configured CLI Administrator password; prompts when either credential is absent |
 | `CINEPLEX_API_KEY` | No | Cineplex API subscription key |
 | `DATABASE_SCHEMA` | No | Schema name (default: `marquise`) |
 | `MARQUISE_API_CACHE_TTL_SECONDS` | No | API in-memory cache TTL (default: 3600) |
@@ -266,7 +273,7 @@ mock gateway protocols.
 |---------------|---------------|------|
 | `domain/` | `unit_tests/domain/` | Nothing |
 | `application/` | `unit_tests/application/` | Repository ABCs via `create_autospec` |
-| `interface_adapters/` | `unit_tests/interface_adapters/` | Gateway protocols via `create_autospec` |
+| `interface_adapters/` | `unit_tests/interface_adapters/` | Gateway `Protocol`s via `create_autospec` |
 | `infrastructure/.../gateways/` | `integration_tests/infrastructure/` | Real database |
 | `apps/marquise-api/` | `apps/marquise-api/tests/` | `MarquiseFactory` |
 | `apps/marquise-cli/` | `apps/marquise-cli/tests/` | `MarquiseFactory` |
@@ -354,3 +361,10 @@ Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
 - [docs/sources.md](docs/sources.md) — showtime source scrapers
 - [docs/releasing.md](docs/releasing.md) — version bumps and releases
 - [web/README.md](web/README.md) — web workspace quick start
+
+### Authentication transport
+
+GoTrue credential-bearing requests reject redirects, including same-origin redirects.
+Configure the final HTTPS endpoint directly. TLS certificate verification remains enabled.
+The configured JWKS URL also requires HTTPS (or the explicit loopback development opt-in).
+This does not configure inbound API HTTPS; enforce that at the deployment proxy.
