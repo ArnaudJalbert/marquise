@@ -9,6 +9,7 @@ import pytest
 
 from marquise.application.exceptions import (
     ScreeningAlreadyExistsError,
+    ScreeningExternalIdConflictError,
     ScreeningNotFoundError,
 )
 from marquise.domain.entities import Cinema, Movie, Screening
@@ -24,6 +25,7 @@ from marquise.interface_adapters.repositories.protocols.base import (
 )
 from marquise.interface_adapters.repositories.protocols.screening import (
     SaveOutcome,
+    ScreeningExternalIdConflictGatewayError,
     ScreeningGateway,
 )
 from marquise.interface_adapters.repositories.supabase.screening_repository import (
@@ -144,20 +146,44 @@ async def test_save(
 
 
 @pytest.mark.asyncio
-async def test_save_raises_screening_already_exists_on_gateway_error(
+@pytest.mark.parametrize("operation", ["save", "update"])
+async def test_translates_external_id_conflict(
     sample_screening: Screening,
+    operation: str,
 ) -> None:
-    """Test save translates a gateway external_id conflict into an app error."""
+    """Insert/update external-ID conflicts become specific application errors."""
     mock_gateway = create_autospec(ScreeningGateway, instance=True)
-    mock_gateway.save.side_effect = GatewayError(
-        "A screening with external_id='486899' already exists for a "
-        "different (cinema_id, movie_id, showtime)"
+    error = ScreeningExternalIdConflictGatewayError(
+        "A screening with external_id='486899' already exists"
     )
-
+    getattr(mock_gateway, operation).side_effect = error
     repo = SupabaseScreeningRepository(gateway=mock_gateway)
 
-    with pytest.raises(ScreeningAlreadyExistsError, match="external_id='486899'"):
-        await repo.save(sample_screening)
+    with pytest.raises(
+        ScreeningExternalIdConflictError, match="external_id='486899'"
+    ) as raised:
+        await getattr(repo, operation)(sample_screening)
+
+    assert raised.value.__cause__ is error
+    getattr(mock_gateway, operation).assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["save", "update"])
+async def test_unrelated_gateway_error_is_not_a_duplicate(
+    sample_screening: Screening,
+    operation: str,
+) -> None:
+    """Unrelated gateway failures propagate instead of triggering duplicate handling."""
+    mock_gateway = create_autospec(ScreeningGateway, instance=True)
+    error = GatewayError("Database unavailable")
+    getattr(mock_gateway, operation).side_effect = error
+    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+
+    with pytest.raises(GatewayError, match="Database unavailable") as raised:
+        await getattr(repo, operation)(sample_screening)
+
+    assert raised.value is error
 
 
 @pytest.mark.asyncio

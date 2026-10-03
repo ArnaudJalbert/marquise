@@ -50,6 +50,7 @@ EXPECTED_PUBLIC_SURFACE: set[str] = {
     "MarquiseFactory",
     "MovieNotFoundError",
     "ScreeningAlreadyExistsError",
+    "ScreeningExternalIdConflictError",
     "ScreeningNotFoundError",
     "SelfDemotionError",
     "SetAccountRoleUseCase",
