@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True, slots=True)
@@ -15,6 +15,9 @@ class Settings:
         cineplex_api_key: API key for the Cineplex theatrical API.
     """
 
-    database_url: str
-    cineplex_api_key: str = ""
+    database_url: str = field(default="", repr=False)
+    cineplex_api_key: str = field(default="", repr=False)
     schema: str = "marquise"
+    supabase_url: str = ""
+    supabase_publishable_key: str = field(default="", repr=False)
+    supabase_service_role_key: str = field(default="", repr=False)
