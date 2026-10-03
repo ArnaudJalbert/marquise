@@ -10,7 +10,10 @@ from marquise.interface_adapters.repositories.protocols.base import (
     GatewayError,
     GatewayPage,
 )
-from marquise.interface_adapters.repositories.protocols.screening import SaveOutcome
+from marquise.interface_adapters.repositories.protocols.screening import (
+    SaveOutcome,
+    ScreeningExternalIdConflictGatewayError,
+)
 
 DEFAULT_SCHEMA = "marquise"
 
@@ -103,9 +106,10 @@ class SupabaseScreeningGateway:
             A ``SaveOutcome`` carrying the row and whether it was newly inserted.
 
         Raises:
-            GatewayError: On data-layer failure, including when
-                ``external_id`` collides with a row that has a different
-                (cinema_id, movie_id, showtime).
+            ScreeningExternalIdConflictGatewayError: If the external ID
+                belongs to another screening.
+            GatewayError: If the upsert returns no row.
+            asyncpg.PostgresError: On other database failures.
         """
         async with self._pool.acquire() as conn:
             try:
@@ -140,9 +144,10 @@ class SupabaseScreeningGateway:
                     language,
                 )
             except asyncpg.exceptions.UniqueViolationError as exc:
-                raise GatewayError(
-                    f"A screening with external_id={external_id!r} already "
-                    "exists for a different (cinema_id, movie_id, showtime)"
+                if exc.as_dict().get("constraint_name") != "screenings_external_id_key":
+                    raise
+                raise ScreeningExternalIdConflictGatewayError(
+                    f"external_id={external_id!r} belongs to another screening"
                 ) from exc
         if row is None:
             raise GatewayError(
@@ -183,27 +188,39 @@ class SupabaseScreeningGateway:
 
         Returns:
             The updated row as a dict, or None if no matching row exists.
+
+        Raises:
+            ScreeningExternalIdConflictGatewayError: If the external ID
+                belongs to another screening.
+            asyncpg.PostgresError: On other database failures.
         """
         async with self._pool.acquire() as conn:
-            row = await conn.fetchrow(
-                f"""
-                UPDATE {self._table}
-                SET
-                    external_id = COALESCE($4, external_id),
-                    ticket_url = COALESCE($5, ticket_url),
-                    room = COALESCE($6, room),
-                    language = COALESCE($7, language)
-                WHERE cinema_id = $1 AND movie_id = $2 AND showtime = $3
-                RETURNING {_COLUMNS}
-                """,
-                cinema_id,
-                movie_id,
-                _naive_utc(showtime),
-                external_id,
-                ticket_url,
-                room,
-                language,
-            )
+            try:
+                row = await conn.fetchrow(
+                    f"""
+                    UPDATE {self._table}
+                    SET
+                        external_id = COALESCE($4, external_id),
+                        ticket_url = COALESCE($5, ticket_url),
+                        room = COALESCE($6, room),
+                        language = COALESCE($7, language)
+                    WHERE cinema_id = $1 AND movie_id = $2 AND showtime = $3
+                    RETURNING {_COLUMNS}
+                    """,
+                    cinema_id,
+                    movie_id,
+                    _naive_utc(showtime),
+                    external_id,
+                    ticket_url,
+                    room,
+                    language,
+                )
+            except asyncpg.exceptions.UniqueViolationError as exc:
+                if exc.as_dict().get("constraint_name") != "screenings_external_id_key":
+                    raise
+                raise ScreeningExternalIdConflictGatewayError(
+                    f"external_id={external_id!r} belongs to another screening"
+                ) from exc
         return dict(row) if row is not None else None
 
     async def replace(

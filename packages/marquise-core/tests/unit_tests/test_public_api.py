@@ -53,6 +53,7 @@ EXPECTED_PUBLIC_SURFACE: set[str] = {
     "MovieNotFoundError",
     "UpdateScreeningUseCase",
     "ScreeningAlreadyExistsError",
+    "ScreeningExternalIdConflictError",
     "ScreeningNotFoundError",
     "SelfDemotionError",
     "SetAccountRoleUseCase",

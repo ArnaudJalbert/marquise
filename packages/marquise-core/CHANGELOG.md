@@ -2,11 +2,15 @@
 
 Before 2026-07-15 this package was published as `marquise`.
 
-## 2026-09-11
+## 2026-10-03
+
+### v0.2.22
+
+- **Add screening mutation use cases**: `CreateScreeningUseCase`, `UpdateScreeningUseCase`, and `DeleteScreeningUseCase` are exposed through `MarquiseFactory` and the public facade. Update supports partial or full field changes via omitted vs explicit values. Closes #248.
 
 ### v0.2.21
 
-- **Add screening mutation use cases**: `CreateScreeningUseCase`, `UpdateScreeningUseCase`, and `DeleteScreeningUseCase` are exposed through `MarquiseFactory` and the public facade. Update supports partial or full field changes via omitted vs explicit values. Closes #248.
+- Skip screening external-ID conflicts on insert and update without modifying existing rows. Log each skipped row and keep unrelated database failures fatal. Add PostgreSQL regression coverage. Closes #278.
 
 ## 2026-09-02
 

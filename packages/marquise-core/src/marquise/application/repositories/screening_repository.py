@@ -26,6 +26,8 @@ class ScreeningRepository(ABC):
         Raises:
             ScreeningAlreadyExistsError: If a screening with the same
                 (cinema_id, movie_id, showtime) already exists.
+            ScreeningExternalIdConflictError: If the external ID belongs
+                to a different screening.
         """
         ...
 
@@ -41,6 +43,10 @@ class ScreeningRepository(ABC):
 
         Returns:
             The updated screening entity, or None if no matching row exists.
+
+        Raises:
+            ScreeningExternalIdConflictError: If the external ID belongs
+                to a different screening.
         """
         ...
 

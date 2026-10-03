@@ -10,6 +10,7 @@ from uuid import uuid4
 
 from marquise.application.exceptions import (
     ScreeningAlreadyExistsError,
+    ScreeningExternalIdConflictError,
     ScreeningUpdateNotFoundError,
 )
 from marquise.application.repositories import ScreeningRepository
@@ -112,11 +113,20 @@ class CreateScreeningsCommand:
 
         results: list[ImportedScreeningData] = []
         skipped_count = 0
-        for outcome in raw_results:
+        for row, outcome in zip(request.screenings, raw_results, strict=True):
             if isinstance(
                 outcome,
-                (ScreeningAlreadyExistsError, ScreeningUpdateNotFoundError),
+                (ScreeningExternalIdConflictError, ScreeningUpdateNotFoundError),
             ):
+                logger.warning(
+                    "Skipped screening: cinema_id=%s movie_id=%s showtime=%s "
+                    "external_id=%r reason=%s",
+                    row.cinema_id,
+                    row.movie_id,
+                    row.showtime.isoformat(),
+                    row.external_id,
+                    outcome,
+                )
                 skipped_count += 1
                 continue
             if isinstance(outcome, BaseException):
@@ -124,7 +134,7 @@ class CreateScreeningsCommand:
             results.append(outcome)
 
         logger.info(
-            "Screenings: %d imported, %d skipped (already exist)",
+            "Screenings: %d created or updated, %d skipped",
             len(results),
             skipped_count,
         )
@@ -162,8 +172,7 @@ class CreateScreeningsCommand:
                     f"Screening for cinema '{row.cinema_id}', movie "
                     f"'{row.movie_id}' at {row.showtime.isoformat()} "
                     f"was confirmed to exist on save but disappeared "
-                    f"before update — or the conflict was on a different "
-                    f"constraint (external_id={row.external_id!r})."
+                    "before update."
                 )
             return ImportedScreeningData(
                 movie_title=row.movie_title,

@@ -9,6 +9,7 @@ import pytest
 
 from marquise.application.exceptions import (
     ScreeningAlreadyExistsError,
+    ScreeningExternalIdConflictError,
 )
 from marquise.application.repositories import ScreeningRepository
 from marquise.application.use_cases.create_screenings import (
@@ -110,15 +111,14 @@ async def test_updates_existing_screening() -> None:
 
 @pytest.mark.asyncio
 async def test_skips_external_id_conflict() -> None:
-    """Test that a single external_id collision is skipped, not fatal."""
+    """An insert collision is skipped without trying to update another row."""
     mock_screening_repo = create_autospec(ScreeningRepository, instance=True)
     mock_screening_repo.save.side_effect = [
-        ScreeningAlreadyExistsError(
+        ScreeningExternalIdConflictError(
             "A screening with external_id='486899' already exists"
         ),
         None,
     ]
-    mock_screening_repo.update.return_value = None
 
     rows = (
         _make_screening_input(
@@ -143,7 +143,67 @@ async def test_skips_external_id_conflict() -> None:
     assert result.updated_count == 0
     assert result.skipped_count == 1
     assert result.screenings[0].movie_title == "Movie B"
-    mock_screening_repo.update.assert_awaited_once()
+    mock_screening_repo.update.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_skips_update_external_id_conflict(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """An update collision warns and skips while unrelated rows still import."""
+    repo = create_autospec(ScreeningRepository, instance=True)
+    repo.save.side_effect = [ScreeningAlreadyExistsError("Existing row"), None]
+    repo.update.side_effect = ScreeningExternalIdConflictError(
+        "external_id='494935' belongs to another screening"
+    )
+    rows = (
+        _make_screening_input(external_id="494935"),
+        _make_screening_input(movie_id="mov-b", movie_title="Movie B"),
+    )
+
+    result = await _run(CreateScreeningsCommand(repo), rows)
+
+    assert result.total_count == result.imported_count == 1
+    assert result.updated_count == 0
+    assert result.skipped_count == 1
+    assert result.screenings[0].movie_title == "Movie B"
+    repo.update.assert_awaited_once()
+    assert "494935" in caplog.text
+    assert "cin-123" in caplog.text
+    assert "mov-a" in caplog.text
+    assert "2026-06-07T19:30:00+00:00" in caplog.text
+    assert "belongs to another screening" in caplog.text
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["save", "update"])
+async def test_unexpected_failure_is_not_skipped(operation: str) -> None:
+    """Unexpected save/update failures abort instead of becoming skipped rows."""
+    repo = create_autospec(ScreeningRepository, instance=True)
+    error = RuntimeError("Database unavailable")
+    if operation == "save":
+        repo.save.side_effect = error
+    else:
+        repo.save.side_effect = ScreeningAlreadyExistsError("Existing row")
+        repo.update.side_effect = error
+
+    with pytest.raises(RuntimeError, match="Database unavailable") as raised:
+        await _run(CreateScreeningsCommand(repo), (_make_screening_input(),))
+
+    assert raised.value is error
+
+
+@pytest.mark.asyncio
+async def test_skips_existing_screening_deleted_before_update() -> None:
+    """A row deleted between save and update remains a counted skip."""
+    repo = create_autospec(ScreeningRepository, instance=True)
+    repo.save.side_effect = ScreeningAlreadyExistsError("Existing row")
+    repo.update.return_value = None
+
+    result = await _run(CreateScreeningsCommand(repo), (_make_screening_input(),))
+
+    assert result.skipped_count == 1
+    assert result.total_count == result.imported_count == result.updated_count == 0
 
 
 @pytest.mark.asyncio
