@@ -49,3 +49,35 @@ jobs:
         with:
           name: coverage-report
           path: coverage.xml
+
+  screening-database:
+    name: Screening PostgreSQL regression tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: marquise
+          POSTGRES_PASSWORD: test-only
+          POSTGRES_DB: marquise_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U marquise -d marquise_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://marquise:test-only@localhost:5432/marquise_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv python install 3.13
+      - run: uv sync --group dev
+      - name: Test screening persistence and conflict handling
+        run: >-
+          uv run pytest
+          packages/marquise-core/tests/integration_tests/infrastructure/supabase/gateways/test_screening_gateway_integration.py
+          -q
