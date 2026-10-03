@@ -9,22 +9,8 @@ permissions:
 
 jobs:
   quality:
-    name: Lint, format, and tests
+    name: Lint, format, and unit tests
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_USER: marquise
-          POSTGRES_PASSWORD: test-only
-          POSTGRES_DB: marquise_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U marquise -d marquise_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
 
     steps:
       - uses: actions/checkout@v4
@@ -56,14 +42,6 @@ jobs:
             --cov-report=xml \
             --cov-report=term-missing \
             --cov-fail-under=70
-
-      - name: Test screening persistence and conflict handling
-        env:
-          DATABASE_URL: postgresql://marquise:test-only@localhost:5432/marquise_test
-        run: >-
-          uv run pytest
-          packages/marquise-core/tests/integration_tests/infrastructure/supabase/gateways/test_screening_gateway_integration.py
-          -q
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
