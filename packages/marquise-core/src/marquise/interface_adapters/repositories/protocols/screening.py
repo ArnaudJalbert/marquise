@@ -114,8 +114,10 @@ class ScreeningGateway(Protocol):
         ticket_url: str | None = None,
         room: str | None = None,
         language: str | None = None,
+        *,
+        fields: frozenset[str] | None = None,
     ) -> dict | None:
-        """Replace all fields of a screening identified by ID.
+        """Replace specified fields of a screening identified by ID.
 
         Args:
             screening_id: The unique identifier of the row to replace.
@@ -126,18 +128,21 @@ class ScreeningGateway(Protocol):
             ticket_url: Replacement ticket URL (optional).
             room: Replacement room name (optional).
             language: Replacement language (optional).
+            fields: Explicitly supplied columns; None replaces all columns,
+                and an empty set reads the current row without writing.
 
         Returns:
-            The updated row as a dict, or None if no matching row exists.
+            The updated row with joined movie and cinema data, or None if missing.
 
         Raises:
-            GatewayError: On data-layer failure, including unique-constraint
-                collisions with another screening.
+            ScreeningExternalIdConflictGatewayError: If the external ID belongs
+                to another screening.
+            GatewayError: If the screening identity collides with another row.
         """
         ...
 
     async def delete(self, screening_id: str) -> None:
-        """Permanently delete a screening by its ID.
+        """Delete a screening and atomically remove its movie if now orphaned.
 
         Args:
             screening_id: The unique identifier of the row to delete.

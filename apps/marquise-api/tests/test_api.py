@@ -22,7 +22,7 @@ from marquise import (
     GetCinemaUseCase,
     GetMovieScreeningsQuery,
     GetMovieUseCase,
-    GetScreeningUseCase,
+    GetScreeningQuery,
     ListCinemasUseCase,
     ListMoviesUseCase,
     MarquiseFactory,
@@ -58,7 +58,7 @@ def factory() -> MagicMock:
         GetMovieScreeningsQuery, instance=True
     )
     fake.search_screenings_query = create_autospec(SearchScreeningsQuery, instance=True)
-    fake.get_screening_use_case = create_autospec(GetScreeningUseCase, instance=True)
+    fake.get_screening_query = create_autospec(GetScreeningQuery, instance=True)
     return fake
 
 
@@ -1312,13 +1312,13 @@ def test_search_screenings_different_pages_use_separate_cache_entries(
 
 def test_get_screening(client: TestClient, factory: MagicMock) -> None:
     """GET /screenings/{id} returns the screening."""
-    factory.get_screening_use_case.execute.return_value = SimpleNamespace(
+    factory.get_screening_query.execute.return_value = GetScreeningQuery.OutputData(
         id="scr-1",
         movie_id="mov-1",
         movie_title="The Odyssey",
         cinema_id="cin-1",
         cinema_name="Cinema One",
-        showtime="2026-06-27T19:30:00+00:00",
+        showtime=datetime.fromisoformat("2026-06-27T19:30:00+00:00"),
         ticket_url=None,
         room=None,
         language=None,
@@ -1328,17 +1328,25 @@ def test_get_screening(client: TestClient, factory: MagicMock) -> None:
 
     assert response.status_code == 200
     body = response.json()
-    assert body["id"] == "scr-1"
-    assert body["movie_title"] == "The Odyssey"
-    assert body["cinema_id"] == "cin-1"
-    factory.get_screening_use_case.execute.assert_awaited_once_with(
-        GetScreeningUseCase.InputData(screening_id="scr-1")
+    assert body == {
+        "id": "scr-1",
+        "movie_id": "mov-1",
+        "movie_title": "The Odyssey",
+        "cinema_id": "cin-1",
+        "cinema_name": "Cinema One",
+        "showtime": "2026-06-27T19:30:00Z",
+        "ticket_url": None,
+        "room": None,
+        "language": None,
+    }
+    factory.get_screening_query.execute.assert_awaited_once_with(
+        GetScreeningQuery.InputData(screening_id="scr-1")
     )
 
 
 def test_get_screening_not_found(client: TestClient, factory: MagicMock) -> None:
     """GET /screenings/{id} returns a 404 envelope for a missing screening."""
-    factory.get_screening_use_case.execute.side_effect = ScreeningNotFoundError(
+    factory.get_screening_query.execute.side_effect = ScreeningNotFoundError(
         "A screening with ID 'missing' was not found"
     )
 

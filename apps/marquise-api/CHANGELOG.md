@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-04
+
+### v0.1.9
+
+- **Use the screening detail query**: `GET /v1/screenings/{screening_id}` executes the reader-backed `GetScreeningQuery` without constructing domain entities. The HTTP response and missing-screening behavior remain unchanged. Requires marquise-core v0.2.22 or later.
+
 ## 2026-09-02
 
 ### v0.1.8

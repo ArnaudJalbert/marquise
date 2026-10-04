@@ -233,8 +233,10 @@ class SupabaseScreeningGateway:
         ticket_url: str | None = None,
         room: str | None = None,
         language: str | None = None,
+        *,
+        fields: frozenset[str] | None = None,
     ) -> dict | None:
-        """Replace all fields of a screening identified by ID.
+        """Replace specified fields of a screening identified by ID.
 
         Args:
             screening_id: The unique identifier of the row to replace.
@@ -245,47 +247,90 @@ class SupabaseScreeningGateway:
             ticket_url: Replacement ticket URL (optional).
             room: Replacement room name (optional).
             language: Replacement language (optional).
+            fields: Columns explicitly supplied by the caller. None replaces
+                all columns; an empty set reads the current row without writing.
 
         Returns:
-            The updated row as a dict, or None if no matching row exists.
+            The updated row with joined parents, or None if no matching row exists.
 
         Raises:
-            GatewayError: On unique-constraint collision with another row.
+            ValueError: If the mask contains an unsupported column.
+            ScreeningExternalIdConflictGatewayError: If the external ID belongs
+                to another screening.
+            GatewayError: If the screening identity collides with another row.
+            asyncpg.PostgresError: On other database failures.
         """
-        async with self._pool.acquire() as conn:
+        values: dict[str, str | datetime | None] = {
+            "movie_id": movie_id,
+            "cinema_id": cinema_id,
+            "showtime": _naive_utc(showtime),
+            "external_id": external_id,
+            "ticket_url": ticket_url,
+            "room": room,
+            "language": language,
+        }
+        if fields is not None and not fields.issubset(values):
+            raise ValueError("Unsupported screening replacement field")
+        if fields == frozenset():
+            return await self.find_by_id(screening_id)
+        # Only fixed, whitelisted identifiers enter SQL; values are always bound.
+        columns = [name for name in values if fields is None or name in fields]
+        assignments = ", ".join(
+            f"{name} = ${index}" for index, name in enumerate(columns, start=2)
+        )
+        async with (
+            self._pool.acquire() as conn,
+            conn.transaction(isolation="read_committed"),
+        ):
             try:
                 row = await conn.fetchrow(
                     f"""
-                    UPDATE {self._table}
-                    SET
-                        movie_id = $2,
-                        cinema_id = $3,
-                        showtime = $4,
-                        external_id = $5,
-                        ticket_url = $6,
-                        room = $7,
-                        language = $8
-                    WHERE id = $1
-                    RETURNING {_COLUMNS}
+                    WITH updated AS (
+                        UPDATE {self._table}
+                        SET {assignments}
+                        WHERE id = $1
+                        RETURNING {_COLUMNS}
+                    )
+                    SELECT {_JOINED_COLUMNS}
+                    FROM updated s
+                    LEFT JOIN "{self._schema}".movies m ON s.movie_id = m.id
+                    LEFT JOIN "{self._schema}".cinemas c ON s.cinema_id = c.id
                     """,
                     screening_id,
-                    movie_id,
-                    cinema_id,
-                    _naive_utc(showtime),
-                    external_id,
-                    ticket_url,
-                    room,
-                    language,
+                    *(values[name] for name in columns),
                 )
+                if row is not None and (
+                    row["movie__id"] is None or row["cinema__id"] is None
+                ):
+                    # UPDATE can wait for a reparenting transaction whose newly
+                    # inserted parent is invisible to the CTE's initial snapshot.
+                    # Keep the updated screening locked and retry the join with
+                    # a fresh snapshot before reporting a missing screening.
+                    row = await conn.fetchrow(
+                        f"""
+                        SELECT {_JOINED_COLUMNS}
+                        FROM {self._table} s
+                        JOIN "{self._schema}".movies m ON s.movie_id = m.id
+                        JOIN "{self._schema}".cinemas c ON s.cinema_id = c.id
+                        WHERE s.id = $1
+                        """,
+                        screening_id,
+                    )
             except asyncpg.exceptions.UniqueViolationError as exc:
+                constraint = exc.as_dict().get("constraint_name")
+                if constraint == "screenings_external_id_key":
+                    raise ScreeningExternalIdConflictGatewayError(
+                        f"external_id={external_id!r} belongs to another screening"
+                    ) from exc
+                if constraint != "screenings_cinema_id_movie_id_showtime_key":
+                    raise
                 raise GatewayError(
-                    f"A screening already exists for cinema '{cinema_id}'"
-                    f", movie '{movie_id}' at {showtime}"
+                    "A screening already exists for the replacement identity"
                 ) from exc
         return dict(row) if row is not None else None
 
     async def delete(self, screening_id: str) -> None:
-        """Permanently delete a screening by its ID.
+        """Delete a screening and atomically remove its movie if now orphaned.
 
         Args:
             screening_id: The unique identifier of the row to delete.
@@ -294,12 +339,33 @@ class SupabaseScreeningGateway:
             GatewayError: If no row has the given ID.
         """
         async with self._pool.acquire() as conn:
-            row = await conn.fetchrow(
-                f"DELETE FROM {self._table} WHERE id = $1 RETURNING id",
-                screening_id,
-            )
-        if row is None:
-            raise GatewayError(f"A screening with ID '{screening_id}' was not found")
+            async with conn.transaction(isolation="read_committed"):
+                row = await conn.fetchrow(
+                    f"DELETE FROM {self._table} WHERE id = $1 RETURNING movie_id",
+                    screening_id,
+                )
+                if row is None:
+                    raise GatewayError(
+                        f"A screening with ID '{screening_id}' was not found"
+                    )
+                movie_id = row["movie_id"]
+                # DELETE locks the screening first, so concurrent reparenting
+                # cannot change which movie is cleaned up. The parent lock
+                # blocks FK KEY SHARE locks from new screenings. Use a separate
+                # statement after acquiring it for a fresh READ COMMITTED view.
+                await conn.fetchrow(
+                    f'SELECT id FROM "{self._schema}".movies WHERE id = $1 FOR UPDATE',
+                    movie_id,
+                )
+                await conn.execute(
+                    f"""
+                    DELETE FROM "{self._schema}".movies m
+                    WHERE m.id = $1 AND NOT EXISTS (
+                        SELECT 1 FROM {self._table} s WHERE s.movie_id = m.id
+                    )
+                    """,
+                    movie_id,
+                )
 
     async def find_by_id(self, screening_id: str) -> dict | None:
         """Find a screening by its ID.
