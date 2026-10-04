@@ -179,19 +179,25 @@ class SupabaseScreeningRepository(ScreeningRepository):
             language=data.get("language"),
         )
 
-    async def replace(self, screening: Screening) -> Screening:
-        """Replace all fields of a screening identified by ID.
+    async def replace(
+        self, screening: Screening, *, fields: frozenset[str] | None = None
+    ) -> Screening:
+        """Replace specified fields of a screening identified by ID.
 
         Args:
             screening: The screening with replacement values.
+            fields: Explicitly supplied columns; None replaces all columns,
+                and an empty set returns the current entity without writing.
 
         Returns:
-            The replaced screening entity.
+            The persisted screening entity, including its current parents.
 
         Raises:
             ScreeningNotFoundError: If no screening with the given ID exists.
             ScreeningAlreadyExistsError: If the replacement identity
                 collides with another screening.
+            ScreeningExternalIdConflictError: If the external ID belongs to
+                another screening.
         """
         try:
             data = await self._gateway.replace(
@@ -203,26 +209,20 @@ class SupabaseScreeningRepository(ScreeningRepository):
                 ticket_url=screening.ticket_url,
                 room=screening.room,
                 language=screening.language,
+                fields=fields,
             )
+        except ScreeningExternalIdConflictGatewayError as exc:
+            raise ScreeningExternalIdConflictError(str(exc)) from exc
         except GatewayError as exc:
             raise ScreeningAlreadyExistsError(str(exc)) from exc
         if data is None:
             raise ScreeningNotFoundError(
                 f"A screening with ID '{screening.id}' was not found"
             )
-        return Screening(
-            id=ScreeningId(value=data["id"]),
-            movie=screening.movie,
-            cinema=screening.cinema,
-            showtime=Showtime(value=_parse_datetime(data["showtime"])),
-            external_id=data.get("external_id"),
-            ticket_url=data.get("ticket_url"),
-            room=data.get("room"),
-            language=data.get("language"),
-        )
+        return self._to_entity(data)
 
     async def delete(self, screening_id: ScreeningId) -> None:
-        """Permanently delete a screening by its unique identifier.
+        """Delete a screening and atomically remove its movie if now orphaned.
 
         Args:
             screening_id: The ID of the screening to delete.

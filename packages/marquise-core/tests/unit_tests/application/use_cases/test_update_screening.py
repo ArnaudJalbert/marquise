@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+from dataclasses import replace
 from datetime import UTC, datetime
 from unittest.mock import create_autospec
 
@@ -186,17 +188,32 @@ async def test_clears_optional_field_when_explicitly_set_to_none(
         cinema=existing.cinema,
         showtime=existing.showtime,
         ticket_url=None,
-        room=existing.room,
-        language=existing.language,
-        external_id=existing.external_id,
+        room=None,
+        language=None,
+        external_id=None,
     )
 
-    await use_case.execute(
-        UpdateScreeningUseCase.InputData(screening_id="scr-1", ticket_url=None)
+    result = await use_case.execute(
+        UpdateScreeningUseCase.InputData(
+            screening_id="scr-1",
+            ticket_url=None,
+            room=None,
+            language=None,
+            external_id=None,
+        )
     )
 
     submitted = screening_repository.replace.await_args.args[0]
     assert submitted.ticket_url is None
+    assert submitted.room is None
+    assert submitted.language is None
+    assert submitted.external_id is None
+    assert screening_repository.replace.await_args.kwargs["fields"] == frozenset(
+        {"ticket_url", "room", "language", "external_id"}
+    )
+    assert result.ticket_url is None
+    assert result.room is None
+    assert result.language is None
 
 
 @pytest.mark.asyncio
@@ -296,6 +313,105 @@ async def test_raises_when_update_conflicts(
                 showtime=NEW_SHOWTIME,
             )
         )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("first_field", ["room", "movie_id"])
+async def test_concurrent_partial_updates_preserve_omitted_fields(
+    use_case: UpdateScreeningUseCase,
+    screening_repository: ScreeningRepository,
+    existing: Screening,
+    replacement_movie: Movie,
+    first_field: str,
+) -> None:
+    """Requests reading the same snapshot do not overwrite each other's changes."""
+    snapshots_read = asyncio.Event()
+    first_written = asyncio.Event()
+    reads = 0
+    stored = existing
+
+    async def read_snapshot(screening_id: ScreeningId) -> Screening:
+        nonlocal reads
+        reads += 1
+        if reads == 2:
+            snapshots_read.set()
+        await snapshots_read.wait()
+        return existing
+
+    async def write_fields(
+        screening: Screening, *, fields: frozenset[str] | None = None
+    ) -> Screening:
+        nonlocal stored
+        if screening.language == "V.O.":
+            await first_written.wait()
+        if fields is None:
+            stored = screening
+        else:
+            names = {"movie_id": "movie", "cinema_id": "cinema"}
+            stored = replace(
+                stored,
+                **{
+                    names.get(name, name): getattr(screening, names.get(name, name))
+                    for name in fields
+                },
+            )
+        first_written.set()
+        return stored
+
+    screening_repository.find_by_id.side_effect = read_snapshot
+    screening_repository.replace.side_effect = write_fields
+    first_request = (
+        UpdateScreeningUseCase.InputData(screening_id="scr-1", room=None)
+        if first_field == "room"
+        else UpdateScreeningUseCase.InputData(screening_id="scr-1", movie_id="mov-2")
+    )
+
+    _, second_result = await asyncio.wait_for(
+        asyncio.gather(
+            use_case.execute(first_request),
+            use_case.execute(
+                UpdateScreeningUseCase.InputData(screening_id="scr-1", language="V.O.")
+            ),
+        ),
+        timeout=2,
+    )
+
+    assert stored.language == "V.O."
+    if first_field == "room":
+        assert stored.room is None
+        assert second_result.room is None
+    else:
+        assert stored.movie == replacement_movie
+        assert second_result.movie_id == "mov-2"
+        assert second_result.movie_title == "Dune"
+    assert {
+        call.kwargs["fields"] for call in screening_repository.replace.await_args_list
+    } == {frozenset({first_field}), frozenset({"language"})}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("request_fields", "expected"),
+    [
+        ({}, frozenset()),
+        ({"ticket_url": None}, frozenset({"ticket_url"})),
+        (
+            {"movie_id": "mov-1", "cinema_id": "cin-1"},
+            frozenset({"movie_id", "cinema_id"}),
+        ),
+    ],
+)
+async def test_update_masks_explicit_fields_even_when_unchanged(
+    use_case: UpdateScreeningUseCase,
+    screening_repository: ScreeningRepository,
+    request_fields: dict,
+    expected: frozenset[str],
+) -> None:
+    """Omission, explicit clears, and explicitly unchanged IDs retain their intent."""
+    await use_case.execute(
+        UpdateScreeningUseCase.InputData(screening_id="scr-1", **request_fields)
+    )
+    assert screening_repository.replace.await_args.kwargs == {"fields": expected}
 
 
 def test_input_rejects_empty_screening_id() -> None:

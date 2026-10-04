@@ -41,7 +41,7 @@ EXPECTED_PUBLIC_SURFACE: set[str] = {
     "GetCinemaUseCase",
     "GetMovieScreeningsQuery",
     "GetMovieUseCase",
-    "GetScreeningUseCase",
+    "GetScreeningQuery",
     "ListCinemaSourceAssignmentsQuery",
     "create_factory",
     "create_factory_session",

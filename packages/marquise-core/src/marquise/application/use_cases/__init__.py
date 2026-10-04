@@ -21,7 +21,6 @@ from marquise.application.use_cases.delete_screening import DeleteScreeningUseCa
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
 from marquise.application.use_cases.get_cinema import GetCinemaUseCase
 from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
-from marquise.application.use_cases.get_screening import GetScreeningUseCase
 from marquise.application.use_cases.import_screenings import ImportScreeningsCommand
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.application.use_cases.list_registry_sources import (
@@ -45,7 +44,6 @@ __all__ = [
     "DeleteSourceUseCase",
     "GetCinemaUseCase",
     "GetCinemaSourceUseCase",
-    "GetScreeningUseCase",
     "ImportedScreeningData",
     "ImportScreeningsCommand",
     "InviteAccountUseCase",

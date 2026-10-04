@@ -163,7 +163,20 @@ class UpdateScreeningUseCase:
                 ticket_url=keep(existing.ticket_url, request.ticket_url),
                 room=keep(existing.room, request.room),
                 language=keep(existing.language, request.language),
-            )
+            ),
+            fields=frozenset(
+                name
+                for name, value in (
+                    ("movie_id", request.movie_id),
+                    ("cinema_id", request.cinema_id),
+                    ("showtime", request.showtime),
+                    ("external_id", request.external_id),
+                    ("ticket_url", request.ticket_url),
+                    ("room", request.room),
+                    ("language", request.language),
+                )
+                if is_provided(value)
+            ),
         )
 
         return self.OutputData(

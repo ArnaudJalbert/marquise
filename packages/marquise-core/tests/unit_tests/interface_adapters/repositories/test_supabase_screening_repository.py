@@ -146,7 +146,7 @@ async def test_save(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("operation", ["save", "update"])
+@pytest.mark.parametrize("operation", ["save", "update", "replace"])
 async def test_translates_external_id_conflict(
     sample_screening: Screening,
     operation: str,
@@ -445,10 +445,12 @@ async def test_replace(
     sample_screening: Screening,
     sample_cinema: Cinema,
     sample_movie: Movie,
+    gateway_dict: dict,
 ) -> None:
     """Test replace delegates to the gateway and maps the result."""
     mock_gateway = create_autospec(ScreeningGateway, instance=True)
     mock_gateway.replace.return_value = {
+        **gateway_dict,
         "id": "scr-123",
         "movie_id": "mov-456",
         "cinema_id": "cin-789",
@@ -485,6 +487,7 @@ async def test_replace(
         ticket_url="https://tickets.example/1",
         room="Salle 4",
         language="V.O.",
+        fields=None,
     )
 
 
@@ -510,6 +513,38 @@ async def test_replace_raises_already_exists_on_gateway_error(
     repo = SupabaseScreeningRepository(gateway=mock_gateway)
     with pytest.raises(ScreeningAlreadyExistsError, match="already exists"):
         await repo.replace(sample_screening)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("fields", [frozenset(), frozenset({"room"})])
+async def test_replace_preserves_mask_and_maps_current_parents(
+    sample_screening: Screening, gateway_dict: dict, fields: frozenset[str]
+) -> None:
+    """A partial write returns actual stored parents, not the request's snapshot."""
+    mock_gateway = create_autospec(ScreeningGateway, instance=True)
+    mock_gateway.replace.return_value = {
+        **gateway_dict,
+        "movie_id": "mov-concurrent",
+        "movie__id": "mov-concurrent",
+        "movie__title": "Concurrent Movie",
+        "movie__release_year": 2026,
+        "cinema_id": "cin-concurrent",
+        "cinema__id": "cin-concurrent",
+        "cinema__name": "Concurrent Cinema",
+        "room": None,
+    }
+    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+
+    result = await repo.replace(sample_screening, fields=fields)
+
+    assert str(result.movie.id) == "mov-concurrent"
+    assert result.movie.title == "Concurrent Movie"
+    assert result.movie.release_year == 2026
+    assert str(result.cinema.id) == "cin-concurrent"
+    assert result.cinema.name == "Concurrent Cinema"
+    assert result.room is None
+    assert mock_gateway.replace.await_args.kwargs["fields"] == fields
+    mock_gateway.replace.assert_awaited_once()
 
 
 @pytest.mark.asyncio

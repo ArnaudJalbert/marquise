@@ -15,6 +15,7 @@ from marquise.application.queries.get_cinema_screenings import (
 from marquise.application.queries.get_movie_screenings import (
     GetMovieScreeningsQuery,
 )
+from marquise.application.queries.get_screening import GetScreeningQuery
 from marquise.application.queries.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
@@ -34,7 +35,6 @@ from marquise.application.use_cases.get_cinema import GetCinemaUseCase
 from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
 from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
 from marquise.application.use_cases.get_movie import GetMovieUseCase
-from marquise.application.use_cases.get_screening import GetScreeningUseCase
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.application.use_cases.list_movies import ListMoviesUseCase
 from marquise.application.use_cases.list_registry_sources import (
@@ -264,7 +264,7 @@ async def test_list_assignments_query_returns_configured_query() -> None:
         "get_movie_use_case",
         "get_movie_screenings_query",
         "search_screenings_query",
-        "get_screening_use_case",
+        "get_screening_query",
     ],
 )
 def test_configured_use_cases_require_initialize(property_name: str) -> None:
@@ -299,7 +299,7 @@ def test_configured_use_cases_require_initialize(property_name: str) -> None:
         ("get_movie_use_case", GetMovieUseCase),
         ("get_movie_screenings_query", GetMovieScreeningsQuery),
         ("search_screenings_query", SearchScreeningsQuery),
-        ("get_screening_use_case", GetScreeningUseCase),
+        ("get_screening_query", GetScreeningQuery),
     ],
 )
 async def test_factory_returns_configured_use_cases(
