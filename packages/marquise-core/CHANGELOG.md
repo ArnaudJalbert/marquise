@@ -2,6 +2,12 @@
 
 Before 2026-07-15 this package was published as `marquise`.
 
+## 2026-10-05
+
+### v0.2.23
+
+- Retry CinemaCinema schedule requests on HTTP 502, 503, and 504 up to three attempts, with short delays and a 30-second socket timeout. Keep exhausted retries and other errors fatal. Closes #282.
+
 ## 2026-10-04
 
 ### v0.2.22

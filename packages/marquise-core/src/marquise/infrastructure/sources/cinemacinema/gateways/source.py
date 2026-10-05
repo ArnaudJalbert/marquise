@@ -11,6 +11,7 @@ import html
 import json
 import re
 import ssl
+import time
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
@@ -86,6 +87,9 @@ def _parse_sveltekit_data(raw: str) -> dict:
 def _fetch_schedule(date_str: str | None = None) -> dict:
     """Fetch and parse the schedule from cinemacinema.ca.
 
+    Retry HTTP 502/503/504 up to three attempts, with 0.5s and 1s delays.
+    Each attempt has a 30-second socket timeout; exhausted retries propagate.
+
     Args:
         date_str: An optional ``YYYY-MM-DD`` date string.  When provided,
             only showtimes for that date are returned.
@@ -97,9 +101,18 @@ def _fetch_schedule(date_str: str | None = None) -> dict:
     if date_str:
         url = f"{SCHEDULE_URL}?date={date_str}"
     req = urllib.request.Request(url)
-    with urllib.request.urlopen(req, context=_SSL_CONTEXT) as resp:
-        raw = resp.read().decode()
-    return _parse_sveltekit_data(raw)
+    attempt = 0
+    while True:
+        try:
+            with urllib.request.urlopen(req, context=_SSL_CONTEXT, timeout=30) as resp:
+                raw = resp.read().decode()
+            return _parse_sveltekit_data(raw)
+        except urllib.error.HTTPError as exc:
+            if exc.code not in {502, 503, 504} or attempt == 2:
+                raise
+            exc.close()
+            time.sleep(0.5 * (attempt + 1))
+            attempt += 1
 
 
 def _parse_time(time_str: str) -> str:
