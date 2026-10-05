@@ -52,7 +52,7 @@ class ScreeningRepository(ABC):
 
     @abstractmethod
     async def replace(
-        self, screening: Screening, *, fields: frozenset[str] | None = None
+        self, screening: Screening, *, fields: frozenset[str]
     ) -> Screening:
         """Replace specified fields of a screening identified by ID.
 
@@ -60,8 +60,8 @@ class ScreeningRepository(ABC):
             screening: The screening with replacement values. The ID must
                 match an existing row.
             fields: Explicitly supplied column names; omitted columns must be
-                preserved atomically. None replaces all columns for compatibility;
-                an empty set returns the current entity without writing.
+                preserved atomically. An empty set returns the current entity
+                without writing.
 
         Returns:
             The replaced screening entity.

@@ -96,6 +96,15 @@ def use_case(
 
 
 @pytest.mark.asyncio
+async def test_replace_requires_explicit_field_mask(
+    screening_repository: ScreeningRepository, existing: Screening
+) -> None:
+    """Repository callers must explicitly choose which columns to replace."""
+    with pytest.raises(TypeError, match="fields"):
+        await screening_repository.replace(existing)
+
+
+@pytest.mark.asyncio
 async def test_updates_only_provided_metadata_fields(
     use_case: UpdateScreeningUseCase,
     screening_repository: ScreeningRepository,
@@ -339,22 +348,19 @@ async def test_concurrent_partial_updates_preserve_omitted_fields(
         return existing
 
     async def write_fields(
-        screening: Screening, *, fields: frozenset[str] | None = None
+        screening: Screening, *, fields: frozenset[str]
     ) -> Screening:
         nonlocal stored
         if screening.language == "V.O.":
             await first_written.wait()
-        if fields is None:
-            stored = screening
-        else:
-            names = {"movie_id": "movie", "cinema_id": "cinema"}
-            stored = replace(
-                stored,
-                **{
-                    names.get(name, name): getattr(screening, names.get(name, name))
-                    for name in fields
-                },
-            )
+        names = {"movie_id": "movie", "cinema_id": "cinema"}
+        stored = replace(
+            stored,
+            **{
+                names.get(name, name): getattr(screening, names.get(name, name))
+                for name in fields
+            },
+        )
         first_written.set()
         return stored
 

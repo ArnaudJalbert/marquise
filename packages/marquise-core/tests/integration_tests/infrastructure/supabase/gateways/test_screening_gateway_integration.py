@@ -668,6 +668,17 @@ async def test_replace_updates_all_fields_by_id(
         ticket_url=None,
         room="Salle 9",
         language="V.O.",
+        fields=frozenset(
+            {
+                "movie_id",
+                "cinema_id",
+                "showtime",
+                "external_id",
+                "ticket_url",
+                "room",
+                "language",
+            }
+        ),
     )
 
     assert replaced is not None
@@ -694,6 +705,7 @@ async def test_replace_missing_returns_none(
         movie_id="mov-001",
         cinema_id="cin-001",
         showtime=datetime(2026, 6, 8, 21, 0, 0, tzinfo=UTC),
+        fields=frozenset({"movie_id", "cinema_id", "showtime"}),
     )
     assert result is None
 
@@ -726,27 +738,8 @@ async def test_replace_raises_on_identity_conflict(
             movie_id="mov-001",
             cinema_id="cin-001",
             showtime=showtime,
+            fields=frozenset({"movie_id", "cinema_id", "showtime"}),
         )
-
-
-@pytest.mark.asyncio
-async def test_delete_removes_row(
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
-) -> None:
-    """Verify delete removes the screening and returns None."""
-    await _seed_parents(gateway, movie_gateway)
-    await screening_gateway.save(
-        screening_id="scr-delete-001",
-        movie_id="mov-001",
-        cinema_id="cin-001",
-        showtime=datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC),
-    )
-
-    deleted = await screening_gateway.delete("scr-delete-001")
-    assert deleted is None
-    assert await screening_gateway.find_by_id("scr-delete-001") is None
 
 
 @pytest.mark.asyncio

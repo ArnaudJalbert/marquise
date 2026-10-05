@@ -162,7 +162,10 @@ async def test_translates_external_id_conflict(
     with pytest.raises(
         ScreeningExternalIdConflictError, match="external_id='486899'"
     ) as raised:
-        await getattr(repo, operation)(sample_screening)
+        if operation == "replace":
+            await repo.replace(sample_screening, fields=frozenset({"external_id"}))
+        else:
+            await getattr(repo, operation)(sample_screening)
 
     assert raised.value.__cause__ is error
     getattr(mock_gateway, operation).assert_awaited_once()
@@ -471,7 +474,18 @@ async def test_replace(
     )
 
     repo = SupabaseScreeningRepository(gateway=mock_gateway)
-    result = await repo.replace(updated)
+    fields = frozenset(
+        {
+            "movie_id",
+            "cinema_id",
+            "showtime",
+            "external_id",
+            "ticket_url",
+            "room",
+            "language",
+        }
+    )
+    result = await repo.replace(updated, fields=fields)
 
     assert result.id == ScreeningId(value="scr-123")
     assert result.movie == sample_movie
@@ -487,7 +501,7 @@ async def test_replace(
         ticket_url="https://tickets.example/1",
         room="Salle 4",
         language="V.O.",
-        fields=None,
+        fields=fields,
     )
 
 
@@ -499,7 +513,7 @@ async def test_replace_raises_not_found(sample_screening: Screening) -> None:
 
     repo = SupabaseScreeningRepository(gateway=mock_gateway)
     with pytest.raises(ScreeningNotFoundError, match="scr-123"):
-        await repo.replace(sample_screening)
+        await repo.replace(sample_screening, fields=frozenset({"room"}))
 
 
 @pytest.mark.asyncio
@@ -512,7 +526,9 @@ async def test_replace_raises_already_exists_on_gateway_error(
 
     repo = SupabaseScreeningRepository(gateway=mock_gateway)
     with pytest.raises(ScreeningAlreadyExistsError, match="already exists"):
-        await repo.replace(sample_screening)
+        await repo.replace(
+            sample_screening, fields=frozenset({"movie_id", "cinema_id", "showtime"})
+        )
 
 
 @pytest.mark.asyncio

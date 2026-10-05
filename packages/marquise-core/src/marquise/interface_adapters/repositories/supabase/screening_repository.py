@@ -180,14 +180,14 @@ class SupabaseScreeningRepository(ScreeningRepository):
         )
 
     async def replace(
-        self, screening: Screening, *, fields: frozenset[str] | None = None
+        self, screening: Screening, *, fields: frozenset[str]
     ) -> Screening:
         """Replace specified fields of a screening identified by ID.
 
         Args:
             screening: The screening with replacement values.
-            fields: Explicitly supplied columns; None replaces all columns,
-                and an empty set returns the current entity without writing.
+            fields: Explicitly supplied columns; an empty set returns the current entity
+                without writing.
 
         Returns:
             The persisted screening entity, including its current parents.

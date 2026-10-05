@@ -67,19 +67,7 @@ class CreateScreeningUseCase:
 
     @dataclass(frozen=True, slots=True)
     class OutputData:
-        """Output data returned after successful screening creation.
-
-        Attributes:
-            id: The generated unique ID of the screening.
-            movie_id: The screened movie's ID.
-            movie_title: The screened movie's title.
-            cinema_id: The hosting cinema's ID.
-            cinema_name: The hosting cinema's display name.
-            showtime: The screening time.
-            ticket_url: Link to purchase tickets (optional).
-            room: Room or auditorium name (optional).
-            language: Language or subtitle version (optional).
-        """
+        """Screening details and parent display names returned after creation."""
 
         id: str
         movie_id: str

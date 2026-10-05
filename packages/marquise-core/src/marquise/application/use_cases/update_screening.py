@@ -85,19 +85,7 @@ class UpdateScreeningUseCase:
 
     @dataclass(frozen=True, slots=True)
     class OutputData:
-        """Output data returned after a successful update.
-
-        Attributes:
-            id: The unique identifier of the updated screening.
-            movie_id: The screened movie's ID.
-            movie_title: The screened movie's title.
-            cinema_id: The hosting cinema's ID.
-            cinema_name: The hosting cinema's display name.
-            showtime: The screening time.
-            ticket_url: Link to purchase tickets (optional).
-            room: Room or auditorium name (optional).
-            language: Language or subtitle version (optional).
-        """
+        """Persisted screening details and parent display names after an update."""
 
         id: str
         movie_id: str
