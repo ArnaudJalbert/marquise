@@ -116,6 +116,8 @@ async def test_partial_replace_sees_parent_created_while_update_waits(
                         if replacement is not None and replacement.done():
                             await replacement
                             pytest.fail("Replacement did not wait for the row lock")
+                        # Refresh cached activity query text before the next poll.
+                        await conn.execute("SELECT pg_stat_clear_snapshot()")
                         await asyncio.sleep(0.01)
 
                 await asyncio.wait_for(wait_for_update_lock(), timeout=5)
@@ -312,6 +314,8 @@ async def test_delete_waits_for_inflight_fk_insert_and_preserves_it(
                         if deletion is not None and deletion.done():
                             await deletion
                             pytest.fail("Deletion did not wait for the parent lock")
+                        # Refresh cached activity query text before the next poll.
+                        await conn.execute("SELECT pg_stat_clear_snapshot()")
                         await asyncio.sleep(0.01)
 
                 await asyncio.wait_for(wait_for_cleanup_lock(), timeout=5)
