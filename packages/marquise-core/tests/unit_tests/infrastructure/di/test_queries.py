@@ -30,8 +30,8 @@ def test_screening_query_builders_use_supplied_pool_and_schema() -> None:
     assert isinstance(movie, GetMovieScreeningsQuery)
     assert isinstance(search, SearchScreeningsQuery)
     for query in (cinema, movie, search):
-        assert query.screening_reader._pool is pool
-        assert query.screening_reader._schema == "test_schema"
+        assert query.screening_reader._gateway._pool is pool
+        assert query.screening_reader._gateway._schema == "test_schema"
     assert cinema.cinema_repository._gateway._table == '"test_schema".cinemas'
     assert movie.movie_repository._gateway._table == '"test_schema".movies'
     pool.acquire.assert_not_called()

@@ -21,6 +21,7 @@ from marquise.domain.value_objects import (
     ScreeningId,
     Showtime,
 )
+from marquise.interface_adapters.repositories.protocols.base import GatewayError
 from marquise.interface_adapters.repositories.protocols.screening import (
     ScreeningExternalIdConflictGatewayError,
     ScreeningGateway,
@@ -177,6 +178,62 @@ class SupabaseScreeningRepository(ScreeningRepository):
             room=data.get("room"),
             language=data.get("language"),
         )
+
+    async def replace(
+        self, screening: Screening, *, fields: frozenset[str]
+    ) -> Screening:
+        """Replace specified fields of a screening identified by ID.
+
+        Args:
+            screening: The screening with replacement values.
+            fields: Explicitly supplied columns; an empty set returns the current entity
+                without writing.
+
+        Returns:
+            The persisted screening entity, including its current parents.
+
+        Raises:
+            ScreeningNotFoundError: If no screening with the given ID exists.
+            ScreeningAlreadyExistsError: If the replacement identity
+                collides with another screening.
+            ScreeningExternalIdConflictError: If the external ID belongs to
+                another screening.
+        """
+        try:
+            data = await self._gateway.replace(
+                screening_id=str(screening.id),
+                movie_id=str(screening.movie.id),
+                cinema_id=str(screening.cinema.id),
+                showtime=screening.showtime.value,
+                external_id=screening.external_id,
+                ticket_url=screening.ticket_url,
+                room=screening.room,
+                language=screening.language,
+                fields=fields,
+            )
+        except ScreeningExternalIdConflictGatewayError as exc:
+            raise ScreeningExternalIdConflictError(str(exc)) from exc
+        except GatewayError as exc:
+            raise ScreeningAlreadyExistsError(str(exc)) from exc
+        if data is None:
+            raise ScreeningNotFoundError(
+                f"A screening with ID '{screening.id}' was not found"
+            )
+        return self._to_entity(data)
+
+    async def delete(self, screening_id: ScreeningId) -> None:
+        """Delete a screening and atomically remove its movie if now orphaned.
+
+        Args:
+            screening_id: The ID of the screening to delete.
+
+        Raises:
+            ScreeningNotFoundError: If no screening with the given ID exists.
+        """
+        try:
+            await self._gateway.delete(screening_id=str(screening_id))
+        except GatewayError as exc:
+            raise ScreeningNotFoundError(str(exc)) from exc
 
     async def find_by_id(self, screening_id: ScreeningId) -> Screening:
         """Retrieve a screening by ID.

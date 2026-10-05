@@ -2,6 +2,15 @@
 
 Before 2026-07-15 this package was published as `marquise`.
 
+## 2026-10-04
+
+### v0.2.22
+
+- **Add screening mutation use cases**: `CreateScreeningUseCase`, `UpdateScreeningUseCase`, and `DeleteScreeningUseCase` are exposed through `MarquiseFactory` and the public facade. Update supports partial or full field changes via omitted vs explicit values. Closes #248.
+- **Preserve concurrent partial updates**: write only explicitly supplied fields, return the persisted screening and parents, and distinguish external-ID collisions from screening-identity collisions.
+- **Clean up orphan movies**: delete a screening and conditionally remove its now-unreferenced movie in one transaction, locking the movie against concurrent screening creation.
+- **Use a screening detail query**: replace `GetScreeningUseCase` and `get_screening_use_case` with reader-backed `GetScreeningQuery` and `get_screening_query`; project only the fields needed for the response.
+
 ## 2026-10-03
 
 ### v0.2.21

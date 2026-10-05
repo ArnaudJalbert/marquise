@@ -104,6 +104,54 @@ class ScreeningGateway(Protocol):
         """
         ...
 
+    async def replace(
+        self,
+        screening_id: str,
+        movie_id: str,
+        cinema_id: str,
+        showtime: datetime,
+        external_id: str | None = None,
+        ticket_url: str | None = None,
+        room: str | None = None,
+        language: str | None = None,
+        *,
+        fields: frozenset[str],
+    ) -> dict | None:
+        """Replace specified fields of a screening identified by ID.
+
+        Args:
+            screening_id: The unique identifier of the row to replace.
+            movie_id: Replacement movie ID.
+            cinema_id: Replacement cinema ID.
+            showtime: Replacement screening time.
+            external_id: Replacement source-native key (optional).
+            ticket_url: Replacement ticket URL (optional).
+            room: Replacement room name (optional).
+            language: Replacement language (optional).
+            fields: Explicitly supplied columns; an empty set reads the current row
+                without writing.
+
+        Returns:
+            The updated row with joined movie and cinema data, or None if missing.
+
+        Raises:
+            ScreeningExternalIdConflictGatewayError: If the external ID belongs
+                to another screening.
+            GatewayError: If the screening identity collides with another row.
+        """
+        ...
+
+    async def delete(self, screening_id: str) -> None:
+        """Delete a screening and atomically remove its movie if now orphaned.
+
+        Args:
+            screening_id: The unique identifier of the row to delete.
+
+        Raises:
+            GatewayError: If no row has the given ID.
+        """
+        ...
+
     async def find_by_id(self, screening_id: str) -> dict | None:
         """Find a screening by its ID.
 
