@@ -293,7 +293,7 @@ Component tests use **Vitest** + **Testing Library**. No live HTTP in unit tests
 
 Pull requests to `main` run the repository workflows:
 
-- `quality`: `ruff format --check`, `ruff check`, `ty check packages/marquise-core/src`, and core unit tests with the 70% coverage gate. Import-boundary validation remains a local architectural check, not a CI step.
+- `quality`: `ruff format --check`, `ruff check`, `ty check packages/marquise-core/src`, core unit tests with the 70% coverage gate, and the API HTTP test suite. Import-boundary validation remains a local architectural check, not a CI step.
 - `release-validation`: release and package checks.
 
 Integration tests (`packages/marquise-core/tests/integration_tests/`) run on a nightly schedule and via manual dispatch, after verifying `DATABASE_URL`, `SUPABASE_URL`, and `SUPABASE_PUBLISHABLE_KEY`.
