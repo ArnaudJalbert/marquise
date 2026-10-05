@@ -639,7 +639,7 @@ def test_cache_failure_after_commit_keeps_success_and_sanitizes_log(
     )
     assert failure.method == method
     assert failure.path == (
-        "/v1/screenings" if method == "POST" else "/v1/screenings/{screening_id}"
+        "/screenings" if method == "POST" else "/screenings/{screening_id}"
     )
     logs = "\n".join(JsonFormatter().format(record) for record in caplog.records)
     assert "Public response cache invalidation failed" in logs
