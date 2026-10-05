@@ -234,7 +234,7 @@ class SupabaseScreeningGateway:
         room: str | None = None,
         language: str | None = None,
         *,
-        fields: frozenset[str] | None = None,
+        fields: frozenset[str],
     ) -> dict | None:
         """Replace specified fields of a screening identified by ID.
 
@@ -247,8 +247,8 @@ class SupabaseScreeningGateway:
             ticket_url: Replacement ticket URL (optional).
             room: Replacement room name (optional).
             language: Replacement language (optional).
-            fields: Columns explicitly supplied by the caller. None replaces
-                all columns; an empty set reads the current row without writing.
+            fields: Columns explicitly supplied by the caller; an empty set
+                reads the current row without writing.
 
         Returns:
             The updated row with joined parents, or None if no matching row exists.
@@ -269,12 +269,12 @@ class SupabaseScreeningGateway:
             "room": room,
             "language": language,
         }
-        if fields is not None and not fields.issubset(values):
+        if not fields.issubset(values):
             raise ValueError("Unsupported screening replacement field")
         if fields == frozenset():
             return await self.find_by_id(screening_id)
         # Only fixed, whitelisted identifiers enter SQL; values are always bound.
-        columns = [name for name in values if fields is None or name in fields]
+        columns = [name for name in values if name in fields]
         assignments = ", ".join(
             f"{name} = ${index}" for index, name in enumerate(columns, start=2)
         )

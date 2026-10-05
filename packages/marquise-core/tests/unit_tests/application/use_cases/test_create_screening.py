@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from dataclasses import replace
 from datetime import UTC, datetime
 from unittest.mock import create_autospec
 
@@ -91,29 +91,16 @@ def use_case(
 
 
 @pytest.fixture
-def create_input() -> Callable[..., CreateScreeningUseCase.InputData]:
-    """Build create input data with optional field overrides."""
-
-    def _create_input(
-        movie_id: str = "mov-1",
-        cinema_id: str = "cin-1",
-        showtime: datetime = SHOWTIME,
-        ticket_url: str | None = "https://tickets.example/1",
-        room: str | None = "Salle 4",
-        language: str | None = "V.O.",
-        external_id: str | None = None,
-    ) -> CreateScreeningUseCase.InputData:
-        return CreateScreeningUseCase.InputData(
-            movie_id=movie_id,
-            cinema_id=cinema_id,
-            showtime=showtime,
-            ticket_url=ticket_url,
-            room=room,
-            language=language,
-            external_id=external_id,
-        )
-
-    return _create_input
+def create_input() -> CreateScreeningUseCase.InputData:
+    """Provide valid create input data for execution and validation tests."""
+    return CreateScreeningUseCase.InputData(
+        movie_id="mov-1",
+        cinema_id="cin-1",
+        showtime=SHOWTIME,
+        ticket_url="https://tickets.example/1",
+        room="Salle 4",
+        language="V.O.",
+    )
 
 
 @pytest.mark.asyncio
@@ -122,10 +109,10 @@ async def test_creates_screening_and_returns_output(
     screening_repository: ScreeningRepository,
     movie_repository: MovieRepository,
     cinema_repository: CinemaRepository,
-    create_input: Callable[..., CreateScreeningUseCase.InputData],
+    create_input: CreateScreeningUseCase.InputData,
 ) -> None:
     """A valid create looks up parents, saves, and returns output data."""
-    result = await use_case.execute(create_input())
+    result = await use_case.execute(create_input)
 
     assert result.id == "scr-1"
     assert result.movie_id == "mov-1"
@@ -151,13 +138,13 @@ async def test_raises_when_movie_missing(
     use_case: CreateScreeningUseCase,
     screening_repository: ScreeningRepository,
     movie_repository: MovieRepository,
-    create_input: Callable[..., CreateScreeningUseCase.InputData],
+    create_input: CreateScreeningUseCase.InputData,
 ) -> None:
     """Unknown movie IDs are rejected before save."""
     movie_repository.find_by_id.return_value = None
 
     with pytest.raises(MovieNotFoundError, match="mov-1"):
-        await use_case.execute(create_input())
+        await use_case.execute(create_input)
 
     screening_repository.save.assert_not_awaited()
 
@@ -167,13 +154,13 @@ async def test_raises_when_cinema_missing(
     use_case: CreateScreeningUseCase,
     screening_repository: ScreeningRepository,
     cinema_repository: CinemaRepository,
-    create_input: Callable[..., CreateScreeningUseCase.InputData],
+    create_input: CreateScreeningUseCase.InputData,
 ) -> None:
     """Unknown cinema IDs are rejected before save."""
     cinema_repository.find_by_id.return_value = None
 
     with pytest.raises(CinemaNotFoundError, match="cin-1"):
-        await use_case.execute(create_input())
+        await use_case.execute(create_input)
 
     screening_repository.save.assert_not_awaited()
 
@@ -182,7 +169,7 @@ async def test_raises_when_cinema_missing(
 async def test_raises_when_screening_already_exists(
     use_case: CreateScreeningUseCase,
     screening_repository: ScreeningRepository,
-    create_input: Callable[..., CreateScreeningUseCase.InputData],
+    create_input: CreateScreeningUseCase.InputData,
 ) -> None:
     """A duplicate screening surfaces ScreeningAlreadyExistsError."""
     screening_repository.save.side_effect = ScreeningAlreadyExistsError(
@@ -190,36 +177,36 @@ async def test_raises_when_screening_already_exists(
     )
 
     with pytest.raises(ScreeningAlreadyExistsError, match="already exists"):
-        await use_case.execute(create_input())
+        await use_case.execute(create_input)
 
 
 def test_input_rejects_empty_ids(
-    create_input: Callable[..., CreateScreeningUseCase.InputData],
+    create_input: CreateScreeningUseCase.InputData,
 ) -> None:
     """Empty movie_id or cinema_id is rejected."""
     with pytest.raises(ValueError, match="movie_id must not be empty"):
-        create_input(movie_id="  ")
+        replace(create_input, movie_id="  ")
     with pytest.raises(ValueError, match="cinema_id must not be empty"):
-        create_input(cinema_id="")
+        replace(create_input, cinema_id="")
 
 
 def test_input_rejects_naive_showtime(
-    create_input: Callable[..., CreateScreeningUseCase.InputData],
+    create_input: CreateScreeningUseCase.InputData,
 ) -> None:
     """Naive showtimes are rejected at the use-case boundary."""
     with pytest.raises(ValueError, match="showtime must be timezone-aware"):
-        create_input(showtime=datetime(2026, 6, 27, 19, 30))
+        replace(create_input, showtime=datetime(2026, 6, 27, 19, 30))
 
 
 def test_input_rejects_blank_optionals_when_provided(
-    create_input: Callable[..., CreateScreeningUseCase.InputData],
+    create_input: CreateScreeningUseCase.InputData,
 ) -> None:
     """Provided optional strings must not be whitespace-only."""
     with pytest.raises(ValueError, match="ticket_url must not be empty when provided"):
-        create_input(ticket_url="  ")
+        replace(create_input, ticket_url="  ")
     with pytest.raises(ValueError, match="room must not be empty when provided"):
-        create_input(room="")
+        replace(create_input, room="")
     with pytest.raises(ValueError, match="language must not be empty when provided"):
-        create_input(language=" ")
+        replace(create_input, language=" ")
     with pytest.raises(ValueError, match="external_id must not be empty when provided"):
-        create_input(external_id="")
+        replace(create_input, external_id="")

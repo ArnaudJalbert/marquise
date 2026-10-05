@@ -115,7 +115,7 @@ class ScreeningGateway(Protocol):
         room: str | None = None,
         language: str | None = None,
         *,
-        fields: frozenset[str] | None = None,
+        fields: frozenset[str],
     ) -> dict | None:
         """Replace specified fields of a screening identified by ID.
 
@@ -128,8 +128,8 @@ class ScreeningGateway(Protocol):
             ticket_url: Replacement ticket URL (optional).
             room: Replacement room name (optional).
             language: Replacement language (optional).
-            fields: Explicitly supplied columns; None replaces all columns,
-                and an empty set reads the current row without writing.
+            fields: Explicitly supplied columns; an empty set reads the current row
+                without writing.
 
         Returns:
             The updated row with joined movie and cinema data, or None if missing.
