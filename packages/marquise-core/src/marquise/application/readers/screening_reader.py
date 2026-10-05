@@ -1,4 +1,4 @@
-"""Read port for screening search display data."""
+"""Read port for screening display data."""
 
 from __future__ import annotations
 
@@ -10,11 +10,11 @@ from marquise.application.repositories.page import Page
 
 
 class ScreeningReader(ABC):
-    """Search screening display data without constructing domain entities."""
+    """Read screening display data without constructing domain entities."""
 
     @dataclass(frozen=True, slots=True)
     class ScreeningData:
-        """Display data for one screening search result."""
+        """Display data for one screening."""
 
         id: str
         movie_id: str
@@ -25,6 +25,11 @@ class ScreeningReader(ABC):
         ticket_url: str | None = None
         room: str | None = None
         language: str | None = None
+
+    @abstractmethod
+    async def find_by_id(self, screening_id: str) -> ScreeningData | None:
+        """Return one screening projection, or None when its ID is missing."""
+        ...
 
     @abstractmethod
     async def search(

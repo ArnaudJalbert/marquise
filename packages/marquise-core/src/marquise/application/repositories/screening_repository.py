@@ -51,6 +51,43 @@ class ScreeningRepository(ABC):
         ...
 
     @abstractmethod
+    async def replace(
+        self, screening: Screening, *, fields: frozenset[str]
+    ) -> Screening:
+        """Replace specified fields of a screening identified by ID.
+
+        Args:
+            screening: The screening with replacement values. The ID must
+                match an existing row.
+            fields: Explicitly supplied column names; omitted columns must be
+                preserved atomically. An empty set returns the current entity
+                without writing.
+
+        Returns:
+            The replaced screening entity.
+
+        Raises:
+            ScreeningNotFoundError: If no screening with the given ID exists.
+            ScreeningAlreadyExistsError: If the replacement identity
+                collides with another screening.
+            ScreeningExternalIdConflictError: If the external ID belongs to
+                another screening.
+        """
+        ...
+
+    @abstractmethod
+    async def delete(self, screening_id: ScreeningId) -> None:
+        """Delete a screening and atomically remove its movie if now orphaned.
+
+        Args:
+            screening_id: The ID of the screening to delete.
+
+        Raises:
+            ScreeningNotFoundError: If no screening with the given ID exists.
+        """
+        ...
+
+    @abstractmethod
     async def find_by_id(self, screening_id: ScreeningId) -> Screening:
         """Retrieve a screening by its unique identifier.
 

@@ -146,7 +146,7 @@ async def test_save(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("operation", ["save", "update"])
+@pytest.mark.parametrize("operation", ["save", "update", "replace"])
 async def test_translates_external_id_conflict(
     sample_screening: Screening,
     operation: str,
@@ -162,7 +162,10 @@ async def test_translates_external_id_conflict(
     with pytest.raises(
         ScreeningExternalIdConflictError, match="external_id='486899'"
     ) as raised:
-        await getattr(repo, operation)(sample_screening)
+        if operation == "replace":
+            await repo.replace(sample_screening, fields=frozenset({"external_id"}))
+        else:
+            await getattr(repo, operation)(sample_screening)
 
     assert raised.value.__cause__ is error
     getattr(mock_gateway, operation).assert_awaited_once()
@@ -438,3 +441,149 @@ async def test_find_distinct_movies_by_cinema_empty() -> None:
 
     assert result.items == []
     assert result.total == 0
+
+
+@pytest.mark.asyncio
+async def test_replace(
+    sample_screening: Screening,
+    sample_cinema: Cinema,
+    sample_movie: Movie,
+    gateway_dict: dict,
+) -> None:
+    """Test replace delegates to the gateway and maps the result."""
+    mock_gateway = create_autospec(ScreeningGateway, instance=True)
+    mock_gateway.replace.return_value = {
+        **gateway_dict,
+        "id": "scr-123",
+        "movie_id": "mov-456",
+        "cinema_id": "cin-789",
+        "showtime": datetime(2026, 6, 8, 21, 0, 0),
+        "external_id": None,
+        "ticket_url": "https://tickets.example/1",
+        "room": "Salle 4",
+        "language": "V.O.",
+    }
+    updated = Screening(
+        id=sample_screening.id,
+        movie=sample_movie,
+        cinema=sample_cinema,
+        showtime=Showtime(value=datetime(2026, 6, 8, 21, 0, 0, tzinfo=UTC)),
+        ticket_url="https://tickets.example/1",
+        room="Salle 4",
+        language="V.O.",
+    )
+
+    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    fields = frozenset(
+        {
+            "movie_id",
+            "cinema_id",
+            "showtime",
+            "external_id",
+            "ticket_url",
+            "room",
+            "language",
+        }
+    )
+    result = await repo.replace(updated, fields=fields)
+
+    assert result.id == ScreeningId(value="scr-123")
+    assert result.movie == sample_movie
+    assert result.cinema == sample_cinema
+    assert result.showtime.value == datetime(2026, 6, 8, 21, 0, 0, tzinfo=UTC)
+    assert result.ticket_url == "https://tickets.example/1"
+    mock_gateway.replace.assert_awaited_once_with(
+        screening_id="scr-123",
+        movie_id="mov-456",
+        cinema_id="cin-789",
+        showtime=datetime(2026, 6, 8, 21, 0, 0, tzinfo=UTC),
+        external_id=None,
+        ticket_url="https://tickets.example/1",
+        room="Salle 4",
+        language="V.O.",
+        fields=fields,
+    )
+
+
+@pytest.mark.asyncio
+async def test_replace_raises_not_found(sample_screening: Screening) -> None:
+    """Test replace raises ScreeningNotFoundError when the gateway misses."""
+    mock_gateway = create_autospec(ScreeningGateway, instance=True)
+    mock_gateway.replace.return_value = None
+
+    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    with pytest.raises(ScreeningNotFoundError, match="scr-123"):
+        await repo.replace(sample_screening, fields=frozenset({"room"}))
+
+
+@pytest.mark.asyncio
+async def test_replace_raises_already_exists_on_gateway_error(
+    sample_screening: Screening,
+) -> None:
+    """Test replace translates a unique-constraint GatewayError."""
+    mock_gateway = create_autospec(ScreeningGateway, instance=True)
+    mock_gateway.replace.side_effect = GatewayError("already exists")
+
+    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    with pytest.raises(ScreeningAlreadyExistsError, match="already exists"):
+        await repo.replace(
+            sample_screening, fields=frozenset({"movie_id", "cinema_id", "showtime"})
+        )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("fields", [frozenset(), frozenset({"room"})])
+async def test_replace_preserves_mask_and_maps_current_parents(
+    sample_screening: Screening, gateway_dict: dict, fields: frozenset[str]
+) -> None:
+    """A partial write returns actual stored parents, not the request's snapshot."""
+    mock_gateway = create_autospec(ScreeningGateway, instance=True)
+    mock_gateway.replace.return_value = {
+        **gateway_dict,
+        "movie_id": "mov-concurrent",
+        "movie__id": "mov-concurrent",
+        "movie__title": "Concurrent Movie",
+        "movie__release_year": 2026,
+        "cinema_id": "cin-concurrent",
+        "cinema__id": "cin-concurrent",
+        "cinema__name": "Concurrent Cinema",
+        "room": None,
+    }
+    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+
+    result = await repo.replace(sample_screening, fields=fields)
+
+    assert str(result.movie.id) == "mov-concurrent"
+    assert result.movie.title == "Concurrent Movie"
+    assert result.movie.release_year == 2026
+    assert str(result.cinema.id) == "cin-concurrent"
+    assert result.cinema.name == "Concurrent Cinema"
+    assert result.room is None
+    assert mock_gateway.replace.await_args.kwargs["fields"] == fields
+    mock_gateway.replace.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_delete_delegates_to_gateway() -> None:
+    """Test delete delegates to gateway and returns None on success."""
+    mock_gateway = create_autospec(ScreeningGateway, instance=True)
+    mock_gateway.delete.return_value = None
+
+    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    result = await repo.delete(ScreeningId(value="scr-123"))
+
+    assert result is None
+    mock_gateway.delete.assert_awaited_once_with(screening_id="scr-123")
+
+
+@pytest.mark.asyncio
+async def test_delete_missing_raises_not_found() -> None:
+    """Test delete translates gateway miss into ScreeningNotFoundError."""
+    mock_gateway = create_autospec(ScreeningGateway, instance=True)
+    mock_gateway.delete.side_effect = GatewayError(
+        "A screening with ID 'scr-missing' was not found"
+    )
+
+    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    with pytest.raises(ScreeningNotFoundError, match="scr-missing"):
+        await repo.delete(ScreeningId(value="scr-missing"))
