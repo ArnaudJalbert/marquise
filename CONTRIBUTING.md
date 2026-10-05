@@ -49,7 +49,7 @@ Marquise is a `uv` workspace (`[tool.uv.workspace] members = ["packages/*", "app
 | Member | Role | Console script |
 |--------|------|----------------|
 | `packages/marquise-core` | Domain library (importable as `marquise`) | — |
-| `apps/marquise-api` | Read-only FastAPI REST API | `marquise-api` |
+| `apps/marquise-api` | Public reads and authenticated screening FastAPI REST API | `marquise-api` |
 | `apps/marquise-cli` | Typer administration CLI | `marquise` |
 
 Root `pyproject.toml` is **virtual** — no `[project]`/`[build-system]` table. It

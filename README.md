@@ -1,6 +1,6 @@
 # Marquise
 
-Marquise aggregates Montreal cinema showtimes, normalizes them into PostgreSQL, and serves them through an admin CLI, read-only REST API, and React web interface.
+Marquise aggregates Montreal cinema showtimes, normalizes them into PostgreSQL, and serves them through an admin CLI, public-read and authenticated-screening REST API, and React web interface.
 
 - Live API: [marquise-api.fly.dev/docs](https://marquise-api.fly.dev/docs)
 - Company knowledge and operating processes: [Marquise Atlas](atlas/README.md)
