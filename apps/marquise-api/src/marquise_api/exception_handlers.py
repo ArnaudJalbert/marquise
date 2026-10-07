@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 
 from fastapi import Request
+from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import JSONResponse
 
@@ -27,6 +28,7 @@ from marquise import (
     CinemaSourceAssignmentNotFoundError,
     MovieNotFoundError,
     ScreeningAlreadyExistsError,
+    ScreeningExternalIdConflictError,
     ScreeningNotFoundError,
     SelfDemotionError,
     SourceAlreadyExistsError,
@@ -56,6 +58,7 @@ _APPLICATION_ERROR_MAPPING: dict[type[ApplicationError], tuple[int, str]] = {
     TooManyMovieIdsError: (422, "invalid_input"),
     CinemaAlreadyExistsError: (409, "conflict"),
     ScreeningAlreadyExistsError: (409, "conflict"),
+    ScreeningExternalIdConflictError: (409, "conflict"),
     SourceAlreadyExistsError: (409, "conflict"),
     CinemaSourceAssignmentAlreadyExistsError: (409, "conflict"),
     # A generated ID collision is an internal retry condition, not a
@@ -119,6 +122,21 @@ async def application_error_handler(request: Request, exc: Exception) -> JSONRes
     return JSONResponse(
         {"detail": str(exc), "error_code": error_code, "request_id": request_id},
         status_code=status_code,
+    )
+
+
+async def request_validation_error_handler(
+    request: Request, exc: Exception
+) -> JSONResponse:
+    """Return the standard 422 envelope without reflecting request data."""
+    assert isinstance(exc, RequestValidationError)
+    return JSONResponse(
+        {
+            "detail": "Request validation failed",
+            "error_code": "invalid_input",
+            "request_id": getattr(request.state, "request_id", None),
+        },
+        status_code=422,
     )
 
 

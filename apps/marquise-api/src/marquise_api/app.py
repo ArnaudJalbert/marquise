@@ -1,4 +1,4 @@
-"""FastAPI application factory for the read-only public API.
+"""FastAPI application factory for public reads and protected screening writes.
 
 Environment variables
 ---------------------
@@ -20,6 +20,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, Depends, FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.inmemory import InMemoryBackend
@@ -35,6 +36,7 @@ from marquise_api.dependencies import get_factory
 from marquise_api.exception_handlers import (
     application_error_handler,
     http_exception_handler,
+    request_validation_error_handler,
     unhandled_exception_handler,
     value_error_handler,
 )
@@ -115,28 +117,37 @@ def create_app(factory: MarquiseFactory | None = None) -> FastAPI:
     app = FastAPI(
         title="Marquise API",
         description="""
-Read-only public access to Montreal cinema showtimes, aggregated across
+Public read access and authenticated screening mutations for Montreal showtimes across
 multiple cinema chains and independent theatres.
 
 ## Authentication
 
 The current read endpoints under ``/v1``, plus ``/health`` and ``/ready``,
-are public. Future write endpoints may require a Supabase bearer token carrying
-a Marquise role through reusable route dependencies.
+are public. POST, PATCH, and DELETE screening endpoints require a verified
+Supabase bearer token with the canonical `editor` or `administrator` Marquise
+role. Both roles have identical global permissions, including permanent deletion.
+Missing/invalid credentials return 401 with `WWW-Authenticate: Bearer`; disallowed
+roles return 403; an unavailable or unconfigured verifier returns 503.
 
 ## Rate limiting
 
-Requests are limited per client IP to **60 requests/minute** by default
+Requests are limited per client IP to **3000 requests/minute** by default
 (configurable server-side via `MARQUISE_API_RATE_LIMIT`). Exceeding the
-limit returns `429 Too Many Requests`. `/health` and `/ready` are exempt
+limit returns `429 Too Many Requests`. Screening writes are limited before
+authentication: rejected credentials consume the limit, and throttled requests
+do not verify tokens or execute mutations. `/health` and `/ready` are exempt
 (they're intended for uptime monitors, not API clients).
 
 ## Caching
 
-Responses are cached in-memory for **1 hour** by default (configurable via
-`MARQUISE_API_CACHE_TTL_SECONDS`). The underlying showtime data itself is
-refreshed at most once a day, so cached responses are never meaningfully
-stale relative to the source data.
+Public read responses are cached in-memory for **1 hour** by default
+(configurable via `MARQUISE_API_CACHE_TTL_SECONDS`). Mutations are uncached.
+Successful creates, nonempty patches, and deletes clear the full public cache
+namespace, including movie and cinema reads. Empty PATCH and failed mutations
+do not invalidate. Invalidation is **instance-local** and **best-effort**: a
+postcommit failure is logged without credentials, but success is still returned
+without retry or rollback. Other processes/instances are not cleared; freshness
+is bounded by cache expiry, not an unconditional immediate-read guarantee.
 
 ## Errors
 
@@ -149,12 +160,17 @@ envelope:
 
 Prefer matching on `error_code` over parsing `detail`, whose wording may
 change without notice. See each endpoint's documented responses below for
-the specific `error_code` values it can return.
+the specific `error_code` values it can return. Screening identity collisions
+and external-ID conflicts both use `conflict` (409). Missing screenings/parents
+use `not_found` (404); invalid bodies use `invalid_input` (422); rate-limit errors
+use `rate_limit_exceeded` (429) and also retain the legacy `error` field.
 
 ## CORS
 
 Disabled by default (no cross-origin browser requests are permitted).
 Server operators can allow specific origins via `MARQUISE_API_CORS_ORIGINS`.
+Configured origins support GET, POST, PATCH, DELETE and bearer Authorization
+preflight. CORS does not replace authentication or authorization.
 """,
         version="1.0.0",
         lifespan=lifespan,
@@ -175,7 +191,21 @@ Server operators can allow specific origins via `MARQUISE_API_CORS_ORIGINS`.
     # CORS headers are attached, breaking browser clients.
     async def _rate_limit_adapter(request: Request, exc: Exception) -> Response:
         assert isinstance(exc, RateLimitExceeded)
-        return _rate_limit_exceeded_handler(request, exc)
+        response = _rate_limit_exceeded_handler(request, exc)
+        return JSONResponse(
+            {
+                "error": f"Rate limit exceeded: {exc.detail}",
+                "detail": f"Rate limit exceeded: {exc.detail}",
+                "error_code": "rate_limit_exceeded",
+                "request_id": getattr(request.state, "request_id", None),
+            },
+            status_code=429,
+            headers={
+                key: value
+                for key, value in response.headers.items()
+                if key != "content-length"
+            },
+        )
 
     limiter.reset()
     app.state.limiter = limiter
@@ -189,6 +219,7 @@ Server operators can allow specific origins via `MARQUISE_API_CORS_ORIGINS`.
     # documented response envelope as explicitly raised HTTP exceptions.
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     app.add_exception_handler(ApplicationError, application_error_handler)
+    app.add_exception_handler(RequestValidationError, request_validation_error_handler)
     app.add_exception_handler(ValueError, value_error_handler)
     app.add_exception_handler(Exception, unhandled_exception_handler)
 
@@ -202,7 +233,7 @@ Server operators can allow specific origins via `MARQUISE_API_CORS_ORIGINS`.
             CORSMiddleware,
             allow_origins=cors_origins,
             allow_credentials=True,
-            allow_methods=["GET"],
+            allow_methods=["GET", "POST", "PATCH", "DELETE"],
             allow_headers=["*"],
         )
 
