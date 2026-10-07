@@ -743,21 +743,119 @@ def test_writes_obey_configured_per_ip_rate_limit(
     name: str,
     status: int,
 ) -> None:
-    """A throttled write returns 429 without executing a second mutation."""
-    monkeypatch.setenv("MARQUISE_API_RATE_LIMIT", "1/minute")
+    """Each write consumes one slot; throttled requests skip auth and mutation."""
+    monkeypatch.setenv("MARQUISE_API_RATE_LIMIT", "2/minute")
+    monkeypatch.setenv("MARQUISE_API_CORS_ORIGINS", "https://editor.example")
     client = TestClient(create_app(factory=factory))
-    first = client.request(
-        method, path, json=body, headers={"Authorization": "Bearer editor"}
+    responses = [
+        client.request(
+            method,
+            path,
+            json=body,
+            headers={
+                "Authorization": "Bearer editor",
+                "Origin": "https://editor.example",
+            },
+        )
+        for _ in range(3)
+    ]
+    assert [response.status_code for response in responses] == [status, status, 429]
+    for response, remaining in zip(responses[:2], ["1", "0"], strict=True):
+        assert response.headers.get_list("x-ratelimit-limit") == ["2"]
+        assert response.headers.get_list("x-ratelimit-remaining") == [remaining]
+    throttled = responses[-1]
+    assert "retry-after" in throttled.headers
+    assert throttled.headers["access-control-allow-origin"] == "https://editor.example"
+    assert throttled.json()["error_code"] == "rate_limit_exceeded"
+    assert isinstance(throttled.json()["detail"], str)
+    assert factory.verify_access_token_query.execute.await_count == 2
+    assert getattr(factory, name).execute.await_count == 2
+
+
+@pytest.mark.parametrize("method,path,body,name,status", OPERATIONS)
+@pytest.mark.parametrize(
+    "failure,rejection",
+    [("invalid", 401), ("missing", 401), ("forbidden", 403), ("unavailable", 503)],
+)
+def test_rejected_authentication_consumes_request_limit(
+    factory: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+    method: str,
+    path: str,
+    body: dict | None,
+    name: str,
+    status: int,
+    failure: str,
+    rejection: int,
+) -> None:
+    """Rejected auth consumes the limit; later requests never retry verification."""
+    monkeypatch.setenv("MARQUISE_API_RATE_LIMIT", "1/minute")
+    query = factory.verify_access_token_query
+    headers = {"Authorization": "Bearer rejected"}
+    if failure == "missing":
+        headers = {}
+    elif failure == "invalid":
+        query.execute.side_effect = AuthenticationError("Invalid token")
+    elif failure == "unavailable":
+        query.execute.side_effect = AuthenticationServiceUnavailableError("Unavailable")
+    else:
+        query.execute.return_value = VerifyAccessTokenQuery.OutputData(
+            subject="reader-id", can_edit=False, can_administer=False
+        )
+    client = TestClient(create_app(factory=factory))
+    responses = [
+        client.request(method, path, json=body, headers=headers) for _ in range(3)
+    ]
+    assert [response.status_code for response in responses] == [rejection, 429, 429]
+    if failure == "missing":
+        query.execute.assert_not_awaited()
+    else:
+        query.execute.assert_awaited_once()
+    getattr(factory, name).execute.assert_not_awaited()
+    # Switching to a valid credential cannot reset this client's exhausted budget.
+    query.execute.side_effect = None
+    query.execute.return_value = VerifyAccessTokenQuery.OutputData(
+        subject="editor-id", can_edit=True, can_administer=False
     )
-    second = client.request(
-        method, path, json=body, headers={"Authorization": "Bearer editor"}
+    query.execute.reset_mock()
+    assert (
+        client.request(
+            method, path, json=body, headers={"Authorization": "Bearer editor"}
+        ).status_code
+        == 429
     )
-    assert first.status_code == status
-    assert second.status_code == 429
-    assert "retry-after" in second.headers
-    assert second.json()["error_code"] == "rate_limit_exceeded"
-    assert isinstance(second.json()["detail"], str)
-    getattr(factory, name).execute.assert_awaited_once()
+    query.execute.assert_not_awaited()
+    getattr(factory, name).execute.assert_not_awaited()
+
+
+@pytest.mark.parametrize("method,path,body,name,status", OPERATIONS)
+def test_write_rate_limit_is_per_ip_and_keeps_probes_exempt(
+    factory: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+    method: str,
+    path: str,
+    body: dict | None,
+    name: str,
+    status: int,
+) -> None:
+    """One client's exhausted budget leaves other IPs and public probes usable."""
+    monkeypatch.setenv("MARQUISE_API_RATE_LIMIT", "1/minute")
+    factory.check_database_health.return_value = True
+    app = create_app(factory=factory)
+    first = TestClient(app, client=("192.0.2.1", 50000))
+    second = TestClient(app, client=("192.0.2.2", 50000))
+    headers = {"Authorization": "Bearer editor"}
+    assert first.request(method, path, json=body, headers=headers).status_code == status
+    assert first.request(method, path, json=body, headers=headers).status_code == 429
+    assert (
+        second.request(method, path, json=body, headers=headers).status_code == status
+    )
+    assert factory.verify_access_token_query.execute.await_count == 2
+    assert getattr(factory, name).execute.await_count == 2
+    for _ in range(3):
+        assert first.get("/health").status_code == 200
+        assert first.get("/ready").status_code == 200
+    assert factory.verify_access_token_query.execute.await_count == 2
 
 
 @pytest.mark.parametrize("method,path,body,name,status", OPERATIONS)

@@ -133,7 +133,9 @@ roles return 403; an unavailable or unconfigured verifier returns 503.
 
 Requests are limited per client IP to **3000 requests/minute** by default
 (configurable server-side via `MARQUISE_API_RATE_LIMIT`). Exceeding the
-limit returns `429 Too Many Requests`. `/health` and `/ready` are exempt
+limit returns `429 Too Many Requests`. Screening writes are limited before
+authentication: rejected credentials consume the limit, and throttled requests
+do not verify tokens or execute mutations. `/health` and `/ready` are exempt
 (they're intended for uptime monitors, not API clients).
 
 ## Caching
