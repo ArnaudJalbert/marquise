@@ -2,6 +2,12 @@
 
 ## 2026-10-07
 
+### v0.1.11
+
+- Require `Idempotency-Key` and `X-Change-Reason` for POST, PATCH, and DELETE screening writes. Verified account identity and validated mutations go through the configured audited write use case. Closes #250.
+- Replay original success and POST Location, return `409` / `idempotency_conflict` for changed intent, and return retryable `503` with `Retry-After: 1` for write acquisition timeout. Fresh authentication and authorization always precede replay.
+- Retry best-effort local cache invalidation on successful replays without repeating data changes or audit records. Document header limits, history, concurrency, credential-free inputs, and schema provisioning. Requires marquise-core v0.2.24 or later.
+
 ### v0.1.10
 
 - **Authenticated screening mutations**: Editors and Administrators can create (201 with persisted data and Location), partially edit (200, preserving omitted fields and clearing nullable metadata), and permanently delete (204, with atomic orphan-movie cleanup) screenings. Public reads remain unauthenticated. Closes #257.

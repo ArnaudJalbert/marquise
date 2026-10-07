@@ -49,6 +49,7 @@ from marquise.application.use_cases.list_sources import ListSourcesUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.application.use_cases.update_screening import UpdateScreeningUseCase
+from marquise.application.use_cases.write_screening import WriteScreeningUseCase
 from marquise.infrastructure.di.container import Container
 
 
@@ -182,6 +183,11 @@ class MarquiseFactory:
     def get_screening_query(self) -> GetScreeningQuery:
         """Configured query for retrieving one screening."""
         return self._container.get_screening_query
+
+    @property
+    def write_screening_use_case(self) -> WriteScreeningUseCase:
+        """Configured audited, retry-safe screening mutation orchestration."""
+        return self._container.write_screening_use_case
 
     @property
     def create_screening_use_case(self) -> CreateScreeningUseCase:

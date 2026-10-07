@@ -5,8 +5,6 @@ from __future__ import annotations
 from fastapi import HTTPException, Request, status
 
 from marquise import (
-    CreateScreeningUseCase,
-    DeleteScreeningUseCase,
     GetCinemaMoviesUseCase,
     GetCinemaScreeningsQuery,
     GetCinemaUseCase,
@@ -17,8 +15,8 @@ from marquise import (
     ListMoviesUseCase,
     MarquiseFactory,
     SearchScreeningsQuery,
-    UpdateScreeningUseCase,
     VerifyAccessTokenQuery,
+    WriteScreeningUseCase,
 )
 
 
@@ -84,19 +82,9 @@ def get_search_screenings_query(request: Request) -> SearchScreeningsQuery:
     return request.app.state.factory.search_screenings_query
 
 
-def get_delete_screening_use_case(request: Request) -> DeleteScreeningUseCase:
-    """Return configured atomic screening deletion use case."""
-    return request.app.state.factory.delete_screening_use_case
-
-
-def get_update_screening_use_case(request: Request) -> UpdateScreeningUseCase:
-    """Return configured screening update use case."""
-    return request.app.state.factory.update_screening_use_case
-
-
-def get_create_screening_use_case(request: Request) -> CreateScreeningUseCase:
-    """Return configured screening creation use case."""
-    return request.app.state.factory.create_screening_use_case
+def get_write_screening_use_case(request: Request) -> WriteScreeningUseCase:
+    """Return configured audited, retry-safe screening write orchestration."""
+    return request.app.state.factory.write_screening_use_case
 
 
 def get_screening_query(request: Request) -> GetScreeningQuery:
