@@ -64,6 +64,10 @@ EXPECTED_PUBLIC_SURFACE: set[str] = {
     "UnassignSourceUseCase",
     "UpdateCinemaUseCase",
     "VerifyAccessTokenQuery",
+    "ScreeningIdempotencyConflictError",
+    "ScreeningWriteBusyError",
+    "ScreeningWriteContext",
+    "WriteScreeningUseCase",
 }
 
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Iterator
+from dataclasses import asdict, fields
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, create_autospec
@@ -32,10 +33,13 @@ from marquise import (
     MovieNotFoundError,
     ScreeningAlreadyExistsError,
     ScreeningExternalIdConflictError,
+    ScreeningIdempotencyConflictError,
     ScreeningNotFoundError,
+    ScreeningWriteBusyError,
     SearchScreeningsQuery,
     UpdateScreeningUseCase,
     VerifyAccessTokenQuery,
+    WriteScreeningUseCase,
 )
 from marquise_api.app import CACHE_PREFIX, create_app
 from marquise_api.logging_middleware import JsonFormatter
@@ -58,6 +62,7 @@ PERSISTED = {
     "language": "V.O.",
 }
 EXPECTED = {**PERSISTED, "showtime": "2026-10-06T19:30:00Z"}
+INTENT_HEADERS = {"Idempotency-Key": "write-1", "X-Change-Reason": "Correct listings"}
 
 
 @pytest.fixture(autouse=True)
@@ -105,13 +110,45 @@ def factory() -> MagicMock:
     fake.get_screening_query.execute.return_value = GetScreeningQuery.OutputData(
         **PERSISTED
     )
+    fake.write_screening_use_case = create_autospec(
+        WriteScreeningUseCase, instance=True
+    )
+
+    async def write(
+        request: WriteScreeningUseCase.InputData,
+    ) -> WriteScreeningUseCase.OutputData:
+        """Keep existing DTO/error regression checks through the new configured seam."""
+        mutation = request.mutation
+        if isinstance(mutation, CreateScreeningUseCase.InputData):
+            output = await fake.create_screening_use_case.execute(mutation)
+            return WriteScreeningUseCase.OutputData(
+                screening_id=output.id, changed=True, screening=output
+            )
+        if isinstance(mutation, UpdateScreeningUseCase.InputData):
+            output = await fake.update_screening_use_case.execute(mutation)
+            changed = any(
+                field.name != "screening_id"
+                and getattr(mutation, field.name) is not field.default
+                for field in fields(mutation)
+            )
+            return WriteScreeningUseCase.OutputData(
+                screening_id=output.id,
+                changed=changed,
+                screening=CreateScreeningUseCase.OutputData(**asdict(output)),
+            )
+        output = await fake.delete_screening_use_case.execute(mutation)
+        return WriteScreeningUseCase.OutputData(
+            screening_id=output.screening_id, changed=True
+        )
+
+    fake.write_screening_use_case.execute.side_effect = write
     return fake
 
 
 @pytest.fixture
 def client(factory: MagicMock) -> TestClient:
     """Use actual routing, validation, auth, middleware, and response serialization."""
-    return TestClient(create_app(factory=factory))
+    return TestClient(create_app(factory=factory), headers=INTENT_HEADERS)
 
 
 def test_editor_creates_persisted_screening(
@@ -746,7 +783,7 @@ def test_writes_obey_configured_per_ip_rate_limit(
     """Each write consumes one slot; throttled requests skip auth and mutation."""
     monkeypatch.setenv("MARQUISE_API_RATE_LIMIT", "2/minute")
     monkeypatch.setenv("MARQUISE_API_CORS_ORIGINS", "https://editor.example")
-    client = TestClient(create_app(factory=factory))
+    client = TestClient(create_app(factory=factory), headers=INTENT_HEADERS)
     responses = [
         client.request(
             method,
@@ -802,7 +839,7 @@ def test_rejected_authentication_consumes_request_limit(
         query.execute.return_value = VerifyAccessTokenQuery.OutputData(
             subject="reader-id", can_edit=False, can_administer=False
         )
-    client = TestClient(create_app(factory=factory))
+    client = TestClient(create_app(factory=factory), headers=INTENT_HEADERS)
     responses = [
         client.request(method, path, json=body, headers=headers) for _ in range(3)
     ]
@@ -842,8 +879,8 @@ def test_write_rate_limit_is_per_ip_and_keeps_probes_exempt(
     monkeypatch.setenv("MARQUISE_API_RATE_LIMIT", "1/minute")
     factory.check_database_health.return_value = True
     app = create_app(factory=factory)
-    first = TestClient(app, client=("192.0.2.1", 50000))
-    second = TestClient(app, client=("192.0.2.2", 50000))
+    first = TestClient(app, client=("192.0.2.1", 50000), headers=INTENT_HEADERS)
+    second = TestClient(app, client=("192.0.2.2", 50000), headers=INTENT_HEADERS)
     headers = {"Authorization": "Bearer editor"}
     assert first.request(method, path, json=body, headers=headers).status_code == status
     assert first.request(method, path, json=body, headers=headers).status_code == 429
@@ -1078,3 +1115,184 @@ def test_put_is_not_a_supported_replacement(
     assert response.json()["error_code"] == "method_not_allowed"
     factory.create_screening_use_case.execute.assert_not_awaited()
     factory.update_screening_use_case.execute.assert_not_awaited()
+
+
+@pytest.mark.parametrize("header", ["Idempotency-Key", "X-Change-Reason"])
+@pytest.mark.parametrize("method,path,body,name,status", OPERATIONS)
+def test_write_headers_are_mandatory(
+    client: TestClient,
+    factory: MagicMock,
+    header: str,
+    method: str,
+    path: str,
+    body: dict | None,
+    name: str,
+    status: int,
+) -> None:
+    """A verified Editor cannot write without both intent headers."""
+    headers = {
+        "Authorization": "Bearer editor",
+        "Idempotency-Key": "write-1",
+        "X-Change-Reason": "Publish",
+    }
+    headers.pop(header)
+    client.headers.pop(header, None)
+    response = client.request(method, path, json=body, headers=headers)
+    assert response.status_code == 422
+    factory.write_screening_use_case.execute.assert_not_awaited()
+
+
+@pytest.mark.parametrize("method,path,body,name,status", OPERATIONS)
+def test_write_context_uses_verified_account(
+    client: TestClient,
+    factory: MagicMock,
+    method: str,
+    path: str,
+    body: dict | None,
+    name: str,
+    status: int,
+) -> None:
+    """Delivery supplies verified identity and validated intent to the audited seam."""
+    response = client.request(
+        method, path, json=body, headers={"Authorization": "Bearer editor"}
+    )
+    assert response.status_code == status
+    context = factory.write_screening_use_case.execute.await_args.args[0].context
+    assert (context.account, context.key, context.reason) == (
+        "editor-id",
+        "write-1",
+        "Correct listings",
+    )
+
+
+@pytest.mark.parametrize(
+    "header,value",
+    [
+        ("Idempotency-Key", ""),
+        ("Idempotency-Key", "a" * 129),
+        ("Idempotency-Key", "has space"),
+        ("X-Change-Reason", " "),
+        ("X-Change-Reason", "r" * 501),
+        ("X-Change-Reason", "hidden\x7f"),
+    ],
+)
+@pytest.mark.parametrize("method,path,body,name,status", OPERATIONS)
+def test_invalid_write_intent_never_executes(
+    client: TestClient,
+    factory: MagicMock,
+    header: str,
+    value: str,
+    method: str,
+    path: str,
+    body: dict | None,
+    name: str,
+    status: int,
+) -> None:
+    """Every mutation rejects invalid headers before audited execution."""
+    response = client.request(
+        method,
+        path,
+        json=body,
+        headers={"Authorization": "Bearer editor", header: value},
+    )
+    assert response.status_code == 422
+    factory.write_screening_use_case.execute.assert_not_awaited()
+
+
+@pytest.mark.parametrize("method,path,body,name,status", OPERATIONS)
+@pytest.mark.parametrize(
+    "error,expected",
+    [(ScreeningIdempotencyConflictError, 409), (ScreeningWriteBusyError, 503)],
+)
+def test_replay_errors_have_http_contract(
+    client: TestClient,
+    factory: MagicMock,
+    method: str,
+    path: str,
+    body: dict | None,
+    name: str,
+    status: int,
+    error: type[ApplicationError],
+    expected: int,
+) -> None:
+    """Conflicting intent and bounded wait failure map to documented retry behavior."""
+    factory.write_screening_use_case.execute.side_effect = error("Write rejected")
+    response = client.request(
+        method, path, json=body, headers={"Authorization": "Bearer editor"}
+    )
+    assert response.status_code == expected
+    assert response.json()["error_code"] == (
+        "idempotency_conflict" if expected == 409 else "service_unavailable"
+    )
+    if expected == 503:
+        assert response.headers["Retry-After"] == "1"
+
+
+@pytest.mark.parametrize("method,path,body,name,status", OPERATIONS)
+def test_saved_success_replays_uncached_and_invalidates_again(
+    client: TestClient,
+    factory: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+    method: str,
+    path: str,
+    body: dict | None,
+    name: str,
+    status: int,
+) -> None:
+    """Saved success retries invalidation on every replay without another mutation."""
+    from unittest.mock import AsyncMock
+
+    from marquise_api.routers import screenings
+
+    invalidate = AsyncMock()
+    monkeypatch.setattr(screenings, "invalidate_public_cache", invalidate)
+    factory.write_screening_use_case.execute.side_effect = None
+    factory.write_screening_use_case.execute.return_value = (
+        WriteScreeningUseCase.OutputData(
+            screening_id="persisted-id",
+            changed=True,
+            screening=None
+            if method == "DELETE"
+            else CreateScreeningUseCase.OutputData(**PERSISTED),
+        )
+    )
+    responses = [
+        client.request(
+            method, path, json=body, headers={"Authorization": "Bearer editor"}
+        )
+        for _ in range(2)
+    ]
+    assert [response.status_code for response in responses] == [status, status]
+    assert responses[0].content == responses[1].content
+    assert invalidate.await_count == 2
+    if method == "POST":
+        assert responses[1].headers["Location"] == "/v1/screenings/persisted-id"
+    assert "x-fastapi-cache" not in responses[1].headers
+    getattr(factory, name).execute.assert_not_awaited()
+
+
+@pytest.mark.parametrize("method,path,body,name,status", OPERATIONS)
+def test_saved_success_still_requires_authorization(
+    client: TestClient,
+    factory: MagicMock,
+    method: str,
+    path: str,
+    body: dict | None,
+    name: str,
+    status: int,
+) -> None:
+    """Having a previously successful key never bypasses current permission checks."""
+    factory.write_screening_use_case.execute.side_effect = None
+    factory.write_screening_use_case.execute.return_value = (
+        WriteScreeningUseCase.OutputData(screening_id="persisted-id", changed=True)
+    )
+    factory.verify_access_token_query.execute.return_value = (
+        VerifyAccessTokenQuery.OutputData(
+            subject="editor-id", can_edit=False, can_administer=False
+        )
+    )
+    response = client.request(
+        method, path, json=body, headers={"Authorization": "Bearer revoked"}
+    )
+    assert response.status_code == 403
+    factory.write_screening_use_case.execute.assert_not_awaited()

@@ -14,17 +14,17 @@ from marquise import (
     CreateScreeningUseCase,
     DeleteScreeningUseCase,
     GetScreeningQuery,
+    ScreeningWriteContext,
     SearchScreeningsQuery,
     UpdateScreeningUseCase,
+    WriteScreeningUseCase,
 )
-from marquise_api.auth import require_editor
+from marquise_api.auth import get_screening_write_context, require_editor
 from marquise_api.cache import invalidate_public_cache
 from marquise_api.dependencies import (
-    get_create_screening_use_case,
-    get_delete_screening_use_case,
     get_screening_query,
     get_search_screenings_query,
-    get_update_screening_use_case,
+    get_write_screening_use_case,
 )
 from marquise_api.openapi_responses import error_responses
 from marquise_api.rate_limit import current_rate_limit, enforce_rate_limit, limiter
@@ -60,7 +60,8 @@ async def create_screening(
     request: Request,
     response: Response,
     body: CreateScreeningRequest,
-    use_case: CreateScreeningUseCase = Depends(get_create_screening_use_case),
+    context: ScreeningWriteContext = Depends(get_screening_write_context),
+    use_case: WriteScreeningUseCase = Depends(get_write_screening_use_case),
 ) -> ScreeningResponse:
     """Create a screening as an Editor or Administrator using existing movie/cinema IDs.
 
@@ -70,11 +71,15 @@ async def create_screening(
     do not roll back or retry the committed write. Other instances rely on expiry.
     """
     output = await use_case.execute(
-        CreateScreeningUseCase.InputData(**body.model_dump())
+        WriteScreeningUseCase.InputData(
+            context=context,
+            mutation=CreateScreeningUseCase.InputData(**body.model_dump()),
+        )
     )
-    await invalidate_public_cache(request)
-    response.headers["Location"] = f"/v1/screenings/{output.id}"
-    return ScreeningResponse.model_validate(output)
+    if output.changed:
+        await invalidate_public_cache(request)
+    response.headers["Location"] = f"/v1/screenings/{output.screening_id}"
+    return ScreeningResponse.model_validate(output.screening)
 
 
 @router.patch(
@@ -89,7 +94,8 @@ async def update_screening(
     response: Response,
     screening_id: str,
     body: UpdateScreeningRequest,
-    use_case: UpdateScreeningUseCase = Depends(get_update_screening_use_case),
+    context: ScreeningWriteContext = Depends(get_screening_write_context),
+    use_case: WriteScreeningUseCase = Depends(get_write_screening_use_case),
 ) -> ScreeningResponse:
     """Edit supplied fields as an Editor or Administrator, including movie/cinema/time.
 
@@ -100,19 +106,22 @@ async def update_screening(
     roll back the write. Other instances rely on expiry.
     """
     output = await use_case.execute(
-        UpdateScreeningUseCase.InputData(
-            screening_id=screening_id, **body.model_dump(exclude_unset=True)
+        WriteScreeningUseCase.InputData(
+            context=context,
+            mutation=UpdateScreeningUseCase.InputData(
+                screening_id=screening_id, **body.model_dump(exclude_unset=True)
+            ),
         )
     )
-    if body.model_fields_set:
+    if output.changed:
         await invalidate_public_cache(request)
-    return ScreeningResponse.model_validate(output)
+    return ScreeningResponse.model_validate(output.screening)
 
 
 @router.delete(
     "/screenings/{screening_id}",
     status_code=204,
-    responses=error_responses(401, 403, 404, 422, 429, 503),
+    responses=error_responses(401, 403, 404, 409, 422, 429, 503),
     dependencies=[Depends(enforce_rate_limit), Depends(require_editor)],
 )
 @limiter.limit(current_rate_limit)
@@ -120,18 +129,26 @@ async def delete_screening(
     request: Request,
     response: Response,
     screening_id: str,
-    use_case: DeleteScreeningUseCase = Depends(get_delete_screening_use_case),
+    context: ScreeningWriteContext = Depends(get_screening_write_context),
+    use_case: WriteScreeningUseCase = Depends(get_write_screening_use_case),
 ) -> Response:
     """Permanently delete a screening and atomically remove its movie if orphaned.
 
     Editors and Administrators have identical global deletion permissions.
-    A missing screening is an error, not an idempotent success. The response is
-    uncached. Success clears the full instance-local public cache, best-effort;
+    A missing screening with a new key returns 404; a retry of a committed key
+    returns its original 204. The response is uncached. Success clears the full
+    instance-local public cache, best-effort;
     failure to clear never retries or rolls back deletion. Other instances rely
     on expiry.
     """
-    await use_case.execute(DeleteScreeningUseCase.InputData(screening_id=screening_id))
-    await invalidate_public_cache(request)
+    output = await use_case.execute(
+        WriteScreeningUseCase.InputData(
+            context=context,
+            mutation=DeleteScreeningUseCase.InputData(screening_id=screening_id),
+        )
+    )
+    if output.changed:
+        await invalidate_public_cache(request)
     response.status_code = 204
     return response
 

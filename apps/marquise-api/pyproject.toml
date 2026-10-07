@@ -1,10 +1,10 @@
 [project]
 name = "marquise-api"
-version = "0.1.10"
+version = "0.1.11"
 description = "Marquise public read and authenticated screening REST API"
 requires-python = ">=3.13"
 dependencies = [
-    "marquise-core>=0.2.22",
+    "marquise-core>=0.2.24",
     "fastapi>=0.138.1",
     "fastapi-cache2>=0.2.2",
     "fastapi-pagination>=0.15.15",

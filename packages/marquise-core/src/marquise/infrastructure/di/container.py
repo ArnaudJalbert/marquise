@@ -54,6 +54,7 @@ from marquise.application.use_cases.list_sources import ListSourcesUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.application.use_cases.update_screening import UpdateScreeningUseCase
+from marquise.application.use_cases.write_screening import WriteScreeningUseCase
 from marquise.infrastructure.di.auth import (
     build_authenticate_administrator_use_case,
     build_invite_account_use_case,
@@ -73,6 +74,7 @@ from marquise.infrastructure.di.queries import (
     build_list_cinema_source_assignments_query,
     build_search_screenings_query,
 )
+from marquise.infrastructure.di.screening_write import build_write_screening_use_case
 from marquise.infrastructure.di.source_management import (
     build_assign_source_use_case,
     build_create_source_use_case,
@@ -565,6 +567,11 @@ class Container:
     def get_screening_query(self) -> GetScreeningQuery:
         """Public get-screening query (no authentication required)."""
         return self._get_screening_query
+
+    @property
+    def write_screening_use_case(self) -> WriteScreeningUseCase:
+        """Configured audited screening writes with atomic retry protection."""
+        return build_write_screening_use_case(self._pool_property, self._schema)
 
     @property
     def create_screening_use_case(self) -> CreateScreeningUseCase:
