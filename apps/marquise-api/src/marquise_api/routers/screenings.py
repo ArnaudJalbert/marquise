@@ -27,7 +27,7 @@ from marquise_api.dependencies import (
     get_update_screening_use_case,
 )
 from marquise_api.openapi_responses import error_responses
-from marquise_api.rate_limit import current_rate_limit, limiter
+from marquise_api.rate_limit import current_rate_limit, enforce_rate_limit, limiter
 from marquise_api.schemas import ScreeningResponse
 from marquise_api.schemas.screening import (
     CreateScreeningRequest,
@@ -53,7 +53,7 @@ router = APIRouter(tags=["screenings"])
             },
         },
     },
-    dependencies=[Depends(require_editor)],
+    dependencies=[Depends(enforce_rate_limit), Depends(require_editor)],
 )
 @limiter.limit(current_rate_limit)
 async def create_screening(
@@ -81,7 +81,7 @@ async def create_screening(
     "/screenings/{screening_id}",
     response_model=ScreeningResponse,
     responses=error_responses(401, 403, 404, 409, 422, 429, 503),
-    dependencies=[Depends(require_editor)],
+    dependencies=[Depends(enforce_rate_limit), Depends(require_editor)],
 )
 @limiter.limit(current_rate_limit)
 async def update_screening(
@@ -113,7 +113,7 @@ async def update_screening(
     "/screenings/{screening_id}",
     status_code=204,
     responses=error_responses(401, 403, 404, 422, 429, 503),
-    dependencies=[Depends(require_editor)],
+    dependencies=[Depends(enforce_rate_limit), Depends(require_editor)],
 )
 @limiter.limit(current_rate_limit)
 async def delete_screening(

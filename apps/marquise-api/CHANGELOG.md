@@ -1,11 +1,12 @@
 # Changelog
 
-## 2026-10-05
+## 2026-10-07
 
 ### v0.1.10
 
 - **Authenticated screening mutations**: Editors and Administrators can create (201 with persisted data and Location), partially edit (200, preserving omitted fields and clearing nullable metadata), and permanently delete (204, with atomic orphan-movie cleanup) screenings. Public reads remain unauthenticated. Closes #257.
 - **Validation and errors**: Reject unknown fields, invalid/blank values, naive timestamps, null identity edits, and non-absolute HTTP(S) ticket URLs before executing writes. External-ID collisions use the same `409` / `conflict` code as screening-identity collisions. Framework validation now uses the standard `detail` / `error_code` envelope; rate limiting retains its legacy `error` field alongside that envelope.
+- **Throttle before authentication**: Screening writes consume the configured per-IP limit before token verification, including rejected credentials and roles. Exhausted limits return `429` without verification or mutation; successful requests are charged once and retain existing rate-limit and CORS headers.
 - **Browser support and freshness**: Configured CORS origins allow bearer-authenticated POST, PATCH, and DELETE. Writes retain per-IP throttling and are uncached. Committed writes invalidate the full instance-local public cache (except empty PATCH); invalidation failures retain success and emit sanitized logs without retry or rollback. Freshness remains best-effort and bounded by cache expiry; other instances are not invalidated.
 
 ## 2026-10-04
