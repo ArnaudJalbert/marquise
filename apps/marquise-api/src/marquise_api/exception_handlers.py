@@ -29,7 +29,9 @@ from marquise import (
     MovieNotFoundError,
     ScreeningAlreadyExistsError,
     ScreeningExternalIdConflictError,
+    ScreeningIdempotencyConflictError,
     ScreeningNotFoundError,
+    ScreeningWriteBusyError,
     SelfDemotionError,
     SourceAlreadyExistsError,
     SourceNotFoundError,
@@ -59,6 +61,8 @@ _APPLICATION_ERROR_MAPPING: dict[type[ApplicationError], tuple[int, str]] = {
     CinemaAlreadyExistsError: (409, "conflict"),
     ScreeningAlreadyExistsError: (409, "conflict"),
     ScreeningExternalIdConflictError: (409, "conflict"),
+    ScreeningIdempotencyConflictError: (409, "idempotency_conflict"),
+    ScreeningWriteBusyError: (503, "service_unavailable"),
     SourceAlreadyExistsError: (409, "conflict"),
     CinemaSourceAssignmentAlreadyExistsError: (409, "conflict"),
     # A generated ID collision is an internal retry condition, not a
@@ -113,7 +117,7 @@ async def application_error_handler(request: Request, exc: Exception) -> JSONRes
         type(exc), (_DEFAULT_APPLICATION_ERROR_STATUS, _DEFAULT_APPLICATION_ERROR_CODE)
     )
     request_id = getattr(request.state, "request_id", None)
-    if status_code >= 500:
+    if status_code >= 500 and not isinstance(exc, ScreeningWriteBusyError):
         logger.exception(
             "Unexpected application error",
             exc_info=exc,
@@ -122,6 +126,9 @@ async def application_error_handler(request: Request, exc: Exception) -> JSONRes
     return JSONResponse(
         {"detail": str(exc), "error_code": error_code, "request_id": request_id},
         status_code=status_code,
+        headers={"Retry-After": "1"}
+        if isinstance(exc, ScreeningWriteBusyError)
+        else None,
     )
 
 

@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import asyncpg
-
+from marquise.infrastructure.supabase.connection_pool import ConnectionPool
 from marquise.interface_adapters.repositories.protocols.base import (
     GatewayError,
     GatewayPage,
@@ -24,7 +23,7 @@ class SupabaseCinemaGateway:
             (default ``marquise``).
     """
 
-    def __init__(self, pool: asyncpg.Pool, schema: str = DEFAULT_SCHEMA) -> None:
+    def __init__(self, pool: ConnectionPool, schema: str = DEFAULT_SCHEMA) -> None:
         """Initialize the gateway.
 
         Args:

@@ -23,12 +23,15 @@ _DESCRIPTIONS: dict[int, str] = {
     403: "A verified caller lacks Editor authorization (`authorization_error`).",
     404: "Requested resource or referenced movie/cinema not found (`not_found`).",
     409: (
-        "Duplicate screening identity or external-ID conflict. Both return `conflict`."
+        "Duplicate screening identity or external-ID conflict (`conflict`), "
+        "or an Idempotency-Key reused for different intent (`idempotency_conflict`)."
     ),
-    422: "Request body, query, or path validation failed (`invalid_input`).",
+    422: "Request body, header, query, or path validation failed (`invalid_input`).",
     429: "Too many requests — the per-IP rate limit was exceeded.",
     503: (
-        "Authentication is not configured or the authentication service is unavailable."
+        "Authentication is not configured/unavailable, or write acquisition "
+        "exceeded five seconds. Write timeout includes Retry-After: 1; retry "
+        "with the same key and request."
     ),
 }
 
@@ -56,6 +59,16 @@ def error_responses(*status_codes: int) -> dict[int | str, dict[str, Any]]:
             "WWW-Authenticate": {
                 "description": "Bearer authentication challenge.",
                 "schema": {"type": "string", "const": "Bearer"},
+            }
+        }
+    if 503 in responses:
+        responses[503]["headers"] = {
+            "Retry-After": {
+                "description": (
+                    "Write acquisition timeout only: "
+                    "retry with the same key and request."
+                ),
+                "schema": {"type": "string", "const": "1"},
             }
         }
     return responses

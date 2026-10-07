@@ -4,6 +4,12 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-10-07
 
+### v0.2.25
+
+- Add `WriteScreeningUseCase` for application-owned audit construction and retry-safe orchestration through an injected transaction interface. Reuse the dedicated mutation use cases on one connection; imports remain unchanged. Closes #250.
+- Commit Screening changes, orphaned Movie cleanup, audit history, and successful replay results together. Account-scoped keys preserve original results without expiry, reject changed intent, and serialize concurrent retries with a five-second acquisition limit.
+- Add restricted audit/replay schema definitions and isolated PostgreSQL regression coverage for rollback, orphan history, replay after deletion, and concurrent edits.
+
 ### v0.2.24
 
 - Scope Screening external-ID uniqueness to each Cinema so independent ticketing systems can share IDs without skipping imports. Preserve same-Cinema collision protection and the existing constraint name. Include transactional migration, guarded rollback, and PostgreSQL import regression coverage. Existing databases require the documented migration. Closes #285.
