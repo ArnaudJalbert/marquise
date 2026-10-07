@@ -47,6 +47,16 @@ If cross-Cinema duplicates now exist, PostgreSQL rejects the rollback; issue
 or clear their IDs to force rollback. The scripts retain the original constraint
 name so existing gateway conflict translation works before and after migration.
 
+### Existing databases: guarded reschedules (#287)
+
+Fresh schemas persist `source_name` on Screenings. Existing rows remain
+source-unknown and cannot be rescheduled automatically. After explicit rollout
+approval and a quiet import window, run
+[the migration](../scripts/migrations/287-screening-source-provenance.sql).
+It uses bounded lock and statement timeouts. Same-source imports may move an
+existing Screening only within its Montreal local calendar day; target identity
+collisions remain conflicts.
+
 ## Auth
 
 [`supabase/config.toml`](../supabase/config.toml) is source of truth. Use

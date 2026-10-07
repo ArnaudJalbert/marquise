@@ -20,6 +20,7 @@ class Screening:
         cinema: The cinema hosting the screening.
         showtime: Date and time of the screening.
         external_id: Source-native identifier for deduplication (optional).
+        source_name: Source that owns the external identifier (optional).
         ticket_url: Link to purchase tickets (optional).
         room: Room or auditorium name (optional).
         language: Language or subtitle version (optional).
@@ -30,6 +31,7 @@ class Screening:
     cinema: Cinema
     showtime: Showtime
     external_id: str | None = None
+    source_name: str | None = None
     ticket_url: str | None = None
     room: str | None = None
     language: str | None = None

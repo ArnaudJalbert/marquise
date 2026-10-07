@@ -18,6 +18,9 @@ from marquise.infrastructure.supabase.gateways.movie import (
 from marquise.infrastructure.supabase.gateways.screening import (
     SupabaseScreeningGateway,
 )
+from marquise.infrastructure.supabase.gateways.source_definition import (
+    SupabaseSourceDefinitionGateway,
+)
 from marquise.interface_adapters.repositories.protocols.base import GatewayError
 from marquise.interface_adapters.repositories.protocols.screening import (
     ScreeningExternalIdConflictGatewayError,
@@ -66,6 +69,100 @@ async def test_save_and_find_by_id(
     assert found is not None
     assert found["movie__id"] == "mov-001"
     assert found["cinema__id"] == "cin-001"
+
+
+@pytest.mark.asyncio
+async def test_reschedule_preserves_id_and_updates_time(
+    screening_gateway: SupabaseScreeningGateway,
+    gateway: SupabaseCinemaGateway,
+    movie_gateway: SupabaseMovieGateway,
+    source_definition_gateway: SupabaseSourceDefinitionGateway,
+) -> None:
+    """Verify guarded same-day rescheduling updates one row in place."""
+    await _seed_parents(gateway, movie_gateway)
+    await source_definition_gateway.save(
+        name="cineplex", display_name="Cineplex", description=None
+    )
+    await screening_gateway.save(
+        screening_id="scr-reschedule",
+        movie_id="mov-001",
+        cinema_id="cin-001",
+        showtime=datetime(2026, 6, 7, 17, 0, tzinfo=UTC),
+        external_id="show-1",
+        source_name="cineplex",
+    )
+
+    result = await screening_gateway.reschedule(
+        cinema_id="cin-001",
+        movie_id="mov-001",
+        external_id="show-1",
+        source_name="cineplex",
+        showtime=datetime(2026, 6, 7, 17, 15, tzinfo=UTC),
+        local_day_start=datetime(2026, 6, 7, 4, tzinfo=UTC),
+        local_day_end=datetime(2026, 6, 8, 4, tzinfo=UTC),
+    )
+
+    assert result is not None
+    assert result["id"] == "scr-reschedule"
+    assert result["showtime"] == datetime(2026, 6, 7, 17, 15)
+    assert (await screening_gateway.find_by_id("scr-reschedule"))["showtime"] == (
+        datetime(2026, 6, 7, 17, 15)
+    )
+
+
+@pytest.mark.asyncio
+async def test_import_reschedules_idempotently_and_preserves_conflicts(
+    screening_gateway: SupabaseScreeningGateway,
+    gateway: SupabaseCinemaGateway,
+    movie_gateway: SupabaseMovieGateway,
+    source_definition_gateway: SupabaseSourceDefinitionGateway,
+) -> None:
+    """Import chain moves same-source showtimes and refuses source changes."""
+    await _seed_parents(gateway, movie_gateway)
+    for name in ("cineplex", "other-source"):
+        await source_definition_gateway.save(
+            name=name, display_name=name, description=None
+        )
+    command = CreateScreeningsCommand(SupabaseScreeningRepository(screening_gateway))
+
+    def row(
+        showtime: datetime, source_name: str = "cineplex"
+    ) -> CreateScreeningsCommand.ScreeningInput:
+        return command.ScreeningInput(
+            movie_id="mov-001",
+            movie_title="Movie A",
+            cinema_id="cin-001",
+            cinema_name="Cinema One",
+            showtime=showtime,
+            external_id="show-1",
+            source_name=source_name,
+        )
+
+    first = await command.execute(
+        command.InputData((row(datetime(2026, 6, 7, 17, tzinfo=UTC)),))
+    )
+    initial_rows = await screening_gateway.search(cinema_id="cin-001")
+    initial_id = initial_rows.rows[0]["id"]
+    moved = await command.execute(
+        command.InputData((row(datetime(2026, 6, 7, 17, 15, tzinfo=UTC)),))
+    )
+    repeated = await command.execute(
+        command.InputData((row(datetime(2026, 6, 7, 17, 15, tzinfo=UTC)),))
+    )
+    refused = await command.execute(
+        command.InputData(
+            (row(datetime(2026, 6, 7, 17, 30, tzinfo=UTC), "other-source"),)
+        )
+    )
+
+    assert first.imported_count == 1
+    assert moved.rescheduled_count == 1
+    assert repeated.updated_count == 1
+    assert refused.skipped_count == 1
+    rows = await screening_gateway.search(cinema_id="cin-001")
+    assert [(r["id"], r["showtime"]) for r in rows.rows] == [
+        (initial_id, datetime(2026, 6, 7, 17, 15))
+    ]
 
 
 @pytest.mark.asyncio

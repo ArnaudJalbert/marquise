@@ -13,11 +13,15 @@ from marquise.interface_adapters.repositories.protocols.base import (
 from marquise.interface_adapters.repositories.protocols.screening import (
     SaveOutcome,
     ScreeningExternalIdConflictGatewayError,
+    ScreeningRescheduleConflictGatewayError,
 )
 
 DEFAULT_SCHEMA = "marquise"
 
-_COLUMNS = "id, movie_id, cinema_id, showtime, external_id, ticket_url, room, language"
+_COLUMNS = (
+    "id, movie_id, cinema_id, showtime, external_id, source_name, "
+    "ticket_url, room, language"
+)
 _MOVIE_COLUMNS = (
     "m.id AS movie__id, m.title AS movie__title,"
     " m.release_year AS movie__release_year,"
@@ -39,7 +43,7 @@ _CINEMA_COLUMNS = (
 )
 _SCREENING_COLUMNS = (
     "s.id, s.movie_id, s.cinema_id, s.showtime,"
-    " s.external_id, s.ticket_url, s.room, s.language"
+    " s.external_id, s.source_name, s.ticket_url, s.room, s.language"
 )
 _JOINED_COLUMNS = f"{_SCREENING_COLUMNS}, {_MOVIE_COLUMNS}, {_CINEMA_COLUMNS}"
 _PLAIN_MOVIE_COLUMNS = (
@@ -84,6 +88,7 @@ class SupabaseScreeningGateway:
         cinema_id: str,
         showtime: datetime,
         external_id: str | None = None,
+        source_name: str | None = None,
         ticket_url: str | None = None,
         room: str | None = None,
         language: str | None = None,
@@ -118,8 +123,8 @@ class SupabaseScreeningGateway:
                     WITH inserted AS (
                         INSERT INTO {self._table}
                             (id, movie_id, cinema_id, showtime,
-                             external_id, ticket_url, room, language)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                             external_id, source_name, ticket_url, room, language)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                         ON CONFLICT (cinema_id, movie_id, showtime) DO NOTHING
                         RETURNING {_COLUMNS}, true AS __inserted
                     ),
@@ -139,6 +144,7 @@ class SupabaseScreeningGateway:
                     cinema_id,
                     _naive_utc(showtime),
                     external_id,
+                    source_name,
                     ticket_url,
                     room,
                     language,
@@ -161,12 +167,79 @@ class SupabaseScreeningGateway:
         inserted = bool(data.pop("__inserted"))
         return SaveOutcome(row=data, inserted=inserted)
 
+    async def reschedule(
+        self,
+        cinema_id: str,
+        movie_id: str,
+        external_id: str,
+        source_name: str,
+        showtime: datetime,
+        local_day_start: datetime,
+        local_day_end: datetime,
+        ticket_url: str | None = None,
+        room: str | None = None,
+        language: str | None = None,
+    ) -> dict | None:
+        """Move one same-day source-owned screening without changing its ID."""
+        async with self._pool.acquire() as conn:
+            async with conn.transaction(isolation="read_committed"):
+                try:
+                    row = await conn.fetchrow(
+                        f"""
+                        WITH candidate AS (
+                            SELECT id
+                            FROM {self._table}
+                            WHERE cinema_id = $1 AND movie_id = $2
+                                AND external_id = $3 AND source_name = $4
+                                AND showtime >= $5 AND showtime < $6
+                            ORDER BY id
+                            LIMIT 1
+                            FOR UPDATE
+                        ), updated AS (
+                            UPDATE {self._table} s
+                            SET showtime = $7,
+                                ticket_url = COALESCE($8, s.ticket_url),
+                                room = COALESCE($9, s.room),
+                                language = COALESCE($10, s.language)
+                            FROM candidate
+                            WHERE s.id = candidate.id
+                            RETURNING s.id, s.movie_id, s.cinema_id, s.showtime,
+                                s.external_id, s.source_name, s.ticket_url,
+                                s.room, s.language
+                        )
+                        SELECT {_JOINED_COLUMNS}
+                        FROM updated s
+                        JOIN "{self._schema}".movies m ON s.movie_id = m.id
+                        JOIN "{self._schema}".cinemas c ON s.cinema_id = c.id
+                        """,
+                        cinema_id,
+                        movie_id,
+                        external_id,
+                        source_name,
+                        _naive_utc(local_day_start),
+                        _naive_utc(local_day_end),
+                        _naive_utc(showtime),
+                        ticket_url,
+                        room,
+                        language,
+                    )
+                except asyncpg.exceptions.UniqueViolationError as exc:
+                    if exc.as_dict().get("constraint_name") == (
+                        "screenings_cinema_id_movie_id_showtime_key"
+                    ):
+                        raise ScreeningRescheduleConflictGatewayError(
+                            "A screening already exists for the rescheduled identity"
+                        ) from exc
+                    raise
+        return dict(row) if row is not None else None
+
     async def update(
         self,
         cinema_id: str,
         movie_id: str,
         showtime: datetime,
         external_id: str | None = None,
+        source_name: str | None = None,
         ticket_url: str | None = None,
         room: str | None = None,
         language: str | None = None,
@@ -201,16 +274,21 @@ class SupabaseScreeningGateway:
                     UPDATE {self._table}
                     SET
                         external_id = COALESCE($4, external_id),
-                        ticket_url = COALESCE($5, ticket_url),
-                        room = COALESCE($6, room),
-                        language = COALESCE($7, language)
+                        source_name = COALESCE($5, source_name),
+                        ticket_url = COALESCE($6, ticket_url),
+                        room = COALESCE($7, room),
+                        language = COALESCE($8, language)
                     WHERE cinema_id = $1 AND movie_id = $2 AND showtime = $3
+                        AND (
+                            $5::text IS NULL OR source_name IS NULL OR source_name = $5
+                        )
                     RETURNING {_COLUMNS}
                     """,
                     cinema_id,
                     movie_id,
                     _naive_utc(showtime),
                     external_id,
+                    source_name,
                     ticket_url,
                     room,
                     language,
@@ -278,6 +356,12 @@ class SupabaseScreeningGateway:
         assignments = ", ".join(
             f"{name} = ${index}" for index, name in enumerate(columns, start=2)
         )
+        if "external_id" in fields:
+            external_id_param = columns.index("external_id") + 2
+            assignments += (
+                ", source_name = CASE WHEN external_id IS DISTINCT FROM "
+                f"${external_id_param} THEN NULL ELSE source_name END"
+            )
         async with (
             self._pool.acquire() as conn,
             conn.transaction(isolation="read_committed"),

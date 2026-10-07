@@ -66,6 +66,7 @@ async def test_import_screenings_delegates_to_import_use_case() -> None:
         "total_count": 0,
         "imported_count": 0,
         "updated_count": 0,
+        "rescheduled_count": 0,
         "skipped_count": 0,
     }
     import_use_case.execute.assert_awaited_once_with(

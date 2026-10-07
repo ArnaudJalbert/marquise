@@ -32,6 +32,18 @@ class ScreeningRepository(ABC):
         ...
 
     @abstractmethod
+    async def reschedule(
+        self,
+        screening: Screening,
+        *,
+        source_name: str,
+        local_day_start: datetime,
+        local_day_end: datetime,
+    ) -> Screening | None:
+        """Move a source-owned screening within its local calendar day."""
+        ...
+
+    @abstractmethod
     async def update(self, screening: Screening) -> Screening | None:
         """Update optional fields on an existing screening.
 
