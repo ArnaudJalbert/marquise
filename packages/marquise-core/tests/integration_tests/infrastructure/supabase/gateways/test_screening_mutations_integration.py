@@ -166,12 +166,12 @@ async def test_replace_external_id_conflict_is_distinct(
     movie_gateway: SupabaseMovieGateway,
     screening_gateway: SupabaseScreeningGateway,
 ) -> None:
-    """External-ID collisions are not mislabeled as identity collisions."""
+    """Same-cinema external-ID collisions are not mislabeled as identity collisions."""
     await _seed(gateway, movie_gateway, screening_gateway)
     await screening_gateway.save(
         screening_id="scr-other",
         movie_id="mov-new",
-        cinema_id="cin-new",
+        cinema_id="cin-old",
         showtime=SHOWTIME,
         external_id="taken-id",
     )
