@@ -2,6 +2,12 @@
 
 Before 2026-07-15 this package was published as `marquise`.
 
+## 2026-10-07
+
+### v0.2.24
+
+- Scope Screening external-ID uniqueness to each Cinema so independent ticketing systems can share IDs without skipping imports. Preserve same-Cinema collision protection and the existing constraint name. Include transactional migration, guarded rollback, and PostgreSQL import regression coverage. Existing databases require the documented migration. Closes #285.
+
 ## 2026-10-05
 
 ### v0.2.23

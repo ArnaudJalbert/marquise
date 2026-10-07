@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime
 
 import asyncpg
@@ -352,6 +353,66 @@ async def test_import_skips_external_id_conflict_and_preserves_existing_data(
     page = await screening_gateway.search(movie_id="mov-003")
     assert page.total == 1
     assert page.rows[0]["external_id"] == "unrelated-id"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("external_id", ["14384", None])
+async def test_import_accepts_shared_external_id_across_cinemas(
+    screening_gateway: SupabaseScreeningGateway,
+    gateway: SupabaseCinemaGateway,
+    movie_gateway: SupabaseMovieGateway,
+    external_id: str | None,
+) -> None:
+    """Different cinemas import shared or absent IDs and reimport without duplicates."""
+    await _seed_parents(gateway, movie_gateway)
+    command = CreateScreeningsCommand(SupabaseScreeningRepository(screening_gateway))
+    showtime = datetime(2026, 10, 7, 17, tzinfo=UTC)
+    request = command.InputData(
+        screenings=(
+            command.ScreeningInput(
+                movie_id="mov-001",
+                movie_title="Movie A",
+                cinema_id="cin-001",
+                cinema_name="Cinema One",
+                showtime=showtime,
+                external_id=external_id,
+            ),
+            command.ScreeningInput(
+                movie_id="mov-002",
+                movie_title="Movie B",
+                cinema_id="cin-004",
+                cinema_name="Cinema Four",
+                showtime=showtime,
+                external_id=external_id,
+                room="Old room",
+            ),
+        )
+    )
+
+    result = await command.execute(request)
+    assert result.total_count == result.imported_count == 2
+    assert result.updated_count == result.skipped_count == 0
+    before = await screening_gateway.search()
+
+    request = replace(
+        request,
+        screenings=(
+            request.screenings[0],
+            replace(request.screenings[1], room="New room"),
+        ),
+    )
+    result = await command.execute(request)
+    assert result.total_count == result.updated_count == 2
+    assert result.imported_count == result.skipped_count == 0
+    after = await screening_gateway.search()
+    assert after.total == 2
+    assert [row["id"] for row in after.rows] == [row["id"] for row in before.rows]
+    assert [row["external_id"] for row in after.rows] == [external_id, external_id]
+    owner_before = next(row for row in before.rows if row["cinema_id"] == "cin-001")
+    owner = await screening_gateway.search(cinema_id="cin-001")
+    assert owner.rows == [owner_before]
+    target = await screening_gateway.search(cinema_id="cin-004")
+    assert target.rows[0]["room"] == "New room"
 
 
 @pytest.mark.asyncio
