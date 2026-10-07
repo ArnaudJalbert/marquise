@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.13"
 
 [manifest]
@@ -635,7 +635,7 @@ requires-dist = [
 
 [[package]]
 name = "marquise-cli"
-version = "0.1.14"
+version = "0.1.15"
 source = { editable = "apps/marquise-cli" }
 dependencies = [
     { name = "marquise-core" },
