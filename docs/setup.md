@@ -14,6 +14,39 @@ Env vars → [CONTRIBUTING.md](../CONTRIBUTING.md#environment-variables).
 
 Optional: `DATABASE_SCHEMA` (default `marquise`).
 
+### Existing databases: cinema-scoped screening external IDs (#285)
+
+Fresh schemas scope external-ID uniqueness to `(cinema_id, external_id)`.
+Different ticketing providers may issue the same ID. Within one Cinema, an ID
+still identifies only one Screening, including after a source change. IDs reused
+within that Cinema remain conflicts; imports do not overwrite their owners.
+Screenings without an external ID are still allowed.
+
+Re-running bootstrap SQL does **not** alter existing tables. After explicit
+approval for live rollout:
+
+1. Pause imports and choose a quiet window. The migration takes an exclusive
+   lock on `screenings` while rebuilding its unique index, blocking reads and
+   writes. Allow for index rebuild time on larger tables.
+2. Run [the forward migration](../scripts/migrations/285-cinema-scoped-external-id.sql)
+   in the SQL Editor, or with a SQL client configured to stop on the first error.
+   It targets `marquise.screenings`. For an existing test or custom schema,
+   change that table reference to the correct quoted schema, such as
+   `"marquise-test".screenings`, before executing.
+3. Both scripts use a 5-second lock timeout and 60-second statement timeout.
+   On failure, issue `ROLLBACK` in the same session before retrying. No rows
+   are changed; the old constraint remains until the transaction commits.
+4. Confirm the named constraint `screenings_external_id_key` covers
+   `(cinema_id, external_id)`, then resume imports. Rerun the Cinémathèque
+   import only with approval and confirm cross-Cinema IDs no longer skip.
+
+[Rollback SQL](../scripts/migrations/285-cinema-scoped-external-id-rollback.sql)
+restores global uniqueness only if every non-null ID remains globally unique.
+If cross-Cinema duplicates now exist, PostgreSQL rejects the rollback; issue
+`ROLLBACK` and leave cinema-scoped uniqueness in place. Never delete Screenings
+or clear their IDs to force rollback. The scripts retain the original constraint
+name so existing gateway conflict translation works before and after migration.
+
 ## Auth
 
 [`supabase/config.toml`](../supabase/config.toml) is source of truth. Use

@@ -51,11 +51,12 @@ CREATE TABLE IF NOT EXISTS "marquise-test".screenings (
     cinema_id   TEXT NOT NULL
         REFERENCES "marquise-test".cinemas(id) ON DELETE CASCADE,
     showtime    TIMESTAMP NOT NULL,
-    external_id TEXT UNIQUE,
+    external_id TEXT,
     ticket_url  TEXT,
     room        TEXT,
     language    TEXT,
-    UNIQUE (cinema_id, movie_id, showtime)
+    UNIQUE (cinema_id, movie_id, showtime),
+    CONSTRAINT screenings_external_id_key UNIQUE (cinema_id, external_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_screenings_movie_id
