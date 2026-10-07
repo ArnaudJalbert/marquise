@@ -105,8 +105,8 @@ continue through their existing unaudited path. An audit record is history, not 
 automatic restore operation.
 
 Clients must send `Idempotency-Key` and `X-Change-Reason` with every POST/PATCH/DELETE.
-Generate one key per intended action and reuse it for retries, including after a
-lost response or retryable 503 (`Retry-After: 1`). Reusing successful intent with
+Prefer a fresh UUID as the key for each intended action. Reuse it for retries,
+including after a lost response or retryable 503 (`Retry-After: 1`). Reusing successful intent with
 changed values or reason returns 409. Authentication is checked again on replay.
 Never place credentials in keys, reasons, ticket URLs, or other metadata. Raw
 requests and authorization headers are not copied into history; arbitrary free

@@ -133,8 +133,8 @@ roles return 403; an unavailable or unconfigured verifier returns 503.
 
 Every screening write requires `Idempotency-Key` (1 to 128 ASCII letters, digits,
 `.`, `_`, `:`, or `-`) and `X-Change-Reason` (nonblank, at most 500 characters,
-no control characters). Generate a fresh key for each intended action; reuse it
-only for retries. Keys belong to the verified account across write operations
+no control characters). Prefer a fresh UUID as the key for each intended action;
+reuse it only for retries. Keys belong to the verified account across write operations
 and successful keys do not expire. Reasons and metadata must contain no credentials.
 Free-text inputs cannot reliably detect every pasted secret.
 
