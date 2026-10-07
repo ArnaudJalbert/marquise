@@ -106,6 +106,7 @@ async def db_pool(
                     REFERENCES "{TEST_SCHEMA}".cinemas(id) ON DELETE CASCADE,
                 showtime    TIMESTAMP NOT NULL,
                 external_id TEXT,
+                source_name TEXT,
                 ticket_url  TEXT,
                 room        TEXT,
                 language    TEXT,
@@ -113,6 +114,15 @@ async def db_pool(
                 CONSTRAINT screenings_external_id_key UNIQUE (cinema_id, external_id)
             )
             """
+        )
+        await conn.execute(
+            f'ALTER TABLE "{TEST_SCHEMA}".screenings '
+            "ADD COLUMN IF NOT EXISTS source_name TEXT"
+        )
+        await conn.execute(
+            f'ALTER TABLE "{TEST_SCHEMA}".screenings '
+            "DROP CONSTRAINT IF EXISTS screenings_external_id_key, "
+            "ADD CONSTRAINT screenings_external_id_key UNIQUE (cinema_id, external_id)"
         )
     async with pool.acquire() as conn:
         await conn.execute(

@@ -5,8 +5,9 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime, time, timedelta
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 from marquise.application.exceptions import (
     ScreeningAlreadyExistsError,
@@ -29,12 +30,14 @@ class ImportedScreeningData:
     Attributes:
         movie_title: The title of the movie.
         showtime: The showtime in ISO format.
-        imported: True if newly created, False if already existed and updated in place.
+        imported: True if newly created.
+        rescheduled: True if an existing screening moved to a new showtime.
     """
 
     movie_title: str
     showtime: str
     imported: bool
+    rescheduled: bool = False
 
     def __post_init__(self) -> None:
         if not self.movie_title.strip():
@@ -62,6 +65,7 @@ class CreateScreeningsCommand:
         cinema_name: str
         showtime: datetime
         external_id: str | None = None
+        source_name: str | None = None
         ticket_url: str | None = None
         room: str | None = None
         language: str | None = None
@@ -89,6 +93,7 @@ class CreateScreeningsCommand:
         imported_count: int
         updated_count: int
         skipped_count: int
+        rescheduled_count: int = 0
 
         def __post_init__(self) -> None:
             if self.total_count < 0:
@@ -97,6 +102,8 @@ class CreateScreeningsCommand:
                 raise ValueError("imported_count must not be negative")
             if self.updated_count < 0:
                 raise ValueError("updated_count must not be negative")
+            if self.rescheduled_count < 0:
+                raise ValueError("rescheduled_count must not be negative")
             if self.skipped_count < 0:
                 raise ValueError("skipped_count must not be negative")
 
@@ -143,7 +150,10 @@ class CreateScreeningsCommand:
             screenings=tuple(results),
             total_count=len(results),
             imported_count=sum(1 for r in results if r.imported),
-            updated_count=sum(1 for r in results if not r.imported),
+            updated_count=sum(
+                1 for r in results if not r.imported and not r.rescheduled
+            ),
+            rescheduled_count=sum(1 for r in results if r.rescheduled),
             skipped_count=skipped_count,
         )
 
@@ -159,12 +169,35 @@ class CreateScreeningsCommand:
             cinema=cinema,
             showtime=Showtime(value=row.showtime),
             external_id=row.external_id,
+            source_name=row.source_name,
             ticket_url=row.ticket_url,
             room=row.room,
             language=row.language,
         )
         try:
             await self.screening_repository.save(screening)
+        except ScreeningExternalIdConflictError as conflict:
+            if row.external_id and row.source_name:
+                try:
+                    local_start, local_end = _local_day_bounds(row.showtime)
+                    rescheduled = await self.screening_repository.reschedule(
+                        screening,
+                        source_name=row.source_name,
+                        local_day_start=local_start,
+                        local_day_end=local_end,
+                    )
+                except ScreeningAlreadyExistsError as target_conflict:
+                    raise ScreeningExternalIdConflictError(
+                        str(target_conflict)
+                    ) from target_conflict
+                if rescheduled is not None:
+                    return ImportedScreeningData(
+                        movie_title=row.movie_title,
+                        showtime=row.showtime.isoformat(),
+                        imported=False,
+                        rescheduled=True,
+                    )
+            raise conflict
         except ScreeningAlreadyExistsError:
             updated = await self.screening_repository.update(screening)
             if updated is None:
@@ -184,3 +217,11 @@ class CreateScreeningsCommand:
             showtime=row.showtime.isoformat(),
             imported=True,
         )
+
+
+def _local_day_bounds(showtime: datetime) -> tuple[datetime, datetime]:
+    """Return Montreal-local calendar-day bounds as UTC datetimes."""
+    local_zone = ZoneInfo("America/Montreal")
+    local_date = showtime.astimezone(local_zone).date()
+    start = datetime.combine(local_date, time.min, tzinfo=local_zone).astimezone(UTC)
+    return start, start + timedelta(days=1)

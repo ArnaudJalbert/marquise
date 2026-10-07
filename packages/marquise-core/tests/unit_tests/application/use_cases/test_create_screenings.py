@@ -110,6 +110,54 @@ async def test_updates_existing_screening() -> None:
 
 
 @pytest.mark.asyncio
+async def test_reschedules_same_source_screening() -> None:
+    """A same-day source collision moves existing screening in place."""
+    repo = create_autospec(ScreeningRepository, instance=True)
+    repo.save.side_effect = ScreeningExternalIdConflictError("collision")
+    repo.reschedule.return_value = create_autospec(object, instance=True)
+
+    row = _make_screening_input(external_id="show-1")
+    row = CreateScreeningsCommand.ScreeningInput(
+        movie_id=row.movie_id,
+        movie_title=row.movie_title,
+        cinema_id=row.cinema_id,
+        cinema_name=row.cinema_name,
+        showtime=row.showtime,
+        external_id=row.external_id,
+        source_name="cineplex",
+    )
+    result = await _run(CreateScreeningsCommand(repo), (row,))
+
+    assert result.rescheduled_count == 1
+    assert result.updated_count == 0
+    assert result.screenings[0].rescheduled is True
+    repo.reschedule.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_refuses_reschedule_without_matching_source() -> None:
+    """A source mismatch leaves external-ID collision unresolved."""
+    repo = create_autospec(ScreeningRepository, instance=True)
+    repo.save.side_effect = ScreeningExternalIdConflictError("collision")
+    repo.reschedule.return_value = None
+    base = _make_screening_input(external_id="show-1")
+    row = CreateScreeningsCommand.ScreeningInput(
+        movie_id=base.movie_id,
+        movie_title=base.movie_title,
+        cinema_id=base.cinema_id,
+        cinema_name=base.cinema_name,
+        showtime=base.showtime,
+        external_id=base.external_id,
+        source_name="cineplex",
+    )
+
+    result = await _run(CreateScreeningsCommand(repo), (row,))
+
+    assert result.skipped_count == 1
+    assert result.rescheduled_count == 0
+
+
+@pytest.mark.asyncio
 async def test_skips_external_id_conflict() -> None:
     """An insert collision is skipped without trying to update another row."""
     mock_screening_repo = create_autospec(ScreeningRepository, instance=True)

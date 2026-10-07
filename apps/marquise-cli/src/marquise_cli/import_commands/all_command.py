@@ -32,6 +32,7 @@ class CinemaImportResult:
         status: One of ``"imported"``, ``"skipped"``, or ``"failed"``.
         imported_count: Number of new screenings created (0 unless imported).
         updated_count: Number of existing screenings updated (0 unless imported).
+        rescheduled_count: Number of existing screenings moved in place.
         skipped_screenings_count: Number of individual screenings skipped
             due to an external_id collision (0 unless imported).
         detail: Optional human-readable detail (e.g. an error or skip reason).
@@ -41,6 +42,7 @@ class CinemaImportResult:
     status: str
     imported_count: int = 0
     updated_count: int = 0
+    rescheduled_count: int = 0
     skipped_screenings_count: int = 0
     detail: str | None = None
 
@@ -119,6 +121,7 @@ async def run_import_all(
                     status="imported",
                     imported_count=output.imported_count,
                     updated_count=output.updated_count,
+                    rescheduled_count=output.rescheduled_count,
                     skipped_screenings_count=output.skipped_count,
                 )
 
@@ -143,9 +146,11 @@ def _print_totals(
     """Print aggregate bulk-import counts."""
     total_new = sum(result.imported_count for result in imported)
     total_updated = sum(result.updated_count for result in imported)
+    total_rescheduled = sum(result.rescheduled_count for result in imported)
     print(
         f"Done: {len(imported)} imported, {len(skipped)} skipped, "
-        f"{len(failed)} failed — {total_new} new, {total_updated} updated."
+        f"{len(failed)} failed - {total_new} new, {total_updated} updated, "
+        f"{total_rescheduled} rescheduled."
     )
 
 
@@ -158,6 +163,11 @@ def _print_results(results: list[CinemaImportResult]) -> int:
     print("\nResults:")
     for result in imported:
         suffix = (
+            f", {result.rescheduled_count} rescheduled"
+            if result.rescheduled_count
+            else ""
+        )
+        suffix += (
             f", {result.skipped_screenings_count} skipped"
             if result.skipped_screenings_count
             else ""

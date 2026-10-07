@@ -52,6 +52,8 @@ CREATE TABLE IF NOT EXISTS "marquise-test".screenings (
         REFERENCES "marquise-test".cinemas(id) ON DELETE CASCADE,
     showtime    TIMESTAMP NOT NULL,
     external_id TEXT,
+    source_name TEXT
+        REFERENCES "marquise-test".source_definitions(name) ON DELETE SET NULL,
     ticket_url  TEXT,
     room        TEXT,
     language    TEXT,
