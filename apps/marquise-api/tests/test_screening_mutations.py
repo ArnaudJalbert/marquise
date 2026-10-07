@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Iterator
-from dataclasses import asdict, fields
+from dataclasses import replace
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, create_autospec
@@ -77,9 +77,7 @@ def factory() -> MagicMock:
     """Provide the approved factory/use-case seam without opening external services."""
     fake = create_autospec(MarquiseFactory, instance=True)
     for name, kind in (
-        ("create_screening_use_case", CreateScreeningUseCase),
-        ("update_screening_use_case", UpdateScreeningUseCase),
-        ("delete_screening_use_case", DeleteScreeningUseCase),
+        ("write_screening_use_case", WriteScreeningUseCase),
         ("get_screening_query", GetScreeningQuery),
         ("get_cinema_movies_use_case", GetCinemaMoviesUseCase),
         ("get_cinema_screenings_query", GetCinemaScreeningsQuery),
@@ -98,50 +96,16 @@ def factory() -> MagicMock:
             subject="editor-id", can_edit=True, can_administer=False
         )
     )
-    fake.create_screening_use_case.execute.return_value = (
-        CreateScreeningUseCase.OutputData(**PERSISTED)
-    )
-    fake.update_screening_use_case.execute.return_value = (
-        UpdateScreeningUseCase.OutputData(**PERSISTED)
-    )
-    fake.delete_screening_use_case.execute.return_value = (
-        DeleteScreeningUseCase.OutputData(screening_id="scr-1")
+    fake.write_screening_use_case.execute.return_value = (
+        WriteScreeningUseCase.OutputData(
+            screening_id="persisted-id",
+            changed=True,
+            screening=CreateScreeningUseCase.OutputData(**PERSISTED),
+        )
     )
     fake.get_screening_query.execute.return_value = GetScreeningQuery.OutputData(
         **PERSISTED
     )
-    fake.write_screening_use_case = create_autospec(
-        WriteScreeningUseCase, instance=True
-    )
-
-    async def write(
-        request: WriteScreeningUseCase.InputData,
-    ) -> WriteScreeningUseCase.OutputData:
-        """Keep existing DTO/error regression checks through the new configured seam."""
-        mutation = request.mutation
-        if isinstance(mutation, CreateScreeningUseCase.InputData):
-            output = await fake.create_screening_use_case.execute(mutation)
-            return WriteScreeningUseCase.OutputData(
-                screening_id=output.id, changed=True, screening=output
-            )
-        if isinstance(mutation, UpdateScreeningUseCase.InputData):
-            output = await fake.update_screening_use_case.execute(mutation)
-            changed = any(
-                field.name != "screening_id"
-                and getattr(mutation, field.name) is not field.default
-                for field in fields(mutation)
-            )
-            return WriteScreeningUseCase.OutputData(
-                screening_id=output.id,
-                changed=changed,
-                screening=CreateScreeningUseCase.OutputData(**asdict(output)),
-            )
-        output = await fake.delete_screening_use_case.execute(mutation)
-        return WriteScreeningUseCase.OutputData(
-            screening_id=output.screening_id, changed=True
-        )
-
-    fake.write_screening_use_case.execute.side_effect = write
     return fake
 
 
@@ -169,7 +133,8 @@ def test_editor_creates_persisted_screening(
     assert response.status_code == 201
     assert response.json() == EXPECTED
     assert response.headers["location"] == "/v1/screenings/persisted-id"
-    factory.create_screening_use_case.execute.assert_awaited_once_with(
+    factory.write_screening_use_case.execute.assert_awaited_once()
+    assert factory.write_screening_use_case.execute.await_args.args[0].mutation == (
         CreateScreeningUseCase.InputData(
             movie_id="mov-1",
             cinema_id="cin-1",
@@ -214,7 +179,8 @@ def test_editor_patches_only_supplied_fields(
         expected_fields["showtime"] = datetime.fromisoformat(
             expected_fields["showtime"]
         )
-    factory.update_screening_use_case.execute.assert_awaited_once_with(
+    factory.write_screening_use_case.execute.assert_awaited_once()
+    assert factory.write_screening_use_case.execute.await_args.args[0].mutation == (
         UpdateScreeningUseCase.InputData(screening_id="scr-1", **expected_fields)
     )
 
@@ -230,7 +196,8 @@ def test_editor_permanently_deletes_screening(
     )
     assert response.status_code == 204
     assert response.content == b""
-    factory.delete_screening_use_case.execute.assert_awaited_once_with(
+    factory.write_screening_use_case.execute.assert_awaited_once()
+    assert factory.write_screening_use_case.execute.await_args.args[0].mutation == (
         DeleteScreeningUseCase.InputData(screening_id="scr-1")
     )
 
@@ -290,9 +257,7 @@ def test_invalid_input_rejected_before_execution(
     assert response.json()["error_code"] == "invalid_input"
     assert isinstance(response.json()["detail"], str)
     assert response.json()["request_id"] == response.headers["x-request-id"]
-    factory.create_screening_use_case.execute.assert_not_awaited()
-    factory.update_screening_use_case.execute.assert_not_awaited()
-    factory.delete_screening_use_case.execute.assert_not_awaited()
+    factory.write_screening_use_case.execute.assert_not_awaited()
 
 
 @pytest.mark.parametrize(
@@ -319,7 +284,8 @@ def test_create_optional_omission_and_null(
         headers={"Authorization": "Bearer editor"},
     )
     assert response.status_code == 201
-    factory.create_screening_use_case.execute.assert_awaited_once_with(
+    factory.write_screening_use_case.execute.assert_awaited_once()
+    assert factory.write_screening_use_case.execute.await_args.args[0].mutation == (
         CreateScreeningUseCase.InputData(
             movie_id="mov-1", cinema_id="cin-1", showtime=SHOWTIME
         )
@@ -350,24 +316,20 @@ def test_ticket_urls_are_validated_without_normalization(
         headers={"Authorization": "Bearer editor"},
     )
     assert response.status_code in {200, 201}
-    use_case = (
-        factory.create_screening_use_case
-        if method == "POST"
-        else factory.update_screening_use_case
-    )
-    assert use_case.execute.await_args.args[0].ticket_url == url
+    mutation = factory.write_screening_use_case.execute.await_args.args[0].mutation
+    assert mutation.ticket_url == url
 
 
 OPERATIONS = [
-    ("POST", "/v1/screenings", CREATE, "create_screening_use_case", 201),
+    ("POST", "/v1/screenings", CREATE, "write_screening_use_case", 201),
     (
         "PATCH",
         "/v1/screenings/scr-1",
         {"room": "New room"},
-        "update_screening_use_case",
+        "write_screening_use_case",
         200,
     ),
-    ("DELETE", "/v1/screenings/scr-1", None, "delete_screening_use_case", 204),
+    ("DELETE", "/v1/screenings/scr-1", None, "write_screening_use_case", 204),
 ]
 
 
@@ -459,9 +421,7 @@ def test_rejected_auth_never_executes_mutations(
     if expected_status == 401:
         assert response.headers["www-authenticate"] == "Bearer"
     assert "secret" not in response.text
-    factory.create_screening_use_case.execute.assert_not_awaited()
-    factory.update_screening_use_case.execute.assert_not_awaited()
-    factory.delete_screening_use_case.execute.assert_not_awaited()
+    factory.write_screening_use_case.execute.assert_not_awaited()
 
 
 @pytest.mark.parametrize("method,path,body,name,status", OPERATIONS[:2])
@@ -503,9 +463,9 @@ def test_mutation_resource_and_collision_errors(
 @pytest.mark.parametrize(
     "method,body,name",
     [
-        ("PATCH", {}, "update_screening_use_case"),
-        ("PATCH", {"room": "New"}, "update_screening_use_case"),
-        ("DELETE", None, "delete_screening_use_case"),
+        ("PATCH", {}, "write_screening_use_case"),
+        ("PATCH", {"room": "New"}, "write_screening_use_case"),
+        ("DELETE", None, "write_screening_use_case"),
     ],
 )
 def test_missing_screening_is_not_success(
@@ -712,12 +672,12 @@ def test_mutation_responses_are_not_cached(
 @pytest.mark.parametrize(
     "method,path,body,name,status,failure",
     [
-        ("PATCH", "/v1/screenings/scr-1", {}, "update_screening_use_case", 200, None),
+        ("PATCH", "/v1/screenings/scr-1", {}, "write_screening_use_case", 200, None),
         *[
             (method, path, body, name, status, failure)
             for method, path, body, name, status in [
                 *OPERATIONS,
-                ("PATCH", "/v1/screenings/scr-1", {}, "update_screening_use_case", 200),
+                ("PATCH", "/v1/screenings/scr-1", {}, "write_screening_use_case", 200),
             ]
             for failure in ("missing", "conflict")
         ],
@@ -745,6 +705,10 @@ def test_empty_or_failed_mutations_do_not_clear_cache(
             else ScreeningAlreadyExistsError
         )
         getattr(factory, name).execute.side_effect = error("Rejected")
+    else:
+        factory.write_screening_use_case.execute.return_value = replace(
+            factory.write_screening_use_case.execute.return_value, changed=False
+        )
     backend = FastAPICache.get_backend()
     clear = create_autospec(backend.clear)
     monkeypatch.setattr(backend, "clear", clear)
@@ -1029,8 +993,7 @@ def test_ticket_url_requires_an_absolute_source_value(
     )
     assert response.status_code == 422
     assert response.json()["error_code"] == "invalid_input"
-    factory.create_screening_use_case.execute.assert_not_awaited()
-    factory.update_screening_use_case.execute.assert_not_awaited()
+    factory.write_screening_use_case.execute.assert_not_awaited()
 
 
 @pytest.mark.parametrize("method", ["POST", "PATCH"])
@@ -1054,8 +1017,7 @@ def test_malformed_or_nonobject_bodies_use_standard_error(
     )
     assert response.status_code == 422
     assert response.json()["error_code"] == "invalid_input"
-    factory.create_screening_use_case.execute.assert_not_awaited()
-    factory.update_screening_use_case.execute.assert_not_awaited()
+    factory.write_screening_use_case.execute.assert_not_awaited()
 
 
 @pytest.mark.parametrize("method,body", [("PATCH", {}), ("DELETE", None)])
@@ -1074,8 +1036,7 @@ def test_blank_screening_path_is_invalid(
     )
     assert response.status_code == 422
     assert response.json()["error_code"] == "invalid_input"
-    factory.update_screening_use_case.execute.assert_not_awaited()
-    factory.delete_screening_use_case.execute.assert_not_awaited()
+    factory.write_screening_use_case.execute.assert_not_awaited()
 
 
 @pytest.mark.parametrize("method,path,body,name,status", OPERATIONS)
@@ -1113,8 +1074,7 @@ def test_put_is_not_a_supported_replacement(
     )
     assert response.status_code == 405
     assert response.json()["error_code"] == "method_not_allowed"
-    factory.create_screening_use_case.execute.assert_not_awaited()
-    factory.update_screening_use_case.execute.assert_not_awaited()
+    factory.write_screening_use_case.execute.assert_not_awaited()
 
 
 @pytest.mark.parametrize("header", ["Idempotency-Key", "X-Change-Reason"])
@@ -1246,7 +1206,6 @@ def test_saved_success_replays_uncached_and_invalidates_again(
 
     invalidate = AsyncMock()
     monkeypatch.setattr(screenings, "invalidate_public_cache", invalidate)
-    factory.write_screening_use_case.execute.side_effect = None
     factory.write_screening_use_case.execute.return_value = (
         WriteScreeningUseCase.OutputData(
             screening_id="persisted-id",
@@ -1268,7 +1227,7 @@ def test_saved_success_replays_uncached_and_invalidates_again(
     if method == "POST":
         assert responses[1].headers["Location"] == "/v1/screenings/persisted-id"
     assert "x-fastapi-cache" not in responses[1].headers
-    getattr(factory, name).execute.assert_not_awaited()
+    assert factory.write_screening_use_case.execute.await_count == 2
 
 
 @pytest.mark.parametrize("method,path,body,name,status", OPERATIONS)
@@ -1282,7 +1241,6 @@ def test_saved_success_still_requires_authorization(
     status: int,
 ) -> None:
     """Having a previously successful key never bypasses current permission checks."""
-    factory.write_screening_use_case.execute.side_effect = None
     factory.write_screening_use_case.execute.return_value = (
         WriteScreeningUseCase.OutputData(screening_id="persisted-id", changed=True)
     )

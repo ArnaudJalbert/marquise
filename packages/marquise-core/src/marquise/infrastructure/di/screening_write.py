@@ -1,7 +1,6 @@
 """Composition root for connection-scoped audited screening writes."""
 
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import nullcontext
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -42,9 +41,8 @@ class _TransactionPool:
     def __init__(self, connection: asyncpg.Connection) -> None:
         self._connection = connection
 
-    @asynccontextmanager
-    async def acquire(self) -> AsyncIterator[asyncpg.Connection]:
-        yield self._connection
+    def acquire(self) -> nullcontext[asyncpg.Connection]:
+        return nullcontext(self._connection)
 
 
 def build_write_screening_use_case(
