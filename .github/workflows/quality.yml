@@ -43,6 +43,9 @@ jobs:
             --cov-report=term-missing \
             --cov-fail-under=70
 
+      - name: Run API tests
+        run: uv run pytest apps/marquise-api/tests/ -q
+
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         if: always()
