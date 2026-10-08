@@ -13,6 +13,7 @@ from marquise.application.exceptions import (
     ScreeningExternalIdConflictError,
     ScreeningNotFoundError,
 )
+from marquise.application.exceptions.screening import ScreeningWriteConflictError
 from marquise.application.repositories import Page, ScreeningRepository
 from marquise.domain.entities import Movie, Screening
 from marquise.domain.value_objects import (
@@ -25,7 +26,7 @@ from marquise.interface_adapters.repositories.protocols.base import GatewayError
 from marquise.interface_adapters.repositories.protocols.screening import (
     ScreeningExternalIdConflictGatewayError,
     ScreeningGateway,
-    ScreeningRescheduleConflictGatewayError,
+    ScreeningWriteConflictGatewayError,
 )
 from marquise.interface_adapters.repositories.supabase._utils import (
     dict_to_cinema,
@@ -144,35 +145,35 @@ class SupabaseScreeningRepository(ScreeningRepository):
             language=outcome.row.get("language"),
         )
 
-    async def reschedule(
+    async def read_import_candidates(
+        self, incoming: Screening
+    ) -> tuple[Screening, ...]:
+        """Map all native-key and target-identity candidates to detached entities."""
+        rows = await self._gateway.read_import_candidates(
+            cinema_id=str(incoming.cinema.id),
+            movie_id=str(incoming.movie.id),
+            showtime=incoming.showtime.value,
+            external_id=incoming.external_id,
+        )
+        return tuple(self._to_entity(row) for row in rows)
+
+    async def commit_import(
         self,
-        screening: Screening,
+        proposed: Screening,
         *,
-        source_name: str,
-        local_day_start: datetime,
-        local_day_end: datetime,
-    ) -> Screening | None:
-        """Move a source-owned screening within its local calendar day."""
+        incoming: Screening,
+        expected: tuple[Screening, ...],
+    ) -> Screening:
+        """Map the complete decision and checked state to persistence data."""
         try:
-            data = await self._gateway.reschedule(
-                cinema_id=str(screening.cinema.id),
-                movie_id=str(screening.movie.id),
-                external_id=screening.external_id or "",
-                source_name=source_name,
-                showtime=screening.showtime.value,
-                local_day_start=local_day_start,
-                local_day_end=local_day_end,
-                ticket_url=screening.ticket_url,
-                room=screening.room,
-                language=screening.language,
+            row = await self._gateway.commit_import(
+                _persistence_data(proposed),
+                incoming=_persistence_data(incoming),
+                expected=tuple(_persistence_data(row) for row in expected),
             )
-        except ScreeningRescheduleConflictGatewayError as exc:
-            raise ScreeningAlreadyExistsError(str(exc)) from exc
-        except ScreeningExternalIdConflictGatewayError as exc:
-            raise ScreeningExternalIdConflictError(str(exc)) from exc
-        if data is None:
-            return None
-        return self._to_entity(data)
+        except ScreeningWriteConflictGatewayError as exc:
+            raise ScreeningWriteConflictError(str(exc)) from exc
+        return self._to_entity(row)
 
     async def update(self, screening: Screening) -> Screening | None:
         """Update optional fields on an existing screening.
@@ -392,3 +393,18 @@ class SupabaseScreeningRepository(ScreeningRepository):
             room=data.get("room"),
             language=data.get("language"),
         )
+
+
+def _persistence_data(screening: Screening) -> dict:
+    """Map stored Screening columns, excluding joined parent metadata."""
+    return {
+        "id": str(screening.id),
+        "movie_id": str(screening.movie.id),
+        "cinema_id": str(screening.cinema.id),
+        "showtime": screening.showtime.value.astimezone(UTC).replace(tzinfo=None),
+        "external_id": screening.external_id,
+        "source_name": screening.source_name,
+        "ticket_url": screening.ticket_url,
+        "room": screening.room,
+        "language": screening.language,
+    }
