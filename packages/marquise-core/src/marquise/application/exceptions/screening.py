@@ -25,3 +25,11 @@ class ScreeningUpdateNotFoundError(ApplicationError):
     """Raised when an existing screening disappears before it can be updated."""
 
     pass
+
+
+class ScreeningWriteConflictError(ApplicationError):
+    """The checked persistence state changed; no write was committed."""
+
+
+class ScreeningImportRetryExhaustedError(ApplicationError):
+    """An import could not commit after bounded fresh-state attempts."""

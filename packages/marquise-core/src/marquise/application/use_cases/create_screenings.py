@@ -4,15 +4,17 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from dataclasses import dataclass
-from datetime import UTC, datetime, time, timedelta
+from dataclasses import dataclass, replace
+from datetime import UTC, datetime
 from uuid import uuid4
-from zoneinfo import ZoneInfo
 
 from marquise.application.exceptions import (
-    ScreeningAlreadyExistsError,
     ScreeningExternalIdConflictError,
     ScreeningUpdateNotFoundError,
+)
+from marquise.application.exceptions.screening import (
+    ScreeningImportRetryExhaustedError,
+    ScreeningWriteConflictError,
 )
 from marquise.application.repositories import ScreeningRepository
 from marquise.domain.entities import Cinema, Movie, Screening
@@ -52,9 +54,9 @@ class ImportedScreeningData:
 class CreateScreeningsCommand:
     """Create or update screenings for every row in a batch.
 
-    Each input row is self-contained (movie_id, cinema_id, etc.) — no
-    lookups or external validation.  External_id collisions are skipped
-    per-row rather than aborting the whole batch.
+    Each input carries its Movie and Cinema identity. Persisted candidates
+    determine updates and eligible moves. Native-key conflicts are skipped
+    per row; stale writes reload and reevaluate with bounded retries.
     """
 
     @dataclass(frozen=True, slots=True)
@@ -179,70 +181,115 @@ class CreateScreeningsCommand:
             raise ScreeningExternalIdConflictError(
                 "Ambiguous external-ID ownership in incoming batch"
             )
-        movie = Movie(id=MovieId(value=row.movie_id), title=row.movie_title)
-        cinema = Cinema(id=CinemaId(value=row.cinema_id), name=row.cinema_name)
-        screening = Screening(
-            id=ScreeningId(value=uuid4().hex),
-            movie=movie,
-            cinema=cinema,
-            showtime=Showtime(value=row.showtime),
-            external_id=row.external_id,
-            source_name=row.source_name,
-            ticket_url=row.ticket_url,
-            room=row.room,
-            language=row.language,
-        )
-        try:
-            await self.screening_repository.save(screening)
-        except ScreeningExternalIdConflictError as conflict:
-            if row.external_id and row.source_name:
-                try:
-                    local_start, local_end = _local_day_bounds(row.showtime)
-                    rescheduled = await self.screening_repository.reschedule(
-                        screening,
-                        source_name=row.source_name,
-                        local_day_start=local_start,
-                        local_day_end=local_end,
-                    )
-                except ScreeningAlreadyExistsError as target_conflict:
-                    raise ScreeningExternalIdConflictError(
-                        str(target_conflict)
-                    ) from target_conflict
-                if rescheduled is not None:
-                    return ImportedScreeningData(
-                        movie_title=row.movie_title,
-                        showtime=row.showtime.isoformat(),
-                        imported=False,
-                        rescheduled=True,
-                    )
-            raise conflict
-        except ScreeningAlreadyExistsError:
-            updated = await self.screening_repository.update(screening)
-            if updated is None:
+        screening = _screening_from_input(row)
+        previously_present = False
+        for _ in range(3):
+            state = await self.screening_repository.read_import_candidates(screening)
+            if previously_present and not state:
                 raise ScreeningUpdateNotFoundError(
-                    f"Screening for cinema '{row.cinema_id}', movie "
-                    f"'{row.movie_id}' at {row.showtime.isoformat()} "
-                    f"was confirmed to exist on save but disappeared "
-                    "before update."
+                    "Screening disappeared or changed ownership before import commit"
                 )
+            previously_present = bool(state)
+            target, rescheduled = _select_import_target(screening, state)
+            proposed = _merge_import_metadata(screening, target)
+            try:
+                await self.screening_repository.commit_import(
+                    proposed, incoming=screening, expected=state
+                )
+            except ScreeningWriteConflictError:
+                continue
             return ImportedScreeningData(
                 movie_title=row.movie_title,
                 showtime=row.showtime.isoformat(),
-                imported=False,
+                imported=target is None,
+                rescheduled=rescheduled,
             )
-        return ImportedScreeningData(
-            movie_title=row.movie_title,
-            showtime=row.showtime.isoformat(),
-            imported=True,
+        raise ScreeningImportRetryExhaustedError(
+            "Screening import exhausted 3 checked-write attempts"
         )
 
 
-def _local_day_bounds(showtime: datetime) -> tuple[datetime, datetime]:
-    """Return Montreal-local calendar-day bounds as UTC datetimes."""
-    local_zone = ZoneInfo("America/Montreal")
-    local_date = showtime.astimezone(local_zone).date()
-    start = datetime.combine(local_date, time.min, tzinfo=local_zone).astimezone(UTC)
-    end = datetime.combine(
-        local_date + timedelta(days=1), time.min, tzinfo=local_zone
-    ).astimezone(UTC)
-    return start, end
+def _screening_from_input(row: CreateScreeningsCommand.ScreeningInput) -> Screening:
+    """Build an incoming Screening with a provisional ID for new performances."""
+    movie = Movie(id=MovieId(value=row.movie_id), title=row.movie_title)
+    cinema = Cinema(id=CinemaId(value=row.cinema_id), name=row.cinema_name)
+    return Screening(
+        id=ScreeningId(value=uuid4().hex),
+        movie=movie,
+        cinema=cinema,
+        showtime=Showtime(value=row.showtime),
+        external_id=row.external_id,
+        source_name=row.source_name,
+        ticket_url=row.ticket_url,
+        room=row.room,
+        language=row.language,
+    )
+
+
+def _select_import_target(
+    screening: Screening, state: tuple[Screening, ...]
+) -> tuple[Screening | None, bool]:
+    """Select an unambiguous existing target and validate any proposed move."""
+    owners = tuple(
+        stored
+        for stored in state
+        if screening.external_id and stored.external_id == screening.external_id
+    )
+    targets = tuple(
+        stored
+        for stored in state
+        if stored.movie.id == screening.movie.id
+        and stored.cinema.id == screening.cinema.id
+        and stored.showtime.value.astimezone(UTC)
+        == screening.showtime.value.astimezone(UTC)
+    )
+    if len(owners) > 1 or len(targets) > 1:
+        raise ScreeningExternalIdConflictError("Ambiguous ownership")
+    target = targets[0] if targets else None
+    owner = owners[0] if owners else None
+    if owner is None or (target is not None and owner.id == target.id):
+        return target, False
+    if target is not None:
+        raise ScreeningExternalIdConflictError(
+            "A screening already exists for the rescheduled identity"
+        )
+    if not owner.can_reschedule_to(screening):
+        raise ScreeningExternalIdConflictError(
+            "Reschedule refused: Movie, native ID, source provenance "
+            "or Montreal calendar day differs"
+        )
+    return owner, True
+
+
+def _merge_import_metadata(screening: Screening, target: Screening | None) -> Screening:
+    """Apply supplied metadata while preserving native-ID provenance."""
+    if target is None:
+        return replace(screening, external_id=screening.external_id or None)
+    if (
+        screening.source_name is not None
+        and target.source_name is not None
+        and screening.source_name != target.source_name
+    ):
+        raise ScreeningExternalIdConflictError(
+            "Metadata update refused: source provenance differs"
+        )
+    external_id = screening.external_id or target.external_id
+    source_name = target.source_name
+    if screening.external_id:
+        if screening.source_name is not None:
+            source_name = screening.source_name
+        elif screening.external_id != target.external_id:
+            source_name = None
+    return replace(
+        target,
+        showtime=screening.showtime,
+        external_id=external_id,
+        source_name=source_name,
+        ticket_url=screening.ticket_url
+        if screening.ticket_url is not None
+        else target.ticket_url,
+        room=screening.room if screening.room is not None else target.room,
+        language=screening.language
+        if screening.language is not None
+        else target.language,
+    )
