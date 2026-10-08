@@ -14,7 +14,7 @@ from marquise.interface_adapters.repositories.protocols.base import (
 from marquise.interface_adapters.repositories.protocols.screening import (
     SaveOutcome,
     ScreeningExternalIdConflictGatewayError,
-    ScreeningRescheduleConflictGatewayError,
+    ScreeningWriteConflictGatewayError,
 )
 
 DEFAULT_SCHEMA = "marquise"
@@ -158,87 +158,109 @@ class SupabaseScreeningGateway:
             raise GatewayError("Screening disappeared after the identity conflict")
         return SaveOutcome(row=dict(row), inserted=inserted)
 
-    async def reschedule(
+    async def read_import_candidates(
         self,
         cinema_id: str,
         movie_id: str,
-        external_id: str,
-        source_name: str,
         showtime: datetime,
-        local_day_start: datetime,
-        local_day_end: datetime,
-        ticket_url: str | None = None,
-        room: str | None = None,
-        language: str | None = None,
-    ) -> dict | None:
-        """Move one same-day source-owned screening without changing its ID."""
-        if not external_id or not source_name:
-            return None
+        external_id: str | None,
+    ) -> list[dict]:
+        """Read every row matching the native key or target identity."""
         async with self._pool.acquire() as conn:
-            async with conn.transaction(isolation="read_committed"):
-                owners = await conn.fetch(
-                    f"SELECT {_COLUMNS} FROM {self._table} "
-                    "WHERE cinema_id = $1 AND external_id = $2 ORDER BY id FOR UPDATE",
-                    cinema_id,
-                    external_id,
-                )
-                if not owners:
-                    return None
-                if len(owners) != 1:
-                    raise ScreeningExternalIdConflictGatewayError(
-                        f"Ambiguous ownership: {len(owners)} Screenings claim "
-                        f"cinema_id={cinema_id!r} external_id={external_id!r}"
+            rows = await conn.fetch(
+                f"SELECT {_JOINED_COLUMNS} FROM {self._table} s "
+                f'JOIN "{self._schema}".movies m ON s.movie_id = m.id '
+                f'JOIN "{self._schema}".cinemas c ON s.cinema_id = c.id '
+                "WHERE s.cinema_id = $1 AND ("
+                "(s.movie_id = $2 AND s.showtime = $3) "
+                "OR (NULLIF($4::text, '') IS NOT NULL AND s.external_id = $4)) "
+                "ORDER BY s.id",
+                cinema_id,
+                movie_id,
+                _naive_utc(showtime),
+                external_id,
+            )
+        return [dict(row) for row in rows]
+
+    async def commit_import(
+        self, proposed: dict, *, incoming: dict, expected: tuple[dict, ...]
+    ) -> dict:
+        """Lock checked rows, compare full snapshots, and persist atomically.
+
+        Uniqueness protects absent target/native keys against concurrent arrivals.
+        The fresh read after locking detects rows committed during lock waits.
+        No source ownership or calendar eligibility rule is evaluated here.
+        """
+        async with self._pool.acquire() as conn:
+            try:
+                async with conn.transaction(isolation="read_committed"):
+                    await self._check_import_snapshot(conn, incoming, expected)
+                    return await self._persist_import(
+                        conn,
+                        proposed,
+                        replacing=any(row["id"] == proposed["id"] for row in expected),
                     )
-                owner = owners[0]
-                try:
-                    row = await conn.fetchrow(
-                        f"""
-                        WITH updated AS (
-                            UPDATE {self._table}
-                            SET showtime = $7,
-                                ticket_url = COALESCE($8, ticket_url),
-                                room = COALESCE($9, room),
-                                language = COALESCE($10, language)
-                            WHERE id = $1 AND movie_id = $2
-                                AND external_id = $3 AND source_name = $4
-                                AND showtime >= $5 AND showtime < $6
-                                AND $7 >= $5 AND $7 < $6
-                            RETURNING {_COLUMNS}
-                        )
-                        SELECT {_JOINED_COLUMNS}
-                        FROM updated s
-                        JOIN "{self._schema}".movies m ON s.movie_id = m.id
-                        JOIN "{self._schema}".cinemas c ON s.cinema_id = c.id
-                        """,
-                        owner["id"],
-                        movie_id,
-                        external_id,
-                        source_name,
-                        _naive_utc(local_day_start),
-                        _naive_utc(local_day_end),
-                        _naive_utc(showtime),
-                        ticket_url,
-                        room,
-                        language,
-                    )
-                    if row is None:
-                        raise ScreeningExternalIdConflictGatewayError(
-                            f"Reschedule refused: owner_id={owner['id']!r}, "
-                            f"movie_id={owner['movie_id']!r} (incoming={movie_id!r}), "
-                            f"showtime={owner['showtime']}, "
-                            f"allowed_window=[{local_day_start}, {local_day_end}), "
-                            f"source provenance={owner['source_name']!r} "
-                            f"(incoming={source_name!r})"
-                        )
-                except asyncpg.exceptions.UniqueViolationError as exc:
-                    if exc.as_dict().get("constraint_name") == (
-                        "screenings_cinema_id_movie_id_showtime_key"
-                    ):
-                        raise ScreeningRescheduleConflictGatewayError(
-                            "A screening already exists for the rescheduled identity"
-                        ) from exc
-                    raise
-        return dict(row) if row is not None else None
+            except (asyncpg.UniqueViolationError, asyncpg.DeadlockDetectedError) as exc:
+                raise ScreeningWriteConflictGatewayError(
+                    "Concurrent Screening identity or native-key conflict"
+                ) from exc
+
+    async def _check_import_snapshot(
+        self, conn: asyncpg.Connection, incoming: dict, expected: tuple[dict, ...]
+    ) -> None:
+        """Lock all checked rows and compare a fresh snapshot after any lock wait."""
+        query = (
+            f"SELECT {_COLUMNS} FROM {self._table} "
+            "WHERE id = ANY($5::text[]) OR (cinema_id = $1 AND ("
+            "(movie_id = $2 AND showtime = $3) "
+            "OR (NULLIF($4::text, '') IS NOT NULL AND external_id = $4))) "
+            "ORDER BY id FOR UPDATE"
+        )
+        checked = {row["id"]: row for row in expected}
+        arguments = (
+            incoming["cinema_id"],
+            incoming["movie_id"],
+            incoming["showtime"],
+            incoming["external_id"],
+            list(checked),
+        )
+
+        await conn.fetch(query, *arguments)
+        current = await conn.fetch(query, *arguments)
+        if {row["id"]: dict(row) for row in current} != checked:
+            raise ScreeningWriteConflictGatewayError("Screening state changed")
+
+    async def _persist_import(
+        self, conn: asyncpg.Connection, proposed: dict, *, replacing: bool
+    ) -> dict:
+        """Insert or replace the complete row and load its joined persistence data."""
+        columns = _COLUMNS.split(", ")
+        values = tuple(proposed[column] for column in columns)
+        if replacing:
+            assignments = ", ".join(
+                f"{column} = ${index}"
+                for index, column in enumerate(columns[1:], start=2)
+            )
+            await conn.execute(
+                f"UPDATE {self._table} SET {assignments} WHERE id = $1",
+                *values,
+            )
+        else:
+            placeholders = ", ".join(f"${i}" for i in range(1, len(columns) + 1))
+            await conn.execute(
+                f"INSERT INTO {self._table} ({_COLUMNS}) VALUES ({placeholders})",
+                *values,
+            )
+        row = await conn.fetchrow(
+            f"SELECT {_JOINED_COLUMNS} FROM {self._table} s "
+            f'JOIN "{self._schema}".movies m ON s.movie_id = m.id '
+            f'JOIN "{self._schema}".cinemas c ON s.cinema_id = c.id '
+            "WHERE s.id = $1",
+            proposed["id"],
+        )
+        if row is None:
+            raise GatewayError("Persisted Screening has missing parents")
+        return dict(row)
 
     async def update(
         self,

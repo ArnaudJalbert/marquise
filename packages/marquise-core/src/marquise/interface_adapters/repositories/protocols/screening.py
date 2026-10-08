@@ -16,8 +16,8 @@ class ScreeningExternalIdConflictGatewayError(GatewayError):
     """Raised when an external ID conflicts with another screening row."""
 
 
-class ScreeningRescheduleConflictGatewayError(GatewayError):
-    """Raised when a reschedule would collide with another screening."""
+class ScreeningWriteConflictGatewayError(GatewayError):
+    """Checked state changed or a unique key collided; nothing was committed."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,20 +77,24 @@ class ScreeningGateway(Protocol):
         """
         ...
 
-    async def reschedule(
+    async def read_import_candidates(
         self,
         cinema_id: str,
         movie_id: str,
-        external_id: str,
-        source_name: str,
         showtime: datetime,
-        local_day_start: datetime,
-        local_day_end: datetime,
-        ticket_url: str | None = None,
-        room: str | None = None,
-        language: str | None = None,
-    ) -> dict | None:
-        """Move a same-day screening identified by its source ID atomically."""
+        external_id: str | None,
+    ) -> list[dict]:
+        """Read all native-key and target-identity matches without policy checks."""
+        ...
+
+    async def commit_import(
+        self, proposed: dict, *, incoming: dict, expected: tuple[dict, ...]
+    ) -> dict:
+        """Compare all persistence fields and atomically insert or replace a row.
+
+        Raise ScreeningWriteConflictGatewayError on changed/missing candidates
+        or concurrent unique-key collisions, rolling back every change.
+        """
         ...
 
     async def update(

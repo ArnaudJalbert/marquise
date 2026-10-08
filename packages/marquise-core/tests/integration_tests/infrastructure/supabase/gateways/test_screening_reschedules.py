@@ -12,7 +12,6 @@ import asyncpg
 import pytest
 import pytest_asyncio
 
-from marquise.application.exceptions import ScreeningExternalIdConflictError
 from marquise.application.queries.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
@@ -26,7 +25,7 @@ from marquise.application.use_cases.create_missing_movies import (
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.import_screenings import ImportScreeningsCommand
 from marquise.domain.entities import Cinema
-from marquise.domain.value_objects import CinemaId, ScreeningId, Showtime
+from marquise.domain.value_objects import CinemaId, ScreeningId
 from marquise.infrastructure.supabase.gateways.cinema import SupabaseCinemaGateway
 from marquise.infrastructure.supabase.gateways.cinema_source_assignment import (
     SupabaseCinemaSourceAssignmentGateway,
@@ -320,8 +319,8 @@ async def test_missing_native_id_cannot_reschedule_legacy_blank_owner(
     db_pool: asyncpg.Pool,
     external_id: str | None,
 ) -> None:
-    """Even a legacy blank native key cannot authorize a direct repository move."""
-    _, _, repository = import_chain
+    """ID-less imports create a new performance without moving a legacy blank owner."""
+    command, registry, repository = import_chain
     await screening_gateway.save(
         "owner", "digger", "cin-001", local("2026-10-07T13:00"), source_name="cineplex"
     )
@@ -330,18 +329,13 @@ async def test_missing_native_id_cannot_reschedule_legacy_blank_owner(
             f"UPDATE {SCHEMA}.screenings SET external_id='' WHERE id='owner'"
         )
     before = await repository.find_by_id(ScreeningId("owner"))
-    moved = await repository.reschedule(
-        replace(
-            before,
-            external_id=external_id,
-            showtime=Showtime(local("2026-10-07T13:15")),
-        ),
-        source_name="cineplex",
-        local_day_start=local("2026-10-07T00:00"),
-        local_day_end=local("2026-10-08T00:00"),
+    result = await run_import(
+        command,
+        registry,
+        [ShowtimeRow("DIGGER", local("2026-10-07T13:15"), external_id=external_id)],
     )
-
-    assert moved is None
+    assert result.imported_count == 1
+    assert result.rescheduled_count == 0
     assert await repository.find_by_id(ScreeningId("owner")) == before
 
 
@@ -982,7 +976,7 @@ async def test_ambiguous_persisted_ownership_never_reschedules_a_candidate(
     screening_gateway: SupabaseScreeningGateway,
 ) -> None:
     """Damaged uniqueness cannot make reschedule pick an arbitrary owner."""
-    _, _, repository = import_chain
+    command, registry, repository = import_chain
     await screening_gateway.save(
         "owner",
         "digger",
@@ -1006,18 +1000,13 @@ async def test_ambiguous_persisted_ownership_never_reschedules_a_candidate(
             source_name="cineplex",
         )
         before = await repository.search()
-        requested = replace(
-            before.items[0], showtime=Showtime(local("2026-10-07T13:15"))
+        result = await run_import(
+            command,
+            registry,
+            [ShowtimeRow("DIGGER", local("2026-10-07T13:15"), external_id="shared")],
         )
-        with pytest.raises(
-            ScreeningExternalIdConflictError, match="Ambiguous ownership"
-        ):
-            await repository.reschedule(
-                requested,
-                source_name="cineplex",
-                local_day_start=local("2026-10-07T00:00"),
-                local_day_end=local("2026-10-08T00:00"),
-            )
+        assert result.skipped_count == 1
+        assert result.rescheduled_count == 0
         assert await repository.search() == before
     finally:
         async with db_pool.acquire() as connection:
