@@ -113,8 +113,20 @@ class CreateScreeningsCommand:
     async def execute(self, request: InputData) -> OutputData:
         logger.info("Processing %d screening inputs", len(request.screenings))
 
+        owners: dict[tuple[str, str], set[tuple[str, datetime, str | None]]] = {}
+        for row in request.screenings:
+            if row.external_id:
+                owners.setdefault((row.cinema_id, row.external_id), set()).add(
+                    (row.movie_id, row.showtime.astimezone(UTC), row.source_name)
+                )
+        ambiguous = {key for key, identities in owners.items() if len(identities) > 1}
         raw_results = await asyncio.gather(
-            *[self._upsert_screening(row) for row in request.screenings],
+            *[
+                self._upsert_screening(
+                    row, ambiguous=(row.cinema_id, row.external_id) in ambiguous
+                )
+                for row in request.screenings
+            ],
             return_exceptions=True,
         )
 
@@ -160,7 +172,13 @@ class CreateScreeningsCommand:
     async def _upsert_screening(
         self,
         row: ScreeningInput,
+        *,
+        ambiguous: bool = False,
     ) -> ImportedScreeningData:
+        if ambiguous:
+            raise ScreeningExternalIdConflictError(
+                "Ambiguous external-ID ownership in incoming batch"
+            )
         movie = Movie(id=MovieId(value=row.movie_id), title=row.movie_title)
         cinema = Cinema(id=CinemaId(value=row.cinema_id), name=row.cinema_name)
         screening = Screening(
@@ -224,4 +242,7 @@ def _local_day_bounds(showtime: datetime) -> tuple[datetime, datetime]:
     local_zone = ZoneInfo("America/Montreal")
     local_date = showtime.astimezone(local_zone).date()
     start = datetime.combine(local_date, time.min, tzinfo=local_zone).astimezone(UTC)
-    return start, start + timedelta(days=1)
+    end = datetime.combine(
+        local_date + timedelta(days=1), time.min, tzinfo=local_zone
+    ).astimezone(UTC)
+    return start, end

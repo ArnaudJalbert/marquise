@@ -46,9 +46,38 @@ jobs:
       - name: Run API tests
         run: uv run pytest apps/marquise-api/tests/ -q
 
+      - name: Run CLI tests
+        run: uv run pytest apps/marquise-cli/tests/ -q
+
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: coverage-report
           path: coverage.xml
+
+  postgres:
+    name: PostgreSQL gateway and import regressions
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: marquise
+          POSTGRES_PASSWORD: test-only
+          POSTGRES_DB: marquise_test
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U marquise -d marquise_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://marquise:test-only@127.0.0.1:5432/marquise_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv python install 3.13
+      - run: uv sync --group dev
+      - name: Run isolated PostgreSQL tests (no production secrets)
+        run: uv run pytest packages/marquise-core/tests/integration_tests/infrastructure/supabase/gateways/ -q

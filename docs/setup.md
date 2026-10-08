@@ -49,13 +49,36 @@ name so existing gateway conflict translation works before and after migration.
 
 ### Existing databases: guarded reschedules (#287)
 
-Fresh schemas persist `source_name` on Screenings. Existing rows remain
-source-unknown and cannot be rescheduled automatically. After explicit rollout
-approval and a quiet import window, run
-[the migration](../scripts/migrations/287-screening-source-provenance.sql).
-It uses bounded lock and statement timeouts. Same-source imports may move an
-existing Screening only within its Montreal local calendar day; target identity
-collisions remain conflicts.
+Fresh schemas persist `source_name` on Screenings. Legacy rows remain
+source-unknown; current Cinema assignments do not establish historical ownership.
+After explicit rollout approval and a quiet import window:
+
+1. Snapshot the affected rows. Apply
+   [the additive migration](../scripts/migrations/287-screening-source-provenance.sql)
+   before deploying the new library. It leaves existing provenance unknown.
+2. With separate approval, apply
+   [the five-row Cineplex receipt](../scripts/migrations/287-verified-cineplex-provenance.sql).
+   Read-only verification confirmed the exact Screening, Cinema and Movie IDs,
+   October 7 old times, and stored Cineplex links with matching `VistaSessionId`
+   and `LocationId=9172`. The script rechecks these fields, permits old or corrected
+   times, and aborts atomically if any fingerprint differs. It sets only provenance;
+   unrelated unknown rows remain unknown. Never broaden it from assignments.
+3. Run the normal Cinema import. Verify `rescheduled_count=5`, stable IDs,
+   disappearance of the five old times, and no moves on a repeated import.
+   Metadata updates count separately; target collisions preserve both rows.
+
+Both scripts use 5-second lock and 60-second statement timeouts. The receipt blocks
+catalog writes while checking evidence, so use a quiet window. If either script
+fails, `ROLLBACK`, inspect the mismatch, and obtain fresh evidence rather than
+weakening guards. The application compares Montreal local calendar days using
+local midnights, including 23/25-hour DST days. Different Movies, sources, days,
+ambiguous ownership and target collisions are refusals, not merges.
+
+Application rollback may leave the additive column and verified provenance in
+place. It does not restore rescheduled times; any time restoration needs its own
+reviewed, ID-guarded operation. Do not delete Screenings or clear external IDs to
+force a repair. PR checks run gateway/import regressions against disposable
+PostgreSQL, without production secrets. No rollout script runs automatically.
 
 ## Auth
 

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime
 from unittest.mock import create_autospec
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -135,6 +137,40 @@ async def test_reschedules_same_source_screening() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("showtime", "start", "end"),
+    [
+        (
+            datetime(2026, 3, 8, 22, tzinfo=UTC),
+            datetime(2026, 3, 8, 5, tzinfo=UTC),
+            datetime(2026, 3, 9, 4, tzinfo=UTC),
+        ),
+        (
+            datetime(2026, 11, 1, 23, tzinfo=UTC),
+            datetime(2026, 11, 1, 4, tzinfo=UTC),
+            datetime(2026, 11, 2, 5, tzinfo=UTC),
+        ),
+    ],
+)
+async def test_reschedule_uses_local_midnights_across_dst(
+    showtime: datetime, start: datetime, end: datetime
+) -> None:
+    """Spring/fall reschedules use 23/25-hour local days, not UTC plus 24 hours."""
+    repo = create_autospec(ScreeningRepository, instance=True)
+    repo.save.side_effect = ScreeningExternalIdConflictError("collision")
+    row = replace(
+        _make_screening_input(showtime=showtime, external_id="show-1"),
+        source_name="cineplex",
+    )
+
+    result = await _run(CreateScreeningsCommand(repo), (row,))
+
+    assert result.rescheduled_count == 1
+    assert repo.reschedule.await_args.kwargs["local_day_start"] == start
+    assert repo.reschedule.await_args.kwargs["local_day_end"] == end
+
+
+@pytest.mark.asyncio
 async def test_refuses_reschedule_without_matching_source() -> None:
     """A source mismatch leaves external-ID collision unresolved."""
     repo = create_autospec(ScreeningRepository, instance=True)
@@ -155,6 +191,24 @@ async def test_refuses_reschedule_without_matching_source() -> None:
 
     assert result.skipped_count == 1
     assert result.rescheduled_count == 0
+
+
+@pytest.mark.asyncio
+async def test_ambiguous_batch_ownership_is_skipped_before_writing(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """One source ID naming two performances cannot overwrite either of them."""
+    repo = create_autospec(ScreeningRepository, instance=True)
+    first = replace(_make_screening_input(external_id="show-1"), source_name="cineplex")
+    second = replace(first, showtime=datetime(2026, 6, 7, 20, tzinfo=UTC))
+
+    result = await _run(CreateScreeningsCommand(repo), (first, second))
+
+    assert result.skipped_count == 2
+    assert result.total_count == 0
+    repo.save.assert_not_awaited()
+    repo.reschedule.assert_not_awaited()
+    assert "Ambiguous" in caplog.text
 
 
 @pytest.mark.asyncio
@@ -297,6 +351,24 @@ def test_screening_input_validates_naive_showtime() -> None:
     """Verify ScreeningInput rejects naive datetime."""
     with pytest.raises(ValueError, match="showtime must be timezone-aware"):
         _make_screening_input(showtime=datetime(2026, 6, 7, 19, 30, 0))
+
+
+@pytest.mark.asyncio
+async def test_dst_fold_inputs_are_ambiguous_without_persistence() -> None:
+    """Repeated DST clock times are distinct instants and cannot share a native ID."""
+    repository = create_autospec(ScreeningRepository, instance=True)
+    zone = ZoneInfo("America/Montreal")
+    first = _make_screening_input(
+        showtime=datetime(2026, 11, 1, 1, 30, tzinfo=zone, fold=0),
+        external_id="shared",
+    )
+    second = replace(first, showtime=first.showtime.replace(fold=1))
+    result = await _run(CreateScreeningsCommand(repository), (first, second))
+
+    assert result.skipped_count == 2
+    repository.save.assert_not_awaited()
+    repository.update.assert_not_awaited()
+    repository.reschedule.assert_not_awaited()
 
 
 @pytest.mark.asyncio
