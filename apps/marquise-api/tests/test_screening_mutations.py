@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Iterator
+from dataclasses import replace
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, create_autospec
@@ -32,10 +33,13 @@ from marquise import (
     MovieNotFoundError,
     ScreeningAlreadyExistsError,
     ScreeningExternalIdConflictError,
+    ScreeningIdempotencyConflictError,
     ScreeningNotFoundError,
+    ScreeningWriteBusyError,
     SearchScreeningsQuery,
     UpdateScreeningUseCase,
     VerifyAccessTokenQuery,
+    WriteScreeningUseCase,
 )
 from marquise_api.app import CACHE_PREFIX, create_app
 from marquise_api.logging_middleware import JsonFormatter
@@ -58,6 +62,7 @@ PERSISTED = {
     "language": "V.O.",
 }
 EXPECTED = {**PERSISTED, "showtime": "2026-10-06T19:30:00Z"}
+INTENT_HEADERS = {"Idempotency-Key": "write-1", "X-Change-Reason": "Correct listings"}
 
 
 @pytest.fixture(autouse=True)
@@ -72,9 +77,7 @@ def factory() -> MagicMock:
     """Provide the approved factory/use-case seam without opening external services."""
     fake = create_autospec(MarquiseFactory, instance=True)
     for name, kind in (
-        ("create_screening_use_case", CreateScreeningUseCase),
-        ("update_screening_use_case", UpdateScreeningUseCase),
-        ("delete_screening_use_case", DeleteScreeningUseCase),
+        ("write_screening_use_case", WriteScreeningUseCase),
         ("get_screening_query", GetScreeningQuery),
         ("get_cinema_movies_use_case", GetCinemaMoviesUseCase),
         ("get_cinema_screenings_query", GetCinemaScreeningsQuery),
@@ -93,14 +96,12 @@ def factory() -> MagicMock:
             subject="editor-id", can_edit=True, can_administer=False
         )
     )
-    fake.create_screening_use_case.execute.return_value = (
-        CreateScreeningUseCase.OutputData(**PERSISTED)
-    )
-    fake.update_screening_use_case.execute.return_value = (
-        UpdateScreeningUseCase.OutputData(**PERSISTED)
-    )
-    fake.delete_screening_use_case.execute.return_value = (
-        DeleteScreeningUseCase.OutputData(screening_id="scr-1")
+    fake.write_screening_use_case.execute.return_value = (
+        WriteScreeningUseCase.OutputData(
+            screening_id="persisted-id",
+            changed=True,
+            screening=CreateScreeningUseCase.OutputData(**PERSISTED),
+        )
     )
     fake.get_screening_query.execute.return_value = GetScreeningQuery.OutputData(
         **PERSISTED
@@ -111,7 +112,7 @@ def factory() -> MagicMock:
 @pytest.fixture
 def client(factory: MagicMock) -> TestClient:
     """Use actual routing, validation, auth, middleware, and response serialization."""
-    return TestClient(create_app(factory=factory))
+    return TestClient(create_app(factory=factory), headers=INTENT_HEADERS)
 
 
 def test_editor_creates_persisted_screening(
@@ -132,7 +133,8 @@ def test_editor_creates_persisted_screening(
     assert response.status_code == 201
     assert response.json() == EXPECTED
     assert response.headers["location"] == "/v1/screenings/persisted-id"
-    factory.create_screening_use_case.execute.assert_awaited_once_with(
+    factory.write_screening_use_case.execute.assert_awaited_once()
+    assert factory.write_screening_use_case.execute.await_args.args[0].mutation == (
         CreateScreeningUseCase.InputData(
             movie_id="mov-1",
             cinema_id="cin-1",
@@ -177,7 +179,8 @@ def test_editor_patches_only_supplied_fields(
         expected_fields["showtime"] = datetime.fromisoformat(
             expected_fields["showtime"]
         )
-    factory.update_screening_use_case.execute.assert_awaited_once_with(
+    factory.write_screening_use_case.execute.assert_awaited_once()
+    assert factory.write_screening_use_case.execute.await_args.args[0].mutation == (
         UpdateScreeningUseCase.InputData(screening_id="scr-1", **expected_fields)
     )
 
@@ -193,7 +196,8 @@ def test_editor_permanently_deletes_screening(
     )
     assert response.status_code == 204
     assert response.content == b""
-    factory.delete_screening_use_case.execute.assert_awaited_once_with(
+    factory.write_screening_use_case.execute.assert_awaited_once()
+    assert factory.write_screening_use_case.execute.await_args.args[0].mutation == (
         DeleteScreeningUseCase.InputData(screening_id="scr-1")
     )
 
@@ -253,9 +257,7 @@ def test_invalid_input_rejected_before_execution(
     assert response.json()["error_code"] == "invalid_input"
     assert isinstance(response.json()["detail"], str)
     assert response.json()["request_id"] == response.headers["x-request-id"]
-    factory.create_screening_use_case.execute.assert_not_awaited()
-    factory.update_screening_use_case.execute.assert_not_awaited()
-    factory.delete_screening_use_case.execute.assert_not_awaited()
+    factory.write_screening_use_case.execute.assert_not_awaited()
 
 
 @pytest.mark.parametrize(
@@ -282,7 +284,8 @@ def test_create_optional_omission_and_null(
         headers={"Authorization": "Bearer editor"},
     )
     assert response.status_code == 201
-    factory.create_screening_use_case.execute.assert_awaited_once_with(
+    factory.write_screening_use_case.execute.assert_awaited_once()
+    assert factory.write_screening_use_case.execute.await_args.args[0].mutation == (
         CreateScreeningUseCase.InputData(
             movie_id="mov-1", cinema_id="cin-1", showtime=SHOWTIME
         )
@@ -313,24 +316,20 @@ def test_ticket_urls_are_validated_without_normalization(
         headers={"Authorization": "Bearer editor"},
     )
     assert response.status_code in {200, 201}
-    use_case = (
-        factory.create_screening_use_case
-        if method == "POST"
-        else factory.update_screening_use_case
-    )
-    assert use_case.execute.await_args.args[0].ticket_url == url
+    mutation = factory.write_screening_use_case.execute.await_args.args[0].mutation
+    assert mutation.ticket_url == url
 
 
 OPERATIONS = [
-    ("POST", "/v1/screenings", CREATE, "create_screening_use_case", 201),
+    ("POST", "/v1/screenings", CREATE, "write_screening_use_case", 201),
     (
         "PATCH",
         "/v1/screenings/scr-1",
         {"room": "New room"},
-        "update_screening_use_case",
+        "write_screening_use_case",
         200,
     ),
-    ("DELETE", "/v1/screenings/scr-1", None, "delete_screening_use_case", 204),
+    ("DELETE", "/v1/screenings/scr-1", None, "write_screening_use_case", 204),
 ]
 
 
@@ -422,9 +421,7 @@ def test_rejected_auth_never_executes_mutations(
     if expected_status == 401:
         assert response.headers["www-authenticate"] == "Bearer"
     assert "secret" not in response.text
-    factory.create_screening_use_case.execute.assert_not_awaited()
-    factory.update_screening_use_case.execute.assert_not_awaited()
-    factory.delete_screening_use_case.execute.assert_not_awaited()
+    factory.write_screening_use_case.execute.assert_not_awaited()
 
 
 @pytest.mark.parametrize("method,path,body,name,status", OPERATIONS[:2])
@@ -466,9 +463,9 @@ def test_mutation_resource_and_collision_errors(
 @pytest.mark.parametrize(
     "method,body,name",
     [
-        ("PATCH", {}, "update_screening_use_case"),
-        ("PATCH", {"room": "New"}, "update_screening_use_case"),
-        ("DELETE", None, "delete_screening_use_case"),
+        ("PATCH", {}, "write_screening_use_case"),
+        ("PATCH", {"room": "New"}, "write_screening_use_case"),
+        ("DELETE", None, "write_screening_use_case"),
     ],
 )
 def test_missing_screening_is_not_success(
@@ -675,12 +672,12 @@ def test_mutation_responses_are_not_cached(
 @pytest.mark.parametrize(
     "method,path,body,name,status,failure",
     [
-        ("PATCH", "/v1/screenings/scr-1", {}, "update_screening_use_case", 200, None),
+        ("PATCH", "/v1/screenings/scr-1", {}, "write_screening_use_case", 200, None),
         *[
             (method, path, body, name, status, failure)
             for method, path, body, name, status in [
                 *OPERATIONS,
-                ("PATCH", "/v1/screenings/scr-1", {}, "update_screening_use_case", 200),
+                ("PATCH", "/v1/screenings/scr-1", {}, "write_screening_use_case", 200),
             ]
             for failure in ("missing", "conflict")
         ],
@@ -708,6 +705,10 @@ def test_empty_or_failed_mutations_do_not_clear_cache(
             else ScreeningAlreadyExistsError
         )
         getattr(factory, name).execute.side_effect = error("Rejected")
+    else:
+        factory.write_screening_use_case.execute.return_value = replace(
+            factory.write_screening_use_case.execute.return_value, changed=False
+        )
     backend = FastAPICache.get_backend()
     clear = create_autospec(backend.clear)
     monkeypatch.setattr(backend, "clear", clear)
@@ -746,7 +747,7 @@ def test_writes_obey_configured_per_ip_rate_limit(
     """Each write consumes one slot; throttled requests skip auth and mutation."""
     monkeypatch.setenv("MARQUISE_API_RATE_LIMIT", "2/minute")
     monkeypatch.setenv("MARQUISE_API_CORS_ORIGINS", "https://editor.example")
-    client = TestClient(create_app(factory=factory))
+    client = TestClient(create_app(factory=factory), headers=INTENT_HEADERS)
     responses = [
         client.request(
             method,
@@ -802,7 +803,7 @@ def test_rejected_authentication_consumes_request_limit(
         query.execute.return_value = VerifyAccessTokenQuery.OutputData(
             subject="reader-id", can_edit=False, can_administer=False
         )
-    client = TestClient(create_app(factory=factory))
+    client = TestClient(create_app(factory=factory), headers=INTENT_HEADERS)
     responses = [
         client.request(method, path, json=body, headers=headers) for _ in range(3)
     ]
@@ -842,8 +843,8 @@ def test_write_rate_limit_is_per_ip_and_keeps_probes_exempt(
     monkeypatch.setenv("MARQUISE_API_RATE_LIMIT", "1/minute")
     factory.check_database_health.return_value = True
     app = create_app(factory=factory)
-    first = TestClient(app, client=("192.0.2.1", 50000))
-    second = TestClient(app, client=("192.0.2.2", 50000))
+    first = TestClient(app, client=("192.0.2.1", 50000), headers=INTENT_HEADERS)
+    second = TestClient(app, client=("192.0.2.2", 50000), headers=INTENT_HEADERS)
     headers = {"Authorization": "Bearer editor"}
     assert first.request(method, path, json=body, headers=headers).status_code == status
     assert first.request(method, path, json=body, headers=headers).status_code == 429
@@ -992,8 +993,7 @@ def test_ticket_url_requires_an_absolute_source_value(
     )
     assert response.status_code == 422
     assert response.json()["error_code"] == "invalid_input"
-    factory.create_screening_use_case.execute.assert_not_awaited()
-    factory.update_screening_use_case.execute.assert_not_awaited()
+    factory.write_screening_use_case.execute.assert_not_awaited()
 
 
 @pytest.mark.parametrize("method", ["POST", "PATCH"])
@@ -1017,8 +1017,7 @@ def test_malformed_or_nonobject_bodies_use_standard_error(
     )
     assert response.status_code == 422
     assert response.json()["error_code"] == "invalid_input"
-    factory.create_screening_use_case.execute.assert_not_awaited()
-    factory.update_screening_use_case.execute.assert_not_awaited()
+    factory.write_screening_use_case.execute.assert_not_awaited()
 
 
 @pytest.mark.parametrize("method,body", [("PATCH", {}), ("DELETE", None)])
@@ -1037,8 +1036,7 @@ def test_blank_screening_path_is_invalid(
     )
     assert response.status_code == 422
     assert response.json()["error_code"] == "invalid_input"
-    factory.update_screening_use_case.execute.assert_not_awaited()
-    factory.delete_screening_use_case.execute.assert_not_awaited()
+    factory.write_screening_use_case.execute.assert_not_awaited()
 
 
 @pytest.mark.parametrize("method,path,body,name,status", OPERATIONS)
@@ -1076,5 +1074,183 @@ def test_put_is_not_a_supported_replacement(
     )
     assert response.status_code == 405
     assert response.json()["error_code"] == "method_not_allowed"
-    factory.create_screening_use_case.execute.assert_not_awaited()
-    factory.update_screening_use_case.execute.assert_not_awaited()
+    factory.write_screening_use_case.execute.assert_not_awaited()
+
+
+@pytest.mark.parametrize("header", ["Idempotency-Key", "X-Change-Reason"])
+@pytest.mark.parametrize("method,path,body,name,status", OPERATIONS)
+def test_write_headers_are_mandatory(
+    client: TestClient,
+    factory: MagicMock,
+    header: str,
+    method: str,
+    path: str,
+    body: dict | None,
+    name: str,
+    status: int,
+) -> None:
+    """A verified Editor cannot write without both intent headers."""
+    headers = {
+        "Authorization": "Bearer editor",
+        "Idempotency-Key": "write-1",
+        "X-Change-Reason": "Publish",
+    }
+    headers.pop(header)
+    client.headers.pop(header, None)
+    response = client.request(method, path, json=body, headers=headers)
+    assert response.status_code == 422
+    factory.write_screening_use_case.execute.assert_not_awaited()
+
+
+@pytest.mark.parametrize("method,path,body,name,status", OPERATIONS)
+def test_write_context_uses_verified_account(
+    client: TestClient,
+    factory: MagicMock,
+    method: str,
+    path: str,
+    body: dict | None,
+    name: str,
+    status: int,
+) -> None:
+    """Delivery supplies verified identity and validated intent to the audited seam."""
+    response = client.request(
+        method, path, json=body, headers={"Authorization": "Bearer editor"}
+    )
+    assert response.status_code == status
+    context = factory.write_screening_use_case.execute.await_args.args[0].context
+    assert (context.account, context.key, context.reason) == (
+        "editor-id",
+        "write-1",
+        "Correct listings",
+    )
+
+
+@pytest.mark.parametrize(
+    "header,value",
+    [
+        ("Idempotency-Key", ""),
+        ("Idempotency-Key", "a" * 129),
+        ("Idempotency-Key", "has space"),
+        ("X-Change-Reason", " "),
+        ("X-Change-Reason", "r" * 501),
+        ("X-Change-Reason", "hidden\x7f"),
+    ],
+)
+@pytest.mark.parametrize("method,path,body,name,status", OPERATIONS)
+def test_invalid_write_intent_never_executes(
+    client: TestClient,
+    factory: MagicMock,
+    header: str,
+    value: str,
+    method: str,
+    path: str,
+    body: dict | None,
+    name: str,
+    status: int,
+) -> None:
+    """Every mutation rejects invalid headers before audited execution."""
+    response = client.request(
+        method,
+        path,
+        json=body,
+        headers={"Authorization": "Bearer editor", header: value},
+    )
+    assert response.status_code == 422
+    factory.write_screening_use_case.execute.assert_not_awaited()
+
+
+@pytest.mark.parametrize("method,path,body,name,status", OPERATIONS)
+@pytest.mark.parametrize(
+    "error,expected",
+    [(ScreeningIdempotencyConflictError, 409), (ScreeningWriteBusyError, 503)],
+)
+def test_replay_errors_have_http_contract(
+    client: TestClient,
+    factory: MagicMock,
+    method: str,
+    path: str,
+    body: dict | None,
+    name: str,
+    status: int,
+    error: type[ApplicationError],
+    expected: int,
+) -> None:
+    """Conflicting intent and bounded wait failure map to documented retry behavior."""
+    factory.write_screening_use_case.execute.side_effect = error("Write rejected")
+    response = client.request(
+        method, path, json=body, headers={"Authorization": "Bearer editor"}
+    )
+    assert response.status_code == expected
+    assert response.json()["error_code"] == (
+        "idempotency_conflict" if expected == 409 else "service_unavailable"
+    )
+    if expected == 503:
+        assert response.headers["Retry-After"] == "1"
+
+
+@pytest.mark.parametrize("method,path,body,name,status", OPERATIONS)
+def test_saved_success_replays_uncached_and_invalidates_again(
+    client: TestClient,
+    factory: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+    method: str,
+    path: str,
+    body: dict | None,
+    name: str,
+    status: int,
+) -> None:
+    """Saved success retries invalidation on every replay without another mutation."""
+    from unittest.mock import AsyncMock
+
+    from marquise_api.routers import screenings
+
+    invalidate = AsyncMock()
+    monkeypatch.setattr(screenings, "invalidate_public_cache", invalidate)
+    factory.write_screening_use_case.execute.return_value = (
+        WriteScreeningUseCase.OutputData(
+            screening_id="persisted-id",
+            changed=True,
+            screening=None
+            if method == "DELETE"
+            else CreateScreeningUseCase.OutputData(**PERSISTED),
+        )
+    )
+    responses = [
+        client.request(
+            method, path, json=body, headers={"Authorization": "Bearer editor"}
+        )
+        for _ in range(2)
+    ]
+    assert [response.status_code for response in responses] == [status, status]
+    assert responses[0].content == responses[1].content
+    assert invalidate.await_count == 2
+    if method == "POST":
+        assert responses[1].headers["Location"] == "/v1/screenings/persisted-id"
+    assert "x-fastapi-cache" not in responses[1].headers
+    assert factory.write_screening_use_case.execute.await_count == 2
+
+
+@pytest.mark.parametrize("method,path,body,name,status", OPERATIONS)
+def test_saved_success_still_requires_authorization(
+    client: TestClient,
+    factory: MagicMock,
+    method: str,
+    path: str,
+    body: dict | None,
+    name: str,
+    status: int,
+) -> None:
+    """Having a previously successful key never bypasses current permission checks."""
+    factory.write_screening_use_case.execute.return_value = (
+        WriteScreeningUseCase.OutputData(screening_id="persisted-id", changed=True)
+    )
+    factory.verify_access_token_query.execute.return_value = (
+        VerifyAccessTokenQuery.OutputData(
+            subject="editor-id", can_edit=False, can_administer=False
+        )
+    )
+    response = client.request(
+        method, path, json=body, headers={"Authorization": "Bearer revoked"}
+    )
+    assert response.status_code == 403
+    factory.write_screening_use_case.execute.assert_not_awaited()
