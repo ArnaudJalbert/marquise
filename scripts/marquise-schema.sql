@@ -68,3 +68,42 @@ CREATE INDEX IF NOT EXISTS idx_screenings_cinema_showtime
 
 CREATE INDEX IF NOT EXISTS idx_screenings_movie_showtime
     ON marquise.screenings(movie_id, showtime);
+
+-- Account/key results and audit history survive Screening/Movie deletion.
+-- No expiry or cascade FKs. Mutations, audit, and results commit together.
+CREATE TABLE IF NOT EXISTS marquise.screening_write_results (
+    account         TEXT NOT NULL,
+    idempotency_key  TEXT NOT NULL,
+    fingerprint     TEXT NOT NULL,
+    result          JSONB NOT NULL,
+    PRIMARY KEY (account, idempotency_key)
+);
+
+CREATE TABLE IF NOT EXISTS marquise.screening_write_audit (
+    id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    account         TEXT NOT NULL,
+    idempotency_key  TEXT NOT NULL,
+    operation       TEXT NOT NULL CHECK (operation IN ('create', 'update', 'delete')),
+    target_id       TEXT NOT NULL,
+    recorded_at     TIMESTAMPTZ NOT NULL,
+    reason          TEXT NOT NULL,
+    before_values   JSONB,
+    after_values    JSONB,
+    removed_movie   JSONB,
+    UNIQUE (account, idempotency_key)
+);
+
+-- Restrict client access even if this schema is exposed through Supabase.
+ALTER TABLE marquise.screening_write_results ENABLE ROW LEVEL SECURITY;
+ALTER TABLE marquise.screening_write_audit ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON marquise.screening_write_results, marquise.screening_write_audit FROM PUBLIC;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+        REVOKE ALL ON marquise.screening_write_results, marquise.screening_write_audit FROM anon;
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+        REVOKE ALL ON marquise.screening_write_results, marquise.screening_write_audit FROM authenticated;
+    END IF;
+END;
+$$;
