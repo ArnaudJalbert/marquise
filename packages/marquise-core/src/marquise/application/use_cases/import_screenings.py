@@ -42,6 +42,7 @@ class ImportScreeningsCommand:
         imported_count: int
         updated_count: int
         skipped_count: int
+        rescheduled_count: int = 0
 
     def __init__(
         self,
@@ -97,6 +98,7 @@ class ImportScreeningsCommand:
                         cinema_name=fetched.cinema_name,
                         showtime=screening.showtime,
                         external_id=screening.external_id,
+                        source_name=fetched.source_name,
                         ticket_url=screening.ticket_url,
                         room=screening.room,
                         language=screening.language,
@@ -113,6 +115,7 @@ class ImportScreeningsCommand:
             total_count=screenings.total_count,
             imported_count=screenings.imported_count,
             updated_count=screenings.updated_count,
+            rescheduled_count=screenings.rescheduled_count,
             skipped_count=screenings.skipped_count,
         )
 

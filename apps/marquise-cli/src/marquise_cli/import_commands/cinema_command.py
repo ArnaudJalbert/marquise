@@ -85,7 +85,13 @@ def _screenings_table(result: dict) -> Table:
         table.add_row(
             screening["movie_title"],
             local_time.strftime("%Y-%m-%d %H:%M"),
-            "imported" if screening["imported"] else "updated",
+            (
+                "imported"
+                if screening["imported"]
+                else "rescheduled"
+                if screening.get("rescheduled", False)
+                else "updated"
+            ),
         )
     return table
 
@@ -97,6 +103,10 @@ def _summary(result: dict) -> Text:
     summary.append(" new  |  ")
     summary.append(f"{result['updated_count']}", style="yellow")
     summary.append(" updated")
+    if result.get("rescheduled_count", 0):
+        summary.append("  |  ")
+        summary.append(f"{result['rescheduled_count']}", style="yellow")
+        summary.append(" rescheduled")
     if result["skipped_count"]:
         summary.append("  |  ")
         summary.append(f"{result['skipped_count']}", style="red")

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-07
+
+### v0.1.15
+
+- Report guarded Screening reschedules separately from metadata updates in single-Cinema and bulk imports. Closes #287.
+
 ## 2026-09-02
 
 ### v0.1.14
