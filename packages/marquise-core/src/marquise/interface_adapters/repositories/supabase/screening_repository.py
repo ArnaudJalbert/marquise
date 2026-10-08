@@ -114,29 +114,17 @@ class SupabaseScreeningRepository(ScreeningRepository):
                 to a different screening.
         """
         try:
-            if screening.source_name is None:
-                outcome = await self._gateway.save(
-                    screening_id=str(screening.id),
-                    movie_id=str(screening.movie.id),
-                    cinema_id=str(screening.cinema.id),
-                    showtime=screening.showtime.value,
-                    external_id=screening.external_id,
-                    ticket_url=screening.ticket_url,
-                    room=screening.room,
-                    language=screening.language,
-                )
-            else:
-                outcome = await self._gateway.save(
-                    screening_id=str(screening.id),
-                    movie_id=str(screening.movie.id),
-                    cinema_id=str(screening.cinema.id),
-                    showtime=screening.showtime.value,
-                    external_id=screening.external_id,
-                    source_name=screening.source_name,
-                    ticket_url=screening.ticket_url,
-                    room=screening.room,
-                    language=screening.language,
-                )
+            outcome = await self._gateway.save(
+                screening_id=str(screening.id),
+                movie_id=str(screening.movie.id),
+                cinema_id=str(screening.cinema.id),
+                showtime=screening.showtime.value,
+                external_id=screening.external_id,
+                source_name=screening.source_name,
+                ticket_url=screening.ticket_url,
+                room=screening.room,
+                language=screening.language,
+            )
         except ScreeningExternalIdConflictGatewayError as exc:
             raise ScreeningExternalIdConflictError(str(exc)) from exc
         if not outcome.inserted:
@@ -180,7 +168,8 @@ class SupabaseScreeningRepository(ScreeningRepository):
             )
         except ScreeningRescheduleConflictGatewayError as exc:
             raise ScreeningAlreadyExistsError(str(exc)) from exc
-            raise
+        except ScreeningExternalIdConflictGatewayError as exc:
+            raise ScreeningExternalIdConflictError(str(exc)) from exc
         if data is None:
             return None
         return self._to_entity(data)
@@ -199,27 +188,16 @@ class SupabaseScreeningRepository(ScreeningRepository):
                 to a different screening.
         """
         try:
-            if screening.source_name is None:
-                data = await self._gateway.update(
-                    cinema_id=str(screening.cinema.id),
-                    movie_id=str(screening.movie.id),
-                    showtime=screening.showtime.value,
-                    external_id=screening.external_id,
-                    ticket_url=screening.ticket_url,
-                    room=screening.room,
-                    language=screening.language,
-                )
-            else:
-                data = await self._gateway.update(
-                    cinema_id=str(screening.cinema.id),
-                    movie_id=str(screening.movie.id),
-                    showtime=screening.showtime.value,
-                    external_id=screening.external_id,
-                    source_name=screening.source_name,
-                    ticket_url=screening.ticket_url,
-                    room=screening.room,
-                    language=screening.language,
-                )
+            data = await self._gateway.update(
+                cinema_id=str(screening.cinema.id),
+                movie_id=str(screening.movie.id),
+                showtime=screening.showtime.value,
+                external_id=screening.external_id,
+                source_name=screening.source_name,
+                ticket_url=screening.ticket_url,
+                room=screening.room,
+                language=screening.language,
+            )
         except ScreeningExternalIdConflictGatewayError as exc:
             raise ScreeningExternalIdConflictError(str(exc)) from exc
         if data is None:
