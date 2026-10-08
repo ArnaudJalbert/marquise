@@ -2,6 +2,12 @@
 
 Before 2026-07-15 this package was published as `marquise`.
 
+## 2026-10-08
+
+### v0.2.27
+
+- Move Screening reschedule eligibility into the domain and import use cases. Imports use checked atomic writes, reload stale state up to three times, and preserve IDs, provenance, and result counts. Add policy-free in-memory import tests and shared PostgreSQL persistence checks. Closes #292.
+
 ## 2026-10-07
 
 ### v0.2.26

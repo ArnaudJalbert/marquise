@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from zoneinfo import ZoneInfo
 
 from ..value_objects import ScreeningId, Showtime
 from .cinema import Cinema
@@ -35,6 +36,20 @@ class Screening:
     ticket_url: str | None = None
     room: str | None = None
     language: str | None = None
+
+    def can_reschedule_to(self, incoming: Screening) -> bool:
+        """Check verified native ownership and the Montreal calendar date."""
+        zone = ZoneInfo("America/Montreal")
+        return bool(
+            self.cinema.id == incoming.cinema.id
+            and self.movie.id == incoming.movie.id
+            and self.external_id
+            and self.external_id == incoming.external_id
+            and self.source_name
+            and self.source_name == incoming.source_name
+            and self.showtime.value.astimezone(zone).date()
+            == incoming.showtime.value.astimezone(zone).date()
+        )
 
     def is_upcoming(self, now: datetime | None = None) -> bool:
         """Check if this screening is still in the future.

@@ -32,15 +32,35 @@ class ScreeningRepository(ABC):
         ...
 
     @abstractmethod
-    async def reschedule(
+    async def read_import_candidates(
+        self, incoming: Screening
+    ) -> tuple[Screening, ...]:
+        """Return detached rows matching the Cinema/native key or target identity.
+
+        Return every match, including ambiguous native ownership. An absent or
+        empty native key matches only the target (Cinema, Movie, Showtime).
+        This read makes no eligibility decision.
+        """
+        ...
+
+    @abstractmethod
+    async def commit_import(
         self,
-        screening: Screening,
+        proposed: Screening,
         *,
-        source_name: str,
-        local_day_start: datetime,
-        local_day_end: datetime,
-    ) -> Screening | None:
-        """Move a source-owned screening within its local calendar day."""
+        incoming: Screening,
+        expected: tuple[Screening, ...],
+    ) -> Screening:
+        """Atomically persist the complete proposed row if checked state matches.
+
+        Compare all stored Screening fields of every candidate and expected ID,
+        ignoring joined parent metadata. Missing/changed rows, new candidates,
+        or target/native-key collisions raise ScreeningWriteConflictError and
+        commit nothing. Keep checked rows and uniqueness protected until commit.
+        An existing ID must be present in expected; an absent ID is inserted.
+        Implementations must neither evaluate source/day eligibility nor merge
+        metadata. Callers reload and reevaluate after a conflict.
+        """
         ...
 
     @abstractmethod

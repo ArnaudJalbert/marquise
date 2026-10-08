@@ -72,18 +72,18 @@ async def test_save_and_find_by_id(
 
 
 @pytest.mark.asyncio
-async def test_reschedule_preserves_id_and_updates_time(
+async def test_checked_write_preserves_id_without_eligibility_policy(
     screening_gateway: SupabaseScreeningGateway,
     gateway: SupabaseCinemaGateway,
     movie_gateway: SupabaseMovieGateway,
     source_definition_gateway: SupabaseSourceDefinitionGateway,
 ) -> None:
-    """Verify guarded same-day rescheduling updates one row in place."""
+    """Storage accepts a checked cross-day change without source/day policy."""
     await _seed_parents(gateway, movie_gateway)
     await source_definition_gateway.save(
         name="cineplex", display_name="Cineplex", description=None
     )
-    await screening_gateway.save(
+    saved = await screening_gateway.save(
         screening_id="scr-reschedule",
         movie_id="mov-001",
         cinema_id="cin-001",
@@ -92,21 +92,18 @@ async def test_reschedule_preserves_id_and_updates_time(
         source_name="cineplex",
     )
 
-    result = await screening_gateway.reschedule(
-        cinema_id="cin-001",
-        movie_id="mov-001",
-        external_id="show-1",
-        source_name="cineplex",
-        showtime=datetime(2026, 6, 7, 17, 15, tzinfo=UTC),
-        local_day_start=datetime(2026, 6, 7, 4, tzinfo=UTC),
-        local_day_end=datetime(2026, 6, 8, 4, tzinfo=UTC),
+    proposed = dict(saved.row, showtime=datetime(2026, 6, 8, 17, 15), source_name=None)
+    result = await screening_gateway.commit_import(
+        proposed,
+        incoming=proposed,
+        expected=(saved.row,),
     )
 
     assert result is not None
     assert result["id"] == "scr-reschedule"
-    assert result["showtime"] == datetime(2026, 6, 7, 17, 15)
+    assert result["showtime"] == datetime(2026, 6, 8, 17, 15)
     assert (await screening_gateway.find_by_id("scr-reschedule"))["showtime"] == (
-        datetime(2026, 6, 7, 17, 15)
+        datetime(2026, 6, 8, 17, 15)
     )
 
 
