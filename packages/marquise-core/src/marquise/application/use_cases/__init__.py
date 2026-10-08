@@ -3,6 +3,7 @@
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.auth import (
     AuthenticateAdministratorUseCase,
+    CreateBotUseCase,
     InviteAccountUseCase,
     SetAccountRoleUseCase,
 )
@@ -47,6 +48,7 @@ __all__ = [
     "ImportedScreeningData",
     "ImportScreeningsCommand",
     "InviteAccountUseCase",
+    "CreateBotUseCase",
     "ListCinemasUseCase",
     "ListRegistrySourcesUseCase",
     "ListSourcesUseCase",

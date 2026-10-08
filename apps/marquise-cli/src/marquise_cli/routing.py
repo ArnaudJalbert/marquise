@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 from collections.abc import Callable, Sequence
 
-from marquise_cli.auth_commands import invite, set_role
+from marquise_cli.auth_commands import create_bot, invite, set_role
 from marquise_cli.cinema_commands import create, delete, list_cinemas, update
 from marquise_cli.import_commands import import_all, import_cinema
 from marquise_cli.source_commands import (
@@ -141,6 +141,15 @@ def create_parser() -> argparse.ArgumentParser:
     )
     set_role_command.add_argument("email", help="Account email")
     set_role_command.add_argument("--role", required=True, choices=_ROLES)
+
+    create_bot_command = _command(
+        auth_commands,
+        "create-bot",
+        create_bot,
+        "Create an Editor Bot and print its refresh token once.",
+        ("bot_id",),
+    )
+    create_bot_command.add_argument("bot_id", help="Immutable Bot Identifier")
 
     return parser
 

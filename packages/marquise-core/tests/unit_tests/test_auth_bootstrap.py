@@ -9,6 +9,7 @@ import pytest
 from marquise.application.queries import VerifyAccessTokenQuery
 from marquise.application.use_cases import (
     AuthenticateAdministratorUseCase,
+    CreateBotUseCase,
     InviteAccountUseCase,
     SetAccountRoleUseCase,
 )
@@ -36,6 +37,8 @@ def test_factory_exposes_container_account_administration() -> None:
         instance=True,
     )
     invitation = create_autospec(InviteAccountUseCase, instance=True)
+    bot_creation = create_autospec(CreateBotUseCase, instance=True)
+    container.create_bot_use_case = bot_creation
     role_change = create_autospec(SetAccountRoleUseCase, instance=True)
     container.authenticate_administrator_use_case = authentication
     container.invite_account_use_case = invitation
@@ -47,6 +50,7 @@ def test_factory_exposes_container_account_administration() -> None:
     assert factory.authenticate_administrator_use_case is authentication
     assert factory.invite_account_use_case is invitation
     assert factory.set_account_role_use_case is role_change
+    assert factory.create_bot_use_case is bot_creation
 
 
 def test_factory_reports_unconfigured_auth(

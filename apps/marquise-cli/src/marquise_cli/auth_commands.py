@@ -98,11 +98,10 @@ async def run_set_role(
 
 
 def _run_account_command(
-    workflow: Callable[..., Coroutine[object, object, None]],
+    workflow: Callable[..., Coroutine[None, None, None]],
     *,
-    email: str,
-    role: str,
     failure_action: str,
+    **arguments: str,
 ) -> None:
     """Run an Administrator-authenticated account command."""
     try:
@@ -112,8 +111,7 @@ def _run_account_command(
                 MarquiseFactory(),
                 administrator_email=administrator_email,
                 administrator_password=administrator_password,
-                email=email,
-                role=role,
+                **arguments,
             )
         )
     except (AuthenticationError, AuthorizationError) as exc:
@@ -148,3 +146,27 @@ def set_role(email: str, role: str) -> None:
         role=role,
         failure_action="update account role",
     )
+
+
+async def run_create_bot(
+    factory: MarquiseFactory,
+    *,
+    administrator_email: str,
+    administrator_password: str,
+    bot_id: str,
+) -> None:
+    """Print the Bot refresh token once after provisioning succeeds."""
+    use_case = factory.create_bot_use_case
+    result = await use_case.execute(
+        use_case.InputData(
+            administrator_email=administrator_email,
+            administrator_password=administrator_password,
+            bot_id=bot_id,
+        )
+    )
+    print(result.refresh_token)
+
+
+def create_bot(bot_id: str) -> None:
+    """Provision an identified Editor Bot through local administration."""
+    _run_account_command(run_create_bot, failure_action="create Bot", bot_id=bot_id)

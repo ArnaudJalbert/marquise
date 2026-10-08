@@ -45,6 +45,7 @@ from marquise.application.use_cases.auth import (
     InviteAccountUseCase,
     SetAccountRoleUseCase,
 )
+from marquise.application.use_cases.auth.create_bot import CreateBotUseCase
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.create_missing_movies import (
     CreateMissingMoviesCommand,
@@ -82,6 +83,7 @@ from marquise.bootstrap import (
 )
 
 __all__ = [
+    "CreateBotUseCase",
     "AccountAlreadyExistsError",
     "ApplicationError",
     "AssignSourceUseCase",

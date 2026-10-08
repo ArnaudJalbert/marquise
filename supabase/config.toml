@@ -5,7 +5,8 @@ enabled = false
 site_url = "http://localhost:3000"
 additional_redirect_urls = []
 jwt_expiry = 900
-enable_signup = false
+# Install scripts/migrations/265-auth-signup-policy.sql before pushing.
+enable_signup = true
 enable_anonymous_sign_ins = true
 
 [auth.email]

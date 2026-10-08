@@ -27,6 +27,7 @@ from marquise.application.queries.verify_access_token import VerifyAccessTokenQu
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.auth import (
     AuthenticateAdministratorUseCase,
+    CreateBotUseCase,
     InviteAccountUseCase,
     SetAccountRoleUseCase,
 )
@@ -57,6 +58,7 @@ from marquise.application.use_cases.update_screening import UpdateScreeningUseCa
 from marquise.application.use_cases.write_screening import WriteScreeningUseCase
 from marquise.infrastructure.di.auth import (
     build_authenticate_administrator_use_case,
+    build_create_bot_use_case,
     build_invite_account_use_case,
     build_set_account_role_use_case,
     build_verify_access_token_query,
@@ -444,6 +446,15 @@ class Container:
     ) -> AuthenticateAdministratorUseCase:
         """Public configured Administrator authentication use case."""
         return self._authenticate_administrator_use_case
+
+    @property
+    def create_bot_use_case(self) -> CreateBotUseCase:
+        """Public configured Editor Bot provisioning use case."""
+        return build_create_bot_use_case(
+            self._settings.supabase_url,
+            self._settings.supabase_publishable_key,
+            self._settings.supabase_service_role_key,
+        )
 
     @property
     def invite_account_use_case(self) -> InviteAccountUseCase:

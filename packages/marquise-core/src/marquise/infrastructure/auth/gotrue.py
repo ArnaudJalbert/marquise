@@ -126,6 +126,65 @@ class GoTrueAuthGateway:
             authorize=True,
         )
 
+    async def identifier_exists(self, bot_id: str) -> bool:
+        """Search every account page for an exact protected Bot Identifier."""
+        if not self._service_role_key:
+            raise RuntimeError("SUPABASE_SERVICE_ROLE_KEY is required")
+        page = 1
+        while True:
+            query = urllib.parse.urlencode(
+                {"page": page, "per_page": self._ACCOUNT_PAGE_SIZE}
+            )
+            payload = await self._request(
+                "GET",
+                f"admin/users?{query}",
+                self._service_role_key,
+                authorize=True,
+            )
+            accounts = payload.get("users")
+            if not isinstance(accounts, list):
+                raise AuthGatewayError("Account search returned invalid data")
+            for account in accounts:
+                if not isinstance(account, dict):
+                    raise AuthGatewayError("Account search returned invalid account")
+                metadata = account.get("app_metadata", {})
+                if not isinstance(metadata, dict):
+                    raise AuthGatewayError("Account search returned invalid metadata")
+                if metadata.get("marquise_bot_id") == bot_id:
+                    return True
+            if len(accounts) < self._ACCOUNT_PAGE_SIZE:
+                return False
+            page += 1
+
+    async def create_anonymous(self) -> dict:
+        """Create a no-email account without persisting session credentials."""
+        if not self._publishable_key:
+            raise RuntimeError("SUPABASE_PUBLISHABLE_KEY is required")
+        return await self._request("POST", "signup", self._publishable_key, {})
+
+    async def assign_editor(self, account_id: str, bot_id: str) -> None:
+        """Assign protected Editor and Bot Identifier claims together."""
+        if not self._service_role_key:
+            raise RuntimeError("SUPABASE_SERVICE_ROLE_KEY is required")
+        await self._request(
+            "PUT",
+            f"admin/users/{urllib.parse.quote(account_id, safe='')}",
+            self._service_role_key,
+            {"app_metadata": {"marquise_role": "editor", "marquise_bot_id": bot_id}},
+            authorize=True,
+        )
+
+    async def delete(self, account_id: str) -> None:
+        """Delete only the account supplied by the provisioning workflow."""
+        if not self._service_role_key:
+            raise RuntimeError("SUPABASE_SERVICE_ROLE_KEY is required")
+        await self._request(
+            "DELETE",
+            f"admin/users/{urllib.parse.quote(account_id, safe='')}",
+            self._service_role_key,
+            authorize=True,
+        )
+
     async def _request(
         self,
         method: str,

@@ -87,6 +87,28 @@ PostgreSQL, without production secrets. No rollout script runs automatically.
 to push it safely. `supabase config push` applies defaults for omitted keys, so
 do not remove existing settings from the file.
 
+Before enabling signup for Bot provisioning, install
+[the invitation guard](../scripts/migrations/265-auth-signup-policy.sql).
+The global Supabase signup switch also controls anonymous signup. Marquise enables
+that switch and uses a deferred database constraint to reject new human accounts
+without `auth.users.invited_at`. Supabase writes that field in the invitation
+transaction. Anonymous accounts are accepted; conversion to a human account
+requires an invitation. Existing human accounts remain valid.
+
+Apply the guard in an isolated database and staging first. Install it in the
+intended project before pushing `auth.enable_signup=true`. To roll back, disable
+signup first, then apply
+[the rollback](../scripts/migrations/265-auth-signup-policy-rollback.sql).
+Do not remove the guard while signup is enabled. Run the disposable policy check
+with `psql -v ON_ERROR_STOP=1 -f scripts/tests/265-auth-signup-policy.sql` against
+an empty test database. The test creates a minimal `auth.users` table and checks
+anonymous creation, invitation ordering, rejected public registration, rejected
+anonymous conversion, existing accounts, reapplication, and rollback.
+
+Sources: [Supabase anonymous signup](https://github.com/supabase/auth/blob/master/internal/api/anonymous.go),
+[invitation transaction](https://github.com/supabase/auth/blob/master/internal/api/invite.go),
+and [invitation timestamp](https://github.com/supabase/auth/blob/master/internal/api/mail.go).
+
 Invited humans receive Supabase's account-setup email and choose a password.
 Bots start with anonymous sign-in and
 have no Marquise access until trusted server code sets

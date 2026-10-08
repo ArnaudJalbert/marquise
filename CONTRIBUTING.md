@@ -205,6 +205,9 @@ uv run ruff format .
 uv run ruff format --check .
 uv run ty check packages/marquise-core/src
 
+# Provision a Bot (stdout contains its refresh token once)
+uv run marquise auth create-bot pi.worker_2
+
 # CLI / API
 uv run marquise --help
 uv run marquise-api
@@ -368,3 +371,18 @@ GoTrue credential-bearing requests reject redirects, including same-origin redir
 Configure the final HTTPS endpoint directly. TLS certificate verification remains enabled.
 The configured JWKS URL also requires HTTPS (or the explicit loopback development opt-in).
 This does not configure inbound API HTTPS; enforce that at the deployment proxy.
+
+### Bot provisioning
+
+`marquise auth create-bot BOT_ID` uses the shared Administrator login and local
+Supabase credentials. Bot Identifiers accept lowercase ASCII letters, numbers,
+`-`, `_`, and `.`. The command checks all Auth accounts for duplicates and assigns
+`app_metadata.marquise_role=editor` and `app_metadata.marquise_bot_id`.
+Marquise provides no command to change a Bot Identifier. Concurrent provisioning
+is out of scope.
+
+Successful provisioning prints the refresh token on its own line. With configured
+Administrator credentials, stdout contains only that token. Store it in the
+Bot's secret manager. Marquise does not persist or recover it. If metadata setup
+fails, the command deletes the new account. If deletion also fails, the error
+identifies the account for manual removal through Supabase administration.

@@ -4,6 +4,10 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-10-08
 
+### v0.2.28
+
+- Add Administrator-authorized Editor Bot provisioning, protected Bot Identifiers, duplicate checks across Auth accounts, and cleanup after setup failure. Refresh tokens remain transient. Add an invitation guard so anonymous signup can be enabled without public human registration. Closes #265.
+
 ### v0.2.27
 
 - Move Screening reschedule eligibility into the domain and import use cases. Imports use checked atomic writes, reload stale state up to three times, and preserve IDs, provenance, and result counts. Add policy-free in-memory import tests and shared PostgreSQL persistence checks. Closes #292.

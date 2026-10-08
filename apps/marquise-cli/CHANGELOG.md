@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-08
+
+### v0.1.16
+
+- Add `auth create-bot BOT_ID`. Print the refresh token once after an Administrator provisions an Editor Bot. Closes #265.
+
 ## 2026-10-07
 
 ### v0.1.15

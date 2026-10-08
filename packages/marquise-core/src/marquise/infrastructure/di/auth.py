@@ -9,6 +9,7 @@ import jwt
 from marquise.application.queries.verify_access_token import VerifyAccessTokenQuery
 from marquise.application.use_cases.auth import (
     AuthenticateAdministratorUseCase,
+    CreateBotUseCase,
     InviteAccountUseCase,
     SetAccountRoleUseCase,
 )
@@ -24,6 +25,7 @@ from marquise.interface_adapters.readers.jwt_access_token import (
 from marquise.interface_adapters.repositories.account_repository import (
     GatewayAccountRepository,
 )
+from marquise.interface_adapters.repositories.bot_repository import GatewayBotRepository
 from marquise.interface_adapters.repositories.password_auth_repository import (
     GatewayPasswordAuthenticationRepository,
 )
@@ -129,6 +131,26 @@ def build_set_account_role_use_case(
     )
     return SetAccountRoleUseCase(
         GatewayAccountRepository(gateway),
+        AuthenticateAdministratorUseCase(
+            GatewayPasswordAuthenticationRepository(gateway),
+            _identity_reader(supabase_url),
+        ),
+    )
+
+
+def build_create_bot_use_case(
+    supabase_url: str,
+    publishable_key: str,
+    service_role_key: str,
+) -> CreateBotUseCase:
+    """Build Bot provisioning with shared Administrator verification."""
+    gateway = _gotrue_gateway(
+        supabase_url,
+        _require(publishable_key, "SUPABASE_PUBLISHABLE_KEY"),
+        _require(service_role_key, "SUPABASE_SERVICE_ROLE_KEY"),
+    )
+    return CreateBotUseCase(
+        GatewayBotRepository(gateway),
         AuthenticateAdministratorUseCase(
             GatewayPasswordAuthenticationRepository(gateway),
             _identity_reader(supabase_url),

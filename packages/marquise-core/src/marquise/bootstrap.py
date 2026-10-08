@@ -22,6 +22,7 @@ from marquise.application.queries.verify_access_token import VerifyAccessTokenQu
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.auth import (
     AuthenticateAdministratorUseCase,
+    CreateBotUseCase,
     InviteAccountUseCase,
     SetAccountRoleUseCase,
 )
@@ -81,6 +82,11 @@ class MarquiseFactory:
     ) -> AuthenticateAdministratorUseCase:
         """Configured Administrator authentication use case."""
         return self._container.authenticate_administrator_use_case
+
+    @property
+    def create_bot_use_case(self) -> CreateBotUseCase:
+        """Return the authorized Editor Bot provisioning workflow."""
+        return self._container.create_bot_use_case
 
     @property
     def invite_account_use_case(self) -> InviteAccountUseCase:

@@ -43,3 +43,23 @@ class AuthAdminGateway(Protocol):
     async def set_role(self, user_id: str, role: str) -> None:
         """Set protected role metadata."""
         ...
+
+
+class BotAuthGateway(Protocol):
+    """Provision anonymous accounts through an external Auth provider."""
+
+    async def identifier_exists(self, bot_id: str) -> bool:
+        """Search all accounts for an exact Bot Identifier."""
+        ...
+
+    async def create_anonymous(self) -> dict:
+        """Return the new account and transient session credentials."""
+        ...
+
+    async def assign_editor(self, account_id: str, bot_id: str) -> None:
+        """Set protected Editor and Bot Identifier metadata."""
+        ...
+
+    async def delete(self, account_id: str) -> None:
+        """Delete a newly created account after setup fails."""
+        ...
