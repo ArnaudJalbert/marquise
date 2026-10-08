@@ -139,6 +139,7 @@ async def test_save(
         cinema_id="cin-789",
         showtime=datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC),
         external_id=None,
+        source_name=None,
         ticket_url=None,
         room=None,
         language=None,

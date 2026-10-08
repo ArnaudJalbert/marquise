@@ -4,6 +4,10 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-10-07
 
+### v0.2.26
+
+- Guard same-day, same-source Screening reschedules by cinema, movie, and external ID. Preserve Screening identity, report reschedules separately, and refuse ambiguous or conflicting moves. Add source provenance migration and PostgreSQL regression coverage. Closes #287.
+
 ### v0.2.25
 
 - Add `WriteScreeningUseCase` for application-owned audit construction and retry-safe orchestration through an injected transaction interface. Reuse the dedicated mutation use cases on one connection; imports remain unchanged. Closes #250.

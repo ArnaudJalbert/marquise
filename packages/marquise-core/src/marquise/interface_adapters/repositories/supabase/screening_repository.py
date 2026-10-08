@@ -25,6 +25,7 @@ from marquise.interface_adapters.repositories.protocols.base import GatewayError
 from marquise.interface_adapters.repositories.protocols.screening import (
     ScreeningExternalIdConflictGatewayError,
     ScreeningGateway,
+    ScreeningRescheduleConflictGatewayError,
 )
 from marquise.interface_adapters.repositories.supabase._utils import (
     dict_to_cinema,
@@ -119,6 +120,7 @@ class SupabaseScreeningRepository(ScreeningRepository):
                 cinema_id=str(screening.cinema.id),
                 showtime=screening.showtime.value,
                 external_id=screening.external_id,
+                source_name=screening.source_name,
                 ticket_url=screening.ticket_url,
                 room=screening.room,
                 language=screening.language,
@@ -136,10 +138,41 @@ class SupabaseScreeningRepository(ScreeningRepository):
             cinema=screening.cinema,
             showtime=Showtime(value=_parse_datetime(outcome.row["showtime"])),
             external_id=outcome.row.get("external_id"),
+            source_name=outcome.row.get("source_name"),
             ticket_url=outcome.row.get("ticket_url"),
             room=outcome.row.get("room"),
             language=outcome.row.get("language"),
         )
+
+    async def reschedule(
+        self,
+        screening: Screening,
+        *,
+        source_name: str,
+        local_day_start: datetime,
+        local_day_end: datetime,
+    ) -> Screening | None:
+        """Move a source-owned screening within its local calendar day."""
+        try:
+            data = await self._gateway.reschedule(
+                cinema_id=str(screening.cinema.id),
+                movie_id=str(screening.movie.id),
+                external_id=screening.external_id or "",
+                source_name=source_name,
+                showtime=screening.showtime.value,
+                local_day_start=local_day_start,
+                local_day_end=local_day_end,
+                ticket_url=screening.ticket_url,
+                room=screening.room,
+                language=screening.language,
+            )
+        except ScreeningRescheduleConflictGatewayError as exc:
+            raise ScreeningAlreadyExistsError(str(exc)) from exc
+        except ScreeningExternalIdConflictGatewayError as exc:
+            raise ScreeningExternalIdConflictError(str(exc)) from exc
+        if data is None:
+            return None
+        return self._to_entity(data)
 
     async def update(self, screening: Screening) -> Screening | None:
         """Update optional fields on an existing screening.
@@ -160,6 +193,7 @@ class SupabaseScreeningRepository(ScreeningRepository):
                 movie_id=str(screening.movie.id),
                 showtime=screening.showtime.value,
                 external_id=screening.external_id,
+                source_name=screening.source_name,
                 ticket_url=screening.ticket_url,
                 room=screening.room,
                 language=screening.language,
@@ -174,6 +208,7 @@ class SupabaseScreeningRepository(ScreeningRepository):
             cinema=screening.cinema,
             showtime=Showtime(value=_parse_datetime(data["showtime"])),
             external_id=data.get("external_id"),
+            source_name=data.get("source_name"),
             ticket_url=data.get("ticket_url"),
             room=data.get("room"),
             language=data.get("language"),
@@ -352,6 +387,7 @@ class SupabaseScreeningRepository(ScreeningRepository):
             cinema=cinema,
             showtime=Showtime(value=_parse_datetime(data["showtime"])),
             external_id=data.get("external_id"),
+            source_name=data.get("source_name"),
             ticket_url=data.get("ticket_url"),
             room=data.get("room"),
             language=data.get("language"),

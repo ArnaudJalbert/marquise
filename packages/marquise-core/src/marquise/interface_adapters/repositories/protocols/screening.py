@@ -16,6 +16,10 @@ class ScreeningExternalIdConflictGatewayError(GatewayError):
     """Raised when an external ID conflicts with another screening row."""
 
 
+class ScreeningRescheduleConflictGatewayError(GatewayError):
+    """Raised when a reschedule would collide with another screening."""
+
+
 @dataclass(frozen=True, slots=True)
 class SaveOutcome:
     """Result of a screening save, distinguishing insert from match.
@@ -43,6 +47,7 @@ class ScreeningGateway(Protocol):
         cinema_id: str,
         showtime: datetime,
         external_id: str | None = None,
+        source_name: str | None = None,
         ticket_url: str | None = None,
         room: str | None = None,
         language: str | None = None,
@@ -72,12 +77,29 @@ class ScreeningGateway(Protocol):
         """
         ...
 
+    async def reschedule(
+        self,
+        cinema_id: str,
+        movie_id: str,
+        external_id: str,
+        source_name: str,
+        showtime: datetime,
+        local_day_start: datetime,
+        local_day_end: datetime,
+        ticket_url: str | None = None,
+        room: str | None = None,
+        language: str | None = None,
+    ) -> dict | None:
+        """Move a same-day screening identified by its source ID atomically."""
+        ...
+
     async def update(
         self,
         cinema_id: str,
         movie_id: str,
         showtime: datetime,
         external_id: str | None = None,
+        source_name: str | None = None,
         ticket_url: str | None = None,
         room: str | None = None,
         language: str | None = None,

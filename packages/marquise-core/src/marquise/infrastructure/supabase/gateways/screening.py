@@ -14,11 +14,15 @@ from marquise.interface_adapters.repositories.protocols.base import (
 from marquise.interface_adapters.repositories.protocols.screening import (
     SaveOutcome,
     ScreeningExternalIdConflictGatewayError,
+    ScreeningRescheduleConflictGatewayError,
 )
 
 DEFAULT_SCHEMA = "marquise"
 
-_COLUMNS = "id, movie_id, cinema_id, showtime, external_id, ticket_url, room, language"
+_COLUMNS = (
+    "id, movie_id, cinema_id, showtime, external_id, source_name, "
+    "ticket_url, room, language"
+)
 _MOVIE_COLUMNS = (
     "m.id AS movie__id, m.title AS movie__title,"
     " m.release_year AS movie__release_year,"
@@ -40,7 +44,7 @@ _CINEMA_COLUMNS = (
 )
 _SCREENING_COLUMNS = (
     "s.id, s.movie_id, s.cinema_id, s.showtime,"
-    " s.external_id, s.ticket_url, s.room, s.language"
+    " s.external_id, s.source_name, s.ticket_url, s.room, s.language"
 )
 _JOINED_COLUMNS = f"{_SCREENING_COLUMNS}, {_MOVIE_COLUMNS}, {_CINEMA_COLUMNS}"
 _PLAIN_MOVIE_COLUMNS = (
@@ -85,6 +89,7 @@ class SupabaseScreeningGateway:
         cinema_id: str,
         showtime: datetime,
         external_id: str | None = None,
+        source_name: str | None = None,
         ticket_url: str | None = None,
         room: str | None = None,
         language: str | None = None,
@@ -116,30 +121,19 @@ class SupabaseScreeningGateway:
             try:
                 row = await conn.fetchrow(
                     f"""
-                    WITH inserted AS (
-                        INSERT INTO {self._table}
-                            (id, movie_id, cinema_id, showtime,
-                             external_id, ticket_url, room, language)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                        ON CONFLICT (cinema_id, movie_id, showtime) DO NOTHING
-                        RETURNING {_COLUMNS}, true AS __inserted
-                    ),
-                    existing AS (
-                        SELECT {_COLUMNS}, false AS __inserted
-                        FROM {self._table}
-                        WHERE cinema_id = $3 AND movie_id = $2
-                            AND showtime = $4
-                            AND NOT EXISTS (SELECT 1 FROM inserted)
-                    )
-                    SELECT * FROM inserted
-                    UNION ALL
-                    SELECT * FROM existing
+                    INSERT INTO {self._table}
+                        (id, movie_id, cinema_id, showtime,
+                         external_id, source_name, ticket_url, room, language)
+                    VALUES ($1, $2, $3, $4, NULLIF($5, ''), $6, $7, $8, $9)
+                    ON CONFLICT (cinema_id, movie_id, showtime) DO NOTHING
+                    RETURNING {_COLUMNS}
                     """,
                     screening_id,
                     movie_id,
                     cinema_id,
                     _naive_utc(showtime),
                     external_id,
+                    source_name,
                     ticket_url,
                     room,
                     language,
@@ -150,17 +144,101 @@ class SupabaseScreeningGateway:
                 raise ScreeningExternalIdConflictGatewayError(
                     f"external_id={external_id!r} belongs to another screening"
                 ) from exc
+            inserted = row is not None
+            if row is None:
+                # A conflict may wait for a row absent from INSERT's snapshot.
+                row = await conn.fetchrow(
+                    f"SELECT {_COLUMNS} FROM {self._table} "
+                    "WHERE cinema_id = $1 AND movie_id = $2 AND showtime = $3",
+                    cinema_id,
+                    movie_id,
+                    _naive_utc(showtime),
+                )
         if row is None:
-            raise GatewayError(
-                f"Screening upsert returned no row for "
-                f"(cinema_id={cinema_id!r}, movie_id={movie_id!r}, "
-                f"showtime={showtime}). This usually means a duplicate "
-                f"(cinema_id, movie_id, showtime) was upserted concurrently — "
-                f"deduplicate rows before calling save()."
-            )
-        data = dict(row)
-        inserted = bool(data.pop("__inserted"))
-        return SaveOutcome(row=data, inserted=inserted)
+            raise GatewayError("Screening disappeared after the identity conflict")
+        return SaveOutcome(row=dict(row), inserted=inserted)
+
+    async def reschedule(
+        self,
+        cinema_id: str,
+        movie_id: str,
+        external_id: str,
+        source_name: str,
+        showtime: datetime,
+        local_day_start: datetime,
+        local_day_end: datetime,
+        ticket_url: str | None = None,
+        room: str | None = None,
+        language: str | None = None,
+    ) -> dict | None:
+        """Move one same-day source-owned screening without changing its ID."""
+        if not external_id or not source_name:
+            return None
+        async with self._pool.acquire() as conn:
+            async with conn.transaction(isolation="read_committed"):
+                owners = await conn.fetch(
+                    f"SELECT {_COLUMNS} FROM {self._table} "
+                    "WHERE cinema_id = $1 AND external_id = $2 ORDER BY id FOR UPDATE",
+                    cinema_id,
+                    external_id,
+                )
+                if not owners:
+                    return None
+                if len(owners) != 1:
+                    raise ScreeningExternalIdConflictGatewayError(
+                        f"Ambiguous ownership: {len(owners)} Screenings claim "
+                        f"cinema_id={cinema_id!r} external_id={external_id!r}"
+                    )
+                owner = owners[0]
+                try:
+                    row = await conn.fetchrow(
+                        f"""
+                        WITH updated AS (
+                            UPDATE {self._table}
+                            SET showtime = $7,
+                                ticket_url = COALESCE($8, ticket_url),
+                                room = COALESCE($9, room),
+                                language = COALESCE($10, language)
+                            WHERE id = $1 AND movie_id = $2
+                                AND external_id = $3 AND source_name = $4
+                                AND showtime >= $5 AND showtime < $6
+                                AND $7 >= $5 AND $7 < $6
+                            RETURNING {_COLUMNS}
+                        )
+                        SELECT {_JOINED_COLUMNS}
+                        FROM updated s
+                        JOIN "{self._schema}".movies m ON s.movie_id = m.id
+                        JOIN "{self._schema}".cinemas c ON s.cinema_id = c.id
+                        """,
+                        owner["id"],
+                        movie_id,
+                        external_id,
+                        source_name,
+                        _naive_utc(local_day_start),
+                        _naive_utc(local_day_end),
+                        _naive_utc(showtime),
+                        ticket_url,
+                        room,
+                        language,
+                    )
+                    if row is None:
+                        raise ScreeningExternalIdConflictGatewayError(
+                            f"Reschedule refused: owner_id={owner['id']!r}, "
+                            f"movie_id={owner['movie_id']!r} (incoming={movie_id!r}), "
+                            f"showtime={owner['showtime']}, "
+                            f"allowed_window=[{local_day_start}, {local_day_end}), "
+                            f"source provenance={owner['source_name']!r} "
+                            f"(incoming={source_name!r})"
+                        )
+                except asyncpg.exceptions.UniqueViolationError as exc:
+                    if exc.as_dict().get("constraint_name") == (
+                        "screenings_cinema_id_movie_id_showtime_key"
+                    ):
+                        raise ScreeningRescheduleConflictGatewayError(
+                            "A screening already exists for the rescheduled identity"
+                        ) from exc
+                    raise
+        return dict(row) if row is not None else None
 
     async def update(
         self,
@@ -168,6 +246,7 @@ class SupabaseScreeningGateway:
         movie_id: str,
         showtime: datetime,
         external_id: str | None = None,
+        source_name: str | None = None,
         ticket_url: str | None = None,
         room: str | None = None,
         language: str | None = None,
@@ -175,8 +254,9 @@ class SupabaseScreeningGateway:
         """Update optional fields on an existing screening.
 
         Matches by the unique constraint (cinema_id, movie_id, showtime).
-        Only non-None values are written; existing values are preserved
-        when the argument is None.
+        None or blank native IDs preserve the existing key and its provenance.
+        A provided key requires source evidence to acquire or transfer provenance.
+        Other optional values are written only when non-None.
 
         Args:
             cinema_id: The cinema hosting the screening.
@@ -201,17 +281,27 @@ class SupabaseScreeningGateway:
                     f"""
                     UPDATE {self._table}
                     SET
-                        external_id = COALESCE($4, external_id),
-                        ticket_url = COALESCE($5, ticket_url),
-                        room = COALESCE($6, room),
-                        language = COALESCE($7, language)
+                        external_id = COALESCE(NULLIF($4, ''), external_id),
+                        source_name = CASE
+                            WHEN NULLIF($4, '') IS NULL THEN source_name
+                            WHEN $5::text IS NOT NULL THEN $5
+                            WHEN $4 IS DISTINCT FROM external_id THEN NULL
+                            ELSE source_name
+                        END,
+                        ticket_url = COALESCE($6, ticket_url),
+                        room = COALESCE($7, room),
+                        language = COALESCE($8, language)
                     WHERE cinema_id = $1 AND movie_id = $2 AND showtime = $3
+                        AND (
+                            $5::text IS NULL OR source_name IS NULL OR source_name = $5
+                        )
                     RETURNING {_COLUMNS}
                     """,
                     cinema_id,
                     movie_id,
                     _naive_utc(showtime),
                     external_id,
+                    source_name,
                     ticket_url,
                     room,
                     language,
@@ -222,6 +312,20 @@ class SupabaseScreeningGateway:
                 raise ScreeningExternalIdConflictGatewayError(
                     f"external_id={external_id!r} belongs to another screening"
                 ) from exc
+            if row is None and source_name is not None:
+                existing = await conn.fetchrow(
+                    f"SELECT id, source_name FROM {self._table} "
+                    "WHERE cinema_id = $1 AND movie_id = $2 AND showtime = $3",
+                    cinema_id,
+                    movie_id,
+                    _naive_utc(showtime),
+                )
+                if existing is not None:
+                    raise ScreeningExternalIdConflictGatewayError(
+                        f"Metadata update refused: owner_id={existing['id']!r}, "
+                        f"source provenance={existing['source_name']!r} "
+                        f"(incoming={source_name!r})"
+                    )
         return dict(row) if row is not None else None
 
     async def replace(
@@ -279,6 +383,17 @@ class SupabaseScreeningGateway:
         assignments = ", ".join(
             f"{name} = ${index}" for index, name in enumerate(columns, start=2)
         )
+        ownership_changes = [
+            f"{name} IS DISTINCT FROM ${columns.index(name) + 2}"
+            for name in ("cinema_id", "external_id")
+            if name in fields
+        ]
+        if ownership_changes:
+            assignments += (
+                ", source_name = CASE WHEN "
+                + " OR ".join(ownership_changes)
+                + " THEN NULL ELSE source_name END"
+            )
         async with (
             self._pool.acquire() as conn,
             conn.transaction(isolation="read_committed"),
