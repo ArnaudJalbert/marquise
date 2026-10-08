@@ -191,7 +191,24 @@ class SupabaseScreeningGateway:
         The fresh read after locking detects rows committed during lock waits.
         No source ownership or calendar eligibility rule is evaluated here.
         """
-        columns = _COLUMNS.split(", ")
+        async with self._pool.acquire() as conn:
+            try:
+                async with conn.transaction(isolation="read_committed"):
+                    await self._check_import_snapshot(conn, incoming, expected)
+                    return await self._persist_import(
+                        conn,
+                        proposed,
+                        replacing=any(row["id"] == proposed["id"] for row in expected),
+                    )
+            except (asyncpg.UniqueViolationError, asyncpg.DeadlockDetectedError) as exc:
+                raise ScreeningWriteConflictGatewayError(
+                    "Concurrent Screening identity or native-key conflict"
+                ) from exc
+
+    async def _check_import_snapshot(
+        self, conn: asyncpg.Connection, incoming: dict, expected: tuple[dict, ...]
+    ) -> None:
+        """Lock all checked rows and compare a fresh snapshot after any lock wait."""
         query = (
             f"SELECT {_COLUMNS} FROM {self._table} "
             "WHERE id = ANY($5::text[]) OR (cinema_id = $1 AND ("
@@ -207,47 +224,42 @@ class SupabaseScreeningGateway:
             incoming["external_id"],
             list(checked),
         )
-        async with self._pool.acquire() as conn:
-            try:
-                async with conn.transaction(isolation="read_committed"):
-                    await conn.fetch(query, *arguments)
-                    current = await conn.fetch(query, *arguments)
-                    if {row["id"]: dict(row) for row in current} != checked:
-                        raise ScreeningWriteConflictGatewayError(
-                            "Screening state changed"
-                        )
-                    values = tuple(proposed[column] for column in columns)
-                    if proposed["id"] in checked:
-                        assignments = ", ".join(
-                            f"{column} = ${index}"
-                            for index, column in enumerate(columns[1:], start=2)
-                        )
-                        await conn.execute(
-                            f"UPDATE {self._table} SET {assignments} WHERE id = $1",
-                            *values,
-                        )
-                    else:
-                        placeholders = ", ".join(
-                            f"${i}" for i in range(1, len(columns) + 1)
-                        )
-                        await conn.execute(
-                            f"INSERT INTO {self._table} ({_COLUMNS}) "
-                            f"VALUES ({placeholders})",
-                            *values,
-                        )
-                    row = await conn.fetchrow(
-                        f"SELECT {_JOINED_COLUMNS} FROM {self._table} s "
-                        f'JOIN "{self._schema}".movies m ON s.movie_id = m.id '
-                        f'JOIN "{self._schema}".cinemas c ON s.cinema_id = c.id '
-                        "WHERE s.id = $1",
-                        proposed["id"],
-                    )
-                    if row is None:
-                        raise GatewayError("Persisted Screening has missing parents")
-            except (asyncpg.UniqueViolationError, asyncpg.DeadlockDetectedError) as exc:
-                raise ScreeningWriteConflictGatewayError(
-                    "Concurrent Screening identity or native-key conflict"
-                ) from exc
+
+        await conn.fetch(query, *arguments)
+        current = await conn.fetch(query, *arguments)
+        if {row["id"]: dict(row) for row in current} != checked:
+            raise ScreeningWriteConflictGatewayError("Screening state changed")
+
+    async def _persist_import(
+        self, conn: asyncpg.Connection, proposed: dict, *, replacing: bool
+    ) -> dict:
+        """Insert or replace the complete row and load its joined persistence data."""
+        columns = _COLUMNS.split(", ")
+        values = tuple(proposed[column] for column in columns)
+        if replacing:
+            assignments = ", ".join(
+                f"{column} = ${index}"
+                for index, column in enumerate(columns[1:], start=2)
+            )
+            await conn.execute(
+                f"UPDATE {self._table} SET {assignments} WHERE id = $1",
+                *values,
+            )
+        else:
+            placeholders = ", ".join(f"${i}" for i in range(1, len(columns) + 1))
+            await conn.execute(
+                f"INSERT INTO {self._table} ({_COLUMNS}) VALUES ({placeholders})",
+                *values,
+            )
+        row = await conn.fetchrow(
+            f"SELECT {_JOINED_COLUMNS} FROM {self._table} s "
+            f'JOIN "{self._schema}".movies m ON s.movie_id = m.id '
+            f'JOIN "{self._schema}".cinemas c ON s.cinema_id = c.id '
+            "WHERE s.id = $1",
+            proposed["id"],
+        )
+        if row is None:
+            raise GatewayError("Persisted Screening has missing parents")
         return dict(row)
 
     async def update(
