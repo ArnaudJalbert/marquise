@@ -11,7 +11,21 @@ CREATE TABLE auth.users (
 INSERT INTO auth.users (id, is_anonymous)
 VALUES ('00000000-0000-0000-0000-000000000001', false);
 
+-- Match managed Supabase: the migration role can create in public and attach
+-- triggers to auth.users, but cannot create functions in the managed auth schema.
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'marquise_guard_installer') THEN
+        CREATE ROLE marquise_guard_installer;
+    END IF;
+END;
+$$;
+GRANT USAGE ON SCHEMA auth TO marquise_guard_installer;
+GRANT SELECT, TRIGGER ON auth.users TO marquise_guard_installer;
+GRANT USAGE, CREATE ON SCHEMA public TO marquise_guard_installer;
+SET ROLE marquise_guard_installer;
 \ir ../migrations/265-auth-signup-policy.sql
+RESET ROLE;
 
 -- Anonymous creation commits successfully.
 BEGIN;
@@ -70,7 +84,49 @@ BEGIN
 END;
 $$;
 
--- Reapplying the migration preserves accounts and policy.
+-- Reapplication and rollback must work without ownership of auth.users.
+SET ROLE marquise_guard_installer;
 \ir ../migrations/265-auth-signup-policy.sql
 \ir ../migrations/265-auth-signup-policy-rollback.sql
+-- Rollback deactivates enforcement; it leaves the project-owned function in place.
+RESET ROLE;
+INSERT INTO auth.users (id, is_anonymous)
+VALUES ('00000000-0000-0000-0000-000000000006', false);
+DELETE FROM auth.users WHERE id = '00000000-0000-0000-0000-000000000006';
+SET ROLE marquise_guard_installer;
+\ir ../migrations/265-auth-signup-policy.sql
+RESET ROLE;
+DO $$
+BEGIN
+    BEGIN
+        INSERT INTO auth.users (id, is_anonymous)
+        VALUES ('00000000-0000-0000-0000-000000000007', false);
+        SET CONSTRAINTS auth.marquise_auth_signup_policy IMMEDIATE;
+        RAISE EXCEPTION 'Forward migration did not restore enforcement after rollback';
+    EXCEPTION WHEN check_violation THEN
+        NULL;
+    END;
+END;
+$$;
+-- Reject a pre-existing UPDATE-only trigger instead of silently allowing signup.
+DROP TRIGGER marquise_auth_signup_policy ON auth.users;
+CREATE CONSTRAINT TRIGGER marquise_auth_signup_policy
+AFTER UPDATE ON auth.users DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION public.marquise_require_invitation();
+SET ROLE marquise_guard_installer;
+\set LAST_ERROR_SQLSTATE 00000
+\set ON_ERROR_STOP off
+\ir ../migrations/265-auth-signup-policy.sql
+\set ON_ERROR_STOP on
+SELECT :'LAST_ERROR_SQLSTATE' = 'P0001' AS drift_rejected \gset
+\if :drift_rejected
+\else
+    \echo 'Unexpected trigger definition was not rejected'
+    \quit 1
+\endif
+RESET ROLE;
+DROP TRIGGER marquise_auth_signup_policy ON auth.users;
+SET ROLE marquise_guard_installer;
+\ir ../migrations/265-auth-signup-policy.sql
+RESET ROLE;
 SELECT 'Auth signup policy checks passed' AS result;

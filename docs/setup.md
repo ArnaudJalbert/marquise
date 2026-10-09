@@ -97,9 +97,12 @@ requires an invitation. Existing human accounts remain valid.
 
 Apply the guard in an isolated database and staging first. Install it in the
 intended project before pushing `auth.enable_signup=true`. To roll back, disable
-signup first, then apply
+signup first, then deactivate the guard with
 [the rollback](../scripts/migrations/265-auth-signup-policy-rollback.sql).
-Do not remove the guard while signup is enabled. Run the disposable policy check
+The rollback deactivates the guard by replacing its function with a no-op.
+Supabase grants trigger access without ownership of `auth.users`, so the script
+keeps the trigger. Reapplying the forward migration restores enforcement.
+Do not deactivate the guard while signup is enabled. Run the disposable policy check
 with `psql -v ON_ERROR_STOP=1 -f scripts/tests/265-auth-signup-policy.sql` against
 an empty test database. The test creates a minimal `auth.users` table and checks
 anonymous creation, invitation ordering, rejected public registration, rejected
