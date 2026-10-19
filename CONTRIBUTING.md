@@ -191,8 +191,11 @@ uv run pytest packages/marquise-core/tests/unit_tests/ -k "test_name" -q
 # Core unit tests with coverage
 uv run pytest packages/marquise-core/tests/unit_tests/ --cov=marquise --cov-report=term-missing -q
 
-# Integration tests (requires DATABASE_URL in .env)
-uv run pytest packages/marquise-core/tests/ -q
+# Deterministic integration tests (requires a disposable PostgreSQL DATABASE_URL)
+uv run pytest packages/marquise-core/tests/integration_tests/ -q
+
+# Live provider connectivity only (requires internet, no database)
+uv run pytest packages/marquise-core/tests/provider_smoke_tests/ -q
 
 # App tests — one invocation per app (MarquiseFactory mocked, no DB)
 uv run pytest apps/marquise-api/tests/ -q
@@ -293,10 +296,10 @@ Component tests use **Vitest** + **Testing Library**. No live HTTP in unit tests
 
 Pull requests to `main` run the repository workflows:
 
-- `quality`: `ruff format --check`, `ruff check`, `ty check packages/marquise-core/src`, core unit tests with the 70% coverage gate, and the API HTTP test suite. Import-boundary validation remains a local architectural check, not a CI step.
+- `quality`: `ruff format --check`, `ruff check`, `ty check packages/marquise-core/src`, core unit tests with the 70% coverage gate, API and CLI tests, and the deterministic integration suite against a disposable PostgreSQL 17 service. Import-boundary validation remains a local architectural check, not a CI step.
 - `release-validation`: release and package checks.
 
-Integration tests (`packages/marquise-core/tests/integration_tests/`) run on a nightly schedule and via manual dispatch, after verifying `DATABASE_URL`, `SUPABASE_URL`, and `SUPABASE_PUBLISHABLE_KEY`.
+The nightly `integration` workflow runs the same deterministic suite against its own PostgreSQL 17 service. It needs no production secrets or live provider access. The separate `provider-connectivity` workflow checks the real Cineplex and CinemaCinema endpoints daily and by manual dispatch. Its failures are visible but do not fail the deterministic suite; a connectivity check does not validate every showtime or movie-detail response.
 
 The exact trigger, command, blocking behavior, and environment wiring are defined by the workflow files in [`.github/workflows/`](.github/workflows/). In particular, `ty` is currently a blocking quality step; do not describe it as advisory here.
 
