@@ -2,6 +2,8 @@
 
 import asyncio
 import json
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -11,6 +13,7 @@ import asyncpg
 import pytest
 import pytest_asyncio
 
+from marquise.application.transactions.screening_write import ScreeningWriteSession
 from marquise.application.use_cases.create_screening import CreateScreeningUseCase
 from marquise.application.use_cases.delete_screening import DeleteScreeningUseCase
 from marquise.application.use_cases.update_screening import UpdateScreeningUseCase
@@ -293,37 +296,33 @@ async def test_concurrent_conflicting_key_has_one_winner(
 
 @pytest.mark.asyncio
 async def test_duplicate_lock_wait_times_out_without_cancelling_first_write(
-    writer: WriteScreeningUseCase, db_pool: asyncpg.Pool
+    writer: WriteScreeningUseCase, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A slow first write stays valid while its duplicate gets a retryable error."""
-    async with db_pool.acquire() as connection:
-        await connection.execute(f"""CREATE FUNCTION {SCHEMA}.slow_audit_test()
-            RETURNS trigger LANGUAGE plpgsql AS $$
-            BEGIN PERFORM pg_sleep(6); RETURN NEW; END; $$;
-            CREATE TRIGGER slow_audit_test BEFORE INSERT
-            ON {SCHEMA}.screening_write_audit FOR EACH ROW
-            EXECUTE FUNCTION {SCHEMA}.slow_audit_test();""")
+    locked = asyncio.Event()
+    release = asyncio.Event()
+    transaction = writer._transaction
+    original_open = transaction.open
+
+    @asynccontextmanager
+    async def hold_first_lock(
+        account: str, key: str
+    ) -> AsyncIterator[ScreeningWriteSession]:
+        async with original_open(account, key) as session:
+            if not locked.is_set():
+                locked.set()
+                await release.wait()
+            yield session
+
+    monkeypatch.setattr(transaction, "open", hold_first_lock)
     first = asyncio.create_task(writer.execute(request()))
     try:
-        async with asyncio.timeout(2):
-            while True:
-                async with db_pool.acquire() as connection:
-                    sleeping = await connection.fetchval(
-                        "SELECT EXISTS (SELECT 1 FROM pg_stat_activity "
-                        "WHERE wait_event = 'PgSleep' "
-                        "AND datname = current_database())"
-                    )
-                if sleeping:
-                    break
-                await asyncio.sleep(0.01)
+        await asyncio.wait_for(locked.wait(), timeout=10)
         with pytest.raises(ScreeningWriteBusyError):
             await writer.execute(request())
+        release.set()
         original = await first
         assert await writer.execute(request()) == original
     finally:
+        release.set()
         await first
-        async with db_pool.acquire() as connection:
-            await connection.execute(
-                f"DROP TRIGGER slow_audit_test ON {SCHEMA}.screening_write_audit; "
-                f"DROP FUNCTION {SCHEMA}.slow_audit_test();"
-            )

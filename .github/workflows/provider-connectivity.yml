@@ -1,0 +1,23 @@
+name: Provider connectivity
+
+on:
+  schedule:
+    - cron: "37 8 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-providers:
+    name: Cineplex and CinemaCinema live connectivity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv python install 3.13
+      - run: uv sync --group dev
+      - name: Check both provider endpoints
+        run: uv run pytest packages/marquise-core/tests/provider_smoke_tests/ -v

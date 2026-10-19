@@ -79,5 +79,5 @@ jobs:
           enable-cache: true
       - run: uv python install 3.13
       - run: uv sync --group dev
-      - name: Run isolated PostgreSQL tests (no production secrets)
-        run: uv run pytest packages/marquise-core/tests/integration_tests/infrastructure/supabase/gateways/ -q
+      - name: Run deterministic integration tests (no production secrets)
+        run: uv run pytest packages/marquise-core/tests/integration_tests/ -q
