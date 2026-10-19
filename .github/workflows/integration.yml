@@ -2,55 +2,36 @@ name: Integration
 
 on:
   schedule:
-    # Nightly at 08:17 UTC (≈ 03:17–04:17 America/Montreal); offset avoids top-of-hour load
     - cron: "17 8 * * *"
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# Integration tests share the configured database; never run two suites at once.
-concurrency:
-  group: marquise-integration-tests
-  cancel-in-progress: false
-
 jobs:
   integration:
-    name: Integration tests
+    name: Integration tests (isolated PostgreSQL and local HTTP)
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: marquise
+          POSTGRES_PASSWORD: test-only
+          POSTGRES_DB: marquise_test
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U marquise -d marquise_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://marquise:test-only@127.0.0.1:5432/marquise_test
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-
-      - name: Set up Python
-        run: uv python install 3.13
-
-      - name: Install dependencies
-        run: uv sync --group dev
-
-      - name: Verify required secrets are set
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
-        run: |
-          missing=()
-          [[ -z "$DATABASE_URL" ]] && missing+=("DATABASE_URL")
-          [[ -z "$SUPABASE_URL" ]] && missing+=("SUPABASE_URL")
-          [[ -z "$SUPABASE_PUBLISHABLE_KEY" ]] && missing+=("SUPABASE_PUBLISHABLE_KEY")
-          if [[ ${#missing[@]} -gt 0 ]]; then
-            echo "Missing required secrets: ${missing[*]}"
-            exit 1
-          fi
-
-      - name: Run integration tests
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
-        run: uv run pytest packages/marquise-core/tests/integration_tests/ -v
+      - run: uv python install 3.13
+      - run: uv sync --group dev
+      - name: Run deterministic integration tests
+        run: uv run pytest packages/marquise-core/tests/integration_tests/ -q
