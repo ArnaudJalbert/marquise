@@ -19,6 +19,7 @@ jobs:
         uses: astral-sh/setup-uv@v10.3.0
         with:
           enable-cache: true
+          cache-suffix: ${{ github.job }}
 
       - name: Set up Python
         run: uv python install 3.13
@@ -77,6 +78,7 @@ jobs:
       - uses: astral-sh/setup-uv@v10.3.0
         with:
           enable-cache: true
+          cache-suffix: ${{ github.job }}
       - run: uv python install 3.13
       - run: uv sync --group dev
       - name: Run deterministic integration tests (no production secrets)
