@@ -8,13 +8,13 @@ on:
 jobs:
   changes:
     name: Detect changed apps
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       api: ${{ steps.filter.outputs.api }}
       interface: ${{ steps.filter.outputs.interface }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
@@ -35,10 +35,10 @@ jobs:
     name: Deploy marquise-api
     needs: changes
     if: needs.changes.outputs.api == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     concurrency: deploy-api-group    # optional: ensure only one action runs at a time
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1
       - run: make deploy-api
         env:
@@ -69,10 +69,10 @@ jobs:
     name: Deploy marquise-interface
     needs: changes
     if: needs.changes.outputs.interface == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     concurrency: deploy-interface-group
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1
       - run: make deploy-interface
         env:
