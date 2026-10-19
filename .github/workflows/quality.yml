@@ -10,13 +10,13 @@ permissions:
 jobs:
   quality:
     name: Lint, format, and unit tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v10.3.0
         with:
           enable-cache: true
 
@@ -50,7 +50,7 @@ jobs:
         run: uv run pytest apps/marquise-cli/tests/ -q
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: coverage-report
@@ -58,7 +58,7 @@ jobs:
 
   postgres:
     name: PostgreSQL gateway and import regressions
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:17
@@ -73,8 +73,8 @@ jobs:
     env:
       DATABASE_URL: postgresql://marquise:test-only@127.0.0.1:5432/marquise_test
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
         with:
           enable-cache: true
       - run: uv python install 3.13

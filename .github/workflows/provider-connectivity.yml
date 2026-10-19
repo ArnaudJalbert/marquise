@@ -11,10 +11,10 @@ permissions:
 jobs:
   live-providers:
     name: Cineplex and CinemaCinema live connectivity
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
         with:
           enable-cache: true
       - run: uv python install 3.13
