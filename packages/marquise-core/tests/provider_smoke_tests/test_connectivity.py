@@ -17,6 +17,10 @@ def test_cineplex_showtimes_connection() -> None:
         f"{SHOWTIMES_URL}?LocationId=9172", api_key=source._resolve_api_key()
     )
     assert isinstance(response, list)
+    assert any(
+        isinstance(theatre, dict) and theatre.get("theatreId") == 9172
+        for theatre in response
+    )
 
 
 def test_cinemacinema_schedule_connection() -> None:
