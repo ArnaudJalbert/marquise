@@ -17,10 +17,15 @@ type PosterCardProps = {
 
 function PosterPreview({
   item,
-  date,
+  href,
   currentTime,
   onClose,
-}: PosterCardProps & { onClose: () => void }) {
+}: {
+  item: MovieCardGridItem;
+  href: string;
+  currentTime?: string;
+  onClose: () => void;
+}) {
   return (
     <>
       <div className="preview-heading">
@@ -45,7 +50,7 @@ function PosterPreview({
         groups={groupByCinema(item.showtimes ?? [])}
         currentTime={currentTime}
       />
-      <a className="preview-all" href={`${item.showtimesUrl}?date=${date}`}>
+      <a className="preview-all" href={href}>
         Movie details & all screening pages →
       </a>
     </>
@@ -58,18 +63,17 @@ export function PosterCard({ item, date, currentTime }: PosterCardProps) {
   const [hoverOpen, setHoverOpen] = useState(false);
   const href = `${item.showtimesUrl}?date=${date}`;
   return (
-    <article className="poster-card">
-      <HoverCard
-        open={hoverOpen && !open}
-        onOpenChange={(nextOpen) => setHoverOpen(nextOpen && !open)}
-        openDelay={250}
-        closeDelay={100}
-      >
-        <HoverCardTrigger
-          asChild
-          // Keyboard users open the interactive Popover with Showtimes.
-          onFocus={(event) => event.preventDefault()}
-        >
+    <HoverCard
+      open={hoverOpen && !open}
+      onOpenChange={(nextOpen) => setHoverOpen(nextOpen && !open)}
+      openDelay={250}
+      closeDelay={100}
+    >
+      {/* The trigger spans the whole card so moving onto the overlapping
+          Showtimes strip is not a hover leave. Keyboard focus does not open
+          the hover card; the Showtimes button owns that preview instead. */}
+      <HoverCardTrigger asChild onFocus={(event) => event.preventDefault()}>
+        <article className="poster-card">
           <a
             href={href}
             className="poster-link"
@@ -80,57 +84,57 @@ export function PosterCard({ item, date, currentTime }: PosterCardProps) {
               posterUrl={item.movie.posterUrl}
             />
           </a>
-        </HoverCardTrigger>
-        <HoverCardContent
-          className="poster-preview"
-          side="bottom"
-          align="start"
-          collisionPadding={16}
-          role="dialog"
-          aria-label={`Showtimes for ${item.movie.title}`}
-        >
-          <PosterPreview
-            item={item}
-            date={date}
-            currentTime={currentTime}
-            onClose={() => setHoverOpen(false)}
-          />
-        </HoverCardContent>
-      </HoverCard>
-      <Popover
-        open={open}
-        onOpenChange={(nextOpen) => {
-          setOpen(nextOpen);
-          if (nextOpen) setHoverOpen(false);
-        }}
-      >
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            className="poster-preview-button"
-            aria-label={`Showtimes for ${item.movie.title}`}
-            aria-expanded={open}
+          <Popover
+            open={open}
+            onOpenChange={(nextOpen) => {
+              setOpen(nextOpen);
+              if (nextOpen) setHoverOpen(false);
+            }}
           >
-            Showtimes <span aria-hidden>↗</span>
-          </button>
-        </PopoverTrigger>
-        <PopoverContent
-          className="poster-preview"
-          side="bottom"
-          align="start"
-          collisionPadding={16}
-          role="dialog"
-          aria-label={`Showtimes for ${item.movie.title}`}
-        >
-          <PosterPreview
-            item={item}
-            date={date}
-            currentTime={currentTime}
-            onClose={() => setOpen(false)}
-          />
-        </PopoverContent>
-      </Popover>
-    </article>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="poster-preview-button"
+                aria-label={`Showtimes for ${item.movie.title}`}
+                aria-expanded={open}
+              >
+                Showtimes <span aria-hidden>↗</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              className="poster-preview"
+              side="bottom"
+              align="start"
+              collisionPadding={16}
+              role="dialog"
+              aria-label={`Showtimes for ${item.movie.title}`}
+            >
+              <PosterPreview
+                item={item}
+                href={href}
+                currentTime={currentTime}
+                onClose={() => setOpen(false)}
+              />
+            </PopoverContent>
+          </Popover>
+        </article>
+      </HoverCardTrigger>
+      <HoverCardContent
+        className="poster-preview"
+        side="bottom"
+        align="start"
+        collisionPadding={16}
+        role="dialog"
+        aria-label={`Showtimes for ${item.movie.title}`}
+      >
+        <PosterPreview
+          item={item}
+          href={href}
+          currentTime={currentTime}
+          onClose={() => setHoverOpen(false)}
+        />
+      </HoverCardContent>
+    </HoverCard>
   );
 }
 export function PosterRail({
