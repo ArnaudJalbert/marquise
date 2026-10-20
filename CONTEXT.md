@@ -15,11 +15,3 @@ _Avoid_: Admin
 **Member**:
 An account that may access only Marquise data owned by that account, such as preferences and saved screenings.
 _Avoid_: User, customer
-
-**Bot**:
-A non-human account that calls protected Marquise API endpoints.
-_Avoid_: Script, automation
-
-**Bot Identifier**:
-An immutable, unique lowercase slug identifying a Bot account.
-_Avoid_: Bot name
