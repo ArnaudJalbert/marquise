@@ -1,5 +1,4 @@
 import "./index.css";
-import "./components/discovery/discovery.css";
 export { MarquiseExperience } from "./components/discovery/MarquiseExperience";
 export { PosterCard, PosterRail } from "./components/discovery/PosterCard";
 export { screeningQuery, screeningsHref } from "./components/discovery/discovery-state";
