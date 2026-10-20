@@ -187,7 +187,10 @@ describe("HttpMarquiseClient detail", () => {
       }
       if (url.pathname === "/v1/cinemas") {
         return pageOf([
-          makeCinema({ id: "cinema-1", website: "https://cinema1.example.com" }),
+          makeCinema({
+            id: "cinema-1",
+            website: "https://cinema1.example.com",
+          }),
         ]);
       }
       throw new Error(`Unexpected request: ${url}`);
@@ -219,18 +222,19 @@ describe("HttpMarquiseClient detail", () => {
     ]);
   });
 
-  it("paginates through all of a movie's screenings on a date", async () => {
+  it("keeps the legacy showtime method on its first page", async () => {
     const screenings = Array.from({ length: 150 }, (_, index) =>
       makeScreening({ showtime: `2026-08-05T1${index % 9}:00:00Z` }),
     );
     const mock = stubFetch((url) => {
       if (url.pathname === "/v1/screenings") {
         const page = Number(url.searchParams.get("page") ?? 1);
+        const size = Number(url.searchParams.get("size"));
         return pageOf(
-          screenings.slice((page - 1) * 100, page * 100),
+          screenings.slice((page - 1) * size, page * size),
           screenings.length,
           page,
-          100,
+          size,
         );
       }
       if (url.pathname === "/v1/cinemas") {
@@ -245,11 +249,12 @@ describe("HttpMarquiseClient detail", () => {
 
     const showtimes = await client.fetchShowtimes(MOVIE, "2026-08-05");
 
-    expect(showtimes).toHaveLength(150);
+    expect(showtimes).toHaveLength(48);
     const screeningCalls = mock.mock.calls.filter((call) =>
       String(call[0]).includes("/v1/screenings"),
     );
-    expect(screeningCalls).toHaveLength(2);
+    expect(screeningCalls).toHaveLength(1);
+    expect(String(screeningCalls[0]?.[0])).toContain("page=1&size=48");
   });
 
   it("returns an empty list of showtimes when the movie has no id", async () => {
@@ -281,7 +286,11 @@ describe("HttpMarquiseClient detail", () => {
     expect(caught).toBeInstanceOf(HttpMarquiseClientError);
     if (caught instanceof HttpMarquiseClientError) {
       expect(caught.status).toBe(503);
-      expect(caught.path).toContain("/v1/screenings?movie_id=movie-a");
+      expect(
+        new URL(caught.path, "https://api.example.com").searchParams.get(
+          "movie_id",
+        ),
+      ).toBe("movie-a");
     }
   });
 });

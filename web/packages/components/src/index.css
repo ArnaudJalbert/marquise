@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Include shared component utilities when an app consumes this CSS from source. */
+@source "./";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

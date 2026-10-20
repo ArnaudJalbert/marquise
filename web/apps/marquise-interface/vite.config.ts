@@ -10,6 +10,14 @@ export default defineConfig({
     alias: [
       // Consume workspace packages from source for instant HMR. Exact-match
       // regexes keep subpath imports resolving via package exports.
+      // Source CSS must match source components, not a stale dist bundle.
+      {
+        find: /^marquise-components\/index\.css$/,
+        replacement: path.resolve(
+          import.meta.dirname,
+          "../../packages/components/src/index.css",
+        ),
+      },
       {
         find: /^marquise-components$/,
         replacement: path.resolve(

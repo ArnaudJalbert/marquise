@@ -59,9 +59,11 @@ export function ShowtimeTime({
 export function CinemaShowtimeGroups({
   groups,
   currentTime,
+  showLanguage = false,
 }: {
   groups: readonly CinemaShowtimeGroup[];
   currentTime?: string;
+  showLanguage?: boolean;
 }) {
   return (
     <ul className="flex flex-col gap-3">
@@ -84,11 +86,17 @@ export function CinemaShowtimeGroups({
           )}
           <div className="flex flex-wrap gap-x-3 gap-y-1">
             {group.showtimes.map((showtime, index) => (
-              <ShowtimeTime
+              <span
                 key={`${showtime.startsAt}-${index}`}
-                showtime={showtime}
-                currentTime={currentTime}
-              />
+                className="inline-flex items-baseline gap-1"
+              >
+                <ShowtimeTime showtime={showtime} currentTime={currentTime} />
+                {showLanguage && showtime.language && (
+                  <span className="text-xs text-muted-foreground">
+                    {showtime.language}
+                  </span>
+                )}
+              </span>
             ))}
           </div>
         </li>

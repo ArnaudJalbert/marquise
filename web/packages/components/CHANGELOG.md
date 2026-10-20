@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-20
+
+### Changes
+
+- Add shared `MarquiseExperience`, poster carousels from page-local movie genres, daily server-filter controls, cinema search and film pages. Components receive clients and navigation through props.
+- Add poster-only cards with portalled hover previews and explicit keyboard/touch controls; preserve tickets, movie links, responsive layout, focus and reduced-motion support. Reserve image dimensions and keep title fallbacks.
+- Cancel superseded page requests, suppress stale results when queries or clients change, and show specific time-range validation, loading, retry, empty and movie-not-found states. Existing grid/detail exports remain available.
+
 ## 2026-08-10
 
 ### Deployment
