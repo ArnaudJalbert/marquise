@@ -485,7 +485,9 @@ describe("Cinema directory and film routes", () => {
     const { client, detail } = createClients();
     render(<App discoveryClient={client} movieDetailClient={detail} />);
     const link = await screen.findByRole("link", { name: "View Movie 1.1" });
-    fireEvent.pointerEnter(link.closest("article")!, { pointerType: "mouse" });
+    fireEvent.pointerEnter(link.closest(".poster-card")!, {
+      pointerType: "mouse",
+    });
     let dialog = await screen.findByRole("dialog", {
       name: "Showtimes for Movie 1.1",
     });
