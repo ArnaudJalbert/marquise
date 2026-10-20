@@ -183,7 +183,9 @@ describe("HttpMarquiseClient paged discovery", () => {
     const request = client.fetchScreeningPage({ date: "2026-08-05", page: 1 });
 
     await vi.waitFor(() => {
-      expect(mock.mock.calls.some(([url]) => String(url).startsWith("/v1/cinemas?"))).toBe(true);
+      expect(
+        mock.mock.calls.some(([url]) => String(url).startsWith("/v1/cinemas?")),
+      ).toBe(true);
     });
     resolveMovies(jsonResponse(pageOf([makeMovie({ id: "movie-a" })])));
     await expect(request).resolves.toMatchObject({ screeningCount: 1 });
@@ -198,6 +200,28 @@ describe("HttpMarquiseClient paged discovery", () => {
     ).resolves.toMatchObject({ items: [], total: 0, screeningCount: 0 });
     expect(mock).toHaveBeenCalledTimes(1);
   });
+
+  it.each([
+    ["2026-11-01", "02:00", "2026-11-01T07:00:00.000Z"],
+    ["2027-03-14", "03:00", "2027-03-14T07:00:00.000Z"],
+  ])(
+    "sends correct API time bounds on the DST transition date %s",
+    async (date, time, expected) => {
+      const mock = stubFetch((url) => {
+        expect(url.searchParams.get("from")).toBe(expected);
+        expect(url.searchParams.get("to")).toBe(expected);
+        return pageOf([]);
+      });
+      const client = new HttpMarquiseClient({ baseUrl: "", fetch: mock });
+      await client.fetchScreeningPage({
+        date,
+        page: 1,
+        fromTime: time,
+        toTime: time,
+      });
+      expect(mock).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it("requests only the selected directory page with the server name search", async () => {
     const controller = new AbortController();

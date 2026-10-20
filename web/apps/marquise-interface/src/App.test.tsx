@@ -239,6 +239,16 @@ describe("Marquise discovery and daily screenings", () => {
     await screen.findByRole("link", { name: "View Movie 1.1" });
     expect(screen.queryByRole("alert")).toBeNull();
   });
+  it("validates skipped DST clock times before fetching screenings", async () => {
+    history.replaceState(null, "", "/screenings?date=2027-03-14&from=02:30");
+    const { client, detail } = createClients();
+    render(<App discoveryClient={client} movieDetailClient={detail} />);
+    expect(
+      await screen.findByText(/This time does not exist in Montréal/),
+    ).not.toBeNull();
+    expect(client.fetchScreeningPage).not.toHaveBeenCalled();
+  });
+
   it("leaves skip links native without remounting or refetching results", async () => {
     const { client, detail } = createClients();
     render(<App discoveryClient={client} movieDetailClient={detail} />);
@@ -372,7 +382,7 @@ describe("Cinema directory and film routes", () => {
     const { client, detail } = createClients();
     render(<App discoveryClient={client} movieDetailClient={detail} />);
     await screen.findByRole("heading", { name: "A Real Movie" });
-    expect(document.title).toBe("A Real Movie — Marquise");
+    await waitFor(() => expect(document.title).toBe("A Real Movie — Marquise"));
     expect(detail.fetchMovie).toHaveBeenCalledExactlyOnceWith("film-id");
     expect(client.fetchShowtimePage).toHaveBeenCalledExactlyOnceWith(
       "film-id",
@@ -407,12 +417,16 @@ describe("Cinema directory and film routes", () => {
     const { client, detail } = createClients();
     render(<App discoveryClient={client} movieDetailClient={detail} />);
     await screen.findByRole("heading", { name: "Movie not found." });
-    expect(document.title).toBe("Movie not found — Marquise");
+    await waitFor(() =>
+      expect(document.title).toBe("Movie not found — Marquise"),
+    );
     detail.fetchMovie.mockRejectedValueOnce(new Error("offline"));
     visit(`/movies/film-id?date=${DATE}`);
     await screen.findByRole("alert");
     expect(screen.queryByText("Movie not found.")).toBeNull();
-    expect(document.title).toBe("Movie unavailable — Marquise");
+    await waitFor(() =>
+      expect(document.title).toBe("Movie unavailable — Marquise"),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await screen.findByRole("heading", { name: "A Real Movie" });
   });
@@ -443,7 +457,9 @@ describe("Cinema directory and film routes", () => {
     );
     expect(screen.queryByRole("heading", { name: "A Real Movie" })).toBeNull();
     await screen.findByRole("heading", { name: "Fresh metadata" });
-    expect(document.title).toBe("Fresh metadata — Marquise");
+    await waitFor(() =>
+      expect(document.title).toBe("Fresh metadata — Marquise"),
+    );
   });
   it("retries film screenings without reloading metadata and handles an empty date", async () => {
     history.replaceState(null, "", `/movies/film-id?date=${DATE}`);

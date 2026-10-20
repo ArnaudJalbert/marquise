@@ -1,4 +1,4 @@
-import type { ScreeningQuery } from "marquise-client";
+import { montrealDateTime, type ScreeningQuery } from "marquise-client";
 
 export function validDate(value: string | null): string | undefined {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
@@ -16,9 +16,16 @@ function validTime(value: string | null): string | undefined {
   return value && /^([01]\d|2[0-3]):[0-5]\d$/.test(value) ? value : undefined;
 }
 export function screeningValidation(query: ScreeningQuery): string | undefined {
-  return query.fromTime && query.toTime && query.fromTime > query.toTime
-    ? "Choose an Until time at or after the From time. For a screening after midnight, choose the next date."
-    : undefined;
+  if (query.fromTime && query.toTime && query.fromTime > query.toTime)
+    return "Choose an Until time at or after the From time. For a screening after midnight, choose the next date.";
+  try {
+    for (const time of [query.fromTime, query.toTime])
+      if (time) montrealDateTime(query.date, time);
+  } catch (error) {
+    if (error instanceof RangeError) return error.message;
+    throw error;
+  }
+  return undefined;
 }
 export function screeningQuery(url: URL, today: string): ScreeningQuery {
   const rawPage = Number(url.searchParams.get("page"));
