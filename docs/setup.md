@@ -88,11 +88,9 @@ to push it safely. `supabase config push` applies defaults for omitted keys, so
 do not remove existing settings from the file.
 
 Invited humans receive Supabase's account-setup email and choose a password.
-Bots start with anonymous sign-in and
-have no Marquise access until trusted server code sets
-`app_metadata.marquise_role` to `member`, `editor`, or `administrator`. Leave
-Supabase's reserved JWT `role` unchanged. Role changes apply after token refresh
-or next sign-in.
+Their `app_metadata.marquise_role` is `member`, `editor`, or `administrator`.
+Leave Supabase's reserved JWT `role` unchanged. Role changes apply after token
+refresh or next sign-in.
 
 ### Project settings and secrets
 

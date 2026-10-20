@@ -6,7 +6,7 @@ site_url = "http://localhost:3000"
 additional_redirect_urls = []
 jwt_expiry = 900
 enable_signup = false
-enable_anonymous_sign_ins = true
+enable_anonymous_sign_ins = false
 
 [auth.email]
 enable_confirmations = true

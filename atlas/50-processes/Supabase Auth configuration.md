@@ -17,7 +17,7 @@ Current file preserves project URL, redirect URLs, email confirmation and OTP po
 
 ## Apply configuration
 
-1. Inspect `supabase/config.toml`. Expected Auth policy: public sign-up disabled, anonymous sign-ins enabled, JWT expiry `900` seconds.
+1. Inspect `supabase/config.toml`. Expected Auth policy: public sign-up disabled, anonymous sign-ins disabled, JWT expiry `900` seconds.
 2. Identify intended project. `supabase projects list` shows available projects. Confirm its name and ref before continuing.
 3. Push with explicit ref:
 
@@ -26,7 +26,7 @@ Current file preserves project URL, redirect URLs, email confirmation and OTP po
    ```
 
 4. Read every diff and approve only expected changes. A normal Marquise push updates Auth and leaves API, database, and Storage up to date.
-5. Check Auth dashboard. Public sign-up must be off, Anonymous Sign-Ins on, and JWT expiry 900 seconds.
+5. Check Auth dashboard. Public sign-up must be off, Anonymous Sign-Ins off, and JWT expiry 900 seconds.
 
 Do not use a bare `supabase config push` unless local project is linked to intended project.
 
