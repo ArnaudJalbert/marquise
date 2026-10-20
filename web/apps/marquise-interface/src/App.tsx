@@ -1,349 +1,47 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { SlidersHorizontal } from "lucide-react";
-import {
-  Button,
-  MovieDetailPage,
-  MovieGridController,
-  type MovieCardData,
-  type MovieDetailClient,
-  type MovieFilters,
-  type MovieGridClient,
-} from "marquise-components";
-import { MovieNotFoundError } from "marquise-client";
-
+import { useCallback, useEffect, useState } from "react";
+import { MarquiseExperience } from "marquise-components";
+import type { DiscoveryClient, MovieDetailClient } from "marquise-client";
 import { createMarquiseClient } from "./api-client";
-import { Footer } from "./components/Footer";
-import { Header } from "./components/Header";
-import {
-  movieDateFromUrl,
-  movieUrl,
-  parseListingsUrl,
-  parseRoute,
-  serializeListingsUrl,
-  type ListingsUrlState,
-} from "./url-state";
-
-const LISTINGS_TITLE = "Marquise — Montréal movie showtimes";
-
-type LocationSnapshot = {
-  href: string;
-  restoreKey: number;
-};
-
-type MovieCacheEntry = MovieCardData | Promise<MovieCardData>;
 
 export interface AppProps {
-  /** Optional client overrides used by tests and embedded builds. */
-  movieGridClient?: MovieGridClient;
+  discoveryClient?: DiscoveryClient;
   movieDetailClient?: MovieDetailClient;
 }
-
-function MovieRoute({
-  movieId,
-  initialDate,
-  client,
-  loadMovie,
-  onBack,
-  onDateChange,
-  currentTime,
-}: {
-  movieId: string;
-  initialDate?: string;
-  client: MovieDetailClient;
-  loadMovie: (movieId: string, refresh?: boolean) => Promise<MovieCardData>;
-  onBack: () => void;
-  onDateChange: (date: string) => void;
-  currentTime: string;
-}) {
-  const [movie, setMovie] = useState<MovieCardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [retryNonce, setRetryNonce] = useState(0);
-
-  useEffect(() => {
-    let stale = false;
-    setLoading(true);
-    setError(null);
-    loadMovie(movieId, retryNonce > 0)
-      .then((loaded) => {
-        if (stale) return;
-        setMovie(loaded);
-        setLoading(false);
-        document.title = `${loaded.title} — Marquise`;
-      })
-      .catch((caught: unknown) => {
-        if (stale) return;
-        setMovie(null);
-        setLoading(false);
-        const notFound = caught instanceof MovieNotFoundError;
-        setError(notFound ? "Movie not found." : "Could not load this movie.");
-        document.title = notFound
-          ? "Movie not found — Marquise"
-          : "Movie unavailable — Marquise";
-      });
-    return () => {
-      stale = true;
-    };
-  }, [loadMovie, movieId, retryNonce]);
-
-  if (loading) {
-    return (
-      <div className="flex min-h-48 flex-col items-center justify-center gap-4" role="status">
-        <div className="h-1 w-full max-w-xs overflow-hidden rounded-full bg-muted">
-          <div className="animate-loading-bar h-full w-1/3 rounded-full bg-foreground" />
-        </div>
-        <span className="text-sm text-muted-foreground">Loading movie…</span>
-      </div>
-    );
-  }
-
-  if (error !== null || movie === null) {
-    return (
-      <div className="flex min-h-48 flex-col items-center justify-center gap-3" role="alert">
-        <span className="text-sm text-muted-foreground">
-          {error ?? "Movie not found."}
-        </span>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setRetryNonce((value) => value + 1)}>
-            Retry
-          </Button>
-          <Button variant="ghost" size="sm" onClick={onBack}>
-            Back to listings
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <MovieDetailPage
-      className="w-full md:h-full md:overflow-y-auto"
-      movie={movie}
-      client={client}
-      initialDate={initialDate}
-      currentTime={currentTime}
-      onDateChange={(date) => onDateChange(date)}
-      onBack={onBack}
-    />
-  );
-}
-
-export function App({
-  movieGridClient: movieGridClientOverride,
-  movieDetailClient: movieDetailClientOverride,
-}: AppProps) {
+/** Composition root only. The shared package owns the interface. */
+export function App({ discoveryClient, movieDetailClient }: AppProps) {
   const [defaultClient] = useState(() => createMarquiseClient());
-  const movieGridClient = movieGridClientOverride ?? defaultClient;
-  const movieDetailClient = movieDetailClientOverride ?? defaultClient;
-  const [currentTime, setCurrentTime] = useState(() => new Date().toISOString());
-  const [locationSnapshot, setLocationSnapshot] = useState<LocationSnapshot>(() => ({
-    href: window.location.href,
-    restoreKey: 0,
-  }));
-  const url = new URL(locationSnapshot.href);
-  const route = parseRoute(url.pathname);
-  const listingsState = parseListingsUrl(url);
-  const listingsStateRef = useRef(listingsState);
-  listingsStateRef.current = listingsState;
-  const movieCacheRef = useRef<Map<string, MovieCacheEntry>>(new Map());
-
+  const [href, setHref] = useState(window.location.href);
+  const [now, setNow] = useState(() => new Date().toISOString());
   useEffect(() => {
-    const handlePopState = () => {
-      setLocationSnapshot((current) => ({
-        href: window.location.href,
-        restoreKey: current.restoreKey + 1,
-      }));
-    };
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
-
-  useEffect(() => {
+    const onPopState = () => setHref(window.location.href);
+    window.addEventListener("popstate", onPopState);
     const timer = window.setInterval(
-      () => setCurrentTime(new Date().toISOString()),
+      () => setNow(new Date().toISOString()),
       60_000,
     );
-    return () => window.clearInterval(timer);
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+      window.clearInterval(timer);
+    };
   }, []);
-
-  useEffect(() => {
-    if (route.kind === "listings") document.title = LISTINGS_TITLE;
-  }, [route.kind]);
-
-  const commitUrl = useCallback(
-    (nextUrl: URL, mode: "push" | "replace", state: unknown = history.state) => {
-      const nextHref = nextUrl.href;
-      if (nextHref === window.location.href && mode === "replace") return;
-      if (mode === "push") {
-        history.pushState(state, "", nextUrl);
-      } else {
-        history.replaceState(state, "", nextUrl);
-      }
-      setLocationSnapshot((current) => ({ ...current, href: nextHref }));
-    },
-    [],
-  );
-
-  const updateListings = useCallback(
-    (
-      update: (current: ListingsUrlState) => ListingsUrlState,
-      mode: "push" | "replace",
-    ) => {
-      const next = update(listingsStateRef.current);
-      listingsStateRef.current = next;
-      commitUrl(
-        serializeListingsUrl(new URL(window.location.href), next),
-        mode,
-      );
-    },
-    [commitUrl],
-  );
-
-  const loadMovie = useCallback(
-    (movieId: string, refresh = false): Promise<MovieCardData> => {
-      if (refresh) movieCacheRef.current.delete(movieId);
-      const cached = movieCacheRef.current.get(movieId);
-      if (cached !== undefined) return Promise.resolve(cached);
-      const request = movieDetailClient.fetchMovie(movieId).then(
-        (movie) => {
-          movieCacheRef.current.set(movieId, movie);
-          return movie;
-        },
-        (error: unknown) => {
-          movieCacheRef.current.delete(movieId);
-          throw error;
-        },
-      );
-      movieCacheRef.current.set(movieId, request);
-      return request;
-    },
-    [movieDetailClient],
-  );
-
-  const openMovie = useCallback(
-    (movie: MovieCardData) => {
-      if (movie.id === undefined) return;
-      movieCacheRef.current.set(movie.id, movie);
-      const returnTo = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-      commitUrl(movieUrl(movie.id, listingsStateRef.current.date), "push", {
-        marquiseReturnTo: returnTo,
-      });
-    },
-    [commitUrl],
-  );
-
-  const backToListings = useCallback(() => {
-    const state = history.state as { marquiseReturnTo?: unknown } | null;
-    if (typeof state?.marquiseReturnTo === "string") {
-      history.back();
-      return;
-    }
-    const home = new URL(window.location.origin);
-    commitUrl(home, "replace", null);
-  }, [commitUrl]);
-
-  const updateMovieDate = useCallback(
-    (date: string) => {
-      if (parseRoute(window.location.pathname).kind !== "movie") return;
-      const next = new URL(window.location.href);
-      next.searchParams.set("date", date);
-      commitUrl(next, "replace");
-    },
-    [commitUrl],
-  );
-
-  const toggleFilters = useCallback(() => {
-    updateListings(
-      (current) => ({ ...current, filtersOpen: !current.filtersOpen }),
-      "replace",
-    );
-  }, [updateListings]);
-
-  let content;
-  if (route.kind === "movie") {
-    content = (
-      <MovieRoute
-        key={`${route.movieId}-${locationSnapshot.restoreKey}`}
-        movieId={route.movieId}
-        initialDate={movieDateFromUrl(url)}
-        client={movieDetailClient}
-        loadMovie={loadMovie}
-        onBack={backToListings}
-        onDateChange={updateMovieDate}
-        currentTime={currentTime}
-      />
-    );
-  } else if (route.kind === "not-found") {
-    content = (
-      <div className="flex min-h-48 flex-col items-center justify-center gap-3" role="alert">
-        <span className="text-sm text-muted-foreground">Page not found.</span>
-        <Button variant="outline" size="sm" onClick={backToListings}>
-          Go to listings
-        </Button>
-      </div>
-    );
-  } else {
-    content = (
-      <section className="flex min-h-0 w-full flex-1 flex-col gap-4" aria-labelledby="screenings-heading">
-        <div className="flex items-center justify-between gap-4 border-b border-border pb-3">
-          <h1 id="screenings-heading" className="font-serif text-2xl font-medium">
-            Screenings
-          </h1>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={toggleFilters}
-            aria-expanded={listingsState.filtersOpen}
-          >
-            <SlidersHorizontal aria-hidden />
-            Filters
-          </Button>
-        </div>
-        <MovieGridController
-          key={`listings-${locationSnapshot.restoreKey}`}
-          className="w-full min-h-0 flex-1"
-          client={movieGridClient}
-          side="right"
-          pageSize="auto"
-          currentTime={currentTime}
-          initialDate={listingsState.date}
-          initialFilters={listingsState.filters}
-          initialPageIndex={listingsState.pageIndex}
-          defaultCardSize={listingsState.cardSize}
-          defaultHideDetails={listingsState.hideDetails}
-          panelClassName={listingsState.filtersOpen ? undefined : "is-hidden"}
-          onSelectedDateChange={(date, reason) =>
-            updateListings(
-              (current) => ({ ...current, date }),
-              reason === "user" ? "push" : "replace",
-            )
-          }
-          onFiltersChange={(filters: MovieFilters) =>
-            updateListings((current) => ({ ...current, filters }), "replace")
-          }
-          onPageIndexChange={(pageIndex, reason) =>
-            updateListings(
-              (current) => ({ ...current, pageIndex }),
-              reason === "user" ? "push" : "replace",
-            )
-          }
-          onCardSizeChange={(cardSize) =>
-            updateListings((current) => ({ ...current, cardSize }), "replace")
-          }
-          onHideDetailsChange={(hideDetails) =>
-            updateListings((current) => ({ ...current, hideDetails }), "replace")
-          }
-          onMovieClick={openMovie}
-        />
-      </section>
-    );
-  }
-
+  const navigate = useCallback((next: string) => {
+    const target = new URL(next, window.location.origin);
+    if (target.href === window.location.href) return;
+    history.pushState(null, "", target);
+    setHref(target.href);
+    document.getElementById("main-content")?.focus({ preventScroll: true });
+    if (!target.hash) window.scrollTo({ top: 0, behavior: "instant" });
+  }, []);
   return (
-    <div className="page-shell">
-      <Header />
-      <main className="site-main">{content}</main>
-      <Footer />
-    </div>
+    <MarquiseExperience
+      href={href}
+      client={discoveryClient ?? defaultClient}
+      movieDetailClient={movieDetailClient ?? defaultClient}
+      navigate={navigate}
+      currentTime={now}
+      demo={
+        !discoveryClient && import.meta.env.VITE_MARQUISE_DATA_SOURCE !== "api"
+      }
+    />
   );
 }

@@ -1,0 +1,33 @@
+name: Web quality
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - '.github/workflows/web-quality.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: Web lint, types, tests, and build
+    runs-on: ubuntu-24.04
+    env:
+      RAYON_NUM_THREADS: '2'
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Install workspace package manager
+        run: npm install --global pnpm@11.17.0
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build

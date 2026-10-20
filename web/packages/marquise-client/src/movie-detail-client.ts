@@ -23,7 +23,7 @@ export interface MovieDetailClient {
   fetchMovie(movieId: string): Promise<MovieCardData>;
   /** Selectable dates, as "YYYY-MM-DD" strings. Dates without screenings return an empty showtime list. */
   listDates(movie: MovieCardData): Promise<readonly string[]>;
-  /** Every screening of the movie on a single date. */
+  /** A date's screenings; HTTP returns page one (48). Use DiscoveryClient to page. */
   fetchShowtimes(
     movie: MovieCardData,
     date: string,

@@ -1,10 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { CinemaApi, MovieApi, Page, ScreeningApi } from "./api-types";
-import {
-  HttpMarquiseClient,
-  HttpMarquiseClientError,
-} from "./http-client";
+import { HttpMarquiseClient, HttpMarquiseClientError } from "./http-client";
 
 let sequence = 0;
 
@@ -93,6 +90,181 @@ function stubFetch(handler: (url: URL) => Response | unknown) {
 
 const FIXED_NOW = () => new Date("2026-08-05T12:00:00Z");
 
+describe("HttpMarquiseClient paged discovery", () => {
+  it("requests exactly the selected screening page, grouping posters without changing totals", async () => {
+    const mock = stubFetch((url) => {
+      if (url.pathname === "/v1/screenings") {
+        expect(url.searchParams.get("page")).toBe("3");
+        expect(url.searchParams.get("size")).toBe("2");
+        return pageOf([makeScreening(), makeScreening()], 250, 3, 2);
+      }
+      if (url.pathname === "/v1/movies") {
+        expect(url.searchParams.getAll("ids")).toEqual(["movie-a"]);
+        return pageOf([makeMovie({ id: "movie-a" })], 200);
+      }
+      return pageOf([], 250);
+    });
+    const client = new HttpMarquiseClient({
+      baseUrl: "https://api.example.com",
+      fetch: mock,
+    });
+
+    const result = await client.fetchScreeningPage({
+      date: "2026-08-05",
+      page: 3,
+      size: 2,
+    });
+
+    expect(result).toMatchObject({
+      page: 3,
+      size: 2,
+      pages: 125,
+      total: 250,
+      screeningCount: 2,
+    });
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.showtimes).toHaveLength(2);
+    // Metadata endpoints can also advertise more pages: none are drained.
+    expect(mock).toHaveBeenCalledTimes(3);
+  });
+
+  it("sends all filters to the server in Montréal time and propagates cancellation to enrichment", async () => {
+    const controller = new AbortController();
+    const mock = stubFetch((url) => {
+      if (url.pathname === "/v1/screenings") {
+        expect(Object.fromEntries(url.searchParams)).toEqual({
+          from: "2026-01-05T23:00:00.000Z",
+          to: "2026-01-06T03:30:00.000Z",
+          page: "2",
+          size: "48",
+          movie: "A & B",
+          movie_id: "film/id",
+          cinema_id: "cinema/id",
+          language: "VOSTF",
+        });
+        return pageOf([makeScreening()], 100, 2, 48);
+      }
+      return pageOf([]);
+    });
+    const client = new HttpMarquiseClient({ baseUrl: "", fetch: mock });
+
+    await client.fetchScreeningPage(
+      {
+        date: "2026-01-05",
+        page: 2,
+        movie: "A & B",
+        movieId: "film/id",
+        cinemaId: "cinema/id",
+        language: "VOSTF",
+        fromTime: "18:00",
+        toTime: "22:30",
+      },
+      controller.signal,
+    );
+
+    expect(mock).toHaveBeenCalledTimes(3);
+    for (const [, init] of mock.mock.calls)
+      expect(init?.signal).toBe(controller.signal);
+  });
+
+  it("starts cinema enrichment while movie metadata is still pending", async () => {
+    let resolveMovies!: (response: Response) => void;
+    const pendingMovies = new Promise<Response>((resolve) => {
+      resolveMovies = resolve;
+    });
+    const mock = vi.fn<typeof fetch>(async (input) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/v1/screenings")
+        return jsonResponse(pageOf([makeScreening()]));
+      if (url.pathname === "/v1/movies") return pendingMovies;
+      return jsonResponse(pageOf([]));
+    });
+    const client = new HttpMarquiseClient({ baseUrl: "", fetch: mock });
+    const request = client.fetchScreeningPage({ date: "2026-08-05", page: 1 });
+
+    await vi.waitFor(() => {
+      expect(
+        mock.mock.calls.some(([url]) => String(url).startsWith("/v1/cinemas?")),
+      ).toBe(true);
+    });
+    resolveMovies(jsonResponse(pageOf([makeMovie({ id: "movie-a" })])));
+    await expect(request).resolves.toMatchObject({ screeningCount: 1 });
+    expect(mock).toHaveBeenCalledTimes(3);
+  });
+
+  it("returns empty screening pages without metadata requests", async () => {
+    const mock = stubFetch(() => pageOf([], 0, 1, 48));
+    const client = new HttpMarquiseClient({ baseUrl: "", fetch: mock });
+    await expect(
+      client.fetchScreeningPage({ date: "2026-08-05", page: 1 }),
+    ).resolves.toMatchObject({ items: [], total: 0, screeningCount: 0 });
+    expect(mock).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ["2026-11-01", "02:00", "2026-11-01T07:00:00.000Z"],
+    ["2027-03-14", "03:00", "2027-03-14T07:00:00.000Z"],
+  ])(
+    "sends correct API time bounds on the DST transition date %s",
+    async (date, time, expected) => {
+      const mock = stubFetch((url) => {
+        expect(url.searchParams.get("from")).toBe(expected);
+        expect(url.searchParams.get("to")).toBe(expected);
+        return pageOf([]);
+      });
+      const client = new HttpMarquiseClient({ baseUrl: "", fetch: mock });
+      await client.fetchScreeningPage({
+        date,
+        page: 1,
+        fromTime: time,
+        toTime: time,
+      });
+      expect(mock).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("requests only the selected directory page with the server name search", async () => {
+    const controller = new AbortController();
+    const mock = stubFetch((url) => {
+      expect(url.pathname).toBe("/v1/cinemas");
+      expect(Object.fromEntries(url.searchParams)).toEqual({
+        page: "2",
+        size: "100",
+        name: "Cinéma & Co",
+      });
+      return pageOf([makeCinema()], 250, 2);
+    });
+    const client = new HttpMarquiseClient({ baseUrl: "", fetch: mock });
+    const result = await client.fetchCinemaPage(
+      2,
+      controller.signal,
+      "Cinéma & Co",
+    );
+    expect(result.page).toBe(2);
+    expect(result.total).toBe(250);
+    expect(mock).toHaveBeenCalledExactlyOnceWith(expect.any(String), {
+      signal: controller.signal,
+    });
+  });
+
+  it("requests only the selected movie showtime page without fetching movie metadata", async () => {
+    const mock = stubFetch((url) => {
+      if (url.pathname === "/v1/screenings") {
+        expect(url.searchParams.get("movie_id")).toBe("movie-a");
+        expect(url.searchParams.get("page")).toBe("4");
+        return pageOf([makeScreening()], 200, 4, 48);
+      }
+      expect(url.pathname).toBe("/v1/cinemas");
+      return pageOf([]);
+    });
+    const client = new HttpMarquiseClient({ baseUrl: "", fetch: mock });
+    await expect(
+      client.fetchShowtimePage("movie-a", "2026-08-05", 4),
+    ).resolves.toMatchObject({ page: 4, total: 200 });
+    expect(mock).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe("HttpMarquiseClient grid", () => {
   it("targets relative paths when the base URL is empty (same-origin)", async () => {
     const mock = stubFetch((url) => {
@@ -110,9 +282,16 @@ describe("HttpMarquiseClient grid", () => {
 
     await client.fetchForDate("2026-08-05");
 
-    expect(String(mock.mock.calls[0]?.[0])).toBe(
-      "/v1/screenings?from=2026-08-05T04:00:00.000Z&to=2026-08-06T03:59:59.999Z&page=1&size=100",
-    );
+    const path = String(mock.mock.calls[0]?.[0]);
+    expect(path.startsWith("/v1/screenings?")).toBe(true);
+    expect(
+      Object.fromEntries(new URL(path, "http://localhost").searchParams),
+    ).toEqual({
+      from: "2026-08-05T04:00:00.000Z",
+      to: "2026-08-06T03:59:59.999Z",
+      page: "1",
+      size: "100",
+    });
   });
 
   it("lists consecutive Montréal days from today without querying the API", async () => {
@@ -262,12 +441,12 @@ describe("HttpMarquiseClient grid", () => {
     expect(String(mock.mock.calls[0]?.[0])).toContain(
       "https://api.example.com/v1/screenings",
     );
-    expect(String(mock.mock.calls[1]?.[0])).toContain(
-      "/v1/movies?ids=movie-a&ids=movie-b&size=100",
-    );
+    expect(
+      new URL(String(mock.mock.calls[1]?.[0])).searchParams.getAll("ids"),
+    ).toEqual(["movie-a", "movie-b"]);
   });
 
-  it("paginates screenings and bulk-fetches movies in chunks of 100", async () => {
+  it("bounds the legacy grid to page one and enriches only those movie IDs", async () => {
     const screenings = Array.from({ length: 250 }, (_, index) =>
       makeScreening({
         movie_id: `movie-${index}`,
@@ -304,20 +483,20 @@ describe("HttpMarquiseClient grid", () => {
 
     const items = await client.fetchForDate("2026-08-05");
 
-    expect(items).toHaveLength(250);
+    expect(items).toHaveLength(100);
+    const screeningCalls = mock.mock.calls.filter((call) =>
+      String(call[0]).includes("/v1/screenings"),
+    );
+    expect(screeningCalls).toHaveLength(1);
+    expect(String(screeningCalls[0]?.[0])).toContain("page=1&size=100");
     const movieCalls = mock.mock.calls.filter((call) =>
       String(call[0]).includes("/v1/movies"),
     );
-    expect(movieCalls).toHaveLength(3);
-    expect(
-      (String(movieCalls[0]?.[0]).match(/ids=/g) ?? []).length,
-    ).toBe(100);
-    expect(
-      (String(movieCalls[2]?.[0]).match(/ids=/g) ?? []).length,
-    ).toBe(50);
+    expect(movieCalls).toHaveLength(1);
+    expect((String(movieCalls[0]?.[0]).match(/ids=/g) ?? []).length).toBe(100);
   });
 
-  it("caps the number of screenings fetched for a date", async () => {
+  it("clamps a legacy limit above 100 without fetching another page", async () => {
     const screenings = Array.from({ length: 150 }, () => makeScreening());
     const mock = stubFetch((url) => {
       if (url.pathname === "/v1/screenings") {
@@ -346,7 +525,12 @@ describe("HttpMarquiseClient grid", () => {
     const items = await client.fetchForDate("2026-08-05");
 
     expect(items).toHaveLength(1);
-    expect(items[0]?.showtimes).toHaveLength(120);
+    expect(items[0]?.showtimes).toHaveLength(100);
+    expect(
+      mock.mock.calls.filter((call) =>
+        String(call[0]).includes("/v1/screenings"),
+      ),
+    ).toHaveLength(1);
   });
 
   it("falls back to the screening title when movie metadata is missing", async () => {
@@ -403,7 +587,7 @@ describe("HttpMarquiseClient grid", () => {
     expect(items[0]?.showtimes?.[0]?.cinema.link).toBeNull();
   });
 
-  it("shares one cinema lookup across concurrent grid requests", async () => {
+  it("keeps optional cinema enrichment bounded and scoped to each concurrent request", async () => {
     const mock = stubFetch((url) => {
       if (url.pathname === "/v1/screenings") {
         return pageOf([makeScreening()]);
@@ -435,7 +619,7 @@ describe("HttpMarquiseClient grid", () => {
     ]);
     expect(
       mock.mock.calls.filter((call) => String(call[0]).includes("/v1/cinemas")),
-    ).toHaveLength(1);
+    ).toHaveLength(3);
   });
 
   it("retries the optional cinema lookup after a failure", async () => {
@@ -459,14 +643,10 @@ describe("HttpMarquiseClient grid", () => {
       fetch: mock,
     });
 
-    const [first, concurrent] = await Promise.all([
-      client.fetchForDate("2026-08-05"),
-      client.fetchForDate("2026-08-06"),
-    ]);
+    const first = await client.fetchForDate("2026-08-05");
     const second = await client.fetchForDate("2026-08-07");
 
     expect(first[0]?.showtimes?.[0]?.cinema.link).toBeNull();
-    expect(concurrent[0]?.showtimes?.[0]?.cinema.link).toBeNull();
     expect(second[0]?.showtimes?.[0]?.cinema.link).toBe(
       "https://cinema.example",
     );
