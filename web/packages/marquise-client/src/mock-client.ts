@@ -1,3 +1,9 @@
+import type {
+  DiscoveryClient,
+  ScreeningQuery,
+  ScreeningPage,
+} from "./discovery-client";
+import type { CinemaApi, Page } from "./api-types";
 import type { Cinema, CinemaShowtime } from "./cinema";
 import type { MovieCardData } from "./movie";
 import {
@@ -32,7 +38,8 @@ const CATALOGUE: readonly MockMovie[] = [
     durationMinutes: 166,
     directors: ["Denis Villeneuve"],
     genres: ["Sci-Fi", "Drama"],
-    posterUrl: "https://image.tmdb.org/t/p/original/cgXk2tNYhJZLXdBDO5DidAVzQ82.jpg",
+    posterUrl:
+      "https://image.tmdb.org/t/p/original/cgXk2tNYhJZLXdBDO5DidAVzQ82.jpg",
   },
   {
     key: "anora",
@@ -162,7 +169,94 @@ const TIMES: readonly string[] = [
 ];
 
 /** Deterministic demo client shared by movie grids and detail pages. */
-export class MockMarquiseClient implements MovieGridClient, MovieDetailClient {
+export class MockMarquiseClient
+  implements MovieGridClient, MovieDetailClient, DiscoveryClient
+{
+  async fetchCinemaPage(
+    page: number,
+    _signal?: AbortSignal,
+    name?: string,
+  ): Promise<Page<CinemaApi>> {
+    const cinemas = CINEMAS.filter(
+      (cinema) =>
+        !name || cinema.name.toLowerCase().includes(name.toLowerCase()),
+    );
+    return {
+      items:
+        page === 1
+          ? cinemas.map((c) => ({
+              id: c.id,
+              name: c.name,
+              address: null,
+              city: "Montréal",
+              website: c.link,
+            }))
+          : [],
+      page,
+      size: 100,
+      total: cinemas.length,
+      pages: Math.ceil(cinemas.length / 100),
+    };
+  }
+  async fetchScreeningPage(query: ScreeningQuery): Promise<ScreeningPage> {
+    const rows = (await this.fetchForDate(query.date))
+      .flatMap((item) =>
+        (item.showtimes ?? []).map((showtime) => ({ item, showtime })),
+      )
+      .filter(({ item, showtime }) => {
+        const time = new Intl.DateTimeFormat("en-GB", {
+          timeZone: "America/Toronto",
+          hour: "2-digit",
+          minute: "2-digit",
+          hourCycle: "h23",
+        }).format(new Date(showtime.startsAt));
+        return (
+          (!query.movie ||
+            item.movie.title
+              .toLowerCase()
+              .includes(query.movie.toLowerCase())) &&
+          (!query.movieId || query.movieId === item.movie.id) &&
+          (!query.cinemaId || query.cinemaId === showtime.cinema.id) &&
+          (!query.language || query.language === showtime.language) &&
+          (!query.fromTime || time >= query.fromTime) &&
+          (!query.toTime || time <= query.toTime)
+        );
+      });
+    const size = query.size ?? 48;
+    const visible = rows.slice((query.page - 1) * size, query.page * size);
+    const ids = [...new Set(visible.map(({ item }) => item.movie.id))];
+    return {
+      items: ids.flatMap((id) => {
+        const first = visible.find(({ item }) => item.movie.id === id);
+        return first
+          ? [
+              {
+                ...first.item,
+                showtimes: visible
+                  .filter(({ item }) => item.movie.id === id)
+                  .map(({ showtime }) => showtime),
+              },
+            ]
+          : [];
+      }),
+      page: query.page,
+      size,
+      total: rows.length,
+      pages: Math.ceil(rows.length / size),
+      screeningCount: visible.length,
+    };
+  }
+  async fetchShowtimePage(
+    movieId: string,
+    date: string,
+    page: number,
+  ): Promise<Page<CinemaShowtime>> {
+    const result = await this.fetchScreeningPage({ date, movieId, page });
+    return {
+      ...result,
+      items: result.items.flatMap((item) => item.showtimes ?? []),
+    };
+  }
   private readonly dates: readonly string[];
 
   constructor(options: MockMarquiseClientOptions = {}) {
@@ -205,8 +299,10 @@ export class MockMarquiseClient implements MovieGridClient, MovieDetailClient {
     if (!this.dates.includes(date) || movie.id === undefined) {
       return [];
     }
-    return this.itemsForDate(date).find((item) => item.movie.id === movie.id)
-      ?.showtimes ?? [];
+    return (
+      this.itemsForDate(date).find((item) => item.movie.id === movie.id)
+        ?.showtimes ?? []
+    );
   }
 
   private itemsForDate(date: string): readonly MovieCardGridItem[] {

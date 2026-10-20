@@ -2,6 +2,7 @@ import {
   HttpMarquiseClient,
   MockMarquiseClient,
   type MovieDetailClient,
+  type DiscoveryClient,
   type MovieGridClient,
 } from "marquise-client";
 
@@ -12,9 +13,9 @@ export interface MarquiseClientConfig {
   apiBaseUrl?: string;
 }
 
-export type MarquiseClient = MovieGridClient & MovieDetailClient;
+export type MarquiseClient = DiscoveryClient & MovieGridClient & MovieDetailClient;
 
-/** Build one client shared by the grid and movie detail routes. */
+/** Build one client shared by discovery, directory and movie detail routes. */
 export function createMarquiseClient(
   config: MarquiseClientConfig = {},
 ): MarquiseClient {

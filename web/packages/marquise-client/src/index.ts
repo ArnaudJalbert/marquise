@@ -8,3 +8,5 @@ export type { MovieCardData } from "./movie";
 export { MovieNotFoundError } from "./movie-detail-client";
 export type { MovieDetailClient } from "./movie-detail-client";
 export type { MovieCardGridItem, MovieGridClient } from "./movie-grid-client";
+export type { DiscoveryClient, ScreeningQuery, ScreeningPage } from "./discovery-client";
+export { toMontrealIsoDate, montrealDateTime } from "./montreal-date";

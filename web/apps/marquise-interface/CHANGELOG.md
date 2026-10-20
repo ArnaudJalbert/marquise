@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-20
+
+### Changes
+
+- Rebuild discovery, daily screenings, the searchable cinema directory and film routes around the injected paged discovery client. Keep dated cinema deep links and browser Back/Forward filters useful.
+- Default daily listings to Montréal today, mark sample data as demo, distinguish missing films from temporary errors, and use actual cinema/movie page titles.
+- Cover server filters, paging, history, cancellation, stale client/query results, preview controls, validation, retry and empty states with injected clients.
+- Forward API-mode build variables through Turborepo and include them in its cache key so API builds cannot reuse a demo bundle.
+- Verify critical layout and poster utility selectors in the production CSS during every interface build; consume the same source stylesheet in development and production.
+
 ## 2026-08-10
 
 ### Deployment

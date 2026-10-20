@@ -42,7 +42,9 @@ export function montrealDayRange(isoDay: string): MontrealDayRange {
 /** Add whole calendar days to a YYYY-MM-DD key. */
 export function addDays(isoDay: string, days: number): string {
   const { year, month, day } = parseIsoDay(isoDay);
-  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+  return new Date(Date.UTC(year, month - 1, day + days))
+    .toISOString()
+    .slice(0, 10);
 }
 
 /** Convert a Montréal local date and 24-hour time to an ISO-8601 instant. */
@@ -58,19 +60,27 @@ export function montrealDateTime(isoDay: string, time: string): string {
     throw new RangeError("time must be valid");
   }
   const localTimeAsUtc = Date.UTC(year, month - 1, day, hour, minute);
-  const guess = new Date(localTimeAsUtc);
-  const guessParts = partsToNumbers(
-    montrealDateTimeFormatter.formatToParts(guess),
+  let instant = localTimeAsUtc;
+  // Recheck the offset at the candidate instant across a DST transition.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const local = partsToNumbers(
+      montrealDateTimeFormatter.formatToParts(new Date(instant)),
+    );
+    const actualLocalAsUtc = Date.UTC(
+      local.year,
+      local.month - 1,
+      local.day,
+      local.hour,
+      local.minute,
+      local.second,
+    );
+    const difference = localTimeAsUtc - actualLocalAsUtc;
+    if (difference === 0) return new Date(instant).toISOString();
+    instant += difference;
+  }
+  throw new RangeError(
+    "This time does not exist in Montréal on this date because the clocks change.",
   );
-  const guessLocalAsUtc = Date.UTC(
-    guessParts.year,
-    guessParts.month - 1,
-    guessParts.day,
-    guessParts.hour,
-    guessParts.minute,
-    guessParts.second,
-  );
-  return new Date(guess.getTime() - (guessLocalAsUtc - localTimeAsUtc)).toISOString();
 }
 
 function montrealMidnight(isoDay: string): Date {
@@ -87,7 +97,9 @@ function montrealMidnight(isoDay: string): Date {
     localParts.minute,
     localParts.second,
   );
-  return new Date(utcMidnight.getTime() - (localTimeAsUtc - utcMidnight.getTime()));
+  return new Date(
+    utcMidnight.getTime() - (localTimeAsUtc - utcMidnight.getTime()),
+  );
 }
 
 function formatDateParts(parts: Intl.DateTimeFormatPart[]): string {
@@ -118,7 +130,11 @@ function partsToNumbers(parts: Intl.DateTimeFormatPart[]): {
   };
 }
 
-function parseIsoDay(isoDay: string): { year: number; month: number; day: number } {
+function parseIsoDay(isoDay: string): {
+  year: number;
+  month: number;
+  day: number;
+} {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDay);
   if (match === null) {
     throw new RangeError("date must use YYYY-MM-DD format");

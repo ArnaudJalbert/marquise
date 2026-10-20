@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-20
+
+### Changes
+
+- Add `DiscoveryClient` with requested-page screening filters, cinema name search and movie showtimes; HTTP requests accept cancellation signals and never drain paginated endpoints.
+- Bound movie metadata enrichment to the current page's IDs and optional cinema website enrichment to one page. Preserve screening totals separately from grouped film counts.
+- Make legacy HTTP grid/showtime collections explicitly first-page-only (100/48 screenings); use `DiscoveryClient` for complete navigation and totals. The deterministic demo client supports the same paging/filter protocol.
+- Replace eager-pagination expectations with regression coverage for bounded pages, filters, grouping, metadata enrichment and cancellation signals.
+- Convert local time filters correctly during daylight-saving transition mornings; reject skipped spring-forward times rather than silently shifting them.
+
 ## 2026-08-10
 
 ### Deployment

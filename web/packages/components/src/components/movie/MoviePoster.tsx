@@ -49,6 +49,8 @@ export function MoviePoster({
           src={posterUrl}
           alt={`Poster for ${title}`}
           loading="lazy"
+          width={400}
+          height={600}
           decoding="async"
           fetchPriority="low"
           onLoad={() => setLoaded(true)}
