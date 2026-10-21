@@ -6,6 +6,7 @@ import type {
   ScreeningPage,
 } from "./discovery-client";
 import type { MovieCardData } from "./movie";
+import { posterRenditionUrl } from "./poster-rendition";
 import {
   MovieNotFoundError,
   type MovieDetailClient,
@@ -171,7 +172,7 @@ export class HttpMarquiseClient
     return {
       id: movie.id,
       title: movie.title,
-      posterUrl: movie.poster_url,
+      posterUrl: posterRenditionUrl(movie.poster_url),
       releaseYear: movie.release_year,
       durationMinutes: movie.duration_minutes,
       directors: movie.directors,
