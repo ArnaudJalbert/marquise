@@ -4,7 +4,8 @@
  * the original URL is always returned unchanged for anything else, so a
  * wrong guess can only cost bandwidth, never break the image.
  */
-const RENDITION_WIDTH = 450; // ~3x the widest poster tile (150 CSS px).
+// Covers 150 px grid tiles at 3x DPR; detail-page posters get 450/200 ~2x.
+const RENDITION_WIDTH = 450;
 
 export function posterRenditionUrl(
   posterUrl: string | null | undefined,
@@ -28,7 +29,7 @@ export function posterRenditionUrl(
   // TMDB encodes the rendition in the path; w500 is plenty for poster tiles.
   if (url.hostname === "image.tmdb.org") {
     const size = /^\/t\/p\/(original|w(\d+))\//.exec(url.pathname)?.[1];
-    if (size && (size === "original" || Number(size.slice(1)) > 500) && size !== "w500") {
+    if (size && (size === "original" || Number(size.slice(1)) > 500)) {
       url.pathname = url.pathname.replace(`/t/p/${size}/`, "/t/p/w500/");
       return url.href;
     }

@@ -21,6 +21,26 @@ describe("posterRenditionUrl", () => {
     ).toBe("https://image.tmdb.org/t/p/w500/abc123.jpg");
   });
 
+  it("downgrades oversized TMDB renditions but keeps w500 and smaller", () => {
+    expect(posterRenditionUrl("https://image.tmdb.org/t/p/w780/a.jpg")).toBe(
+      "https://image.tmdb.org/t/p/w500/a.jpg",
+    );
+    expect(posterRenditionUrl("https://image.tmdb.org/t/p/w500/a.jpg")).toBe(
+      "https://image.tmdb.org/t/p/w500/a.jpg",
+    );
+  });
+
+  it("is idempotent for both allowlisted hosts", () => {
+    const once = posterRenditionUrl(
+      "https://img.cinemacinema.ca/Affiches/a.jpg",
+    )!;
+    expect(posterRenditionUrl(once)).toBe(once);
+    const tmdbOnce = posterRenditionUrl(
+      "https://image.tmdb.org/t/p/original/a.jpg",
+    )!;
+    expect(posterRenditionUrl(tmdbOnce)).toBe(tmdbOnce);
+  });
+
   it("leaves smaller TMDB renditions and other hosts untouched", () => {
     expect(
       posterRenditionUrl("https://image.tmdb.org/t/p/w185/abc123.jpg"),
