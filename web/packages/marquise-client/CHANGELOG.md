@@ -4,6 +4,7 @@
 
 ### Changes
 
+- Add `posterRenditionUrl`: known poster hosts get smaller renditions at read time. Cinéma Cinémas images route through their Cloudflare `/cdn-cgi/image/` resizer (originals ran to 60 MB); TMDB `original/` paths become `w500`. All other hosts pass through untouched.
 - Add `DiscoveryClient` with requested-page screening filters, cinema name search and movie showtimes; HTTP requests accept cancellation signals and never drain paginated endpoints.
 - Bound movie metadata enrichment to the current page's IDs and optional cinema website enrichment to one page. Preserve screening totals separately from grouped film counts.
 - Make legacy HTTP grid/showtime collections explicitly first-page-only (100/48 screenings); use `DiscoveryClient` for complete navigation and totals. The deterministic demo client supports the same paging/filter protocol.
