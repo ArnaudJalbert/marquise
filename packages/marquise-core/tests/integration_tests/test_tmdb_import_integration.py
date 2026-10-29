@@ -9,7 +9,10 @@ import pytest
 from marquise.application.queries.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
-from marquise.application.repositories.tmdb_search import TmdbCandidate, TmdbSearch
+from marquise.application.repositories.movie_identity_search import (
+    MovieIdentityCandidate,
+    MovieIdentitySearch,
+)
 from marquise.application.use_cases.create_missing_movies import (
     CreateMissingMoviesCommand,
 )
@@ -72,9 +75,11 @@ async def test_import_links_translated_screening_to_known_movie(
             ),
         )
     )
-    tmdb = create_autospec(TmdbSearch, instance=True)
+    tmdb = create_autospec(MovieIdentitySearch, instance=True)
     tmdb.search.return_value = [
-        TmdbCandidate(id="777", title="Original Film", release_year=2025)
+        MovieIdentityCandidate(
+            provider="tmdb", id="777", title="Original Film", release_year=2025
+        )
     ]
     command = ImportScreeningsCommand(
         fetched,

@@ -9,7 +9,7 @@ from uuid import uuid4
 
 from marquise.application.exceptions.movie import MovieIdentityConflictError
 from marquise.application.repositories import MovieRepository
-from marquise.application.repositories.tmdb_search import TmdbSearch
+from marquise.application.repositories.movie_identity_search import MovieIdentitySearch
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
 
@@ -65,13 +65,15 @@ class CreateMissingMoviesCommand:
         movies: tuple[CreateMissingMoviesCommand.MovieData, ...]
 
     def __init__(
-        self, movie_repository: MovieRepository, tmdb_search: TmdbSearch | None = None
+        self,
+        movie_repository: MovieRepository,
+        identity_search: MovieIdentitySearch | None = None,
     ) -> None:
         self.movie_repository = movie_repository
-        self.tmdb_search = tmdb_search
+        self.identity_search = identity_search
 
     async def execute(self, request: InputData) -> OutputData:
-        resolved, unmatched = await self._resolve_tmdb(request.movies)
+        resolved, unmatched = await self._resolve_identity(request.movies)
         found_movies = await self.movie_repository.find_by_titles(
             self._search_terms(unmatched)
         )
@@ -86,17 +88,19 @@ class CreateMissingMoviesCommand:
         )
         return self.OutputData(movies=tuple(movies))
 
-    async def _resolve_tmdb(
+    async def _resolve_identity(
         self, movies: tuple[MovieInput, ...]
     ) -> tuple[list[MovieData], tuple[MovieInput, ...]]:
-        """Reuse known TMDB movies before trying the old title lookup."""
-        if self.tmdb_search is None:
+        """Reuse known movie identities before trying the old title lookup."""
+        if self.identity_search is None:
             return [], movies
         resolved: list[CreateMissingMoviesCommand.MovieData] = []
         remaining: list[CreateMissingMoviesCommand.MovieInput] = []
         for movie in movies:
-            candidates = await self.tmdb_search.search(movie.title, movie.release_year)
-            if len(candidates) != 1:
+            candidates = await self.identity_search.search(
+                movie.title, movie.release_year
+            )
+            if len(candidates) != 1 or candidates[0].provider != "tmdb":
                 remaining.append(movie)
                 continue
             tmdb_id = candidates[0].id

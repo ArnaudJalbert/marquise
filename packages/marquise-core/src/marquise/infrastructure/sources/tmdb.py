@@ -1,4 +1,4 @@
-"""TMDB title search over its v3 API."""
+"""Fetch plain TMDB movie search responses over its v3 API."""
 
 from __future__ import annotations
 
@@ -8,10 +8,12 @@ from collections.abc import Awaitable, Callable
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from marquise.application.repositories.tmdb_search import TmdbCandidate, TmdbSearch
+from marquise.interface_adapters.repositories.protocols.movie_search_source import (
+    MovieSearchError,
+)
 
 
-class TmdbSearchError(Exception):
+class TmdbSearchError(MovieSearchError):
     """A TMDB lookup could not be completed."""
 
 
@@ -25,8 +27,8 @@ async def _fetch(url: str, headers: dict[str, str]) -> bytes:
     return await asyncio.to_thread(read)
 
 
-class TmdbSearchGateway(TmdbSearch):
-    """Search TMDB without leaking its key in errors."""
+class TmdbSource:
+    """Fetch a TMDB response without mapping it to movie identities."""
 
     def __init__(
         self,
@@ -37,8 +39,8 @@ class TmdbSearchGateway(TmdbSearch):
         self._api_key = api_key
         self._fetch = fetch
 
-    async def search(self, title: str, year: int | None) -> list[TmdbCandidate]:
-        """Return candidate films, or fail without mistaking errors for no hits."""
+    async def search(self, title: str, year: int | None) -> dict:
+        """Return plain JSON data, or fail without leaking the API key."""
         if not self._api_key:
             raise TmdbSearchError("TMDB_API_KEY is not configured")
         params = {"query": title, "api_key": self._api_key, "language": "en-US"}
@@ -48,21 +50,9 @@ class TmdbSearchGateway(TmdbSearch):
         try:
             body = await self._fetch(url, {"Accept": "application/json"})
             data = json.loads(body)
-            results = data["results"]
-            if data["total_results"] > len(results) and len(results) == 1:
-                raise TmdbSearchError("incomplete TMDB search results")
-            return [
-                TmdbCandidate(
-                    id=str(row["id"]),
-                    title=row["title"],
-                    release_year=int(row["release_date"][:4])
-                    if row.get("release_date")
-                    else None,
-                )
-                for row in results
-            ]
-        except TmdbSearchError:
-            raise
-        except (OSError, ValueError, KeyError, TypeError):
+            if not isinstance(data, dict):
+                raise ValueError("expected JSON object")
+            return data
+        except (OSError, ValueError, TypeError):
             # HTTP errors may include the request URL and its API key.
             raise TmdbSearchError("TMDB search failed") from None
