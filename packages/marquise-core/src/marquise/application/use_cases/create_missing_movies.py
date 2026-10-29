@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from uuid import uuid4
 
+from marquise.application.exceptions.movie import MovieIdentityConflictError
 from marquise.application.repositories import MovieRepository
+from marquise.application.repositories.tmdb_search import TmdbSearch
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
 
@@ -37,6 +39,7 @@ class CreateMissingMoviesCommand:
         original_title: str | None = None
         rating: str | None = None
         origin_countries: tuple[str, ...] | None = None
+        tmdb_id: str | None = None
 
         def __post_init__(self) -> None:
             if not self.title.strip():
@@ -61,16 +64,20 @@ class CreateMissingMoviesCommand:
     class OutputData:
         movies: tuple[CreateMissingMoviesCommand.MovieData, ...]
 
-    def __init__(self, movie_repository: MovieRepository) -> None:
+    def __init__(
+        self, movie_repository: MovieRepository, tmdb_search: TmdbSearch | None = None
+    ) -> None:
         self.movie_repository = movie_repository
+        self.tmdb_search = tmdb_search
 
     async def execute(self, request: InputData) -> OutputData:
+        resolved, unmatched = await self._resolve_tmdb(request.movies)
         found_movies = await self.movie_repository.find_by_titles(
-            self._search_terms(request.movies)
+            self._search_terms(unmatched)
         )
-        existing, missing = self._separate_existing(request.movies, found_movies)
+        existing, missing = self._separate_existing(unmatched, found_movies)
         created = await self._save_missing(missing)
-        movies = existing + self._created_data(request.movies, created)
+        movies = resolved + existing + self._created_data(unmatched, created)
 
         logger.info(
             "Created %d new movies, found %d existing",
@@ -78,6 +85,31 @@ class CreateMissingMoviesCommand:
             len(found_movies),
         )
         return self.OutputData(movies=tuple(movies))
+
+    async def _resolve_tmdb(
+        self, movies: tuple[MovieInput, ...]
+    ) -> tuple[list[MovieData], tuple[MovieInput, ...]]:
+        """Reuse known TMDB movies before trying the old title lookup."""
+        if self.tmdb_search is None:
+            return [], movies
+        resolved: list[CreateMissingMoviesCommand.MovieData] = []
+        remaining: list[CreateMissingMoviesCommand.MovieInput] = []
+        for movie in movies:
+            candidates = await self.tmdb_search.search(movie.title, movie.release_year)
+            if len(candidates) != 1:
+                remaining.append(movie)
+                continue
+            tmdb_id = candidates[0].id
+            existing = await self.movie_repository.find_by_tmdb_id(tmdb_id)
+            if existing is not None:
+                resolved.append(
+                    self.MovieData(
+                        self._normalize_title(movie.title), existing.id.value
+                    )
+                )
+            else:
+                remaining.append(replace(movie, tmdb_id=tmdb_id))
+        return resolved, tuple(remaining)
 
     @staticmethod
     def _search_terms(movies: tuple[MovieInput, ...]) -> list[str]:
@@ -108,20 +140,40 @@ class CreateMissingMoviesCommand:
                 release_year=movie_input.release_year,
             )
             if movie is not None:
+                if (
+                    movie_input.tmdb_id is not None
+                    and movie.tmdb_id is not None
+                    and movie_input.tmdb_id != movie.tmdb_id
+                ):
+                    raise MovieIdentityConflictError(
+                        f"Movie '{title}' already has a different TMDB id"
+                    )
                 existing.append(cls.MovieData(title=title, id=movie.id.value))
             else:
                 missing.setdefault(key, movie_input)
         return existing, missing
 
     async def _save_missing(self, missing: dict[str, MovieInput]) -> dict[str, Movie]:
-        """Persist missing movies and map them back to their title keys."""
+        """Save each distinct TMDB film once, mapping all source titles back."""
+        first_by_tmdb: dict[str, str] = {}
+        unique: dict[str, CreateMissingMoviesCommand.MovieInput] = {}
+        duplicates: dict[str, str] = {}
+        for key, movie in missing.items():
+            if movie.tmdb_id is not None and movie.tmdb_id in first_by_tmdb:
+                duplicates[key] = first_by_tmdb[movie.tmdb_id]
+            else:
+                unique[key] = movie
+                if movie.tmdb_id is not None:
+                    first_by_tmdb[movie.tmdb_id] = key
         saved = await asyncio.gather(
             *(
                 self.movie_repository.save(self._movie(movie))
-                for movie in missing.values()
+                for movie in unique.values()
             )
         )
-        return dict(zip(missing, saved, strict=True))
+        created = dict(zip(unique, saved, strict=True))
+        created.update({key: created[first] for key, first in duplicates.items()})
+        return created
 
     @classmethod
     def _created_data(
@@ -164,6 +216,7 @@ class CreateMissingMoviesCommand:
             original_title=movie_input.original_title,
             rating=movie_input.rating,
             origin_countries=movie_input.origin_countries,
+            tmdb_id=movie_input.tmdb_id,
         )
 
     @staticmethod

@@ -154,6 +154,7 @@ Design rules → [Atlas Clean Architecture](atlas/50-processes/Clean%20Architect
 | `MARQUISE_EMAIL` | No | Configured CLI Administrator email; prompts when either credential is absent |
 | `MARQUISE_PASSWORD` | No | Configured CLI Administrator password; prompts when either credential is absent |
 | `CINEPLEX_API_KEY` | No | Cineplex API subscription key |
+| `TMDB_API_KEY` | Imports | TMDB API key for matching movies during import; imports fail if it is absent |
 | `DATABASE_SCHEMA` | No | Schema name (default: `marquise`) |
 | `MARQUISE_API_CACHE_TTL_SECONDS` | No | API in-memory cache TTL (default: 3600) |
 | `MARQUISE_API_CORS_ORIGINS` | No | Comma-separated CORS origins (default: none) |

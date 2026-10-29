@@ -99,7 +99,30 @@ async def test_save(sample_movie: Movie) -> None:
         original_title="Inception",
         rating="PG-13",
         origin_countries="United States,United Kingdom",
+        tmdb_id=None,
     )
+
+
+@pytest.mark.asyncio
+async def test_find_by_tmdb_id(gateway_dict: dict) -> None:
+    """A saved TMDB id resolves through the repository to the Movie entity."""
+    gateway = create_autospec(MovieGateway, instance=True)
+    gateway.find_by_tmdb_id.return_value = {**gateway_dict, "tmdb_id": "42"}
+    repo = SupabaseMovieRepository(gateway)
+
+    movie = await repo.find_by_tmdb_id("42")
+
+    assert movie is not None and movie.tmdb_id == "42"
+    assert movie.id == MovieId(value="mov-123")
+    gateway.find_by_tmdb_id.assert_awaited_once_with("42")
+
+
+@pytest.mark.asyncio
+async def test_find_by_tmdb_id_missing() -> None:
+    """An unknown TMDB id returns no Movie."""
+    gateway = create_autospec(MovieGateway, instance=True)
+    gateway.find_by_tmdb_id.return_value = None
+    assert await SupabaseMovieRepository(gateway).find_by_tmdb_id("999") is None
 
 
 @pytest.mark.asyncio
@@ -233,6 +256,7 @@ async def test_save_handles_minimal_movie() -> None:
         original_title=None,
         rating=None,
         origin_countries=None,
+        tmdb_id=None,
     )
 
 
@@ -285,6 +309,7 @@ async def test_save_handles_none_fields() -> None:
         original_title=None,
         rating=None,
         origin_countries=None,
+        tmdb_id=None,
     )
 
 
