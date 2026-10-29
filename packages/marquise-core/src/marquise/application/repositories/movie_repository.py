@@ -50,6 +50,11 @@ class MovieRepository(ABC):
         ...
 
     @abstractmethod
+    async def find_by_tmdb_id(self, tmdb_id: str) -> Movie | None:
+        """Find a movie by its TMDB film id, or return None."""
+        ...
+
+    @abstractmethod
     async def find_by_title(self, title: str) -> Movie | None:
         """Find a movie by title, case-insensitively.
 

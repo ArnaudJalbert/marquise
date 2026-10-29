@@ -2,14 +2,20 @@
 
 from __future__ import annotations
 
+from asyncpg.exceptions import UniqueViolationError
+
 from marquise.infrastructure.supabase.connection_pool import ConnectionPool
-from marquise.interface_adapters.repositories.protocols.base import GatewayPage
+from marquise.interface_adapters.repositories.protocols.base import (
+    GatewayError,
+    GatewayPage,
+)
 
 DEFAULT_SCHEMA = "marquise"
 
 _COLUMNS = (
     "id, title, release_year, directors, cast_members, duration_minutes, description,"
-    " poster_url, trailer_url, genres, original_title, rating, origin_countries"
+    " poster_url, trailer_url, genres, original_title, rating,"
+    " origin_countries, tmdb_id"
 )
 
 
@@ -41,6 +47,7 @@ class SupabaseMovieGateway:
         original_title: str | None = None,
         rating: str | None = None,
         origin_countries: str | None = None,
+        tmdb_id: str | None = None,
     ) -> dict:
         """Insert or upsert a movie row.
 
@@ -67,14 +74,15 @@ class SupabaseMovieGateway:
         Raises:
             GatewayError: On data-layer failure.
         """
-        async with self._pool.acquire() as conn:
-            row = await conn.fetchrow(
-                f"""
+        try:
+            async with self._pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    f"""
                 INSERT INTO {self._table}
                     (id, title, release_year, directors, cast_members,
                      duration_minutes, description, poster_url, trailer_url,
-                     genres, original_title, rating, origin_countries)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                     genres, original_title, rating, origin_countries, tmdb_id)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                 ON CONFLICT (title) DO UPDATE
                     SET release_year = COALESCE(EXCLUDED.release_year,
                                                 movies.release_year),
@@ -97,24 +105,48 @@ class SupabaseMovieGateway:
                         rating = COALESCE(EXCLUDED.rating,
                                           movies.rating),
                         origin_countries = COALESCE(EXCLUDED.origin_countries,
-                                                    movies.origin_countries)
+                                                    movies.origin_countries),
+                        tmdb_id = COALESCE(EXCLUDED.tmdb_id, movies.tmdb_id)
+                WHERE movies.tmdb_id IS NULL OR EXCLUDED.tmdb_id IS NULL
+                    OR movies.tmdb_id = EXCLUDED.tmdb_id
                 RETURNING {_COLUMNS}
                 """,
-                movie_id,
-                title,
-                release_year,
-                directors,
-                cast,
-                duration_minutes,
-                description,
-                poster_url,
-                trailer_url,
-                genres,
-                original_title,
-                rating,
-                origin_countries,
-            )
+                    movie_id,
+                    title,
+                    release_year,
+                    directors,
+                    cast,
+                    duration_minutes,
+                    description,
+                    poster_url,
+                    trailer_url,
+                    genres,
+                    original_title,
+                    rating,
+                    origin_countries,
+                    tmdb_id,
+                )
+        except UniqueViolationError as exc:
+            if (
+                tmdb_id is not None
+                and getattr(exc, "constraint_name", None) == "movies_tmdb_id_key"
+            ):
+                existing = await self.find_by_tmdb_id(tmdb_id)
+                if existing is not None:
+                    return existing
+            raise
+        if row is None:
+            raise GatewayError(f"Movie '{title}' already has a different TMDB id")
         return dict(row)
+
+    async def find_by_tmdb_id(self, tmdb_id: str) -> dict | None:
+        """Find a movie by its TMDB film id."""
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                f"SELECT {_COLUMNS} FROM {self._table} WHERE tmdb_id = $1",
+                tmdb_id,
+            )
+        return dict(row) if row is not None else None
 
     async def find_by_id(self, movie_id: str) -> dict | None:
         """Find a movie by its ID.

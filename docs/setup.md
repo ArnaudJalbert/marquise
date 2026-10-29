@@ -80,6 +80,21 @@ reviewed, ID-guarded operation. Do not delete Screenings or clear external IDs t
 force a repair. PR checks run gateway/import regressions against disposable
 PostgreSQL, without production secrets. No rollout script runs automatically.
 
+### Existing databases: TMDB movie ids (#321)
+
+Apply [the movie-id migration](../scripts/migrations/321-add-movies-tmdb-id.sql)
+**before** deploying code that reads or writes `movies.tmdb_id`. Run it through
+an approved schema-change process, not from the scheduled import. It adds a
+nullable column and a unique index; existing movies keep a NULL id. No movies
+are matched or merged by the migration.
+
+The migration targets `marquise.movies`, uses a 5-second lock timeout, and can
+be rerun. Run it in a quiet import window, since adding the column and building
+the index can block writes. Check that `tmdb_id` exists and that
+`movies_tmdb_id_key` is unique before resuming imports. If the migration fails,
+roll back its transaction and retry after investigating the lock or data issue.
+The additive column can remain if the application is rolled back.
+
 ## Auth
 
 [`supabase/config.toml`](../supabase/config.toml) is source of truth. Use

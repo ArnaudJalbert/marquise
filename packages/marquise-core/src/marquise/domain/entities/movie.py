@@ -41,6 +41,7 @@ class Movie:
     original_title: str | None = None
     rating: str | None = None
     origin_countries: tuple[str, ...] | None = None
+    tmdb_id: str | None = None
 
     def __post_init__(self) -> None:
         """Validate movie data after initialization.
