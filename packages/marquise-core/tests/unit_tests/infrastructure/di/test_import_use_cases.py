@@ -17,7 +17,10 @@ from marquise.infrastructure.di.import_use_cases import (
     build_create_screenings_use_case,
     build_fetch_screenings_use_case,
 )
-from marquise.infrastructure.sources.tmdb import TmdbSearchGateway
+from marquise.infrastructure.sources.tmdb import TmdbSource
+from marquise.interface_adapters.repositories.source_adapters.tmdb import (
+    TmdbSearchAdapter,
+)
 
 
 def test_fetch_builder_wires_pool_schema_and_registry() -> None:
@@ -43,7 +46,8 @@ def test_movie_builder_wires_supplied_pool_and_schema() -> None:
     command = build_create_movies_use_case(pool, "test_schema", "fake-key")
 
     assert isinstance(command, CreateMissingMoviesCommand)
-    assert isinstance(command.tmdb_search, TmdbSearchGateway)
+    assert isinstance(command.identity_search, TmdbSearchAdapter)
+    assert isinstance(command.identity_search._source, TmdbSource)
     assert command.movie_repository._gateway._pool is pool
     assert command.movie_repository._gateway._table == '"test_schema".movies'
     pool.acquire.assert_not_called()
