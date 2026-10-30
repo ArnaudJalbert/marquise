@@ -55,7 +55,7 @@ The sample clock is fixed to the review date, rather than pretending these are t
 
 ## Verification and captures
 
-`verification.log` contains the actual final command output. `pnpm build`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm prototype:build` passed. Tests passed in all packages: 59 client tests, 165 component tests including six new prototype behavior tests, and 24 delivery-app tests. The isolation checker passed across 32 library output files, including declarations and source maps. Some unchanged Turbo tasks used this worktree's build cache.
+`verification.log` contains the actual final command output with terminal line endings and trailing whitespace normalized. `pnpm build`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm prototype:build` passed. Tests passed in all packages: 59 client tests, 165 component tests including six new prototype behavior tests, and 24 delivery-app tests. The isolation checker passed across 32 library output files, including declarations and source maps. Some unchanged Turbo tasks used this worktree's build cache.
 
 `browser-checks.json` records 46 successful Chromium checks through the browser harness. Checks exercised actual mouse hover, moving into the preview, native keyboard Space, Escape/focus, emulated touch taps, separate poster/title routing, cinema navigation, sample states, Retry, and missing metadata. Computed geometry proved three desktop columns, two mobile columns, 2:3 posters, 52px caption boxes, 44px arrow targets, popup bounds, and no horizontal overflow at 390px and 320px. Reduced-motion checks assert `animation-name: none` and `transition-property: none`, not an arbitrary duration budget.
 
