@@ -92,9 +92,17 @@ async def db_pool(
                 genres           TEXT,
                 original_title   TEXT,
                 rating           TEXT,
-                origin_countries TEXT
+                origin_countries TEXT,
+                tmdb_id          TEXT UNIQUE
             )
             """
+        )
+        await conn.execute(
+            f'ALTER TABLE "{TEST_SCHEMA}".movies ADD COLUMN IF NOT EXISTS tmdb_id TEXT'
+        )
+        await conn.execute(
+            f"CREATE UNIQUE INDEX IF NOT EXISTS movies_tmdb_id_key "
+            f'ON "{TEST_SCHEMA}".movies (tmdb_id)'
         )
         await conn.execute(
             f"""

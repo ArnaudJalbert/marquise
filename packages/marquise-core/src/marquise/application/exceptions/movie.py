@@ -5,6 +5,10 @@ from __future__ import annotations
 from marquise.application.exceptions.base import ApplicationError
 
 
+class MovieIdentityConflictError(ApplicationError):
+    """A title is already assigned to a different known movie."""
+
+
 class MovieNotFoundError(ApplicationError):
     """Raised when a requested movie does not exist in the repository."""
 

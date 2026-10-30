@@ -40,7 +40,8 @@ CREATE TABLE IF NOT EXISTS marquise.movies (
     genres           TEXT,
     original_title   TEXT,
     rating           TEXT,
-    origin_countries TEXT
+    origin_countries TEXT,
+    tmdb_id          TEXT UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS marquise.screenings (

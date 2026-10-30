@@ -30,6 +30,9 @@ class MovieGateway(Protocol):
         original_title: str | None = None,
         rating: str | None = None,
         origin_countries: str | None = None,
+        tmdb_id: str | None = None,
+        *,
+        update_existing: bool = True,
     ) -> dict:
         """Insert or upsert a movie row.
 
@@ -49,6 +52,8 @@ class MovieGateway(Protocol):
             original_title: Original title in native language (optional).
             rating: Content rating (optional).
             origin_countries: Comma-separated origin countries (optional).
+            tmdb_id: Known TMDB identity, if any.
+            update_existing: Update matching titles, or return them unchanged.
 
         Returns:
             The inserted/updated row as a dict.
@@ -56,6 +61,10 @@ class MovieGateway(Protocol):
         Raises:
             GatewayError: On data-layer failure.
         """
+        ...
+
+    async def find_by_tmdb_id(self, tmdb_id: str) -> dict | None:
+        """Find a movie by its TMDB film id, or return None."""
         ...
 
     async def find_by_id(self, movie_id: str) -> dict | None:
