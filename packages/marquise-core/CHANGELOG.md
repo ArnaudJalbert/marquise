@@ -4,6 +4,10 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-10-30
 
+### v0.2.30
+
+- Add provider-independent movie discovery, eligibility and deterministic ranking with an injected RapidFuzz name-distance adapter. Preserve source evidence and distinguish incomplete discovery from no match. Composition-root integration remains in #355.
+
 ### v0.2.29
 
 - Publish additive metadata facts, workflow DTOs and execution/persistence contracts for #358. Distinguish confirmed TMDB identity from successful enrichment without changing existing callers. Final integration remains in #355.
