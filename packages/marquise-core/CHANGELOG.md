@@ -4,6 +4,10 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-10-30
 
+### v0.2.29
+
+- Publish additive metadata facts, workflow DTOs and execution/persistence contracts for #358. Distinguish confirmed TMDB identity from successful enrichment without changing existing callers. Final integration remains in #355.
+
 ### v0.2.28
 
 - Look up films in TMDB during imports. Reuse a movie when its TMDB id is already known, save the id for new movies, and leave uncertain matches on the existing title path. Add the nullable database column, a unique index, a migration, and PostgreSQL import tests. Apply the migration before deploying the new code. Closes #321, #322, #323.

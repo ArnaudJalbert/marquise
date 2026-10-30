@@ -41,7 +41,9 @@ class Movie:
     original_title: str | None = None
     rating: str | None = None
     origin_countries: tuple[str, ...] | None = None
+    # Identity confirmation alone does not mean metadata enrichment succeeded.
     tmdb_id: str | None = None
+    metadata_enriched_at: datetime | None = None
 
     def __post_init__(self) -> None:
         """Validate movie data after initialization.
