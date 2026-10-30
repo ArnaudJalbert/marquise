@@ -333,3 +333,27 @@ def test_rapidfuzz_damerau_distance() -> None:
     adapter = RapidFuzzNameDistance()
     assert adapter.distance("ab", "ba") == 1
     assert adapter.distance("ca", "abc") == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("second_credit", [False, True])
+async def test_codirectors_require_distinct_people(second_credit: bool) -> None:
+    """Two supplied names cannot corroborate a year exception via one person."""
+    directors = (person("John Smith"),)
+    if second_credit:
+        directors += (person("Jon Smith"),)
+    candidate = movie(year=2025, directors=directors)
+    result = await MatchMovieUseCase(
+        repository((candidate,)), RapidFuzzNameDistance()
+    ).execute(MatchMovieInputData("Film", 2026, ("John Smith", "Jon Smith"), 100))
+    assert (result.status == "matched") == second_credit
+
+
+@pytest.mark.asyncio
+async def test_director_assignment_can_reassign_an_earlier_typo() -> None:
+    """A flexible spelling match does not consume another director's only match."""
+    candidate = movie(directors=(person("John Smith"), person("Jona Smith")))
+    result = await MatchMovieUseCase(
+        repository((candidate,)), RapidFuzzNameDistance()
+    ).execute(MatchMovieInputData("Film", 2026, ("Jon Smith", "John Smith"), 100))
+    assert result.status == "matched"

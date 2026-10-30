@@ -77,6 +77,37 @@ class MatchMovieUseCase:
                 return 1
         return None
 
+    def _director_spelling(
+        self, names: tuple[str, ...], people: tuple[PersonFact, ...]
+    ) -> int | None:
+        edges = [
+            [
+                (person.identity, match)
+                for person in people
+                if (match := self._person_match(name, person)) is not None
+            ]
+            for name in names
+        ]
+
+        def assign(exact_only: bool) -> bool:
+            assigned: dict[ProviderIdentity, int] = {}
+
+            def visit(index: int, seen: set[ProviderIdentity]) -> bool:
+                for identity, match in edges[index]:
+                    if identity in seen or (exact_only and match != 0):
+                        continue
+                    seen.add(identity)
+                    if identity not in assigned or visit(assigned[identity], seen):
+                        assigned[identity] = index
+                        return True
+                return False
+
+            return all(visit(index, set()) for index in range(len(names)))
+
+        if assign(exact_only=True):
+            return 0
+        return 1 if assign(exact_only=False) else None
+
     def _rank(
         self, source: MatchMovieInputData, title: str, movie: MetadataMovie
     ) -> tuple[int, int, int, float] | None:
@@ -92,20 +123,10 @@ class MatchMovieUseCase:
             source.release_year is not None
             and source.release_year == movie.release_year
         )
-        matches = [
-            min(
-                (
-                    match
-                    for person in movie.directors
-                    if (match := self._person_match(name, person)) is not None
-                ),
-                default=None,
-            )
-            for name in source.directors
-        ]
-        if any(match is None for match in matches):
+        spelling = self._director_spelling(source.directors, movie.directors)
+        if spelling is None:
             return None
-        directors_agree = bool(matches)
+        directors_agree = bool(source.directors)
         runtime = float("inf")
         if (
             source.duration_minutes is not None
@@ -125,7 +146,7 @@ class MatchMovieUseCase:
         return (
             int(not title_match),
             int(not year_match),
-            int(any(match == 1 for match in matches)),
+            spelling,
             runtime,
         )
 
