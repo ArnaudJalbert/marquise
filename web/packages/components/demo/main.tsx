@@ -1,11 +1,14 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   MinimalCatalogue,
   type CatalogueSelection,
   type CatalogueState,
+  type CatalogueMovie,
 } from "marquise-components";
 import { cinemas, movies, today, tomorrow, weekend } from "./fixtures";
+import { HttpMarquiseClient } from "marquise-client";
+import { loadAllMovies, loadMovieWeek } from "./api";
 
 const initial: CatalogueSelection = {
   start: today,
@@ -28,10 +31,35 @@ function readSelection(): CatalogueSelection {
     to: p.get("to") ?? "",
   };
 }
-function Preview() {
+
+function Preview({ client }: { client: HttpMarquiseClient }) {
   const [href, setHref] = useState(location.href);
   const [selection, setSelection] = useState(readSelection);
   const [state, setState] = useState<CatalogueState>("ready");
+  const [catalogueMovies, setCatalogueMovies] = useState(movies);
+  const [catalogueNotice, setCatalogueNotice] = useState(
+    "Loading movies from the local API…",
+  );
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadAllMovies(client, controller.signal)
+      .then((loaded) => {
+        if (!controller.signal.aborted) {
+          setCatalogueMovies(loaded);
+          setCatalogueNotice("");
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted)
+          setCatalogueNotice("Local API unavailable. Showing sample movies.");
+      });
+    return () => controller.abort();
+  }, [client]);
+  const loadWeek = useCallback(
+    (movie: CatalogueMovie, start: string, end: string, signal?: AbortSignal) =>
+      loadMovieWeek(client, movie, start, end, signal),
+    [client],
+  );
   useEffect(() => {
     const pop = () => {
       setHref(location.href);
@@ -43,6 +71,7 @@ function Preview() {
   const navigate = (next: string) => {
     history.pushState(null, "", next);
     setHref(location.href);
+    setSelection(readSelection());
     document.getElementById("minimal-main")?.focus();
     window.scrollTo(0, 0);
   };
@@ -60,12 +89,15 @@ function Preview() {
   return (
     <>
       <div className="review-notice">
-        Design prototype · Sample data · Fixed review date October 30, 2026,
-        Montréal. Not live listings.
+        Design prototype · Sample screenings · Review date October 30, 2026,
+        Montréal. Movies and date navigation try the local API; failures retain
+        labeled samples.
       </div>
       <MinimalCatalogue
         movies={movies}
-        screeningLanguages={["English", "French", "Japanese"]}
+        catalogueMovies={catalogueMovies}
+        catalogueNotice={catalogueNotice}
+        screeningLanguages={["VO", "VOA", "VOF", "VOSTF", "VOSTA", "VF"]}
         cinemas={cinemas}
         href={href}
         navigate={navigate}
@@ -76,6 +108,7 @@ function Preview() {
         weekend={weekend}
         state={state}
         onRetry={() => setState("ready")}
+        onLoadWeek={loadWeek}
       />
       <aside className="review-tools" aria-label="Prototype review controls">
         <label>
@@ -101,9 +134,10 @@ function Preview() {
           Reset prototype
         </button>
         <p>
-          Sample booking links open example.com. Missing artwork and metadata
-          are intentional. Pagination and network delays are visual samples, not
-          an API implementation.
+          Sample booking links open example.com. All sample films have posters.
+          The sample schedule ranges from one screening to 25 per day across
+          seven cinemas and two weeks. This is a local design preview, not a
+          production listing.
         </p>
         <details>
           <summary>Current sample selection</summary>
@@ -113,4 +147,7 @@ function Preview() {
     </>
   );
 }
-createRoot(document.getElementById("root")!).render(<Preview />);
+const client = new HttpMarquiseClient({ baseUrl: location.origin });
+createRoot(document.getElementById("root")!).render(
+  <Preview client={client} />,
+);

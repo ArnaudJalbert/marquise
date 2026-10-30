@@ -89,6 +89,31 @@ export class HttpMarquiseClient
     if (name) params.set("name", name);
     return this.fetchJson(`/v1/cinemas?${params}`, signal);
   }
+  async fetchMoviePage(
+    page: number,
+    signal?: AbortSignal,
+    title?: string,
+  ): Promise<Page<MovieApi>> {
+    const params = new URLSearchParams({ page: String(page), size: "100" });
+    if (title) params.set("title", title);
+    return this.fetchJson(`/v1/movies?${params}`, signal);
+  }
+  async fetchScreeningRangePage(
+    movieId: string,
+    start: string,
+    end: string,
+    page: number,
+    signal?: AbortSignal,
+  ): Promise<Page<ScreeningApi>> {
+    const params = new URLSearchParams({
+      movie_id: movieId,
+      from: montrealDayRange(start).from,
+      to: montrealDayRange(end).to,
+      page: String(page),
+      size: "100",
+    });
+    return this.fetchJson(`/v1/screenings?${params}`, signal);
+  }
   private screeningPath(query: ScreeningQuery): string {
     const range = montrealDayRange(query.date);
     const params = new URLSearchParams({

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-30
+
+### Changes
+
+- Add single-page movie catalogue search and exact-movie screening date-window reads with cancellation signals, typed API responses, and inclusive Montréal calendar-day bounds.
+
 ## 2026-10-20
 
 ### Changes

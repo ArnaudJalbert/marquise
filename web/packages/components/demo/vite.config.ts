@@ -20,6 +20,10 @@ export default defineConfig({
       },
     ],
   },
-  server: { host: "0.0.0.0", port: 4174 },
+  server: {
+    host: "0.0.0.0",
+    port: 4174,
+    proxy: { "/v1": "http://localhost:8000" },
+  },
   build: { outDir: "../demo-dist", emptyOutDir: true },
 });
