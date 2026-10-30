@@ -13,13 +13,14 @@ The API, nightly imports, and Supabase Auth still use their existing configurati
 Fly Managed Postgres or a replication manager.
 
 - App `marquise-db`, organization `personal`, region `yyz`, matching `marquise-api`.
-- One always-running shared CPU, 512 MB RAM, 30 database connections maximum.
+- One shared CPU, 512 MB RAM, 30 database connections maximum. Fly stops the
+  Machine after idle time and starts it when a connection arrives.
 - One encrypted 1 GB `pg_data` volume mounted at `/data`. PostgreSQL files live
   in `/data/pgdata`, including across Machine restarts.
-- Private hostname `marquise-db.internal:5432`. There are no public IPs, public
-  services, or Fly Proxy listeners. Same-organization private-network access and
-  SCRAM password authentication are required. Fly's WireGuard network encrypts
-  traffic; PostgreSQL itself does not terminate TLS in this setup.
+- Private Flycast hostname `marquise-db.flycast:5432` routes PostgreSQL through
+  Fly Proxy on a private IPv6 address, with no public IP. Same-organization
+  network access and SCRAM password authentication are required. Fly's WireGuard
+  network encrypts traffic; PostgreSQL itself does not terminate TLS in this setup.
 
 Estimated recurring cost, checked October 30, 2026, is approximately **USD 4.30
 per 30 days**, excluding taxes, existing services, and operator time. The public
@@ -59,10 +60,19 @@ result = subprocess.run(
 if result.returncode:
     raise SystemExit('Secret import failed; credential-bearing output suppressed')
 PY
+flyctl ips allocate-v6 --private --app marquise-db
 flyctl deploy --config deploy/postgres/fly.toml --ha=false --yes
 flyctl checks list --app marquise-db
 flyctl ips list --app marquise-db
 ```
+
+The PostgreSQL service enables autostop, autostart, and zero minimum Machines.
+Its TCP check prevents Fly Proxy from routing connections before PostgreSQL is
+ready. A new connection to `marquise-db.flycast` wakes PostgreSQL after an idle
+stop. Direct `marquise-db.internal` connections bypass Fly Proxy and cannot wake
+the stopped Machine. Set the API's `DATABASE_URL` host to `marquise-db.flycast`
+when performing the later cutover. The API already stops and starts with HTTP
+traffic.
 
 Keep exactly one Machine and one volume. The explicit `--ha=false` prevents
 creation of a spare Machine. Do not run `fly postgres attach` or replace the API's
@@ -134,7 +144,11 @@ truncate an existing catalog to bypass the guard. Close the tunnel afterward.
 On October 30, 2026, the deployed Machine `8695e4b60974e8` in `yyz` used encrypted
 volume `vol_4m3dzmmj7dp262gv`, size 1 GB. Its TCP check passed and its public IP
 list was empty. An authenticated connection through the private tunnel confirmed
-PostgreSQL 17.11 and the merged schema, including `movies.tmdb_id`.
+PostgreSQL 17.11 and the merged schema, including `movies.tmdb_id`. This receipt
+predates enabling Flycast autostop. The Flycast TCP health check is now passing,
+and the service has autostop, autostart, and zero minimum Machines configured.
+Flycast wake-on-connect and an idle stop remain to be confirmed when #343 switches
+the API connection to `marquise-db.flycast`.
 
 The transfer compared all configuration values and preserved the original IDs:
 
