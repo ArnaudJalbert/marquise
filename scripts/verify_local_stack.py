@@ -37,11 +37,13 @@ def verify() -> None:
     assert len(all_ids) == len(set(all_ids)) == first["total"] >= 26
     assert all(len(item["screenings"]) <= 3 for item in first["items"])
     catalogue = read_page("movies", {"size": 24})
-    assert catalogue["total"] == 29 and catalogue["pages"] == 2
-    catalogue_items = (
-        catalogue["items"] + read_page("movies", {"size": 24, "page": 2})["items"]
-    )
-    assert len(catalogue_items) == 29
+    assert catalogue["total"] == 53 and catalogue["pages"] == 3
+    catalogue_items = list(catalogue["items"])
+    for page in range(2, catalogue["pages"] + 1):
+        catalogue_items.extend(
+            read_page("movies", {"size": 24, "page": page})["items"]
+        )
+    assert len(catalogue_items) == catalogue["total"]
     assert all(item["poster_url"] for item in catalogue_items)
     assert not any(
         item["title"].startswith("Local test film") for item in catalogue_items
@@ -306,7 +308,7 @@ def verify() -> None:
     print(
         json.dumps(
             {
-                "catalogue_movies": 29,
+                "catalogue_movies": catalogue["total"],
                 "catalogue_posters_loaded": sum(loaded_posters),
                 "eligible_today": first["total"],
                 "dense_screenings": len(items),
