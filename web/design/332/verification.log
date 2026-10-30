@@ -1,0 +1,226 @@
+$ turbo run build
+• turbo 2.10.8
+
+   • Packages in scope: marquise-client, marquise-components, marquise-interface
+   • Running build in 3 packages
+   • Remote caching disabled, using shared worktree cache
+
+marquise-client:build: cache hit, replaying logs 8c942d7cf8cdc73a
+marquise-client:build: $ rm -rf dist && vite build && tsc -p tsconfig.build.json
+marquise-client:build: vite v8.2.0 building client environment for production...
+marquise-client:build: [2Kmarquise-client:build: transforming...✓ 7 modules transformed.
+marquise-client:build: rendering chunks...
+marquise-client:build: computing gzip size...
+marquise-client:build: dist/index.js  13.34 kB │ gzip: 4.55 kB │ map: 37.85 kB
+marquise-client:build: 
+marquise-client:build: ✓ built in 109ms
+marquise-components:build: cache miss, executing 1002e43535f2a11f
+marquise-components:build: $ rm -rf dist && vite build && tsc -p tsconfig.build.json
+marquise-components:build: vite v8.2.0 building client environment for production...
+marquise-components:build: [2Kmarquise-components:build: transforming...✓ 30 modules transformed.
+marquise-components:build: rendering chunks...
+marquise-components:build: computing gzip size...
+marquise-components:build: dist/index.css  46.02 kB │ gzip: 10.27 kB
+marquise-components:build: dist/index.js   91.55 kB │ gzip: 21.90 kB │ map: 205.38 kB
+marquise-components:build: 
+marquise-components:build: ✓ built in 511ms
+marquise-interface:build: cache miss, executing b806e8edc486c822
+marquise-interface:build: $ vite build && node scripts/check-build.mjs
+marquise-interface:build: vite v8.2.0 building client environment for production...
+marquise-interface:build: [2Kmarquise-interface:build: transforming...✓ 1668 modules transformed.
+marquise-interface:build: rendering chunks...
+marquise-interface:build: computing gzip size...
+marquise-interface:build: dist/index.html                   0.42 kB │ gzip:   0.29 kB
+marquise-interface:build: dist/assets/index-DLd9KfPY.css   41.43 kB │ gzip:   9.32 kB
+marquise-interface:build: dist/assets/index-Dho_LhMo.js   322.12 kB │ gzip: 102.82 kB
+marquise-interface:build: 
+marquise-interface:build: ✓ built in 1.02s
+marquise-interface:build: Production layout and poster styles verified.
+
+ Tasks:    3 successful, 3 total
+Cached:    1 cached, 3 total
+  Time:    14.542s 
+
+$ turbo run lint
+• turbo 2.10.8
+
+   • Packages in scope: marquise-client, marquise-components, marquise-interface
+   • Running lint in 3 packages
+   • Remote caching disabled, using shared worktree cache
+
+marquise-client:lint: cache hit, replaying logs 37c8acda8a516099
+marquise-client:build: cache hit, replaying logs 8c942d7cf8cdc73a
+marquise-client:lint: $ oxlint
+marquise-client:lint: Found 0 warnings and 0 errors.
+marquise-client:lint: Finished in 33ms on 18 files with 96 rules using 2 threads.
+marquise-client:build: $ rm -rf dist && vite build && tsc -p tsconfig.build.json
+marquise-client:build: vite v8.2.0 building client environment for production...
+marquise-client:build: [2Kmarquise-client:build: transforming...✓ 7 modules transformed.
+marquise-client:build: rendering chunks...
+marquise-client:build: computing gzip size...
+marquise-client:build: dist/index.js  13.34 kB │ gzip: 4.55 kB │ map: 37.85 kB
+marquise-client:build: 
+marquise-client:build: ✓ built in 109ms
+marquise-components:lint: cache miss, executing fa90f5c6e40ce0c8
+marquise-components:build: cache hit, replaying logs 1002e43535f2a11f
+marquise-components:build: $ rm -rf dist && vite build && tsc -p tsconfig.build.json
+marquise-components:build: vite v8.2.0 building client environment for production...
+marquise-components:build: [2Kmarquise-components:build: transforming...✓ 30 modules transformed.
+marquise-components:build: rendering chunks...
+marquise-components:build: computing gzip size...
+marquise-components:build: dist/index.css  46.02 kB │ gzip: 10.27 kB
+marquise-components:build: dist/index.js   91.55 kB │ gzip: 21.90 kB │ map: 205.38 kB
+marquise-components:build: 
+marquise-components:build: ✓ built in 511ms
+marquise-interface:lint: cache miss, executing 1b495e7de4f36d5f
+marquise-components:lint: $ oxlint
+marquise-interface:lint: $ oxlint
+marquise-interface:lint: Found 0 warnings and 0 errors.
+marquise-interface:lint: Finished in 53ms on 14 files with 96 rules using 2 threads.
+marquise-components:lint: Found 0 warnings and 0 errors.
+marquise-components:lint: Finished in 119ms on 48 files with 96 rules using 2 threads.
+
+ Tasks:    5 successful, 5 total
+Cached:    3 cached, 5 total
+  Time:    1.274s 
+
+$ turbo run typecheck
+• turbo 2.10.8
+
+   • Packages in scope: marquise-client, marquise-components, marquise-interface
+   • Running typecheck in 3 packages
+   • Remote caching disabled, using shared worktree cache
+
+marquise-client:typecheck: cache hit, replaying logs ea7e54457c673d77
+marquise-client:build: cache hit, replaying logs 8c942d7cf8cdc73a
+marquise-client:typecheck: $ tsc --noEmit
+marquise-client:build: $ rm -rf dist && vite build && tsc -p tsconfig.build.json
+marquise-client:build: vite v8.2.0 building client environment for production...
+marquise-client:build: [2Kmarquise-client:build: transforming...✓ 7 modules transformed.
+marquise-client:build: rendering chunks...
+marquise-client:build: computing gzip size...
+marquise-client:build: dist/index.js  13.34 kB │ gzip: 4.55 kB │ map: 37.85 kB
+marquise-client:build: 
+marquise-client:build: ✓ built in 109ms
+marquise-components:typecheck: cache miss, executing 455f5c186951bd5d
+marquise-components:build: cache hit, replaying logs 1002e43535f2a11f
+marquise-components:build: $ rm -rf dist && vite build && tsc -p tsconfig.build.json
+marquise-components:build: vite v8.2.0 building client environment for production...
+marquise-components:build: [2Kmarquise-components:build: transforming...✓ 30 modules transformed.
+marquise-components:build: rendering chunks...
+marquise-components:build: computing gzip size...
+marquise-components:build: dist/index.css  46.02 kB │ gzip: 10.27 kB
+marquise-components:build: dist/index.js   91.55 kB │ gzip: 21.90 kB │ map: 205.38 kB
+marquise-components:build: 
+marquise-components:build: ✓ built in 511ms
+marquise-interface:typecheck: cache miss, executing cf3796e449da1adb
+marquise-components:typecheck: $ tsc --noEmit
+marquise-interface:typecheck: $ tsc --noEmit
+
+ Tasks:    5 successful, 5 total
+Cached:    3 cached, 5 total
+  Time:    4m28.045s 
+
+$ turbo run test
+• turbo 2.10.8
+
+   • Packages in scope: marquise-client, marquise-components, marquise-interface
+   • Running test in 3 packages
+   • Remote caching disabled, using shared worktree cache
+
+marquise-client:test: cache hit, replaying logs 2c8e5b743c889dcf
+marquise-client:build: cache hit, replaying logs 8c942d7cf8cdc73a
+marquise-client:test: $ vitest run
+marquise-client:test: 
+marquise-client:test: [1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/opt/data/repos/marquise/.worktrees/subagent-sa-0-4680d771/web/packages/marquise-client[39m
+marquise-client:test: 
+marquise-client:test:  [32m✓[39m src/http-client.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 249[2mms[22m[39m
+marquise-client:test:  [32m✓[39m src/mock-client.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 233[2mms[22m[39m
+marquise-client:test:  [32m✓[39m src/http-movie-detail-client.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 108[2mms[22m[39m
+marquise-client:test:  [32m✓[39m src/montreal-date.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+marquise-client:test:  [32m✓[39m src/poster-rendition.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+marquise-client:test: 
+marquise-client:test: [2m Test Files [22m [1m[32m5 passed[39m[22m[90m (5)[39m
+marquise-client:test: [2m      Tests [22m [1m[32m59 passed[39m[22m[90m (59)[39m
+marquise-client:test: [2m   Start at [22m 03:24:02
+marquise-client:test: [2m   Duration [22m 3.43s[2m (transform 391ms, setup 0ms, import 840ms, tests 624ms, environment 1ms)[22m
+marquise-client:test: 
+marquise-client:build: $ rm -rf dist && vite build && tsc -p tsconfig.build.json
+marquise-client:build: vite v8.2.0 building client environment for production...
+marquise-client:build: [2Kmarquise-client:build: transforming...✓ 7 modules transformed.
+marquise-client:build: rendering chunks...
+marquise-client:build: computing gzip size...
+marquise-client:build: dist/index.js  13.34 kB │ gzip: 4.55 kB │ map: 37.85 kB
+marquise-client:build: 
+marquise-client:build: ✓ built in 109ms
+marquise-components:test: cache miss, executing 5d9e25f6415097a3
+marquise-components:build: cache hit, replaying logs 1002e43535f2a11f
+marquise-components:build: $ rm -rf dist && vite build && tsc -p tsconfig.build.json
+marquise-components:build: vite v8.2.0 building client environment for production...
+marquise-components:build: [2Kmarquise-components:build: transforming...✓ 30 modules transformed.
+marquise-components:build: rendering chunks...
+marquise-components:build: computing gzip size...
+marquise-components:build: dist/index.css  46.02 kB │ gzip: 10.27 kB
+marquise-components:build: dist/index.js   91.55 kB │ gzip: 21.90 kB │ map: 205.38 kB
+marquise-components:build: 
+marquise-components:build: ✓ built in 511ms
+marquise-interface:test: cache miss, executing a3d6d5645527c099
+marquise-interface:test: $ vitest run
+marquise-components:test: $ vitest run
+marquise-interface:test: 
+marquise-interface:test: [1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/opt/data/repos/marquise/.worktrees/subagent-sa-0-4680d771/web/apps/marquise-interface[39m
+marquise-interface:test: 
+marquise-components:test: 
+marquise-components:test: [1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/opt/data/repos/marquise/.worktrees/subagent-sa-0-4680d771/web/packages/components[39m
+marquise-components:test: 
+marquise-components:test:  [32m✓[39m src/components/movie/MovieCardGrid.test.tsx [2m([22m[2m34 tests[22m[2m)[22m[33m 3622[2mms[22m[39m
+marquise-components:test:      [33m[2m✓[22m[39m renders one card per item [33m 402[2mms[22m[39m
+marquise-interface:test:  [32m✓[39m src/App.test.tsx [2m([22m[2m15 tests[22m[2m)[22m[33m 3628[2mms[22m[39m
+marquise-interface:test:      [33m[2m✓[22m[39m shows page categories on landing and defaults to today in Montréal [33m 790[2mms[22m[39m
+marquise-interface:test:      [33m[2m✓[22m[39m applies server filters, pages only on request, and restores filters with browser history [33m 611[2mms[22m[39m
+marquise-interface:test:      [33m[2m✓[22m[39m makes preview tickets and details reachable from hover and explicit touch/keyboard controls [33m 821[2mms[22m[39m
+marquise-interface:test:  [32m✓[39m src/url-state.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+marquise-interface:test:  [32m✓[39m src/api-client.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+marquise-interface:test: 
+marquise-interface:test: [2m Test Files [22m [1m[32m3 passed[39m[22m[90m (3)[39m
+marquise-interface:test: [2m      Tests [22m [1m[32m24 passed[39m[22m[90m (24)[39m
+marquise-interface:test: [2m   Start at [22m 03:48:31
+marquise-interface:test: [2m   Duration [22m 10.73s[2m (transform 953ms, setup 0ms, import 1.75s, tests 3.66s, environment 4.33s)[22m
+marquise-interface:test: 
+marquise-components:test:  [32m✓[39m src/components/movie/MovieGridController.test.tsx [2m([22m[2m13 tests[22m[2m)[22m[33m 2875[2mms[22m[39m
+marquise-components:test:      [33m[2m✓[22m[39m renders the filter panel beside the grid once the date loads [33m 707[2mms[22m[39m
+marquise-components:test:      [33m[2m✓[22m[39m changes auto-fit pages with the date selector mounted in Strict Mode [33m 350[2mms[22m[39m
+marquise-components:test:  [32m✓[39m src/components/movie/MovieFilterPanel.test.tsx [2m([22m[2m24 tests[22m[2m)[22m[33m 1881[2mms[22m[39m
+marquise-components:test:      [33m[2m✓[22m[39m updates movie search [33m 346[2mms[22m[39m
+marquise-components:test:  [32m✓[39m src/components/movie/MovieDetailPage.test.tsx [2m([22m[2m18 tests[22m[2m)[22m[33m 1606[2mms[22m[39m
+marquise-components:test:      [33m[2m✓[22m[39m mounts under Strict Mode without a composed-ref update loop [33m 311[2mms[22m[39m
+marquise-components:test:  [32m✓[39m src/components/movie/MovieCard.test.tsx [2m([22m[2m27 tests[22m[2m)[22m[33m 1375[2mms[22m[39m
+marquise-components:test:      [33m[2m✓[22m[39m renders title, year, duration and flat showtimes [33m 313[2mms[22m[39m
+marquise-components:test:  [32m✓[39m src/components/movie/use-movie-filters.test.tsx [2m([22m[2m19 tests[22m[2m)[22m[33m 1101[2mms[22m[39m
+marquise-components:test:  [32m✓[39m src/components/discovery/PosterCard.test.tsx [2m([22m[2m9 tests[22m[2m)[22m[33m 874[2mms[22m[39m
+marquise-components:test:  [32m✓[39m src/components/minimal/MinimalCatalogue.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 552[2mms[22m[39m
+marquise-components:test:      [33m[2m✓[22m[39m opens only three screenings with the arrow, separate from movie navigation [33m 325[2mms[22m[39m
+marquise-components:test:  [32m✓[39m src/components/movie/MoviePoster.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 263[2mms[22m[39m
+marquise-components:test:  [32m✓[39m src/components/movie/movie-grid-filter.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+marquise-components:test: 
+marquise-components:test: [2m Test Files [22m [1m[32m10 passed[39m[22m[90m (10)[39m
+marquise-components:test: [2m      Tests [22m [1m[32m165 passed[39m[22m[90m (165)[39m
+marquise-components:test: [2m   Start at [22m 03:48:31
+marquise-components:test: [2m   Duration [22m 33.27s[2m (transform 746ms, setup 2.57s, import 2.19s, tests 14.17s, environment 11.58s)[22m
+marquise-components:test: 
+
+ Tasks:    5 successful, 5 total
+Cached:    3 cached, 5 total
+  Time:    35.183s 
+
+$ pnpm --filter marquise-components exec tsc -p demo/tsconfig.json && pnpm --filter marquise-components exec vite build --config demo/vite.config.ts
+vite v8.2.0 building client environment for production...
+[2Ktransforming...✓ 1667 modules transformed.
+rendering chunks...
+computing gzip size...
+demo-dist/index.html                   1.18 kB │ gzip:  0.54 kB
+demo-dist/assets/index-C9OeSwgk.css    4.80 kB │ gzip:  1.49 kB
+demo-dist/assets/index-BtbOQ23h.js   203.66 kB │ gzip: 64.17 kB
+
+✓ built in 1.00s
+Fixture isolation verified in 32 production library files.

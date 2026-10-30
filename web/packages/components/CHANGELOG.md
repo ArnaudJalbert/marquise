@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-30
+
+### Changes
+
+- Add the proposed minimalist catalogue components with bounded poster titles, separate pointer/keyboard/touch previews, movie schedules and fixed-cinema browsing. Existing production routes remain unchanged pending design approval for #332.
+- Add a local React review demo outside the library build, sample-state controls, baseline evidence, desktop/mobile captures and a design decision record under `web/design/332`.
+
 ## 2026-10-20
 
 ### Changes
