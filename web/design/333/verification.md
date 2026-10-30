@@ -23,7 +23,7 @@ serving an old upcoming-screening cutoff. Existing APIs remain available.
 
 Movies uses its own `GET /v1/movies` title search and 24-item pages. Neither browse
 mode drains its endpoint or fetches per-poster metadata. Movie navigation resolves
-exact metadata and uses the shared schedule loader, including all pages in its
+exact metadata through the one-ID catalogue query, preserving opaque slashes, and uses the shared schedule loader, including all pages in its
 requested window. Detail and cinema completion remain separate slices.
 
 ## Environment and provenance
@@ -55,16 +55,21 @@ requested window. Detail and cinema completion remain separate slices.
 | `uv run lint-imports` | Public-facade contract kept |
 | `uv run pytest packages/marquise-core/tests/unit_tests --cov=marquise --cov-report=term --cov-fail-under=70 -q` | 773 pass, 82.72% coverage |
 | `uv run pytest packages/marquise-core/tests/unit_tests/interface_adapters/readers/test_screening_movie_reader.py -q` | 1 pass, no I/O |
-| `uv run pytest apps/marquise-api/tests -q` | 306 pass |
+| `uv run pytest apps/marquise-api/tests -q` | 307 pass |
 | `uv run pytest apps/marquise-cli/tests -q` | 96 pass |
 | `DATABASE_URL=postgresql://postgres:marquise-test@127.0.0.1:55433/marquise_test uv run pytest packages/marquise-core/tests/integration_tests/infrastructure/supabase/gateways/test_screening_movie_reader.py -q` | 2 pass |
 | From `web/`: `pnpm lint -- --threads=2` | Pass |
 | From `web/`: `pnpm typecheck` | Pass |
-| From `web/`: `pnpm test -- --maxWorkers=2` | 64 client, 178 component/demo, 18 interface tests pass |
+| From `web/`: `pnpm test -- --maxWorkers=2` | 65 client, 178 component/demo, 18 interface tests pass |
 | From `web/`: `VITE_MARQUISE_API_BASE_URL=http://127.0.0.1:18033 pnpm build` | Pass, emitted CSS check passes |
 | From `web/`: `node packages/components/demo/check-isolation.mjs` | Pass across 37 library files |
 | `uv run --with playwright python scripts/verify_browse_ui.py` | Pass against the built app and real controlled API/database |
 | `git diff --check` | Pass |
+
+Independent review caught encoded slashes being decoded before FastAPI path
+matching. Exact metadata now uses the existing one-ID catalogue query. Review
+also caught a no-op reset button in the first-batch empty state. That state now
+links to Movies instead of offering unavailable filter controls.
 
 The initial browser run used an incorrect expected empty-state sentence. The
 actual empty schedule was correct. Updating the assertion to the shared UI's

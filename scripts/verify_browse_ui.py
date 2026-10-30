@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 from playwright.sync_api import Page, expect, sync_playwright
 
@@ -96,7 +97,9 @@ def verify(origin: str, output: Path) -> None:
         page.get_by_role("searchbox", name="Search movies").fill("Controlled film 27")
         expect(page.get_by_role("link", name="View Controlled film 27")).to_be_visible()
         expect(page.locator(".minimal-library-card")).to_have_count(1)
-        catalogue_requests = [url for url in requests if "/v1/movies?" in url]
+        catalogue_requests = [
+            url for url in requests if "/v1/movies?" in url and "ids=" not in url
+        ]
         assert catalogue_requests and all(
             "size=24" in url for url in catalogue_requests
         )
@@ -113,8 +116,19 @@ def verify(origin: str, output: Path) -> None:
         expect(page.get_by_role("link", name="Movies", exact=True)).to_have_attribute(
             "aria-current", "page"
         )
+        assert page.url.endswith("/movies/catalogue%2F27")
         page.reload()
         expect(page.get_by_role("heading", name="Controlled film 27")).to_be_visible()
+        metadata_queries = [
+            parse_qs(urlsplit(url).query)
+            for url in requests
+            if "/v1/movies?" in url and "ids=" in url
+        ]
+        assert metadata_queries and all(
+            len(query["ids"]) == 1 and query.get("size") == ["1"]
+            for query in metadata_queries
+        )
+        assert any(query["ids"] == ["catalogue/27"] for query in metadata_queries)
         mobile = browser.new_context(
             viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True
         )

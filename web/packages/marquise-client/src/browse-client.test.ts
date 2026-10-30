@@ -58,3 +58,34 @@ it("propagates API failure and cancellation without a sample-data fallback", asy
     "AbortError",
   );
 });
+
+it("resolves an exact opaque movie ID through the one-ID query, preserving slashes", async () => {
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          items: [{ id: "catalogue/id", title: "Slash film" }],
+          total: 1,
+          page: 1,
+          pages: 1,
+          size: 1,
+        }),
+      ),
+    )
+    .mockResolvedValueOnce(new Response(JSON.stringify({ items: [] })));
+  const client = new HttpMarquiseClient({ baseUrl: "", fetch });
+  const controller = new AbortController();
+  expect(
+    (await client.fetchMovieMetadata("catalogue/id", controller.signal)).id,
+  ).toBe("catalogue/id");
+  expect(fetch).toHaveBeenNthCalledWith(
+    1,
+    "/v1/movies?ids=catalogue%2Fid&page=1&size=1",
+    { signal: controller.signal },
+  );
+  await expect(client.fetchMovieMetadata("missing")).rejects.toHaveProperty(
+    "name",
+    "MovieNotFoundError",
+  );
+});

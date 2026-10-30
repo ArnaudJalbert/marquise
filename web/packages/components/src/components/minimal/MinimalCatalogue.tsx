@@ -630,22 +630,32 @@ export function MinimalCatalogue({
                     {state === "empty" || !matching.length ? (
                       <div className="minimal-state" role="status">
                         <h2>No matching screenings</h2>
-                        <p>Try another date or clear your filters.</p>
-                        <button
-                          onClick={() =>
-                            onSelection({
-                              start: today,
-                              end: today,
-                              title: "",
-                              cinemas: [],
-                              languages: [],
-                              from: "",
-                              to: "",
-                            })
-                          }
-                        >
-                          Reset selection
-                        </button>
+                        {showScreeningFilters ? (
+                          <>
+                            <p>Try another date or clear your filters.</p>
+                            <button
+                              onClick={() =>
+                                onSelection({
+                                  start: today,
+                                  end: today,
+                                  title: "",
+                                  cinemas: [],
+                                  languages: [],
+                                  from: "",
+                                  to: "",
+                                })
+                              }
+                            >
+                              Reset selection
+                            </button>
+                          </>
+                        ) : (
+                          <p>
+                            No upcoming screenings today.{" "}
+                            <a href="/?section=movies">Browse movies</a> to
+                            search the catalogue.
+                          </p>
+                        )}
                       </div>
                     ) : (
                       <div className="minimal-grid">
