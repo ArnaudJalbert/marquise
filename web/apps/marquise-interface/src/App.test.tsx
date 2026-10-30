@@ -245,6 +245,53 @@ it("keeps loaded catalogue movies after a page failure and retries that page", a
   expect(client.fetchMoviePage).toHaveBeenCalledTimes(3);
 });
 
+it("restores filtered screening pages after visiting a movie and another section", async () => {
+  const listing =
+    "/?start=2026-11-03&end=2026-11-05&cinema=c1&language=VO&title=Wanted&from=18:00&to=22:00";
+  history.replaceState(null, "", listing);
+  const client = clients();
+  client.fetchScreeningMoviesPage.mockImplementation(
+    async ({ page: number }) => ({
+      items: [
+        {
+          ...movie,
+          id: `movie-${number}`,
+          title: `Wanted ${number}`,
+          screenings: [show],
+        },
+      ],
+      total: 2,
+      page: number,
+      size: 1,
+      pages: 2,
+    }),
+  );
+  render(<App client={client} />);
+  await screen.findByRole("link", { name: "View Wanted 1" });
+  await act(async () => endObservers.at(-1)?.reachEnd());
+  fireEvent.click(await screen.findByRole("link", { name: "View Wanted 2" }));
+  await screen.findByRole("heading", { name: movie.title });
+
+  history.replaceState({ scrollY: 900 }, "", listing);
+  fireEvent.popState(window);
+  await screen.findByRole("link", { name: "View Wanted 2" });
+  expect(screen.getByRole("link", { name: "View Wanted 1" })).toBeTruthy();
+  expect(client.fetchScreeningMoviesPage).toHaveBeenCalledTimes(2);
+  await waitFor(() =>
+    expect(window.scrollTo).toHaveBeenLastCalledWith({
+      top: 900,
+      behavior: "instant",
+    }),
+  );
+
+  fireEvent.click(screen.getByRole("link", { name: "Movies" }));
+  await screen.findByRole("link", { name: "View Catalogue only" });
+  history.replaceState(null, "", listing);
+  fireEvent.popState(window);
+  await screen.findByRole("link", { name: "View Wanted 2" });
+  expect(client.fetchScreeningMoviesPage).toHaveBeenCalledTimes(2);
+});
+
 it("opens today's movie-first page without catalogue reads or poster fan-out", async () => {
   const client = clients();
   render(<App client={client} />);

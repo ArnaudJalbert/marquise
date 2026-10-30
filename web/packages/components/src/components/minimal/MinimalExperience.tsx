@@ -115,10 +115,16 @@ export function MinimalExperience({
 }) {
   const url = new URL(href, "http://marquise.invalid");
   const today = toMontrealIsoDate(new Date(currentTime));
-  const selection = parseSelection(url, today);
   const isListing = url.pathname === "/";
   const isCatalogue = isListing && url.searchParams.get("section") === "movies";
   const isScreenings = isListing && !isCatalogue;
+  const [screeningsHref, setScreeningsHref] = useState(href);
+  if (isScreenings && screeningsHref !== href) setScreeningsHref(href);
+  // Detail and catalogue URLs must not replace the retained Screenings query.
+  const selection = parseSelection(
+    isScreenings ? url : new URL(screeningsHref, "http://marquise.invalid"),
+    today,
+  );
   const movieId = /^\/movies\/([^/]+)$/.exec(url.pathname)?.[1];
   const decodedId = movieId ? decodePathId(movieId) : undefined;
   const [search, setSearch] = useState("");

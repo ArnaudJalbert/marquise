@@ -2,6 +2,8 @@
 
 ## 2026-10-30
 
+- Restore loaded browsing results and scroll position on Back, and keep title-search focus while URL-backed results update. Supports #336.
+
 - Open the minimalist Screenings view on today in Montreal. Use the real API by default, separate catalogue search, persistent navigation, and direct movie metadata/schedule loading. Supports #333.
 
 ## 2026-10-20
