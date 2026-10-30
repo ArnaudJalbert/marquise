@@ -4,6 +4,7 @@
 
 ### Changes
 
+- Serve dev-only movies and screening fixture endpoints in the prototype dev/preview server by default, so showtime navigation works without a backend. Keep real API mode explicit and visibly labeled.
 - Apply the approved separate Screenings, Movies, and Cinemas views, floating below-card previews, four-column grid, collapsed section descriptions, compact filter overlay/footer, and shared-scale daily hour slider.
 - Isolate movie schedule state with one-day navigation, one-to-four-day windows, date columns or cinema rows, independent cinema/language filters, stale-request cancellation, and Retry. Keep API catalogue results separate from sample screenings.
 - Add the proposed minimalist catalogue components with bounded poster titles, separate pointer/keyboard/touch previews, movie schedules and fixed-cinema browsing. Existing production routes remain unchanged; Arnaud approved the prototype design in #332 on October 30.

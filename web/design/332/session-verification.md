@@ -31,3 +31,17 @@ Independent review found mismatched displayed/applied fractional-hour filters an
 - No live API/database integration or production deployment was performed. HTTP tests use injected fake fetch responses.
 - The prototype catalogue loads all pages for local title search. It is explicitly documented as a dev-only shortcut; #336 requires bounded endpoint pagination/search for production.
 - Sample screening fixtures remain separate from optional local API catalogue data. Fallback is labeled. All normal sample films have local posters; the Perfect Days asset was corrected from its distributor and inspected locally.
+
+## Follow-up: self-contained sample API
+
+The recurring showtime failure was reproduced against the actual dev server: the request to `/v1/screenings` returned HTTP 502 because it was proxied to an absent localhost:8000 backend while the UI displayed fictional sample movie IDs.
+
+The prototype now serves its fixture catalogue and screenings through local REST endpoints by default on both the Vite dev and built-preview servers. Real-backend mode is explicit through `VITE_MARQUISE_DATA_SOURCE=api`; it preserves genuine failure handling. Server and client mode resolution both honor Vite environment values.
+
+- The original failing four-day request now returns 100 screenings, exactly 25 per Montréal day across the DST transition, on both dev and preview servers.
+- `/v1/movies` returns all six normal sample films with posters.
+- Four additional offline tests exercise the real typed HTTP client and demo adapter against the sample responses: catalogue loading, all 350 screenings over four API pages, requested/empty date windows, and catalogue search/paging. The affected component/demo suite passes 178 tests; current workspace total is 263.
+- Demo typecheck, production demo build, demo lint, and library fixture isolation pass. Imports in the server config have explicit extensions and the dev-only TypeScript config permits them.
+- Independent review checked the approach and found two configuration issues, mismatched `.env` mode resolution and TypeScript extension settings. Both are corrected.
+
+No live backend or new browser interaction run is claimed. These checks establish the local sample server and HTTP path.

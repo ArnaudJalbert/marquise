@@ -6,8 +6,8 @@
   "packageManager": "pnpm@11.17.0",
   "scripts": {
     "dev": "turbo run dev",
-    "prototype": "pnpm --filter marquise-components exec vite --config demo/vite.config.ts",
-    "prototype:build": "pnpm --filter marquise-components exec tsc -p demo/tsconfig.json && pnpm --filter marquise-components exec vite build --config demo/vite.config.ts",
+    "prototype": "pnpm --filter marquise-client build && pnpm --filter marquise-components exec vite --config demo/vite.config.ts",
+    "prototype:build": "pnpm --filter marquise-client build && pnpm --filter marquise-components exec tsc -p demo/tsconfig.json && pnpm --filter marquise-components exec vite build --config demo/vite.config.ts",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",

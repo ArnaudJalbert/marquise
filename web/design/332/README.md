@@ -27,7 +27,8 @@ node packages/components/demo/check-isolation.mjs
 ## Data and limits
 
 - Screening fixtures use the review date October 30, 2026. Dune has 350 screenings across 14 days and seven cinemas; Jesse James has one. All six normal fixtures have local posters, with [recorded sources](../../packages/components/demo/public/posters/SOURCES.md). Sample booking links open example.com.
-- Movies attempts `GET /v1/movies` through the local Vite proxy at localhost:8000. API catalogue results are separate from fixture screening results. An offline API retains explicitly labeled sample movies.
+- By default, the Vite dev and built-preview servers serve `GET /v1/movies` and `GET /v1/screenings` from the sample fixtures. Date navigation still makes real HTTP requests through the typed client, without requiring a separate backend. Empty dates beyond the fixture window return an empty result, not a failed request.
+- To use a running backend at localhost:8000 for Movies and date navigation, start with `VITE_MARQUISE_DATA_SOURCE=api pnpm prototype`. Server and client use the same resolved mode, including Vite environment files. Screenings remains a design fixture grid; use actual catalogue movie IDs when reviewing API schedules. Real API errors remain visible.
 - Movie date navigation uses exact movie IDs and inclusive Montréal calendar-day bounds, requests every page in that window, and ignores/cancels obsolete responses. A catalogue movie without cached screenings loads its initial schedule.
 - The prototype's catalogue search loads all movie pages. This is a documented dev-only shortcut, not the production pagination contract. #336 requires endpoint search and bounded append.
 - Sample-state controls remain review tooling. This branch does not implement the production movie-first query, complete browser-history/scroll restoration, production catalogue pagination, or backend changes.

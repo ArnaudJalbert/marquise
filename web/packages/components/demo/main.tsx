@@ -10,6 +10,8 @@ import { cinemas, movies, today, tomorrow, weekend } from "./fixtures";
 import { HttpMarquiseClient } from "marquise-client";
 import { loadAllMovies, loadMovieWeek } from "./api";
 
+const apiMode = import.meta.env.VITE_MARQUISE_DATA_SOURCE === "api";
+
 const initial: CatalogueSelection = {
   start: today,
   end: today,
@@ -37,9 +39,7 @@ function Preview({ client }: { client: HttpMarquiseClient }) {
   const [selection, setSelection] = useState(readSelection);
   const [state, setState] = useState<CatalogueState>("ready");
   const [catalogueMovies, setCatalogueMovies] = useState(movies);
-  const [catalogueNotice, setCatalogueNotice] = useState(
-    "Loading movies from the local API…",
-  );
+  const [catalogueNotice, setCatalogueNotice] = useState("Loading movies…");
   useEffect(() => {
     const controller = new AbortController();
     void loadAllMovies(client, controller.signal)
@@ -51,7 +51,7 @@ function Preview({ client }: { client: HttpMarquiseClient }) {
       })
       .catch(() => {
         if (!controller.signal.aborted)
-          setCatalogueNotice("Local API unavailable. Showing sample movies.");
+          setCatalogueNotice("Could not load movies. Showing sample movies.");
       });
     return () => controller.abort();
   }, [client]);
@@ -89,9 +89,12 @@ function Preview({ client }: { client: HttpMarquiseClient }) {
   return (
     <>
       <div className="review-notice">
-        Design prototype · Sample screenings · Review date October 30, 2026,
-        Montréal. Movies and date navigation try the local API; failures retain
-        labeled samples.
+        Design prototype · Sample screenings ·{" "}
+        {apiMode
+          ? "Catalogue and date navigation: local API"
+          : "Sample API, no backend needed"}{" "}
+        · Review date October 30, 2026, Montréal.
+        {!apiMode && " Fictional listings and booking links."}
       </div>
       <MinimalCatalogue
         movies={movies}
