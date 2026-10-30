@@ -158,3 +158,28 @@ async def test_merge_is_delegated_to_independent_transaction() -> None:
     assert await repository.merge(request) is result
     merge.merge.assert_awaited_once_with(request)
     gateway.update_metadata.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_legacy_empty_collection_strings_remain_missing() -> None:
+    """Empty legacy collection strings retain the existing repository semantics."""
+    gateway = create_autospec(MovieMetadataGateway, instance=True)
+    gateway.get.return_value = {
+        "id": "movie",
+        "revision": "old",
+        "title": "Legacy",
+        "tmdb_id": "42",
+        "metadata_enriched_at": None,
+        "screening_ids": [],
+        "directors": "",
+        "cast_members": "",
+        "genres": "",
+        "origin_countries": "",
+    }
+    repository = SupabaseMovieMetadataRepository(
+        gateway,
+        create_autospec(MovieMergeGateway, instance=True),
+    )
+    result = await repository.get("movie")
+    assert result is not None
+    assert result.values == MovieMetadataValues(title="Legacy")

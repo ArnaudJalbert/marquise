@@ -34,16 +34,22 @@ class SupabaseMovieMetadataGateway:
         quoted = schema.replace('"', '""')
         self._movies = f'"{quoted}".movies'
         self._screenings = f'"{quoted}".screenings'
+        self._revisions = f'"{quoted}".movie_reference_revisions'
 
     def _select(self) -> str:
-        # The persisted counter includes reference edits, including deletions.
+        # Committed transaction markers include reference edits and deletions.
         # xmin also distinguishes a deleted and recreated row with the same ID.
         return f"""
             SELECT m.*,
-                md5(row_to_json(m)::text || m.xmin::text) AS revision,
+                md5(row_to_json(m)::text || m.xmin::text ||
+                    r.revision::text) AS revision,
                 ARRAY(SELECT s.id FROM {self._screenings} s
                       WHERE s.movie_id = m.id ORDER BY s.id) AS screening_ids
             FROM {self._movies} m
+            CROSS JOIN LATERAL (
+                SELECT count(*) AS revision FROM {self._revisions} refs
+                WHERE refs.movie_id = m.id
+            ) r
         """
 
     async def get(self, movie_id: str) -> dict | None:
