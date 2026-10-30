@@ -1,6 +1,9 @@
 # Development and CI directories
 .git/
 .venv/
+web/
+.scratch/
+.turbo/
 tests/
 docs/
 .idea/

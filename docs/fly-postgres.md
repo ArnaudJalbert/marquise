@@ -166,6 +166,72 @@ There were zero dangling assignments. Comparing every row in all seven source
 tables before and after confirmed that Supabase was unchanged. These are setup
 counts, not a live status report. No catalog ingestion or API cutover was run.
 
+## Imports before API cutover
+
+The scheduled GitHub Actions import continues to use the existing Supabase
+`DATABASE_URL`. A manual `workflow_dispatch` run builds the production CLI image
+and runs it on a temporary Machine in `yyz` under the `marquise-db` Fly app.
+That Machine inherits the encrypted `DATABASE_URL` and `TMDB_API_KEY` Fly
+secrets. The workflow disables PostgreSQL autostop during the import, starts
+the Machine, and waits for its health checks. It restores autostop and stops
+PostgreSQL afterward. A shared Actions concurrency group queues scheduled and
+manual runs so they cannot write the catalog at the same time.
+
+The manual run accepts `days`, defaulting to 7. Its CLI result is streamed to the
+Actions log, and a failed cinema makes the CLI exit nonzero, failing the job.
+Since `fly machine run` returns after startup and does not propagate the
+container's exit status, [run_fly_import.sh](../scripts/run_fly_import.sh) waits
+for the stopped state, reads the recorded exit code, prints the Machine logs,
+and destroys the temporary Machine on success, failure, or timeout. The CLI
+image is pushed to the private Fly registry and is not deployed as the database
+app's running process.
+
+Before using the manual trigger, configure `TMDB_API_KEY` as a Fly app secret on
+`marquise-db`, and confirm `FLY_API_TOKEN` is a GitHub Actions secret. The app's
+`DATABASE_URL` must remain a Fly secret pointed at the Fly catalog. The
+scheduled job continues to read its GitHub `DATABASE_URL` and `TMDB_API_KEY`
+secrets, so it remains on Supabase until the separately reviewed cutover in
+#343.
+
+The first Fly import and its review belong to #342. Record provider coverage
+and failures, representative catalog rows, and any duplicate TMDB identities
+before changing the API connection.
+
+### First Fly import report
+
+The first seven-day import ran on October 30, 2026. It exited 1 after importing
+four of 14 assigned cinemas. It wrote 57 movies and 831 screenings. Beaubien,
+Cineplex Forum et VIP, Cineplex Royalmount, and du Parc produced screenings.
+Those records came from the `cinemacinema` and `cineplex` providers. The other
+five configured providers had no completed cinema import in this run.
+
+The CLI reported ten failures. One Cineplex request for Quartier Latin timed
+out. Cinéma du Musée failed on a TMDB identity conflict for `Sense and
+Sensibility`. The other eight failures were database connection errors after
+Fly stopped PostgreSQL: Moderne had a closed connection, and Public, Starcité,
+the Cinémathèque, both Ciné Starz cinemas, Scotiabank, and Théâtre Outremont
+received connection refusals.
+
+Fly Proxy's log at 18:51:29 UTC says it stopped the only PostgreSQL Machine
+because the app had excess capacity. PostgreSQL received SIGINT and shut down
+normally. The importer used the private `.internal` hostname, so its idle period
+while fetching provider data did not keep Fly Proxy traffic active. This was an
+autostop event, not a PostgreSQL crash. The database Machine is stopped again,
+its encrypted 1 GB volume remains attached, and the partial catalog still has 57
+movies and 831 screenings.
+
+No duplicate `tmdb_id` values exist in the partial catalog. The existing `Sense
+and Sensibility` row is year 2026 with TMDB ID `1503762`; the failed import
+encountered a different TMDB identity for the same title. The incoming ID was
+not included in the CLI error. Representative imported rows include `Pauline
+Julien : Femme pays` (TMDB `1232113`) and `Fjord` (TMDB `1401459`) at Beaubien,
+and `Fjord` at du Parc. `Le monde de Wishy` at Beaubien has no TMDB ID.
+
+A second attempt was interrupted before any catalog changes. Counts remained
+57 movies and 831 screenings. It is not a completed import and does not change
+the first-run report above. Provider coverage and the TMDB conflict remain for
+review in #342 before any API cutover.
+
 Disposable PostgreSQL integration tests exercise the operator command, exact
 configuration preservation, exclusion of nonempty source catalog/history,
 refusal of populated destinations and replay, and rollback on an insert failure.
