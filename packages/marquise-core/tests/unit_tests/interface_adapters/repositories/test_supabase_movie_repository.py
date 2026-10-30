@@ -56,7 +56,8 @@ def gateway_dict() -> dict:
 
 
 @pytest.mark.asyncio
-async def test_save(sample_movie: Movie) -> None:
+@pytest.mark.parametrize("update_existing", [True, False])
+async def test_save(sample_movie: Movie, update_existing: bool) -> None:
     """Test save delegates to gateway and maps result."""
     mock_gateway = create_autospec(MovieGateway, instance=True)
     mock_gateway.save.return_value = {
@@ -76,7 +77,8 @@ async def test_save(sample_movie: Movie) -> None:
     }
 
     repo = SupabaseMovieRepository(gateway=mock_gateway)
-    result = await repo.save(sample_movie)
+    operation = repo.save if update_existing else repo.create_or_reuse
+    result = await operation(sample_movie)
 
     assert result.id == MovieId(value="mov-123")
     assert result.title == "Inception"
@@ -100,6 +102,7 @@ async def test_save(sample_movie: Movie) -> None:
         rating="PG-13",
         origin_countries="United States,United Kingdom",
         tmdb_id=None,
+        update_existing=update_existing,
     )
 
 
@@ -257,6 +260,7 @@ async def test_save_handles_minimal_movie() -> None:
         rating=None,
         origin_countries=None,
         tmdb_id=None,
+        update_existing=True,
     )
 
 
@@ -310,6 +314,7 @@ async def test_save_handles_none_fields() -> None:
         rating=None,
         origin_countries=None,
         tmdb_id=None,
+        update_existing=True,
     )
 
 

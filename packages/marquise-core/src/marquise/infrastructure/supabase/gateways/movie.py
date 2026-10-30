@@ -48,6 +48,8 @@ class SupabaseMovieGateway:
         rating: str | None = None,
         origin_countries: str | None = None,
         tmdb_id: str | None = None,
+        *,
+        update_existing: bool = True,
     ) -> dict:
         """Insert or upsert a movie row.
 
@@ -67,6 +69,8 @@ class SupabaseMovieGateway:
             original_title: Original title in native language (optional).
             rating: Content rating (optional).
             origin_countries: Comma-separated origin countries (optional).
+            tmdb_id: Known TMDB identity, if any.
+            update_existing: Update matching titles, or return them unchanged.
 
         Returns:
             The inserted/updated row as a dict.
@@ -107,8 +111,8 @@ class SupabaseMovieGateway:
                         origin_countries = COALESCE(EXCLUDED.origin_countries,
                                                     movies.origin_countries),
                         tmdb_id = COALESCE(EXCLUDED.tmdb_id, movies.tmdb_id)
-                WHERE movies.tmdb_id IS NULL OR EXCLUDED.tmdb_id IS NULL
-                    OR movies.tmdb_id = EXCLUDED.tmdb_id
+                WHERE $15 AND (movies.tmdb_id IS NULL OR EXCLUDED.tmdb_id IS NULL
+                    OR movies.tmdb_id = EXCLUDED.tmdb_id)
                 RETURNING {_COLUMNS}
                 """,
                     movie_id,
@@ -125,6 +129,7 @@ class SupabaseMovieGateway:
                     rating,
                     origin_countries,
                     tmdb_id,
+                    update_existing,
                 )
         except UniqueViolationError as exc:
             if (
@@ -135,6 +140,16 @@ class SupabaseMovieGateway:
                 if existing is not None:
                     return existing
             raise
+        if row is None and not update_existing:
+            existing = (
+                await self.find_by_tmdb_id(tmdb_id) if tmdb_id is not None else None
+            )
+            if existing is None:
+                existing = await self.find_by_title(title)
+            if existing is not None and (
+                tmdb_id is None or existing["tmdb_id"] in {None, tmdb_id}
+            ):
+                return existing
         if row is None:
             raise GatewayError(f"Movie '{title}' already has a different TMDB id")
         return dict(row)

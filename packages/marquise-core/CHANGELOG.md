@@ -2,11 +2,13 @@
 
 Before 2026-07-15 this package was published as `marquise`.
 
-## 2026-10-29
+## 2026-10-30
 
 ### v0.2.28
 
 - Look up films in TMDB during imports. Reuse a movie when its TMDB id is already known, save the id for new movies, and leave uncertain matches on the existing title path. Add the nullable database column, a unique index, a migration, and PostgreSQL import tests. Apply the migration before deploying the new code. Closes #321, #322, #323.
+
+- Keep distinct TMDB identities separate when normalized titles collide. Concurrent imports reuse established movies without overwriting their details. Export the identity-conflict error through the public facade.
 
 ## 2026-10-08
 

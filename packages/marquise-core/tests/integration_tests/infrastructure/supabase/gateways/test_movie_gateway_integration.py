@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 
 from marquise.infrastructure.supabase.gateways.movie import SupabaseMovieGateway
@@ -291,3 +293,60 @@ async def test_find_all_with_title_filter_and_limit(
     assert page.total == 2
     assert len(page.rows) == 1
     assert page.rows[0]["title"] == "Space Odyssey Downtown"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("titles", "tmdb_id"),
+    [
+        (("Same Title", "Same Title"), "42"),
+        (("Same Title", "Same Title"), None),
+        (("Original", "Translated"), "42"),
+    ],
+)
+async def test_concurrent_import_saves_preserve_the_winning_movie(
+    movie_gateway: SupabaseMovieGateway,
+    titles: tuple[str, str],
+    tmdb_id: str | None,
+) -> None:
+    """Racing imports reuse the first row, including its original metadata."""
+    rows = await asyncio.gather(
+        *(
+            movie_gateway.save(
+                movie_id=f"race-{index}",
+                title=title,
+                tmdb_id=tmdb_id,
+                release_year=2000 + index,
+                description=f"description-{index}",
+                poster_url=f"poster-{index}",
+                update_existing=False,
+            )
+            for index, title in enumerate(titles)
+        )
+    )
+
+    assert rows[0] == rows[1]
+    assert await movie_gateway.find_by_id(rows[0]["id"]) == rows[0]
+    assert (await movie_gateway.find_all()).total == 1
+
+
+@pytest.mark.asyncio
+async def test_import_save_rejects_a_conflicting_identity_without_changes(
+    movie_gateway: SupabaseMovieGateway,
+) -> None:
+    """Create-or-reuse rejects a title owned by another known film."""
+    original = await movie_gateway.save(
+        movie_id="original", title="Same Title", tmdb_id="1", poster_url="original"
+    )
+
+    with pytest.raises(GatewayError, match="different TMDB id"):
+        await movie_gateway.save(
+            movie_id="conflicting",
+            title="Same Title",
+            tmdb_id="2",
+            poster_url="replacement",
+            update_existing=False,
+        )
+
+    assert await movie_gateway.find_by_id("original") == original
+    assert await movie_gateway.find_by_tmdb_id("2") is None
