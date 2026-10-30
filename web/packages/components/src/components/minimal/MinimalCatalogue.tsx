@@ -45,6 +45,26 @@ function SectionDescription({ text }: { text: string }) {
     </details>
   );
 }
+
+function EndSentinel({
+  enabled,
+  onReach,
+}: {
+  enabled: boolean;
+  onReach?: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const target = ref.current;
+    if (!enabled || !target || !onReach) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) onReach();
+    });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [enabled, onReach]);
+  return <div className="minimal-page-sentinel" ref={ref} aria-hidden="true" />;
+}
 export function MinimalMovieCard({
   movie,
   cinemas,
@@ -389,6 +409,8 @@ export function MinimalCatalogue({
   catalogueSearch,
   onCatalogueSearch,
   catalogueState = "ready",
+  catalogueHasMore = false,
+  onLoadMoreCatalogue,
   onCatalogueRetry,
   detailNotice,
   directoryNotice,
@@ -402,6 +424,8 @@ export function MinimalCatalogue({
   tomorrow,
   weekend,
   state = "ready",
+  hasMore = false,
+  onLoadMore,
   onRetry,
   onLoadWeek,
 }: MinimalCatalogueProps) {
@@ -668,19 +692,29 @@ export function MinimalCatalogue({
                         )}
                       </div>
                     ) : (
-                      <div className="minimal-grid">
-                        {matching.map((m) => (
-                          <MinimalMovieCard
-                            key={m.id}
-                            movie={m}
-                            cinemas={cinemas}
-                            expanded={previewId === m.id}
-                            onExpanded={(open) =>
-                              setPreviewId(open ? m.id : null)
-                            }
-                          />
-                        ))}
-                      </div>
+                      <>
+                        <div className="minimal-grid">
+                          {matching.map((m) => (
+                            <MinimalMovieCard
+                              key={m.id}
+                              movie={m}
+                              cinemas={cinemas}
+                              expanded={previewId === m.id}
+                              onExpanded={(open) =>
+                                setPreviewId(open ? m.id : null)
+                              }
+                            />
+                          ))}
+                        </div>
+                        <EndSentinel
+                          enabled={
+                            hasMore &&
+                            state !== "loading-more" &&
+                            state !== "error"
+                          }
+                          onReach={onLoadMore}
+                        />
+                      </>
                     )}
                     {state === "loading-more" && (
                       <p role="status" className="minimal-state">
@@ -720,26 +754,50 @@ export function MinimalCatalogue({
                 </label>
                 {catalogueState === "initial-loading" ? (
                   <p role="status">Loading movies…</p>
-                ) : catalogueState === "error" ? (
+                ) : catalogueState === "error" && !catalogueMovies.length ? (
                   <div role="alert">
                     <p>Could not load movies.</p>
                     <button onClick={onCatalogueRetry}>Retry</button>
                   </div>
                 ) : allMovieMatches.length ? (
-                  <div className="minimal-library-grid">
-                    {allMovieMatches.map((item) => (
-                      <article className="minimal-library-card" key={item.id}>
-                        <a
-                          href={`/movies/${encodeURIComponent(item.id)}`}
-                          aria-label={`View ${item.title}`}
-                        >
-                          <Poster movie={item} />
-                          <strong>{item.title}</strong>
-                          {item.year && <small>{item.year}</small>}
-                        </a>
-                      </article>
-                    ))}
-                  </div>
+                  <>
+                    <div className="minimal-library-grid">
+                      {allMovieMatches.map((item) => (
+                        <article className="minimal-library-card" key={item.id}>
+                          <a
+                            href={`/movies/${encodeURIComponent(item.id)}`}
+                            aria-label={`View ${item.title}`}
+                          >
+                            <Poster movie={item} />
+                            <strong>{item.title}</strong>
+                            {item.year && <small>{item.year}</small>}
+                          </a>
+                        </article>
+                      ))}
+                    </div>
+                    <EndSentinel
+                      enabled={
+                        catalogueHasMore &&
+                        catalogueState !== "loading-more" &&
+                        catalogueState !== "error"
+                      }
+                      onReach={onLoadMoreCatalogue}
+                    />
+                    {catalogueState === "loading-more" && (
+                      <p role="status" className="minimal-state">
+                        Loading more movies…
+                      </p>
+                    )}
+                    {catalogueState === "error" && (
+                      <div className="minimal-state" role="alert">
+                        <p>
+                          Could not load more movies. Your loaded movies are
+                          still here.
+                        </p>
+                        <button onClick={onCatalogueRetry}>Retry</button>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <p role="status">No movies found.</p>
                 )}

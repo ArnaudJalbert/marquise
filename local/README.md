@@ -94,15 +94,18 @@ uv run --with playwright python scripts/verify_local_stack.py
 The check passed with Chromium 156.0.8078.4. It queried every page of all 53
 catalogue movies, loaded each poster, and queried every page of the 350-show
 Dune window, asserted 25 per day across 14 days and seven cinemas, and exercised
-the actual React catalogue, all 53 local posters, combined title/cinema/language/hour
-filters, URL Back restoration, dense detail, and the catalogue-only slash-ID route
-including refresh. It opened the filter panel at desktop and mobile sizes, checked
-that it does not shift the controls or grid, and moved both time handles with
-keyboard, mouse, and touch input. All 20 browser API requests stayed on the local
-app's origin. No HTTP request was mocked or intercepted. It writes a local
-screenshot to `/tmp/marquise-local-stack/dense-schedule.png`.
+the actual React catalogue. Scrolling to the end appended each page in Screenings
+and Movies. Opening a movie from the bottom of the catalogue and using Back
+restored all 53 cards and the measured scroll position. The check also covered
+combined title/cinema/language/hour filters, dense detail, and the catalogue-only
+slash-ID route including refresh. It opened the filter panel at desktop and mobile
+sizes, checked that it does not shift the controls or grid, and moved both time
+handles with keyboard, mouse, and touch input. All 24 browser API requests stayed
+on the local app's origin. No HTTP request was mocked or intercepted. It writes
+local screenshots to `/tmp/marquise-local-stack/dense-schedule.png` and
+`/tmp/marquise-local-stack/movies-all-pages.png`.
 
-The local preview now includes the #333 listing and #335 screening filters. Movie
-detail, bounded append and restoration, and cinema browsing remain in progress.
+The local preview now includes the #333 listing, #335 screening filters, and #336
+bounded append and Back restoration. Cinema browsing remains in progress.
 This stack does not prove live provider data, Safari, protected writes, or
 deployment behavior.

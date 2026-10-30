@@ -259,6 +259,10 @@
   gap: 16px;
   align-items: start;
 }
+.minimal-page-sentinel {
+  width: 100%;
+  height: 1px;
+}
 .minimal-all-movies {
   margin-top: 24px;
 }

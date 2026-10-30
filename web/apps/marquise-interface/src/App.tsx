@@ -12,7 +12,15 @@ export function App({ client }: AppProps) {
   const [href, setHref] = useState(window.location.href);
   const [now, setNow] = useState(() => new Date().toISOString());
   useEffect(() => {
-    const onPopState = () => setHref(window.location.href);
+    const onPopState = () => {
+      setHref(window.location.href);
+      const scrollY =
+        typeof history.state?.scrollY === "number" ? history.state.scrollY : 0;
+      window.setTimeout(
+        () => window.scrollTo({ top: scrollY, behavior: "instant" }),
+        0,
+      );
+    };
     window.addEventListener("popstate", onPopState);
     const timer = window.setInterval(
       () => setNow(new Date().toISOString()),
@@ -26,7 +34,12 @@ export function App({ client }: AppProps) {
   const navigate = useCallback((next: string) => {
     const target = new URL(next, window.location.origin);
     if (target.href === window.location.href) return;
-    history.pushState(null, "", target);
+    history.replaceState(
+      { ...history.state, scrollY: window.scrollY },
+      "",
+      window.location.href,
+    );
+    history.pushState({ scrollY: 0 }, "", target);
     setHref(target.href);
     document.getElementById("minimal-main")?.focus({ preventScroll: true });
     if (!target.hash) window.scrollTo({ top: 0, behavior: "instant" });

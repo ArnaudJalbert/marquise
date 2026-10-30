@@ -40,9 +40,7 @@ def verify() -> None:
     assert catalogue["total"] == 53 and catalogue["pages"] == 3
     catalogue_items = list(catalogue["items"])
     for page in range(2, catalogue["pages"] + 1):
-        catalogue_items.extend(
-            read_page("movies", {"size": 24, "page": page})["items"]
-        )
+        catalogue_items.extend(read_page("movies", {"size": 24, "page": page})["items"])
     assert len(catalogue_items) == catalogue["total"]
     assert all(item["poster_url"] for item in catalogue_items)
     assert not any(
@@ -118,6 +116,12 @@ def verify() -> None:
         )
         assert all(loaded_posters), "At least one local catalogue poster failed to load"
         expect(page.locator(".minimal-card")).to_have_count(24)
+        for loaded in range(24, first["total"], 24):
+            page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            expect(page.locator(".minimal-card")).to_have_count(
+                min(loaded + 24, first["total"])
+            )
+        page.evaluate("window.scrollTo(0, 0)")
         before = page.evaluate(
             """() => Object.fromEntries(
                 ['.minimal-shortcuts', '.minimal-grid'].map(selector => {
@@ -194,6 +198,24 @@ def verify() -> None:
         page.go_back()
         expect(page.get_by_role("searchbox", name="Movie title")).to_have_value("")
         page.get_by_role("link", name="Movies", exact=True).click()
+        expect(page.locator(".minimal-library-card")).to_have_count(24)
+        for loaded in range(24, catalogue["total"], 24):
+            page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            expect(page.locator(".minimal-library-card")).to_have_count(
+                min(loaded + 24, catalogue["total"])
+            )
+        page.screenshot(path=str(output / "movies-all-pages.png"), full_page=True)
+        page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+        saved_scroll = page.evaluate("window.scrollY")
+        last_movie = page.locator(".minimal-library-card").last
+        last_title = last_movie.locator("strong").inner_text()
+        last_movie.get_by_role("link").click()
+        expect(page.get_by_role("heading", name=last_title, exact=True)).to_be_visible()
+        page.go_back()
+        expect(page.locator(".minimal-library-card")).to_have_count(53)
+        page.wait_for_function(
+            "expected => Math.abs(window.scrollY - expected) < 3", arg=saved_scroll
+        )
         page.get_by_role("searchbox", name="Search movies").fill("Dune: Part Two")
         link = page.get_by_role("link", name="View Dune: Part Two")
         expect(link).to_be_visible()
@@ -219,6 +241,19 @@ def verify() -> None:
             )
         ).to_be_visible()
         assert api_urls and all(url.startswith(ORIGIN + "/v1/") for url in api_urls)
+        catalogue_request_pages = {
+            parse_qs(urlparse(url).query).get("page", [""])[0]
+            for url in api_urls
+            if urlparse(url).path == "/v1/movies"
+            and parse_qs(urlparse(url).query).get("size") == ["24"]
+        }
+        assert catalogue_request_pages == {"1", "2", "3"}
+        screening_request_pages = {
+            parse_qs(urlparse(url).query).get("page", [""])[0]
+            for url in api_urls
+            if urlparse(url).path == "/v1/screening-movies"
+        }
+        assert screening_request_pages == {"1", "2"}
         mobile = browser.new_page(
             viewport={"width": 390, "height": 844}, has_touch=True
         )

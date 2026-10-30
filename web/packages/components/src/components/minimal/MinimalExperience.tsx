@@ -8,6 +8,7 @@ import {
   type ScreeningApi,
 } from "marquise-client";
 import { useResource } from "../discovery/use-resource";
+import { usePageResource } from "../discovery/use-page-resource";
 import { MinimalCatalogue } from "./MinimalCatalogue";
 import { addDays, decodePathId, timeToHour } from "./catalogue-format";
 import type {
@@ -51,13 +52,13 @@ function movieData(item: MovieApi): CatalogueMovie {
 
 function resourceState(resource: {
   loading: boolean;
+  loadingMore: boolean;
   error?: Error;
 }): CatalogueState {
-  return resource.loading
-    ? "initial-loading"
-    : resource.error
-      ? "error"
-      : "ready";
+  if (resource.loadingMore) return "loading-more";
+  if (resource.loading) return "initial-loading";
+  if (resource.error) return "error";
+  return "ready";
 }
 
 const screeningLanguages = ["VO", "VOA", "VOF", "VOSTF", "VOSTA", "VF"];
@@ -127,14 +128,14 @@ export function MinimalExperience({
     [href, navigate],
   );
 
-  const screenings = useResource(
+  const screenings = usePageResource(
     useCallback(
-      (signal: AbortSignal) =>
+      (page: number, signal: AbortSignal) =>
         client.fetchScreeningMoviesPage(
           {
             start: selection.start,
             end: selection.end,
-            page: 1,
+            page,
             title: selection.title,
             cinemas: selection.cinemas,
             languages: selection.languages,
@@ -154,6 +155,15 @@ export function MinimalExperience({
         selection.to,
       ],
     ),
+    JSON.stringify([
+      selection.start,
+      selection.end,
+      selection.title,
+      selection.cinemas,
+      selection.languages,
+      selection.from,
+      selection.to,
+    ]),
     isScreenings &&
       selection.start <= selection.end &&
       (!selection.from || !selection.to || selection.from <= selection.to),
@@ -170,12 +180,13 @@ export function MinimalExperience({
     }, [client]),
     isScreenings,
   );
-  const catalogue = useResource(
+  const catalogue = usePageResource(
     useCallback(
-      (signal: AbortSignal) =>
-        client.fetchMoviePage(1, signal, search.trim() || undefined, 24),
+      (page: number, signal: AbortSignal) =>
+        client.fetchMoviePage(page, signal, search.trim() || undefined, 24),
       [client, search],
     ),
+    `catalogue:${search.trim()}`,
     isCatalogue,
   );
   const detail = useResource(
@@ -230,7 +241,7 @@ export function MinimalExperience({
     },
     [client],
   );
-  const movies = (screenings.data?.items ?? []).map((item) => ({
+  const movies = screenings.items.map((item) => ({
     ...movieData(item),
     screenings: item.screenings.map(screeningData),
   }));
@@ -238,7 +249,7 @@ export function MinimalExperience({
     ? detail.data
       ? [detail.data]
       : []
-    : (catalogue.data?.items ?? []).map(movieData);
+    : catalogue.items.map(movieData);
   const cinemas = (cinemaResource.data ?? []).map(({ id, name }) => ({
     id,
     name,
@@ -252,6 +263,8 @@ export function MinimalExperience({
       catalogueSearch={search}
       onCatalogueSearch={setSearch}
       catalogueState={resourceState(catalogue)}
+      catalogueHasMore={catalogue.hasMore}
+      onLoadMoreCatalogue={catalogue.loadNext}
       onCatalogueRetry={catalogue.retry}
       cinemas={url.pathname.startsWith("/cinemas") ? [] : cinemas}
       screeningLanguages={screeningLanguages}
@@ -264,6 +277,8 @@ export function MinimalExperience({
       weekend={weekendDates(today)}
       state={resourceState(screenings)}
       onRetry={screenings.retry}
+      hasMore={screenings.hasMore}
+      onLoadMore={screenings.loadNext}
       onLoadWeek={loadWeek}
       detailNotice={
         detail.loading ? (
