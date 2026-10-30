@@ -3,7 +3,7 @@
 INSERT INTO marquise.cinemas(id,name) VALUES
 ('cinema-1','Test Cinema One'),('cinema-2','Test Cinema Two');
 INSERT INTO marquise.movies(id,title,directors,description,poster_url)
-SELECT 'film-' || lpad(i::text,2,'0'), 'Controlled film ' || lpad(i::text,2,'0'),
+SELECT CASE WHEN i = 27 THEN 'catalogue/27' ELSE 'film-' || lpad(i::text,2,'0') END, 'Controlled film ' || lpad(i::text,2,'0'),
        'Test Director', 'Controlled integration data, not a live listing.',
        CASE WHEN i % 3 = 0 THEN NULL ELSE 'https://posters.example/' || i || '.png' END
 FROM generate_series(0,27) i;

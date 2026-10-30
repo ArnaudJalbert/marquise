@@ -87,7 +87,7 @@ pnpm --filter marquise-interface dev
   earliest upcoming show and ID, plus at most three qualifying screenings each.
   Catalogue pages contain 24 movies and accept an endpoint title search without
   screening constraints. Both expose authoritative totals and page counts.
-- Movie routes use `GET /v1/movies/<encoded-id>` and the existing exact-ID
+- Movie routes use `GET /v1/movies?ids=<encoded-id>&size=1` and the existing exact-ID
   screening endpoint for inclusive Montreal date windows. Metadata and booking
   URLs remain real. Missing posters, metadata, and booking links have plain
   fallbacks. API failures show Retry and never substitute sample data.

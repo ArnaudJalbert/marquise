@@ -1574,3 +1574,17 @@ def test_screening_movie_metadata_and_preview_response(
         data["items"][0]["screenings"][0]["ticket_url"]
         == "https://tickets.example/original"
     )
+
+
+def test_list_movies_preserves_opaque_slash_id(
+    client: TestClient, factory: MagicMock
+) -> None:
+    """The one-ID query preserves slashes that cannot survive route matching."""
+    factory.list_movies_use_case.execute.return_value = SimpleNamespace(
+        movies=[], total=0
+    )
+    response = client.get("/v1/movies?ids=catalogue%2Fid&page=1&size=1")
+    assert response.status_code == 200
+    factory.list_movies_use_case.execute.assert_awaited_once_with(
+        ListMoviesUseCase.InputData(ids=("catalogue/id",), page=1, size=1)
+    )

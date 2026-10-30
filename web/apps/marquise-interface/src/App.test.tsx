@@ -197,6 +197,9 @@ it("shows an initial screening error with Retry, then an honest empty state", as
   ).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Retry" }));
   await screen.findByRole("heading", { name: "No matching screenings" });
+  expect(screen.queryByRole("button", { name: "Reset selection" })).toBeNull();
+  fireEvent.click(screen.getByRole("link", { name: "Browse movies" }));
+  await screen.findByRole("link", { name: "View Catalogue only" });
   expect(client.fetchScreeningMoviesPage).toHaveBeenCalledTimes(2);
 });
 

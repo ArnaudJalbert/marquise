@@ -122,16 +122,15 @@ export class HttpMarquiseClient
     id: string,
     signal?: AbortSignal,
   ): Promise<MovieApi> {
-    try {
-      return await this.fetchJson(
-        `/v1/movies/${encodeURIComponent(id)}`,
-        signal,
-      );
-    } catch (error) {
-      if (error instanceof HttpMarquiseClientError && error.status === 404)
-        throw new MovieNotFoundError(id);
-      throw error;
-    }
+    // Query IDs preserve opaque slashes that ASGI decodes before path matching.
+    const params = new URLSearchParams({ ids: id, page: "1", size: "1" });
+    const result = await this.fetchJson<Page<MovieApi>>(
+      `/v1/movies?${params}`,
+      signal,
+    );
+    const movie = result.items.find((item) => item.id === id);
+    if (!movie) throw new MovieNotFoundError(id);
+    return movie;
   }
   async fetchScreeningRangePage(
     movieId: string,
