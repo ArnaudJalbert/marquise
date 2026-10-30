@@ -372,7 +372,6 @@ async def test_additive_migration_is_bounded_rerunnable_and_preserves_legacy(
                 "title": "Original",
                 "tmdb_id": "42",
                 "metadata_enriched_at": None,
-                "metadata_revision": 0,
             }
             await conn.execute(
                 "UPDATE migration_359.movies SET metadata_enriched_at = $1", STAMP
@@ -475,3 +474,42 @@ async def test_migration_failure_rolls_back_all_additions(
         finally:
             await conn.execute("ROLLBACK")
             await conn.execute("DROP SCHEMA IF EXISTS failure_359 CASCADE")
+
+
+@pytest.mark.asyncio
+async def test_reference_moves_invalidate_both_movies_and_rollback_markers(
+    db_pool: asyncpg.Pool,
+    movie_gateway: SupabaseMovieGateway,
+) -> None:
+    """Moves invalidate both owners; rolled-back edits leave snapshots unchanged."""
+    for movie_id in ("a", "b", "unrelated"):
+        await movie_gateway.save(movie_id, movie_id)
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            f'''INSERT INTO "{SCHEMA}".cinemas VALUES ('cin', 'Cinema')'''
+        )
+        await conn.execute(f'''INSERT INTO "{SCHEMA}".screenings
+            (id, movie_id, cinema_id, showtime)
+            VALUES ('screening', 'a', 'cin', '2026-10-30 19:00')''')
+    gateway = SupabaseMovieMetadataGateway(db_pool, SCHEMA)
+    before = {
+        movie_id: await gateway.get(movie_id) for movie_id in ("a", "b", "unrelated")
+    }
+    async with db_pool.acquire() as conn:
+        await conn.execute(f'''UPDATE "{SCHEMA}".screenings
+            SET movie_id = 'b' WHERE id = 'screening' ''')
+    for movie_id in ("a", "b"):
+        row = await gateway.get(movie_id)
+        old = before[movie_id]
+        assert row is not None and old is not None
+        assert row["revision"] != old["revision"]
+    assert await gateway.get("unrelated") == before["unrelated"]
+    moved = await gateway.get("b")
+    async with db_pool.acquire() as conn:
+        transaction = conn.transaction()
+        await transaction.start()
+        await conn.execute(
+            f'''DELETE FROM "{SCHEMA}".screenings WHERE id = 'screening' '''
+        )
+        await transaction.rollback()
+    assert await gateway.get("b") == moved

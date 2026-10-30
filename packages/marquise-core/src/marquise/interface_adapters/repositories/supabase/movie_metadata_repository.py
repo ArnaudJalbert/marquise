@@ -82,7 +82,7 @@ class SupabaseMovieMetadataRepository(MovieMetadataRepository):
         values["cast"] = row.get("cast_members")
         for name in ("directors", "cast", "genres", "origin_countries"):
             raw = values[name]
-            values[name] = tuple(raw.split(",")) if raw is not None else None
+            values[name] = tuple(raw.split(",")) if raw else None
         return MovieMetadataSnapshot(
             movie_id=row["id"],
             revision=row["revision"],

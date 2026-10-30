@@ -181,22 +181,28 @@ Apply [the additive lifecycle migration](../scripts/migrations/359-movie-enrichm
 before deploying metadata persistence. The prerequisite #321 migration must already
 provide `movies.tmdb_id` and its unique index. The new nullable
 `metadata_enriched_at TIMESTAMPTZ` records only a successful atomic metadata write.
-The internal `metadata_revision` counter and triggers invalidate snapshots on
-movie writes and screening reference changes, including insert/delete cycles.
+The internal `movie_reference_revisions` table and screening trigger invalidate
+snapshots on reference changes, including insert/delete cycles. Each transaction
+that changes a movie's screenings appends one marker. Markers remain after deletion
+to prevent old revisions becoming valid again. The table has row-level security
+and no client policies and requires a trusted backend role. Snapshot reads count
+that movie's markers through the primary-key index; storage grows with committed
+reference-writing transactions. Do not prune markers while snapshots may be in
+use. Movie writes also change snapshots.
 An existing TMDB ID with a NULL stamp remains pending first enrichment. No rows
 are matched, enriched, merged, deleted or backfilled by this migration.
 
 The script targets `marquise.movies`. For a disposable test or custom schema,
-change that qualified table name before running it. Use an approved quiet window.
+replace every `marquise.` schema qualifier before running it. Use an approved quiet window.
 The transaction has a 5-second lock timeout and 60-second statement timeout;
-adding the columns and triggers takes locks on movies and screenings. On failure, issue `ROLLBACK` in the
-same session and inspect the cause before retrying. Rerunning preserves both
+adding the column and trigger takes locks on movies and screenings. On failure,
+issue `ROLLBACK` in the same session and inspect the cause before retrying. Rerunning preserves both
 pending rows and existing completion stamps. Bootstrap scripts create the column
 for fresh databases but do not upgrade existing tables.
 
-Verify both columns, the movie and screening revision triggers, and unchanged
-legacy metadata before enabling
-metadata persistence. Application rollback can leave the additive columns and triggers in place;
-dropping it would discard successful-enrichment history and is unnecessary. This
-change supplies no live rollout and no composition-root wiring. #355 owns wiring
-and assembled end-to-end verification; #356 owns guarded merge transactions.
+Verify the timestamp column, marker table, screening trigger and unchanged
+legacy metadata before enabling metadata persistence. Application rollback can
+leave the additive column, table and trigger in place. Dropping the timestamp
+would discard successful-enrichment history and is unnecessary. This change
+supplies no live rollout and no composition-root wiring. #355 owns wiring and
+assembled end-to-end verification; #356 owns guarded merge transactions.
