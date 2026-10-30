@@ -4,6 +4,10 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-10-30
 
+### v0.2.30
+
+- Add an injectable TMDB metadata HTTP source and adapter for ordered movie/person discovery, verified translations and aliases, directed credits, localized text and posters, media and certifications. Preserve partial retrieval and typed sanitized failures. Factory and import integration remain in #355. Closes #350.
+
 ### v0.2.29
 
 - Publish additive metadata facts, workflow DTOs and execution/persistence contracts for #358. Distinguish confirmed TMDB identity from successful enrichment without changing existing callers. Final integration remains in #355.

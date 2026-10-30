@@ -1,0 +1,8 @@
+{
+  "id": 1765072,
+  "translations": [
+    {"iso_639_1": "fr", "iso_3166_1": "CA", "data": {"title": "Vous pouvez tout voir", "overview": "Synopsis canadien"}},
+    {"iso_639_1": "en", "iso_3166_1": "US", "data": {"title": "You Can See Everything", "overview": "English synopsis"}},
+    {"iso_639_1": "fr", "iso_3166_1": "FR", "data": {"title": "", "overview": ""}}
+  ]
+}
