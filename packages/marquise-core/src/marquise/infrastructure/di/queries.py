@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import asyncpg
 
+from marquise.application.queries.browse_screening_movies import (
+    BrowseScreeningMoviesQuery,
+)
 from marquise.application.queries.get_cinema_screenings import GetCinemaScreeningsQuery
 from marquise.application.queries.get_movie_screenings import GetMovieScreeningsQuery
 from marquise.application.queries.get_screening import GetScreeningQuery
@@ -13,11 +18,17 @@ from marquise.application.queries.list_cinema_source_assignments import (
 from marquise.application.queries.search_screenings import SearchScreeningsQuery
 from marquise.infrastructure.supabase.gateways.cinema import SupabaseCinemaGateway
 from marquise.infrastructure.supabase.gateways.movie import SupabaseMovieGateway
+from marquise.infrastructure.supabase.gateways.screening_movie_reader import (
+    SupabaseScreeningMovieReadGateway,
+)
 from marquise.infrastructure.supabase.gateways.screening_reader import (
     SupabaseScreeningReadGateway,
 )
 from marquise.interface_adapters.readers.cinema_source_assignment_reader import (
     SupabaseCinemaSourceAssignmentReader,
+)
+from marquise.interface_adapters.readers.screening_movie_reader import (
+    SupabaseScreeningMovieReader,
 )
 from marquise.interface_adapters.readers.screening_reader import SupabaseScreeningReader
 from marquise.interface_adapters.repositories.supabase.cinema_repository import (
@@ -88,4 +99,16 @@ def build_search_screenings_query(
         movie_repository=SupabaseMovieRepository(
             gateway=SupabaseMovieGateway(pool=pool, schema=schema)
         ),
+    )
+
+
+def build_browse_screening_movies_query(
+    pool: asyncpg.Pool, schema: str
+) -> BrowseScreeningMoviesQuery:
+    """Build the movie-first reader and inject the request clock."""
+    return BrowseScreeningMoviesQuery(
+        reader=SupabaseScreeningMovieReader(
+            gateway=SupabaseScreeningMovieReadGateway(pool, schema)
+        ),
+        clock=lambda: datetime.now(UTC),
     )

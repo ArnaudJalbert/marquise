@@ -1,11 +1,11 @@
 /* The shared component package owns the interface and design tokens. */
 html {
-  background: #14181c;
+  background: #fff;
   scroll-behavior: smooth;
 }
 body {
   margin: 0;
-  background: #14181c;
+  background: #fff;
 }
 @media (prefers-reduced-motion: reduce) {
   html {

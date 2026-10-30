@@ -10,6 +10,7 @@ from __future__ import annotations
 import marquise
 
 EXPECTED_PUBLIC_SURFACE: set[str] = {
+    "BrowseScreeningMoviesQuery",
     "AccountAlreadyExistsError",
     "ApplicationError",
     "AssignSourceUseCase",

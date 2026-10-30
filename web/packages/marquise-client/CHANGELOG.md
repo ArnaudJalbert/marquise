@@ -2,6 +2,8 @@
 
 ## 2026-10-30
 
+- Add typed, bounded movie-first listing reads and abortable exact movie metadata. Allow 24-item catalogue pages independently of screening filters. Supports #333.
+
 ### Changes
 
 - Add single-page movie catalogue search and exact-movie screening date-window reads with cancellation signals, typed API responses, and inclusive Montréal calendar-day bounds.

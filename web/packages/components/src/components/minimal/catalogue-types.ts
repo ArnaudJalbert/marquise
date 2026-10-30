@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 export interface CatalogueCinema {
   id: string;
   name: string;
@@ -41,6 +42,15 @@ export interface MinimalCatalogueProps {
   movies: readonly CatalogueMovie[];
   catalogueMovies?: readonly CatalogueMovie[];
   catalogueNotice?: string;
+  /** Server results have already been filtered, ordered and bounded. */
+  serverResults?: boolean;
+  showScreeningFilters?: boolean;
+  catalogueSearch?: string;
+  onCatalogueSearch?: (title: string) => void;
+  catalogueState?: CatalogueState;
+  onCatalogueRetry?: () => void;
+  detailNotice?: ReactNode;
+  directoryNotice?: ReactNode;
   cinemas: readonly CatalogueCinema[];
   screeningLanguages: readonly string[];
   selection: CatalogueSelection;
