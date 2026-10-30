@@ -32,8 +32,14 @@ export function App({ client }: AppProps) {
     };
   }, []);
   const navigate = useCallback((next: string) => {
+    const current = new URL(window.location.href);
     const target = new URL(next, window.location.origin);
     if (target.href === window.location.href) return;
+    const sameSectionQuery =
+      current.pathname === "/" &&
+      target.pathname === current.pathname &&
+      current.searchParams.get("section") ===
+        target.searchParams.get("section");
     history.replaceState(
       { ...history.state, scrollY: window.scrollY },
       "",
@@ -41,8 +47,10 @@ export function App({ client }: AppProps) {
     );
     history.pushState({ scrollY: 0 }, "", target);
     setHref(target.href);
-    document.getElementById("minimal-main")?.focus({ preventScroll: true });
-    if (!target.hash) window.scrollTo({ top: 0, behavior: "instant" });
+    if (!sameSectionQuery) {
+      document.getElementById("minimal-main")?.focus({ preventScroll: true });
+      if (!target.hash) window.scrollTo({ top: 0, behavior: "instant" });
+    }
   }, []);
   return (
     <MinimalExperience

@@ -320,6 +320,24 @@ it("shows Screenings filters, shares their URL state, and restores browser histo
   );
 });
 
+it("keeps the title filter focused while its URL and results update", async () => {
+  const client = clients();
+  render(<App client={client} />);
+  await screen.findByRole("link", { name: "View Wanted film" });
+  fireEvent.click(screen.getByText("Filters"));
+  const title = screen.getByRole("searchbox", { name: "Movie title" });
+  title.focus();
+  fireEvent.change(title, { target: { value: "Dune" } });
+
+  await waitFor(() => {
+    expect(client.fetchScreeningMoviesPage).toHaveBeenLastCalledWith(
+      expect.objectContaining({ title: "Dune" }),
+      expect.any(AbortSignal),
+    );
+  });
+  expect(document.activeElement).toBe(title);
+});
+
 it("does not show results from a superseded screening query", async () => {
   const client = clients();
   let resolveOld: (result: Page<ScreeningMovieApi>) => void = () => {};
