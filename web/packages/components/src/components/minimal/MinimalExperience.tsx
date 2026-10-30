@@ -155,15 +155,6 @@ export function MinimalExperience({
         selection.to,
       ],
     ),
-    JSON.stringify([
-      selection.start,
-      selection.end,
-      selection.title,
-      selection.cinemas,
-      selection.languages,
-      selection.from,
-      selection.to,
-    ]),
     isScreenings &&
       selection.start <= selection.end &&
       (!selection.from || !selection.to || selection.from <= selection.to),
@@ -186,7 +177,6 @@ export function MinimalExperience({
         client.fetchMoviePage(page, signal, search.trim() || undefined, 24),
       [client, search],
     ),
-    `catalogue:${search.trim()}`,
     isCatalogue,
   );
   const detail = useResource(
