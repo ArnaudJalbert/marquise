@@ -52,14 +52,15 @@ requested window. Detail and cinema completion remain separate slices.
 | `uv run ruff check .` | Pass |
 | `uv run ruff format --check .` | Pass |
 | `uv run ty check packages/marquise-core/src` | Pass |
-| `uv run pytest packages/marquise-core/tests/unit_tests --cov=marquise --cov-report=term --cov-fail-under=70 -q` | 772 pass, 82.66% coverage before the additional adapter test |
+| `uv run lint-imports` | Public-facade contract kept |
+| `uv run pytest packages/marquise-core/tests/unit_tests --cov=marquise --cov-report=term --cov-fail-under=70 -q` | 773 pass, 82.72% coverage |
 | `uv run pytest packages/marquise-core/tests/unit_tests/interface_adapters/readers/test_screening_movie_reader.py -q` | 1 pass, no I/O |
 | `uv run pytest apps/marquise-api/tests -q` | 306 pass |
 | `uv run pytest apps/marquise-cli/tests -q` | 96 pass |
 | `DATABASE_URL=postgresql://postgres:marquise-test@127.0.0.1:55433/marquise_test uv run pytest packages/marquise-core/tests/integration_tests/infrastructure/supabase/gateways/test_screening_movie_reader.py -q` | 2 pass |
 | From `web/`: `pnpm lint -- --threads=2` | Pass |
 | From `web/`: `pnpm typecheck` | Pass |
-| From `web/`: `pnpm test -- --maxWorkers=2` | 64 client, 178 component/demo, 17 interface tests pass |
+| From `web/`: `pnpm test -- --maxWorkers=2` | 64 client, 178 component/demo, 18 interface tests pass |
 | From `web/`: `VITE_MARQUISE_API_BASE_URL=http://127.0.0.1:18033 pnpm build` | Pass, emitted CSS check passes |
 | From `web/`: `node packages/components/demo/check-isolation.mjs` | Pass across 37 library files |
 | `uv run --with playwright python scripts/verify_browse_ui.py` | Pass against the built app and real controlled API/database |
