@@ -1,0 +1,712 @@
+.minimal-site {
+  --line: #ddd;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #000;
+  background: #fff;
+  max-width: 1024px;
+  margin: auto;
+  padding: 0 20px 40px;
+}
+.minimal-site *,
+.minimal-site *::before,
+.minimal-site *::after {
+  box-sizing: border-box;
+}
+.minimal-site a {
+  color: #000;
+  text-decoration: none;
+}
+.minimal-site a:hover {
+  text-decoration: underline;
+}
+.minimal-site button,
+.minimal-site input,
+.minimal-site summary {
+  font: inherit;
+  color: #000;
+  accent-color: #000;
+}
+.minimal-site button,
+.minimal-site input:not([type="checkbox"]),
+.minimal-site summary {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  min-height: 44px;
+  padding: 8px 12px;
+}
+.minimal-site button,
+.minimal-site summary {
+  cursor: pointer;
+}
+.minimal-site :focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 3px;
+}
+.minimal-site h1 {
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 500;
+  margin: 0 0 12px;
+}
+.minimal-site h2 {
+  font-size: 18px;
+  font-weight: 500;
+}
+.minimal-site h3,
+.minimal-site h4 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 12px 0 4px;
+}
+.minimal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 64px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 24px;
+}
+.minimal-nav .minimal-wordmark {
+  font-size: 20px;
+  letter-spacing: -0.6px;
+}
+.minimal-nav nav {
+  display: flex;
+  gap: 24px;
+}
+.minimal-nav nav a {
+  padding: 12px 0;
+}
+.minimal-nav [aria-current] {
+  text-decoration: underline;
+  text-underline-offset: 6px;
+}
+.minimal-filters {
+  margin-bottom: 24px;
+}
+.minimal-search-dates {
+  display: grid;
+  grid-template-columns: 1fr 180px 180px;
+  gap: 12px;
+}
+.minimal-search-dates label {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  min-width: 0;
+}
+.minimal-search-dates input {
+  width: 100%;
+  min-width: 0;
+}
+.minimal-shortcuts {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+  flex-wrap: wrap;
+}
+.minimal-shortcuts .minimal-shortcut-active {
+  background: #e2e2e2;
+  border-color: #777;
+  box-shadow: inset 0 -2px #111;
+}
+.minimal-other-filters summary {
+  width: fit-content;
+}
+.minimal-shortcuts > .minimal-other-filters {
+  flex: 0 0 auto;
+  width: fit-content;
+}
+.minimal-shortcuts > .minimal-other-filters[open] > .minimal-filter-panels {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 5;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 16px;
+  border: 1px solid #bbb;
+  background: #fff;
+  box-shadow: 0 4px 14px #0002;
+}
+.minimal-filter-panels {
+  display: flex;
+  gap: 20px;
+  padding: 16px 0;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--line);
+}
+.minimal-filter-panels fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  flex: 1 1 200px;
+}
+.minimal-filter-panels legend {
+  font-weight: 500;
+}
+.minimal-filter-panels label {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  gap: 8px;
+}
+.minimal-filter-panels input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+}
+.minimal-filter-actions {
+  flex-basis: 100%;
+  display: flex;
+}
+.minimal-filter-actions > button {
+  min-height: 36px;
+  padding: 6px 10px;
+  align-self: flex-start;
+}
+.minimal-time-range-control {
+  min-width: 0;
+  padding: 8px 4px 0;
+}
+.minimal-time-range-values,
+.minimal-time-range-ticks {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+.minimal-time-range {
+  height: 28px;
+  position: relative;
+  margin: 4px 8px 0;
+}
+.minimal-time-range::before,
+.minimal-time-range::after {
+  content: "";
+  position: absolute;
+  top: 12px;
+  height: 4px;
+  border-radius: 2px;
+}
+.minimal-time-range::before {
+  left: 0;
+  right: 0;
+  background: #ddd;
+}
+.minimal-time-range::after {
+  left: var(--range-start);
+  width: calc(var(--range-end) - var(--range-start));
+  background: #111;
+}
+.minimal-time-range input[type="range"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 28px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  appearance: none;
+  background: transparent;
+  pointer-events: none;
+  z-index: 1;
+}
+.minimal-time-range input[type="range"]::-webkit-slider-runnable-track {
+  height: 28px;
+  background: transparent;
+}
+.minimal-time-range input[type="range"]::-moz-range-track {
+  height: 28px;
+  background: transparent;
+}
+.minimal-time-range input[type="range"]::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  margin-top: 6px;
+  appearance: none;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #111;
+  box-shadow: 0 0 0 1px #111;
+  pointer-events: auto;
+  cursor: ew-resize;
+}
+.minimal-time-range input[type="range"]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #111;
+  box-shadow: 0 0 0 1px #111;
+  pointer-events: auto;
+  cursor: ew-resize;
+}
+.minimal-time-range-ticks {
+  color: #595959;
+  font-size: 10px;
+}
+.minimal-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.minimal-all-movies {
+  margin-top: 24px;
+}
+.minimal-all-movies-search {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  margin: 0;
+}
+.minimal-all-movies-search input {
+  width: 100%;
+}
+.minimal-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.minimal-library-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.minimal-all-movies > p[role="status"] {
+  margin: 16px 0 0;
+}
+.minimal-section-description {
+  margin: 0 0 12px;
+  font-size: 12px;
+}
+.minimal-section-description summary {
+  width: fit-content;
+  min-height: 0;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: #595959;
+  cursor: pointer;
+}
+.minimal-section-description p {
+  margin: 4px 0 0;
+  color: #595959;
+}
+.minimal-library-card {
+  min-width: 0;
+}
+.minimal-library-card a {
+  display: grid;
+  gap: 4px;
+}
+.minimal-library-card strong {
+  font-size: 12px;
+  line-height: 1.3;
+}
+.minimal-library-card small {
+  color: #595959;
+}
+.minimal-card {
+  min-width: 0;
+  position: relative;
+}
+.minimal-card.is-open {
+  z-index: 2;
+}
+.minimal-poster {
+  width: 100%;
+  aspect-ratio: 2/3;
+  object-fit: cover;
+  display: block;
+  background: #f2f2f2;
+}
+.minimal-missing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: #595959;
+  text-align: center;
+  padding: 12px;
+}
+.minimal-caption {
+  display: flex;
+  min-height: 52px;
+  height: 52px;
+  gap: 4px;
+  align-items: start;
+  padding-top: 2px;
+}
+.minimal-caption > a {
+  min-height: 36px;
+  font-size: 12px;
+  line-height: 16px;
+  padding-top: 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex: 1;
+}
+.minimal-caption button {
+  flex: 0 0 36px;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  font-size: 17px;
+}
+.minimal-preview {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  max-height: min(240px, 50vh);
+  overflow-y: auto;
+  z-index: 3;
+  border: 1px solid #aaa;
+  background: #fff;
+  padding: 8px;
+  box-shadow: 0 4px 12px #00000012;
+  overflow-wrap: anywhere;
+}
+.minimal-preview .minimal-preview-close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  border: 0;
+  padding: 0;
+  min-width: 24px;
+  min-height: 24px;
+  line-height: 1;
+}
+.minimal-preview .minimal-cinema-showtimes h3 {
+  margin-top: 0;
+  padding-right: 24px;
+}
+.minimal-preview p {
+  margin: 4px 0;
+  font-size: 12px;
+}
+.minimal-time {
+  display: inline-block;
+  margin: 4px 8px 4px 0;
+}
+.minimal-time a,
+.minimal-preview > a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.minimal-time small {
+  font-size: 12px;
+  color: #595959;
+}
+.minimal-preview .minimal-time a,
+.minimal-preview > a {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+}
+.minimal-preview .minimal-time {
+  display: block;
+  margin: 2px 0;
+}
+.minimal-week-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0;
+}
+.minimal-days-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.minimal-days-control select {
+  min-height: 36px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: #fff;
+  color: #000;
+  font: inherit;
+}
+.minimal-week-nav button {
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+}
+.minimal-week-nav strong {
+  font-size: 13px;
+}
+.minimal-week-nav strong span {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.minimal-schedule-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.minimal-schedule-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.minimal-schedule-filters {
+  flex: 1;
+  margin-bottom: 0;
+}
+.minimal-schedule-filters .minimal-filter-panels {
+  gap: 12px;
+  padding: 8px 0;
+}
+.minimal-schedule-filters .minimal-filter-panels fieldset {
+  flex-basis: 180px;
+}
+.minimal-schedule-filters .minimal-filter-panels label {
+  min-height: 36px;
+}
+.minimal-schedule-filters .minimal-filter-panels button {
+  align-self: end;
+}
+.minimal-state {
+  padding: 24px 0;
+}
+.minimal-skeleton {
+  background: #f2f2f2;
+}
+.minimal-directory {
+  list-style: none;
+  padding: 0;
+}
+.minimal-directory a {
+  display: block;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--line);
+}
+.minimal-cinema {
+  margin-bottom: 24px;
+}
+.minimal-detail {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 24px;
+  margin: 24px 0;
+}
+.minimal-detail p {
+  max-width: 65ch;
+}
+.minimal-schedule-by-date {
+  display: grid;
+  gap: 0;
+  overflow-x: auto;
+}
+.minimal-schedule-by-date.slide-next {
+  animation: schedule-next-horizontal 220ms ease-out;
+}
+.minimal-schedule-by-date.slide-previous {
+  animation: schedule-previous-horizontal 220ms ease-out;
+}
+.minimal-cinema-table.slide-next th:not(:first-child),
+.minimal-cinema-table.slide-next td {
+  animation: cinema-cells-next 220ms ease-out;
+}
+.minimal-cinema-table.slide-previous th:not(:first-child),
+.minimal-cinema-table.slide-previous td {
+  animation: cinema-cells-previous 220ms ease-out;
+}
+@keyframes schedule-next-horizontal {
+  from {
+    transform: translateX(var(--date-step, 25%));
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes schedule-previous-horizontal {
+  from {
+    transform: translateX(calc(-1 * var(--date-step, 25%)));
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes cinema-cells-next {
+  from {
+    opacity: 0.5;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes cinema-cells-previous {
+  from {
+    opacity: 0.5;
+    transform: translateX(-24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.minimal-schedule-column {
+  min-width: 0;
+  position: relative;
+  border-left: 2px solid #bbb;
+  padding: 8px 14px 16px;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  transition: background-color 120ms ease-out;
+}
+.minimal-site .minimal-schedule-column:hover {
+  background-color: #e2e2e2;
+  box-shadow: inset 0 0 0 2px #999;
+}
+.minimal-schedule-column::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 8px;
+  right: 8px;
+  border-top: 1px solid var(--line);
+}
+.minimal-schedule-column:first-child {
+  border-left: 0;
+  padding-left: 14px;
+}
+.minimal-schedule-column h3,
+.minimal-schedule-column h4 {
+  font-size: 11px;
+}
+.minimal-schedule-column h4 {
+  margin-top: 10px;
+}
+.minimal-cinema-table-wrap {
+  overflow-x: auto;
+}
+.minimal-cinema-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+}
+.minimal-cinema-table th,
+.minimal-cinema-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+.minimal-cinema-table thead th {
+  border-bottom: 2px solid #bbb;
+  white-space: nowrap;
+}
+.minimal-cinema-table th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #fff;
+}
+.minimal-cinema-table thead th:first-child {
+  z-index: 3;
+}
+.minimal-cinema-table th:first-child {
+  min-width: 180px;
+}
+.minimal-cinema-table th:not(:first-child),
+.minimal-cinema-table td {
+  min-width: 120px;
+}
+.minimal-cinema-table tbody th {
+  border-right: 2px solid #bbb;
+}
+.minimal-cinema-table td .minimal-time {
+  display: block;
+}
+.minimal-cinema-showtimes + .minimal-cinema-showtimes {
+  border-top: 1px solid var(--line);
+  margin: 8px 6px 0;
+  padding-top: 4px;
+}
+.minimal-skip {
+  position: absolute;
+  top: -100px;
+}
+.minimal-skip:focus {
+  top: 8px;
+  background: #fff;
+  z-index: 10;
+}
+@media (max-width: 639px) {
+  .minimal-site {
+    padding: 0 16px 32px;
+  }
+  .minimal-nav {
+    min-height: 64px;
+    margin-bottom: 16px;
+  }
+  .minimal-nav nav {
+    gap: 16px;
+  }
+  .minimal-search-dates {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .minimal-search-dates label:first-child {
+    grid-column: 1/-1;
+  }
+  .minimal-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .minimal-library-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .minimal-preview {
+    padding: 8px;
+  }
+  .minimal-detail {
+    grid-template-columns: 88px 1fr;
+    gap: 16px;
+  }
+  .minimal-schedule-toolbar {
+    gap: 8px;
+  }
+  .minimal-schedule-options {
+    gap: 6px;
+  }
+  .minimal-caption {
+    height: 52px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .minimal-site * {
+    scroll-behavior: auto;
+    animation: none;
+    transition: none;
+  }
+}

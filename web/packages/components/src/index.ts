@@ -1,7 +1,22 @@
+export {
+  MinimalCatalogue,
+  MinimalMovieCard,
+} from "./components/minimal/MinimalCatalogue";
+export type {
+  CatalogueMovie,
+  CatalogueCinema,
+  CatalogueScreening,
+  CatalogueSelection,
+  CatalogueState,
+  MinimalCatalogueProps,
+} from "./components/minimal/MinimalCatalogue";
 import "./index.css";
 export { MarquiseExperience } from "./components/discovery/MarquiseExperience";
 export { PosterCard, PosterRail } from "./components/discovery/PosterCard";
-export { screeningQuery, screeningsHref } from "./components/discovery/discovery-state";
+export {
+  screeningQuery,
+  screeningsHref,
+} from "./components/discovery/discovery-state";
 
 export { MovieCard } from "./components/movie/MovieCard";
 export { MovieCardGrid } from "./components/movie/MovieCardGrid";
@@ -25,11 +40,12 @@ export type {
   MovieGridClient,
 } from "marquise-client";
 export type { MovieCardProps } from "./components/movie/movie-card";
-export type { MovieCardGridItem, MovieCardGridProps } from "./components/movie/movie-card-grid";
-export type { MovieDetailPageProps } from "./components/movie/MovieDetailPage";
 export type {
-  MovieFilterPanelProps,
-} from "./components/movie/MovieFilterPanel";
+  MovieCardGridItem,
+  MovieCardGridProps,
+} from "./components/movie/movie-card-grid";
+export type { MovieDetailPageProps } from "./components/movie/MovieDetailPage";
+export type { MovieFilterPanelProps } from "./components/movie/MovieFilterPanel";
 export type { MovieGridControllerProps } from "./components/movie/MovieGridController";
 export type { MovieFilters } from "./components/movie/movie-grid-filter";
 export type {

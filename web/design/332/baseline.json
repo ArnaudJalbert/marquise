@@ -1,0 +1,115 @@
+{
+  "buildCommit": "bff353f51ee3f383997b91de81fed8e6edb5d51d",
+  "source": "local production build, default MockMarquiseClient; no API calls expected",
+  "routes": [
+    {
+      "route": "/",
+      "page": {
+        "url": "http://localhost:4173/",
+        "title": "Marquise \u00b7 Go see something",
+        "w": 1280,
+        "h": 577,
+        "sx": 0,
+        "sy": 0,
+        "pw": 1265,
+        "ph": 2371
+      },
+      "text": "Skip to content\nmarquise\n.\nDiscover\nDaily screenings\nCinemas\nMONTR\u00c9AL \u2197\n\nDemo mode \u00b7 Sample films and screening times, not live listings.\n\n MONTR\u00c9AL, MEET YOUR NEXT MOVIE\n\nLess scrolling.\nMore \u201cthat was a good movie.\u201d\n\nFind what's playing around Montr\u00e9al, pick your screening,\nand give your couch the night off.\n\nFind a screening\n\u2197\n\nNo account. No algorithmic soul-searching. Just the movies.\n\nPlaying around town\n\nA slice of 2026-10-30 \u00b7 12 screenings from page 1\n\n\u2190\n\u2192\n\nChallengers\n\nShowtimes\n\u2197\n\nFuriosa: A Mad Max Saga\n\nShowtimes\n\u2197\n\nA Real Pain\n\nShowtimes\n\u2197\n\nKinds of Kindness\n\nShowtimes\n\u2197\n\nPerfect Days\n\nShowtimes\n\u2197\n\nEmilia P\u00e9rez\n\nShowtimes\n\u2197\n\nThe Zone of Interest\n\nShowtimes\n\u2197\n\nThe Substance\n\nShowtimes\n\u2197\n\n01 Follow a poster.\nSomething catch your eye? Trust it.\n\n02 Find your seat.\nCheck cinemas and times, then book with the cinema.\n\n03 Leave the house.\nYes, the popcorn is a valid dinner plan.\n\nDrama, anyone?\n\nOn this page\n\n\u2190\n\u2192\n\nChallengers\n\nShowtimes\n\u2197\n\nA Real Pain\n\nShowtimes\n\u2197\n\nKinds of Kindness\n\nShowtimes\n\u2197\n\nPerfect Days\n\nShowtimes\n\u2197\n\nEmilia P\u00e9rez\n\nShowtimes\n\u2197\n\nThe Zone of Interest\n\nShowtimes\n\u2197\nComedy, anyone?\n\nOn this page\n\n\u2190\n\u2192\n\nA Real Pain\n\nShowtimes\n\u2197\n\nKinds of Kindness\n\nShowtimes\n\u2197\n\nThe Substance\n\nShowtimes\n\u2197\n\nPICKY IS A PERFECTLY GOOD PLAN\n\nYour cinema. Your time. Your kind of night.\n\nWant a specific title, language or an early escape? The daily listings do the legwork.\n\nExplore daily screenings \u2192\n\nPosters group this page\u2019s screenings. A film can appear on more than one page.\n\n\u2190 Previous\nPage 1 of 1 \u00b7 12 screenings\nNext \u2192\nmarquise.\n\nMade for going to the movies in Montr\u00e9al.\n\nGo see something \u2192",
+      "resources": [
+        {
+          "url": "http://localhost:4173/assets/index-BIAAUQ5o.js",
+          "type": "script",
+          "bytes": 300
+        },
+        {
+          "url": "http://localhost:4173/assets/index-Byubazpm.css",
+          "type": "link",
+          "bytes": 300
+        }
+      ]
+    },
+    {
+      "route": "/screenings",
+      "page": {
+        "url": "http://localhost:4173/screenings",
+        "title": "\ud83d\udc34 Daily screenings \u00b7 Marquise",
+        "w": 1280,
+        "h": 577,
+        "sx": 0,
+        "sy": 0,
+        "pw": 1265,
+        "ph": 1434
+      },
+      "text": "Skip to content\nmarquise\n.\nDiscover\nDaily screenings\nCinemas\nMONTR\u00c9AL \u2197\n\nDemo mode \u00b7 Sample films and screening times, not live listings.\n\nTHE CITY'S BIG SCREENS\n\nMake a night of it.\n\nOne date. All kinds of cinema. Find the screening that fits.\n\nDate\nFind a film\nFind screenings \u2192\nNarrow it down cinema, language & time\nClear filters\nOn the big screen\n\n12 screenings on this page \u00b7 8 films \u00b7 2026-10-30\n\nChallengers\n\nShowtimes\n\u2197\n\nFuriosa: A Mad Max Saga\n\nShowtimes\n\u2197\n\nA Real Pain\n\nShowtimes\n\u2197\n\nKinds of Kindness\n\nShowtimes\n\u2197\n\nPerfect Days\n\nShowtimes\n\u2197\n\nEmilia P\u00e9rez\n\nShowtimes\n\u2197\n\nThe Zone of Interest\n\nShowtimes\n\u2197\n\nThe Substance\n\nShowtimes\n\u2197\n\nPosters group this page\u2019s screenings. A film can appear on more than one page.\n\n\u2190 Previous\nPage 1 of 1 \u00b7 12 screenings\nNext \u2192\nmarquise.\n\nMade for going to the movies in Montr\u00e9al.\n\nGo see something \u2192",
+      "resources": [
+        {
+          "url": "http://localhost:4173/assets/index-BIAAUQ5o.js",
+          "type": "script",
+          "bytes": 300
+        },
+        {
+          "url": "http://localhost:4173/assets/index-Byubazpm.css",
+          "type": "link",
+          "bytes": 300
+        }
+      ]
+    },
+    {
+      "route": "/movies/dune",
+      "page": {
+        "url": "http://localhost:4173/movies/dune",
+        "title": "Dune: Part Two \u2014 Marquise",
+        "w": 1280,
+        "h": 577,
+        "sx": 0,
+        "sy": 0,
+        "pw": 1265,
+        "ph": 972
+      },
+      "text": "Skip to content\nmarquise\n.\nDiscover\nDaily screenings\nCinemas\nMONTR\u00c9AL \u2197\n\nDemo mode \u00b7 Sample films and screening times, not live listings.\n\n\u2190 Daily screenings\n\nDune: Part Two\n\nON THE BIG SCREEN\n\nDune: Part Two\n\n2024 \u00b7 166 min \u00b7 Denis Villeneuve\n\nSci-Fi / Drama\n\nFind your screening\nDate\n\nMontr\u00e9al local time. Tickets open on the cinema's site. Started screenings are crossed out.\n\nNo screenings for this date. Try another day.\n\n\u2190 Previous\nPage 1 of 1 \u00b7 0 screenings\nNext \u2192\nmarquise.\n\nMade for going to the movies in Montr\u00e9al.\n\nGo see something \u2192",
+      "resources": [
+        {
+          "url": "http://localhost:4173/assets/index-BIAAUQ5o.js",
+          "type": "script",
+          "bytes": 300
+        },
+        {
+          "url": "http://localhost:4173/assets/index-Byubazpm.css",
+          "type": "link",
+          "bytes": 300
+        },
+        {
+          "url": "https://image.tmdb.org/t/p/original/cgXk2tNYhJZLXdBDO5DidAVzQ82.jpg",
+          "type": "img",
+          "bytes": 0
+        }
+      ]
+    },
+    {
+      "route": "/cinemas",
+      "page": {
+        "url": "http://localhost:4173/cinemas",
+        "title": "\ud83d\udc34 Cinemas \u00b7 Marquise",
+        "w": 1280,
+        "h": 577,
+        "sx": 0,
+        "sy": 0,
+        "pw": 1265,
+        "ph": 1171
+      },
+      "text": "Skip to content\nmarquise\n.\nDiscover\nDaily screenings\nCinemas\nMONTR\u00c9AL \u2197\n\nDemo mode \u00b7 Sample films and screening times, not live listings.\n\nTHE ROOMS THAT MAKE THE MOVIES\n\nFind your favourite seat.\n\nMontr\u00e9al's cinemas, big screens and little rituals. Sticky floors not guaranteed.\n\nFind a cinema\nFind cinemas \u2192\nClear\nCINEMA 01\nCin\u00e9ma Moderne\nMontr\u00e9al\nCinema website \u2197\nSee screenings \u2192\nCINEMA 02\nCin\u00e9math\u00e8que qu\u00e9b\u00e9coise\nMontr\u00e9al\nCinema website \u2197\nSee screenings \u2192\nCINEMA 03\nCin\u00e9ma du Mus\u00e9e\nMontr\u00e9al\nCinema website \u2197\nSee screenings \u2192\nCINEMA 04\nCin\u00e9ma Beaubien\nMontr\u00e9al\nCinema website \u2197\nSee screenings \u2192\n\u2190 Previous\nPage 1 of 1 \u00b7 4 cinemas\nNext \u2192\nmarquise.\n\nMade for going to the movies in Montr\u00e9al.\n\nGo see something \u2192",
+      "resources": [
+        {
+          "url": "http://localhost:4173/assets/index-BIAAUQ5o.js",
+          "type": "script",
+          "bytes": 300
+        },
+        {
+          "url": "http://localhost:4173/assets/index-Byubazpm.css",
+          "type": "link",
+          "bytes": 300
+        }
+      ]
+    }
+  ]
+}
