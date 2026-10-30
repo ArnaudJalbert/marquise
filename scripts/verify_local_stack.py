@@ -1,0 +1,121 @@
+"""Verify the isolated Compose stack using real HTTP and Chromium.
+
+Start with make local-up. Run from the repository root with:
+uv run --with playwright python scripts/verify_local_stack.py
+"""
+
+from __future__ import annotations
+
+import json
+from datetime import date, datetime, timedelta
+from pathlib import Path
+from urllib.parse import urlencode
+from urllib.request import urlopen
+from zoneinfo import ZoneInfo
+
+from playwright.sync_api import expect, sync_playwright
+
+ORIGIN = "http://127.0.0.1:4300"
+
+
+def read_page(path: str, params: dict) -> dict:
+    """Read the real API through the app's same-origin reverse proxy."""
+    with urlopen(f"{ORIGIN}/v1/{path}?{urlencode(params)}", timeout=10) as response:
+        return json.load(response)
+
+
+def verify() -> None:
+    """Check distinct-movie pages, full dense windows and browser navigation."""
+    today = datetime.now(ZoneInfo("America/Montreal")).date()
+    selection = {"start": today.isoformat(), "end": today.isoformat()}
+    first = read_page("screening-movies", selection)
+    second = read_page("screening-movies", {**selection, "page": 2})
+    assert len(first["items"]) == 24 and first["pages"] == 2
+    all_ids = [item["id"] for item in first["items"] + second["items"]]
+    assert len(all_ids) == len(set(all_ids)) == first["total"] >= 26
+    assert all(len(item["screenings"]) <= 3 for item in first["items"])
+    catalogue = read_page("movies", {"size": 24})
+    assert catalogue["total"] == 29 and catalogue["pages"] == 2
+    title = read_page("movies", {"title": "Arrival", "size": 24})
+    assert [item["id"] for item in title["items"]] == ["local/catalogue-only"]
+    # Calendar bounds include the DST transition when it falls in the next fortnight.
+    zone = ZoneInfo("America/Montreal")
+    start = datetime.combine(today, datetime.min.time(), zone)
+    end = datetime.combine(today + timedelta(days=14), datetime.min.time(), zone)
+    params = {
+        "movie_id": "local-dune",
+        "from": start.isoformat(),
+        "to": (end - timedelta(microseconds=1)).isoformat(),
+        "size": 100,
+    }
+    dense = read_page("screenings", params)
+    items = list(dense["items"])
+    for page in range(2, dense["pages"] + 1):
+        items.extend(read_page("screenings", {**params, "page": page})["items"])
+    assert len(items) == dense["total"] == 350 and dense["pages"] == 4
+    counts: dict[date, int] = {}
+    for item in items:
+        day = datetime.fromisoformat(item["showtime"]).astimezone(zone).date()
+        counts[day] = counts.get(day, 0) + 1
+    assert len(counts) == 14 and set(counts.values()) == {25}
+    assert len({item["cinema_id"] for item in items}) == 7
+
+    output = Path("/tmp/marquise-local-stack")
+    output.mkdir(parents=True, exist_ok=True)
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page(viewport={"width": 1280, "height": 900})
+        api_urls: list[str] = []
+        page.on(
+            "request",
+            lambda request: (
+                api_urls.append(request.url) if "/v1/" in request.url else None
+            ),
+        )
+        page.goto(ORIGIN)
+        expect(page.locator(".minimal-card")).to_have_count(24)
+        page.get_by_role("link", name="Movies", exact=True).click()
+        page.get_by_role("searchbox", name="Search movies").fill("Dune: Part Two")
+        link = page.get_by_role("link", name="View Dune: Part Two")
+        expect(link).to_be_visible()
+        expect(link.locator("img")).to_be_visible()
+        assert link.locator("img").evaluate(
+            "img => img.complete && img.naturalWidth > 0"
+        )
+        link.click()
+        expect(
+            page.get_by_role("heading", name="Dune: Part Two", exact=True)
+        ).to_be_visible()
+        expect(page.locator(".minimal-time")).to_have_count(100)
+        page.screenshot(path=str(output / "dense-schedule.png"), full_page=True)
+        page.get_by_role("link", name="Movies", exact=True).click()
+        page.get_by_role("searchbox", name="Search movies").fill("Arrival")
+        page.get_by_role("link", name="View Arrival").click()
+        expect(page.get_by_role("heading", name="Arrival", exact=True)).to_be_visible()
+        assert page.url.endswith("/movies/local%2Fcatalogue-only")
+        page.reload()
+        expect(
+            page.get_by_text(
+                "No screenings in these dates. Try another date or clear the filters."
+            )
+        ).to_be_visible()
+        assert api_urls and all(url.startswith(ORIGIN + "/v1/") for url in api_urls)
+        browser.close()
+    print(
+        json.dumps(
+            {
+                "catalogue_movies": 29,
+                "eligible_today": first["total"],
+                "dense_screenings": len(items),
+                "dense_days": 14,
+                "cinemas": 7,
+                "screening_pages": dense["pages"],
+                "browser_api_requests": len(api_urls),
+                "result": "PASS",
+            }
+        )
+    )
+
+
+if __name__ == "__main__":
+    verify()
