@@ -36,17 +36,18 @@ This is real PostgreSQL with controlled test rows. Film names and local artwork
 are recognizable, but all schedules and booking links are fictional. The API does
 not manufacture responses or switch to fixtures when it fails.
 
-- 29 catalogue movies across seven test cinemas.
+- 29 real, named catalogue movies across seven test cinemas, all with local
+  poster artwork.
 - Dune: Part Two has 25 screenings per day for 14 Montreal days, 350 total, with
   source language acronyms across seven cinemas. Each local day converts to UTC
   independently, including DST transitions.
 - Perfect Days has one screening tomorrow. Arrival has none, and uses an opaque
-  ID with a slash. Twenty-six generated films exercise a second movie page,
-  missing posters/metadata, and a long title.
+  ID with a slash. Twenty-six other films exercise a second movie page and
+  poster grid, with sparse metadata and the long title The Assassination of
+  Jesse James by the Coward Robert Ford.
 - Posters mount from the existing dev-only artwork directory. Its
   [source record](../web/packages/components/demo/public/posters/SOURCES.md)
-  still applies. They are not copied into the local React image or production
-  bundle. Generated titles use the honest missing-poster fallback.
+  applies. They are not copied into the local React image or production bundle.
 
 `make local-up` refreshes generated screening dates to today after startup.
 `make local-seed` does the same without rebuilding. Reseeding replaces only IDs

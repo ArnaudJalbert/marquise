@@ -36,6 +36,14 @@ def verify() -> None:
     assert all(len(item["screenings"]) <= 3 for item in first["items"])
     catalogue = read_page("movies", {"size": 24})
     assert catalogue["total"] == 29 and catalogue["pages"] == 2
+    catalogue_items = catalogue["items"] + read_page("movies", {"size": 24, "page": 2})[
+        "items"
+    ]
+    assert len(catalogue_items) == 29
+    assert all(item["poster_url"] for item in catalogue_items)
+    assert not any(
+        item["title"].startswith("Local test film") for item in catalogue_items
+    )
     title = read_page("movies", {"title": "Arrival", "size": 24})
     assert [item["id"] for item in title["items"]] == ["local/catalogue-only"]
     # Calendar bounds include the DST transition when it falls in the next fortnight.
@@ -73,6 +81,16 @@ def verify() -> None:
             ),
         )
         page.goto(ORIGIN)
+        loaded_posters = page.evaluate(
+            """urls => Promise.all(urls.map(url => new Promise(resolve => {
+                const image = new Image();
+                image.onload = () => resolve(image.naturalWidth > 0);
+                image.onerror = () => resolve(false);
+                image.src = url;
+            })))""",
+            [item["poster_url"] for item in catalogue_items],
+        )
+        assert all(loaded_posters), "At least one local catalogue poster failed to load"
         expect(page.locator(".minimal-card")).to_have_count(24)
         page.get_by_role("link", name="Movies", exact=True).click()
         page.get_by_role("searchbox", name="Search movies").fill("Dune: Part Two")
@@ -105,6 +123,7 @@ def verify() -> None:
         json.dumps(
             {
                 "catalogue_movies": 29,
+                "catalogue_posters_loaded": sum(loaded_posters),
                 "eligible_today": first["total"],
                 "dense_screenings": len(items),
                 "dense_days": 14,
