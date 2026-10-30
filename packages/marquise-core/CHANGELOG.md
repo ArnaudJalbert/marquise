@@ -4,6 +4,10 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-10-30
 
+### v0.2.30
+
+- Validate targeted duplicate movie merges through the shared matcher and exact approval snapshots. Add isolated read-only previews and atomic PostgreSQL moves with stable screening fields, collision/reference refusal and unchanged-state retries for #356. Wiring remains in #355.
+
 ### v0.2.29
 
 - Publish additive metadata facts, workflow DTOs and execution/persistence contracts for #358. Distinguish confirmed TMDB identity from successful enrichment without changing existing callers. Final integration remains in #355.
