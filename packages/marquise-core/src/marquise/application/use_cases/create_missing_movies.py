@@ -130,7 +130,7 @@ class CreateMissingMoviesCommand:
         movie_inputs: tuple[MovieInput, ...],
         found_movies: list[Movie],
     ) -> tuple[list[MovieData], dict[str, MovieInput]]:
-        """Return existing movie data and one pending input per title key."""
+        """Return existing movies and one pending input per known identity."""
         candidates = cls._candidates_by_key(found_movies)
         existing: list[CreateMissingMoviesCommand.MovieData] = []
         missing: dict[str, CreateMissingMoviesCommand.MovieInput] = {}
@@ -138,46 +138,48 @@ class CreateMissingMoviesCommand:
         for movie_input in movie_inputs:
             title = cls._normalize_title(movie_input.title)
             key = Movie.title_key(title)
+            title_candidates = candidates.get(key, [])
+            if movie_input.tmdb_id is not None:
+                compatible = []
+                for candidate in title_candidates:
+                    if candidate.tmdb_id not in {None, movie_input.tmdb_id}:
+                        if (
+                            cls._normalize_title(candidate.title).casefold()
+                            == title.casefold()
+                        ):
+                            raise MovieIdentityConflictError(
+                                f"Movie '{title}' already has a different TMDB id"
+                            )
+                    else:
+                        compatible.append(candidate)
+                title_candidates = compatible
             movie = cls._find_match(
-                candidates.get(key, []),
+                title_candidates,
                 title=title,
                 release_year=movie_input.release_year,
             )
             if movie is not None:
-                if (
-                    movie_input.tmdb_id is not None
-                    and movie.tmdb_id is not None
-                    and movie_input.tmdb_id != movie.tmdb_id
-                ):
-                    raise MovieIdentityConflictError(
-                        f"Movie '{title}' already has a different TMDB id"
-                    )
                 existing.append(cls.MovieData(title=title, id=movie.id.value))
             else:
-                missing.setdefault(key, movie_input)
+                missing.setdefault(cls._movie_key(movie_input), movie_input)
         return existing, missing
 
     async def _save_missing(self, missing: dict[str, MovieInput]) -> dict[str, Movie]:
-        """Save each distinct TMDB film once, mapping all source titles back."""
-        first_by_tmdb: dict[str, str] = {}
-        unique: dict[str, CreateMissingMoviesCommand.MovieInput] = {}
-        duplicates: dict[str, str] = {}
-        for key, movie in missing.items():
-            if movie.tmdb_id is not None and movie.tmdb_id in first_by_tmdb:
-                duplicates[key] = first_by_tmdb[movie.tmdb_id]
-            else:
-                unique[key] = movie
-                if movie.tmdb_id is not None:
-                    first_by_tmdb[movie.tmdb_id] = key
+        """Create or reuse each distinct film without updating existing details."""
         saved = await asyncio.gather(
             *(
-                self.movie_repository.save(self._movie(movie))
-                for movie in unique.values()
+                self.movie_repository.create_or_reuse(self._movie(movie))
+                for movie in missing.values()
             )
         )
-        created = dict(zip(unique, saved, strict=True))
-        created.update({key: created[first] for key, first in duplicates.items()})
-        return created
+        return dict(zip(missing, saved, strict=True))
+
+    @staticmethod
+    def _movie_key(movie: MovieInput) -> str:
+        """Prefer a known identity; title grouping is only a fallback."""
+        if movie.tmdb_id is not None:
+            return f"tmdb:{movie.tmdb_id}"
+        return f"title:{Movie.title_key(movie.title)}"
 
     @classmethod
     def _created_data(
@@ -192,7 +194,7 @@ class CreateMissingMoviesCommand:
                 id=movie.id.value,
             )
             for movie_input in movie_inputs
-            if (movie := created.get(Movie.title_key(movie_input.title))) is not None
+            if (movie := created.get(cls._movie_key(movie_input))) is not None
         ]
 
     @staticmethod

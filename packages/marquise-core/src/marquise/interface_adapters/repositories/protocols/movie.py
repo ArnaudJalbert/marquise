@@ -31,6 +31,8 @@ class MovieGateway(Protocol):
         rating: str | None = None,
         origin_countries: str | None = None,
         tmdb_id: str | None = None,
+        *,
+        update_existing: bool = True,
     ) -> dict:
         """Insert or upsert a movie row.
 
@@ -50,6 +52,8 @@ class MovieGateway(Protocol):
             original_title: Original title in native language (optional).
             rating: Content rating (optional).
             origin_countries: Comma-separated origin countries (optional).
+            tmdb_id: Known TMDB identity, if any.
+            update_existing: Update matching titles, or return them unchanged.
 
         Returns:
             The inserted/updated row as a dict.

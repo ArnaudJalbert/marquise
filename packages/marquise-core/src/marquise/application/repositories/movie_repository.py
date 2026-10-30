@@ -13,6 +13,14 @@ class MovieRepository(ABC):
     """Abstract interface for movie data persistence."""
 
     @abstractmethod
+    async def create_or_reuse(self, movie: Movie) -> Movie:
+        """Create a movie or reuse its identity/title without changing details.
+
+        A title already assigned to another known identity must be rejected.
+        """
+        ...
+
+    @abstractmethod
     async def save(self, movie: Movie) -> Movie:
         """Persists a movie entity.
 

@@ -50,6 +50,7 @@ EXPECTED_PUBLIC_SURFACE: set[str] = {
     "ListRegistrySourcesUseCase",
     "ListSourcesUseCase",
     "MarquiseFactory",
+    "MovieIdentityConflictError",
     "MovieNotFoundError",
     "UpdateScreeningUseCase",
     "ScreeningAlreadyExistsError",
