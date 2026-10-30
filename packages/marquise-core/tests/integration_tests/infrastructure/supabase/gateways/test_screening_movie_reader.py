@@ -1,6 +1,6 @@
 """Movie-first pagination against a disposable PostgreSQL database."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, time, timedelta
 
 import asyncpg
 import pytest
@@ -113,4 +113,49 @@ async def test_inclusive_dst_bounds_ordering_and_started_previews(
     assert [s["id"] for s in result.rows[1]["screenings"]] == [
         "second-repeated-hour",
         "last-local-instant",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_filters_apply_to_qualifying_screenings_before_preview_selection(
+    db_pool: asyncpg.Pool,
+) -> None:
+    """Combined filters exclude unrelated screenings from eligibility and previews."""
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            """INSERT INTO "marquise-test".cinemas(id,name)
+               VALUES ('c1','Cinema One'),('c2','Cinema Two')"""
+        )
+        await conn.execute(
+            """INSERT INTO "marquise-test".movies(id,title)
+               VALUES ('match','Dune'),('other','Other Film')"""
+        )
+        await conn.executemany(
+            """INSERT INTO "marquise-test".screenings
+               (id,movie_id,cinema_id,showtime,language)
+               VALUES($1,$2,$3,$4,$5)""",
+            [
+                ("correct", "match", "c2", datetime(2026, 11, 4, 0, 30), "VOSTF"),
+                ("cinema", "match", "c1", datetime(2026, 11, 4, 0, 45), "VOSTF"),
+                ("language", "match", "c2", datetime(2026, 11, 4, 1), "VO"),
+                ("hour", "match", "c2", datetime(2026, 11, 4, 1, 30), "VOSTF"),
+                ("title", "other", "c2", datetime(2026, 11, 4, 1, 45), "VOSTF"),
+            ],
+        )
+    gateway = SupabaseScreeningMovieReadGateway(db_pool, "marquise-test")
+    result = await gateway.search(
+        datetime(2026, 11, 3, 5, tzinfo=UTC),
+        datetime(2026, 11, 4, 4, 59, tzinfo=UTC),
+        datetime(2026, 11, 3, 5, tzinfo=UTC),
+        1,
+        "Dune",
+        ("c2",),
+        ("VOSTF",),
+        time(18),
+        time(20),
+    )
+    assert result.total == 1
+    assert [movie["id"] for movie in result.rows] == ["match"]
+    assert [screening["id"] for screening in result.rows[0]["screenings"]] == [
+        "correct"
     ]

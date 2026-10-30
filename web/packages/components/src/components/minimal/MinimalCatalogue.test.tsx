@@ -62,6 +62,32 @@ const props: MinimalCatalogueProps = {
 };
 
 describe("minimalist prototype", () => {
+  it("keeps inclusive date shortcuts selected from URL-backed dates", () => {
+    const onSelection = vi.fn();
+    const { rerender } = render(
+      <MinimalCatalogue {...props} onSelection={onSelection} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Today" }));
+    expect(onSelection).toHaveBeenLastCalledWith(
+      expect.objectContaining({ start: "2026-10-30", end: "2026-10-30" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Tomorrow" }));
+    expect(onSelection).toHaveBeenLastCalledWith(
+      expect.objectContaining({ start: "2026-10-31", end: "2026-10-31" }),
+    );
+    rerender(
+      <MinimalCatalogue
+        {...props}
+        onSelection={onSelection}
+        selection={{ ...props.selection, start: "2026-10-31", end: "2026-11-01" }}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "This weekend" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
   it("opens only three screenings with the arrow, separate from movie navigation", () => {
     render(<MinimalMovieCard movie={movie} cinemas={cinemas} />);
     expect(screen.queryByRole("region")).not.toBeInTheDocument();

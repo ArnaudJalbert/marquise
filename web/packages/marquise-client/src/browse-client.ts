@@ -1,4 +1,4 @@
-import type { MovieApi, Page, ScreeningApi } from "./api-types";
+import type { CinemaApi, MovieApi, Page, ScreeningApi } from "./api-types";
 
 export interface ScreeningMovieApi extends MovieApi {
   /** At most three qualifying screenings, in start-time and ID order. */
@@ -8,9 +8,18 @@ export interface ScreeningMovieQuery {
   start: string;
   end: string;
   page: number;
+  title?: string;
+  cinemas?: readonly string[];
+  languages?: readonly string[];
+  startHour?: number;
+  endHour?: number;
 }
 /** Production browsing reads. Every listing call requests exactly one page. */
 export interface BrowseClient {
+  fetchCinemaPage(
+    page: number,
+    signal?: AbortSignal,
+  ): Promise<Page<CinemaApi>>;
   fetchScreeningMoviesPage(
     query: ScreeningMovieQuery,
     signal?: AbortSignal,

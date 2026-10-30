@@ -9,10 +9,11 @@ import {
 } from "marquise-client";
 import { useResource } from "../discovery/use-resource";
 import { MinimalCatalogue } from "./MinimalCatalogue";
-import { addDays, decodePathId } from "./catalogue-format";
+import { addDays, decodePathId, timeToHour } from "./catalogue-format";
 import type {
   CatalogueMovie,
   CatalogueScreening,
+  CatalogueSelection,
   CatalogueState,
   MinimalCatalogueProps,
 } from "./catalogue-types";
@@ -59,6 +60,46 @@ function resourceState(resource: {
       : "ready";
 }
 
+const screeningLanguages = ["VO", "VOA", "VOF", "VOSTF", "VOSTA", "VF"];
+
+function parseSelection(url: URL, today: string): CatalogueSelection {
+  const params = url.searchParams;
+  const start = params.get("start") ?? today;
+  const end = params.get("end") ?? start;
+  const fromHour = timeToHour(params.get("from") ?? "", 0);
+  const toHour = timeToHour(params.get("to") ?? "", 24);
+  return {
+    start,
+    end,
+    title: params.get("title") ?? "",
+    cinemas: params.getAll("cinema"),
+    languages: params.getAll("language"),
+    from: fromHour > 0 ? `${String(fromHour).padStart(2, "0")}:00` : "",
+    to: toHour < 24 ? `${String(toHour).padStart(2, "0")}:00` : "",
+  };
+}
+
+function listingHref(href: string, selection: CatalogueSelection): string {
+  const url = new URL(href, "http://marquise.invalid");
+  const params = url.searchParams;
+  for (const key of ["start", "end", "title", "cinema", "language", "from", "to", "page"])
+    params.delete(key);
+  params.set("start", selection.start);
+  params.set("end", selection.end);
+  if (selection.title.trim()) params.set("title", selection.title.trim());
+  selection.cinemas.forEach((id) => params.append("cinema", id));
+  selection.languages.forEach((language) => params.append("language", language));
+  if (selection.from) params.set("from", selection.from);
+  if (selection.to) params.set("to", selection.to);
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
+function weekendDates(today: string): [string, string] {
+  const weekday = new Date(`${today}T12:00:00Z`).getUTCDay();
+  const saturday = addDays(today, weekday === 0 ? -1 : (6 - weekday) % 7);
+  return [saturday, addDays(saturday, 1)];
+}
+
 /** Production composition of the approved UI with injected, bounded API reads. */
 export function MinimalExperience({
   client,
@@ -73,6 +114,7 @@ export function MinimalExperience({
 }) {
   const url = new URL(href, "http://marquise.invalid");
   const today = toMontrealIsoDate(new Date(currentTime));
+  const selection = parseSelection(url, today);
   const isListing = url.pathname === "/";
   const isCatalogue = isListing && url.searchParams.get("section") === "movies";
   const isScreenings = isListing && !isCatalogue;
@@ -80,15 +122,52 @@ export function MinimalExperience({
   const decodedId = movieId ? decodePathId(movieId) : undefined;
   const [search, setSearch] = useState("");
 
+  const onSelection = useCallback(
+    (next: CatalogueSelection) => navigate(listingHref(href, next)),
+    [href, navigate],
+  );
+
   const screenings = useResource(
     useCallback(
       (signal: AbortSignal) =>
         client.fetchScreeningMoviesPage(
-          { start: today, end: today, page: 1 },
+          {
+            start: selection.start,
+            end: selection.end,
+            page: 1,
+            title: selection.title,
+            cinemas: selection.cinemas,
+            languages: selection.languages,
+            startHour: selection.from ? timeToHour(selection.from, 0) : 0,
+            endHour: selection.to ? timeToHour(selection.to, 24) : 24,
+          },
           signal,
         ),
-      [client, today],
+      [
+        client,
+        selection.start,
+        selection.end,
+        selection.title,
+        selection.cinemas.join("\0"),
+        selection.languages.join("\0"),
+        selection.from,
+        selection.to,
+      ],
     ),
+    isScreenings &&
+      selection.start <= selection.end &&
+      (!selection.from || !selection.to || selection.from <= selection.to),
+  );
+  const cinemaResource = useResource(
+    useCallback(async (signal: AbortSignal) => {
+      const first = await client.fetchCinemaPage(1, signal);
+      const items = [...first.items];
+      for (let page = 2; page <= first.pages; page++) {
+        if (signal.aborted) throw new DOMException("Aborted", "AbortError");
+        items.push(...(await client.fetchCinemaPage(page, signal)).items);
+      }
+      return items;
+    }, [client]),
     isScreenings,
   );
   const catalogue = useResource(
@@ -160,50 +239,29 @@ export function MinimalExperience({
       ? [detail.data]
       : []
     : (catalogue.data?.items ?? []).map(movieData);
-  const cinemas = [
-    ...new Map(
-      movies.flatMap((movie) =>
-        movie.screenings.map(
-          (item) =>
-            [
-              item.cinemaId,
-              {
-                id: item.cinemaId,
-                name: item.cinemaName ?? "Cinema unavailable",
-              },
-            ] as const,
-        ),
-      ),
-    ).values(),
-  ];
+  const cinemas = (cinemaResource.data ?? []).map(({ id, name }) => ({
+    id,
+    name,
+  }));
 
   return (
     <MinimalCatalogue
       movies={decodedId ? [] : movies}
       catalogueMovies={catalogueMovies}
       serverResults
-      showScreeningFilters={false}
       catalogueSearch={search}
       onCatalogueSearch={setSearch}
       catalogueState={resourceState(catalogue)}
       onCatalogueRetry={catalogue.retry}
       cinemas={url.pathname.startsWith("/cinemas") ? [] : cinemas}
-      screeningLanguages={[]}
-      selection={{
-        start: today,
-        end: today,
-        title: "",
-        cinemas: [],
-        languages: [],
-        from: "",
-        to: "",
-      }}
-      onSelection={() => {}}
+      screeningLanguages={screeningLanguages}
+      selection={selection}
+      onSelection={onSelection}
       href={href}
       navigate={navigate}
       today={today}
       tomorrow={addDays(today, 1)}
-      weekend={[today, today]}
+      weekend={weekendDates(today)}
       state={resourceState(screenings)}
       onRetry={screenings.retry}
       onLoadWeek={loadWeek}

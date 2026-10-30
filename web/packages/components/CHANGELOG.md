@@ -2,6 +2,8 @@
 
 ## 2026-10-30
 
+- Show the shared Screenings filters in production. Keep selections in the URL, debounce title search, and apply server-filtered movie-first results. Supports #335.
+
 - Connect the approved minimal UI through an injected production browse client. Keep catalogue and screening requests independent, show initial loading/error/Retry, and share one active preview across cards. Supports #333.
 
 ### Changes
