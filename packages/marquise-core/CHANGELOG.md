@@ -4,6 +4,10 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-10-30
 
+### v0.2.30
+
+- Add provider-independent initial enrichment and explicit refresh policy with stable-ID atomic update requests, locale/media/certification selection, usable-field preservation and failure retry tests for #353. Factory, import and CLI integration remain deferred to #355.
+
 ### v0.2.29
 
 - Publish additive metadata facts, workflow DTOs and execution/persistence contracts for #358. Distinguish confirmed TMDB identity from successful enrichment without changing existing callers. Final integration remains in #355.
