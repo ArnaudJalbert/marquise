@@ -152,7 +152,10 @@ def _extract_movie_detail(html: str) -> dict[str, Any] | None:
     directors: list[str] = []
     raw_director = movie.get("director", "")
     if raw_director:
-        directors = [d.strip() for d in str(raw_director).split(",") if d.strip()]
+        # Cineplex joins co-director credits with commas or the English "and".
+        directors = [
+            d.strip() for d in re.split(r",|\s+and\s+", str(raw_director)) if d.strip()
+        ]
 
     cast_list: list[str] = []
     raw_cast = movie.get("starring", "")
