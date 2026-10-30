@@ -13,6 +13,14 @@ class MovieRepository(ABC):
     """Abstract interface for movie data persistence."""
 
     @abstractmethod
+    async def create_or_reuse(self, movie: Movie) -> Movie:
+        """Create a movie or reuse its identity/title without changing details.
+
+        A title already assigned to another known identity must be rejected.
+        """
+        ...
+
+    @abstractmethod
     async def save(self, movie: Movie) -> Movie:
         """Persists a movie entity.
 
@@ -47,6 +55,11 @@ class MovieRepository(ABC):
             The matching movies. IDs with no matching movie are silently
             omitted — the returned list may be shorter than ``movie_ids``.
         """
+        ...
+
+    @abstractmethod
+    async def find_by_tmdb_id(self, tmdb_id: str) -> Movie | None:
+        """Find a movie by its TMDB film id, or return None."""
         ...
 
     @abstractmethod

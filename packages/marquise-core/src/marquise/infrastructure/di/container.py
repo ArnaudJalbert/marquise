@@ -114,6 +114,7 @@ class SettingsProvider:
         self._settings = Settings(
             database_url=os.environ.get("DATABASE_URL", ""),
             cineplex_api_key=os.environ.get("CINEPLEX_API_KEY", ""),
+            tmdb_api_key=os.environ.get("TMDB_API_KEY", ""),
             schema=os.environ.get("DATABASE_SCHEMA", "marquise"),
             supabase_url=os.environ.get("SUPABASE_URL", ""),
             supabase_publishable_key=os.environ.get("SUPABASE_PUBLISHABLE_KEY", ""),
@@ -355,7 +356,11 @@ class Container:
 
     @property
     def _create_movies_use_case(self) -> CreateMissingMoviesCommand:
-        return build_create_movies_use_case(self._pool_property, self._schema)
+        return build_create_movies_use_case(
+            self._pool_property,
+            self._schema,
+            self._settings_provider.settings.tmdb_api_key,
+        )
 
     @property
     def _create_screenings_use_case(self) -> CreateScreeningsCommand:

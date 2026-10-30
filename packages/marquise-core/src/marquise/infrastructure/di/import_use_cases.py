@@ -13,6 +13,7 @@ from marquise.application.use_cases.create_missing_movies import (
 )
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.import_screenings import ImportScreeningsCommand
+from marquise.infrastructure.sources.tmdb import TmdbSource
 from marquise.infrastructure.supabase.gateways.cinema import SupabaseCinemaGateway
 from marquise.infrastructure.supabase.gateways.cinema_source_assignment import (
     SupabaseCinemaSourceAssignmentGateway,
@@ -20,6 +21,9 @@ from marquise.infrastructure.supabase.gateways.cinema_source_assignment import (
 from marquise.infrastructure.supabase.gateways.movie import SupabaseMovieGateway
 from marquise.infrastructure.supabase.gateways.screening import (
     SupabaseScreeningGateway,
+)
+from marquise.interface_adapters.repositories.source_adapters.tmdb import (
+    TmdbSearchAdapter,
 )
 from marquise.interface_adapters.repositories.supabase.cinema_repository import (
     SupabaseCinemaRepository,
@@ -53,13 +57,14 @@ def build_fetch_screenings_use_case(
 
 
 def build_create_movies_use_case(
-    pool: asyncpg.Pool, schema: str
+    pool: asyncpg.Pool, schema: str, tmdb_api_key: str
 ) -> CreateMissingMoviesCommand:
-    """Build missing-movie creation command."""
+    """Build missing-movie creation with an injected TMDB lookup."""
     return CreateMissingMoviesCommand(
         movie_repository=SupabaseMovieRepository(
             gateway=SupabaseMovieGateway(pool=pool, schema=schema)
-        )
+        ),
+        identity_search=TmdbSearchAdapter(TmdbSource(tmdb_api_key)),
     )
 
 

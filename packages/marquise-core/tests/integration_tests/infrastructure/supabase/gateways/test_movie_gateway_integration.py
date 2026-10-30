@@ -2,9 +2,58 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 
 from marquise.infrastructure.supabase.gateways.movie import SupabaseMovieGateway
+from marquise.interface_adapters.repositories.protocols.base import GatewayError
+
+
+@pytest.mark.asyncio
+async def test_save_and_find_by_tmdb_id(movie_gateway: SupabaseMovieGateway) -> None:
+    """Postgres persists a TMDB id, and a second lookup finds the same row."""
+    saved = await movie_gateway.save(movie_id="mov-42", title="Doomsday", tmdb_id="42")
+    assert saved["tmdb_id"] == "42"
+    found = await movie_gateway.find_by_tmdb_id("42")
+    assert found is not None and found["id"] == "mov-42"
+    assert await movie_gateway.find_by_tmdb_id("unknown") is None
+
+
+@pytest.mark.asyncio
+async def test_same_tmdb_id_keeps_existing_movie(
+    movie_gateway: SupabaseMovieGateway,
+) -> None:
+    """A second title for one TMDB id never creates a second movie."""
+    await movie_gateway.save(movie_id="original", title="Doomsday", tmdb_id="42")
+    saved = await movie_gateway.save(
+        movie_id="translated", title="Docteur Doom", tmdb_id="42"
+    )
+    assert saved["id"] == "original"
+    assert saved["title"] == "Doomsday"
+    page = await movie_gateway.find_all()
+    assert page.total == 1
+
+
+@pytest.mark.asyncio
+async def test_title_upsert_cannot_replace_another_tmdb_identity(
+    movie_gateway: SupabaseMovieGateway,
+) -> None:
+    """A same-title film cannot steal an existing movie's TMDB id or metadata."""
+    await movie_gateway.save(
+        movie_id="original", title="Same Title", release_year=1990, tmdb_id="111"
+    )
+
+    with pytest.raises(GatewayError, match="different TMDB id"):
+        await movie_gateway.save(
+            movie_id="other", title="Same Title", release_year=2026, tmdb_id="222"
+        )
+
+    original = await movie_gateway.find_by_tmdb_id("111")
+    assert original is not None
+    assert original["id"] == "original"
+    assert original["release_year"] == 1990
+    assert await movie_gateway.find_by_tmdb_id("222") is None
 
 
 @pytest.mark.asyncio
@@ -244,3 +293,60 @@ async def test_find_all_with_title_filter_and_limit(
     assert page.total == 2
     assert len(page.rows) == 1
     assert page.rows[0]["title"] == "Space Odyssey Downtown"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("titles", "tmdb_id"),
+    [
+        (("Same Title", "Same Title"), "42"),
+        (("Same Title", "Same Title"), None),
+        (("Original", "Translated"), "42"),
+    ],
+)
+async def test_concurrent_import_saves_preserve_the_winning_movie(
+    movie_gateway: SupabaseMovieGateway,
+    titles: tuple[str, str],
+    tmdb_id: str | None,
+) -> None:
+    """Racing imports reuse the first row, including its original metadata."""
+    rows = await asyncio.gather(
+        *(
+            movie_gateway.save(
+                movie_id=f"race-{index}",
+                title=title,
+                tmdb_id=tmdb_id,
+                release_year=2000 + index,
+                description=f"description-{index}",
+                poster_url=f"poster-{index}",
+                update_existing=False,
+            )
+            for index, title in enumerate(titles)
+        )
+    )
+
+    assert rows[0] == rows[1]
+    assert await movie_gateway.find_by_id(rows[0]["id"]) == rows[0]
+    assert (await movie_gateway.find_all()).total == 1
+
+
+@pytest.mark.asyncio
+async def test_import_save_rejects_a_conflicting_identity_without_changes(
+    movie_gateway: SupabaseMovieGateway,
+) -> None:
+    """Create-or-reuse rejects a title owned by another known film."""
+    original = await movie_gateway.save(
+        movie_id="original", title="Same Title", tmdb_id="1", poster_url="original"
+    )
+
+    with pytest.raises(GatewayError, match="different TMDB id"):
+        await movie_gateway.save(
+            movie_id="conflicting",
+            title="Same Title",
+            tmdb_id="2",
+            poster_url="replacement",
+            update_existing=False,
+        )
+
+    assert await movie_gateway.find_by_id("original") == original
+    assert await movie_gateway.find_by_tmdb_id("2") is None

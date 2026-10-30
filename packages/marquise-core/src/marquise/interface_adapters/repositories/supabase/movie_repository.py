@@ -33,6 +33,13 @@ class SupabaseMovieRepository(MovieRepository):
         Returns:
             The saved movie with server-assigned fields.
         """
+        return await self._save(movie, update_existing=True)
+
+    async def create_or_reuse(self, movie: Movie) -> Movie:
+        """Create a movie, preserving details when a concurrent import won."""
+        return await self._save(movie, update_existing=False)
+
+    async def _save(self, movie: Movie, *, update_existing: bool) -> Movie:
         data = await self._gateway.save(
             movie_id=str(movie.id),
             title=movie.title,
@@ -51,8 +58,15 @@ class SupabaseMovieRepository(MovieRepository):
             origin_countries=",".join(movie.origin_countries)
             if movie.origin_countries is not None
             else None,
+            tmdb_id=movie.tmdb_id,
+            update_existing=update_existing,
         )
         return self._to_entity(data)
+
+    async def find_by_tmdb_id(self, tmdb_id: str) -> Movie | None:
+        """Find a movie by its TMDB film id, or return None."""
+        data = await self._gateway.find_by_tmdb_id(tmdb_id)
+        return self._to_entity(data) if data is not None else None
 
     async def find_by_id(self, movie_id: MovieId) -> Movie | None:
         """Retrieve a movie by ID.
@@ -180,4 +194,5 @@ class SupabaseMovieRepository(MovieRepository):
             original_title=data.get("original_title"),
             rating=data.get("rating"),
             origin_countries=origin_countries,
+            tmdb_id=data.get("tmdb_id"),
         )
