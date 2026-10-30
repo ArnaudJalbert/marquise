@@ -45,6 +45,36 @@ const show: ScreeningApi = {
   room: null,
   language: "VOSTF",
 };
+const endObservers: TestIntersectionObserver[] = [];
+class TestIntersectionObserver implements IntersectionObserver {
+  readonly root = null;
+  readonly rootMargin = "0px";
+  readonly scrollMargin = "0px";
+  readonly thresholds = [0];
+  private target?: Element;
+
+  constructor(private readonly callback: IntersectionObserverCallback) {
+    endObservers.push(this);
+  }
+
+  observe(target: Element) {
+    this.target = target;
+  }
+
+  unobserve() {}
+  disconnect() {}
+  takeRecords(): IntersectionObserverEntry[] {
+    return [];
+  }
+
+  reachEnd() {
+    if (!this.target) throw new Error("No end sentinel observed");
+    this.callback(
+      [{ isIntersecting: true, target: this.target } as IntersectionObserverEntry],
+      this,
+    );
+  }
+}
 function page<T>(items: T[]): Page<T> {
   return { items, total: items.length, page: 1, pages: 1, size: 24 };
 }
@@ -85,6 +115,8 @@ function clients() {
   };
 }
 beforeEach(() => {
+  endObservers.length = 0;
+  vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-11-02T01:00:00Z")); // Still November 1 in Montreal.
   history.replaceState(null, "", "/");
@@ -94,6 +126,123 @@ afterEach(() => {
   cleanup();
   vi.useRealTimers();
   vi.unstubAllGlobals();
+});
+
+it("appends catalogue pages at the end and stops at the reported last page", async () => {
+  history.replaceState(null, "", "/?section=movies");
+  const client = clients();
+  const pages = Array.from({ length: 3 }, (_, pageIndex) =>
+    Array.from({ length: pageIndex === 2 ? 5 : 24 }, (_, itemIndex) => {
+      const number = pageIndex * 24 + itemIndex + 1;
+      return { ...movie, id: `movie-${number}`, title: `Movie ${number}` };
+    }),
+  );
+  client.fetchMoviePage.mockImplementation(async (requestedPage) => ({
+    items: pages[requestedPage - 1] ?? [],
+    total: 53,
+    page: requestedPage,
+    size: 24,
+    pages: 3,
+  }));
+  render(<App client={client} />);
+
+  await screen.findByRole("link", { name: "View Movie 24" });
+  expect(screen.queryByRole("link", { name: "View Movie 25" })).toBeNull();
+  await act(async () => {
+    endObservers.at(-1)?.reachEnd();
+    endObservers.at(-1)?.reachEnd();
+  });
+  await screen.findByRole("link", { name: "View Movie 25" });
+  expect(client.fetchMoviePage).toHaveBeenNthCalledWith(
+    2,
+    2,
+    expect.any(AbortSignal),
+    undefined,
+    24,
+  );
+  await act(async () => endObservers.at(-1)?.reachEnd());
+  await screen.findByRole("link", { name: "View Movie 53" });
+  expect(screen.getAllByRole("article")).toHaveLength(53);
+  expect(client.fetchMoviePage).toHaveBeenCalledTimes(3);
+  await act(async () => endObservers.at(-1)?.reachEnd());
+  expect(client.fetchMoviePage).toHaveBeenCalledTimes(3);
+});
+
+it("appends distinct screening movies when their end enters view", async () => {
+  const client = clients();
+  const result = (id: string, title: string, pageNumber: number) => ({
+    items: [id].map((movieId) => ({
+      ...movie,
+      id: movieId,
+      title,
+      screenings: [{ ...show, movie_id: movieId, movie_title: title }],
+    })),
+    total: 3,
+    page: pageNumber,
+    size: 24,
+    pages: 2,
+  });
+  client.fetchScreeningMoviesPage.mockImplementation(async (query) =>
+    query.page === 1
+      ? {
+          ...result("screening-1", "Screening 1", 1),
+          items: [
+            ...result("screening-1", "Screening 1", 1).items,
+            ...result("screening-2", "Screening 2", 1).items,
+          ],
+        }
+      : {
+          ...result("screening-3", "Screening 3", 2),
+          items: [
+            ...result("screening-2", "Screening 2", 2).items,
+            ...result("screening-3", "Screening 3", 2).items,
+          ],
+        },
+  );
+  render(<App client={client} />);
+
+  await screen.findByRole("link", { name: "View Screening 2" });
+  await act(async () => endObservers.at(-1)?.reachEnd());
+  await screen.findByRole("link", { name: "View Screening 3" });
+  expect(screen.getAllByRole("link", { name: "View Screening 2" })).toHaveLength(
+    1,
+  );
+  expect(client.fetchScreeningMoviesPage).toHaveBeenCalledTimes(2);
+  expect(client.fetchScreeningMoviesPage.mock.calls[1]?.[0].page).toBe(2);
+});
+
+it("keeps loaded catalogue movies after a page failure and retries that page", async () => {
+  history.replaceState(null, "", "/?section=movies");
+  const client = clients();
+  const movies = Array.from({ length: 25 }, (_, index) => ({
+    ...movie,
+    id: `movie-${index + 1}`,
+    title: `Movie ${index + 1}`,
+  }));
+  let failNext = true;
+  client.fetchMoviePage.mockImplementation(async (requestedPage) => {
+    if (requestedPage === 2 && failNext) {
+      failNext = false;
+      throw new Error("offline");
+    }
+    return {
+      items: requestedPage === 1 ? movies.slice(0, 24) : movies.slice(24),
+      total: 25,
+      page: requestedPage,
+      size: 24,
+      pages: 2,
+    };
+  });
+  render(<App client={client} />);
+
+  await screen.findByRole("link", { name: "View Movie 24" });
+  await act(async () => endObservers.at(-1)?.reachEnd());
+  await screen.findByRole("alert");
+  expect(screen.getByRole("link", { name: "View Movie 1" })).toBeTruthy();
+  expect(screen.queryByRole("link", { name: "View Movie 25" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+  await screen.findByRole("link", { name: "View Movie 25" });
+  expect(client.fetchMoviePage).toHaveBeenCalledTimes(3);
 });
 
 it("opens today's movie-first page without catalogue reads or poster fan-out", async () => {
