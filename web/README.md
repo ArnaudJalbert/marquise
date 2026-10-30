@@ -9,6 +9,10 @@ backend in the same repository.
 > the only prerequisites are Node.js and pnpm. See [AGENTS.md](../AGENTS.md) for enforced
 > rules and [CONTRIBUTING.md](../CONTRIBUTING.md) for paths and commands.
 
+## Minimalist design review, issue #332
+
+Run `pnpm install --frozen-lockfile`, then `pnpm prototype` from `web/`. Open `http://localhost:4174`. The React prototype uses labelled sample data and does not replace the delivery app or call a live API. Design decisions, old-interface baseline, screenshots, verification and the pending approval gate are in [design/332/README.md](design/332/README.md). Run `pnpm build && pnpm prototype:build` to typecheck and build the local preview.
+
 ## Design
 
 - **`marquise-components`** owns presentational UI and pure filter logic; it receives clients via props

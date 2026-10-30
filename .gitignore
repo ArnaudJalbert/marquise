@@ -25,3 +25,6 @@ site/
 plan/
 .plans/
 docs/superpowers/
+
+# Build caches
+.turbo/

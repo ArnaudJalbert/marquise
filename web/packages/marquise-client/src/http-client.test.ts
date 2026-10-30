@@ -672,3 +672,50 @@ describe("HttpMarquiseClient grid", () => {
     }
   });
 });
+
+it("fetches one date-independent catalogue page with optional title search", async () => {
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockResolvedValue(jsonResponse(pageOf([makeMovie()])));
+  const client = new HttpMarquiseClient({
+    baseUrl: "https://api.example",
+    fetch,
+  });
+  const controller = new AbortController();
+  await client.fetchMoviePage(3, controller.signal, "Dune");
+  const url = new URL(String(fetch.mock.calls[0]![0]));
+  expect(url.pathname).toBe("/v1/movies");
+  expect(Object.fromEntries(url.searchParams)).toEqual({
+    page: "3",
+    size: "100",
+    title: "Dune",
+  });
+  expect(fetch.mock.calls[0]![1]?.signal).toBe(controller.signal);
+  expect(fetch).toHaveBeenCalledOnce();
+});
+
+it("queries a movie's exact ID across inclusive Montreal days and the DST transition", async () => {
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockResolvedValue(jsonResponse(pageOf([])));
+  const client = new HttpMarquiseClient({
+    baseUrl: "https://api.example",
+    fetch,
+  });
+  await client.fetchScreeningRangePage(
+    "movie-a",
+    "2026-10-30",
+    "2026-11-02",
+    2,
+  );
+  const url = new URL(String(fetch.mock.calls[0]![0]));
+  expect(url.pathname).toBe("/v1/screenings");
+  expect(Object.fromEntries(url.searchParams)).toEqual({
+    movie_id: "movie-a",
+    from: "2026-10-30T04:00:00.000Z",
+    to: "2026-11-03T04:59:59.999Z",
+    page: "2",
+    size: "100",
+  });
+  expect(fetch).toHaveBeenCalledOnce();
+});

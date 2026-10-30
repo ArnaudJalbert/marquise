@@ -1,0 +1,101 @@
+{
+  "source": "local production preview from pnpm prototype:build; not deployed; fixed sample data",
+  "routes": [
+    {
+      "route": "/",
+      "errors": [],
+      "resources": [
+        {
+          "url": "http://localhost:4175/assets/index-BtbOQ23h.js",
+          "type": "script"
+        },
+        {
+          "url": "http://localhost:4175/assets/index-C9OeSwgk.css",
+          "type": "link"
+        },
+        {
+          "url": "http://localhost:4175/posters/dune.jpg",
+          "type": "img"
+        },
+        {
+          "url": "http://localhost:4175/posters/past-lives.jpg",
+          "type": "img"
+        },
+        {
+          "url": "http://localhost:4175/posters/spirited-away.jpg",
+          "type": "img"
+        },
+        {
+          "url": "http://localhost:4175/favicon.ico",
+          "type": "other"
+        }
+      ],
+      "hasMain": true,
+      "noOverflow": true
+    },
+    {
+      "route": "/movies/dune",
+      "errors": [],
+      "resources": [
+        {
+          "url": "http://localhost:4175/assets/index-BtbOQ23h.js",
+          "type": "script"
+        },
+        {
+          "url": "http://localhost:4175/assets/index-C9OeSwgk.css",
+          "type": "link"
+        },
+        {
+          "url": "http://localhost:4175/posters/dune.jpg",
+          "type": "img"
+        }
+      ],
+      "hasMain": true,
+      "noOverflow": true
+    },
+    {
+      "route": "/cinemas",
+      "errors": [],
+      "resources": [
+        {
+          "url": "http://localhost:4175/assets/index-BtbOQ23h.js",
+          "type": "script"
+        },
+        {
+          "url": "http://localhost:4175/assets/index-C9OeSwgk.css",
+          "type": "link"
+        }
+      ],
+      "hasMain": true,
+      "noOverflow": true
+    },
+    {
+      "route": "/cinemas/moderne",
+      "errors": [],
+      "resources": [
+        {
+          "url": "http://localhost:4175/assets/index-BtbOQ23h.js",
+          "type": "script"
+        },
+        {
+          "url": "http://localhost:4175/assets/index-C9OeSwgk.css",
+          "type": "link"
+        },
+        {
+          "url": "http://localhost:4175/posters/dune.jpg",
+          "type": "img"
+        },
+        {
+          "url": "http://localhost:4175/posters/past-lives.jpg",
+          "type": "img"
+        },
+        {
+          "url": "http://localhost:4175/posters/spirited-away.jpg",
+          "type": "img"
+        }
+      ],
+      "hasMain": true,
+      "noOverflow": true
+    }
+  ]
+}
