@@ -8,6 +8,6 @@ const css = readdirSync(assets)
   .join("\n");
 
 // Barrel tree-shaking must not drop the app's layout or shared poster utilities.
-for (const selector of [".marquise-site", ".poster-rail", ".daily-poster-grid", ".object-cover"])
+for (const selector of [".minimal-site", ".minimal-grid", ".minimal-preview", ".minimal-poster"])
   assert(css.includes(selector), `Production CSS is missing ${selector}`);
 console.log("Production layout and poster styles verified.");

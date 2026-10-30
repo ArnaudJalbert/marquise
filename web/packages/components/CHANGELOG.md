@@ -2,6 +2,8 @@
 
 ## 2026-10-30
 
+- Connect the approved minimal UI through an injected production browse client. Keep catalogue and screening requests independent, show initial loading/error/Retry, and share one active preview across cards. Supports #333.
+
 ### Changes
 
 - Serve dev-only movies and screening fixture endpoints in the prototype dev/preview server by default, so showtime navigation works without a backend. Keep real API mode explicit and visibly labeled.

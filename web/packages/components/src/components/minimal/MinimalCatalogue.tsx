@@ -13,7 +13,7 @@ export type {
   CatalogueState,
   MinimalCatalogueProps,
 } from "./catalogue-types";
-import { timeToHour, formatHour } from "./catalogue-format";
+import { timeToHour, formatHour, decodePathId } from "./catalogue-format";
 import { MovieSchedule } from "./MovieSchedule";
 import { Showtime } from "./Showtime";
 import "./minimal.css";
@@ -48,11 +48,17 @@ function SectionDescription({ text }: { text: string }) {
 export function MinimalMovieCard({
   movie,
   cinemas,
+  expanded,
+  onExpanded,
 }: {
+  expanded?: boolean;
+  onExpanded?: (open: boolean) => void;
   movie: CatalogueMovie;
   cinemas: readonly CatalogueCinema[];
 }) {
-  const [open, setOpen] = useState(false);
+  const [localOpen, setLocalOpen] = useState(false);
+  const open = expanded ?? localOpen;
+  const setOpen = onExpanded ?? setLocalOpen;
   const arrow = useRef<HTMLButtonElement>(null);
   const preview = movie.screenings.slice(0, 3);
   const id = `preview-${movie.id}`;
@@ -79,11 +85,14 @@ export function MinimalMovieCard({
         }
       }}
     >
-      <a href={`/movies/${movie.id}`} aria-label={`View ${movie.title}`}>
+      <a
+        href={`/movies/${encodeURIComponent(movie.id)}`}
+        aria-label={`View ${movie.title}`}
+      >
         <Poster movie={movie} />
       </a>
       <div className="minimal-caption">
-        <a href={`/movies/${movie.id}`} title={movie.title}>
+        <a href={`/movies/${encodeURIComponent(movie.id)}`} title={movie.title}>
           {movie.title}
         </a>
         <button
@@ -118,6 +127,7 @@ export function MinimalMovieCard({
               <div className="minimal-cinema-showtimes" key={cinema}>
                 <h3>
                   {cinemas.find((c) => c.id === cinema)?.name ??
+                    preview.find((s) => s.cinemaId === cinema)?.cinemaName ??
                     "Cinema unavailable"}
                 </h3>
                 {preview
@@ -132,7 +142,7 @@ export function MinimalMovieCard({
           ) : (
             <p>No matching upcoming screenings.</p>
           )}
-          <a href={`/movies/${movie.id}`}>Full schedule</a>
+          <a href={`/movies/${encodeURIComponent(movie.id)}`}>Full schedule</a>
         </section>
       )}
     </article>
@@ -364,6 +374,14 @@ export function MinimalCatalogue({
   movies,
   catalogueMovies = movies,
   catalogueNotice,
+  serverResults = false,
+  showScreeningFilters = true,
+  catalogueSearch,
+  onCatalogueSearch,
+  catalogueState = "ready",
+  onCatalogueRetry,
+  detailNotice,
+  directoryNotice,
   cinemas,
   screeningLanguages,
   selection,
@@ -384,11 +402,13 @@ export function MinimalCatalogue({
       ? "movies"
       : "screenings";
   const movieId = /^\/movies\/([^/]+)$/.exec(path)?.[1];
+  const decodedMovieId = movieId ? decodePathId(movieId) : undefined;
   const cinemaId = /^\/cinemas\/([^/]+)$/.exec(path)?.[1];
   const movie =
-    catalogueMovies.find((m) => m.id === movieId) ??
-    movies.find((m) => m.id === movieId);
+    catalogueMovies.find((m) => m.id === decodedMovieId) ??
+    movies.find((m) => m.id === decodedMovieId);
   const [movieSearch, setMovieSearch] = useState("");
+  const [previewId, setPreviewId] = useState<string | null>(null);
   const cinema = cinemas.find((c) => c.id === cinemaId);
   const from = selection.from
     ? `${String(timeToHour(selection.from, 0)).padStart(2, "0")}:00`
@@ -399,42 +419,46 @@ export function MinimalCatalogue({
   const invalid =
     selection.start > selection.end ||
     Boolean(selection.from && selection.to && selection.from > selection.to);
-  const matching = movies
-    .map((m) => ({
-      ...m,
-      screenings: m.screenings
+  const matching = serverResults
+    ? movies
+    : movies
+        .map((m) => ({
+          ...m,
+          screenings: m.screenings
+            .filter(
+              (s) =>
+                s.date >= selection.start &&
+                s.date <= selection.end &&
+                (!cinemaId || s.cinemaId === cinemaId) &&
+                (!selection.cinemas.length ||
+                  cinemaId ||
+                  selection.cinemas.includes(s.cinemaId)) &&
+                (!selection.languages.length ||
+                  (s.language !== undefined &&
+                    selection.languages.includes(s.language))) &&
+                (!from || s.time >= from) &&
+                (!to || s.time <= to),
+            )
+            .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)),
+        }))
         .filter(
-          (s) =>
-            s.date >= selection.start &&
-            s.date <= selection.end &&
-            (!cinemaId || s.cinemaId === cinemaId) &&
-            (!selection.cinemas.length ||
-              cinemaId ||
-              selection.cinemas.includes(s.cinemaId)) &&
-            (!selection.languages.length ||
-              (s.language !== undefined &&
-                selection.languages.includes(s.language))) &&
-            (!from || s.time >= from) &&
-            (!to || s.time <= to),
+          (m) =>
+            m.title.toLowerCase().includes(selection.title.toLowerCase()) &&
+            m.screenings.length,
         )
-        .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)),
-    }))
-    .filter(
-      (m) =>
-        m.title.toLowerCase().includes(selection.title.toLowerCase()) &&
-        m.screenings.length,
-    )
-    .sort(
-      (a, b) =>
-        (
-          (a.screenings[0]?.date ?? "") + (a.screenings[0]?.time ?? "")
-        ).localeCompare(
-          (b.screenings[0]?.date ?? "") + (b.screenings[0]?.time ?? ""),
-        ) || a.id.localeCompare(b.id),
-    );
-  const allMovieMatches = catalogueMovies.filter((item) =>
-    item.title.toLowerCase().includes(movieSearch.trim().toLowerCase()),
-  );
+        .sort(
+          (a, b) =>
+            (
+              (a.screenings[0]?.date ?? "") + (a.screenings[0]?.time ?? "")
+            ).localeCompare(
+              (b.screenings[0]?.date ?? "") + (b.screenings[0]?.time ?? ""),
+            ) || a.id.localeCompare(b.id),
+        );
+  const allMovieMatches = serverResults
+    ? catalogueMovies
+    : catalogueMovies.filter((item) =>
+        item.title.toLowerCase().includes(movieSearch.trim().toLowerCase()),
+      );
   return (
     <div
       className="minimal-site"
@@ -496,6 +520,7 @@ export function MinimalCatalogue({
           <>
             <h1>Cinemas</h1>
             <SectionDescription text="Browse Montréal cinemas and open one to see its upcoming showtimes. For example, choose your favorite venue to check what's playing this weekend." />
+            {directoryNotice}
             <ul className="minimal-directory">
               {cinemas.map((c) => (
                 <li key={c.id}>
@@ -534,7 +559,7 @@ export function MinimalCatalogue({
               />
             </>
           ) : (
-            <h1>Movie not found</h1>
+            (detailNotice ?? <h1>Movie not found</h1>)
           )
         ) : cinemaId && !cinema ? (
           <h1>Cinema not found</h1>
@@ -564,16 +589,20 @@ export function MinimalCatalogue({
                     )}
                   </header>
                 )}
-                <Filters
-                  selection={selection}
-                  onSelection={onSelection}
-                  screeningLanguages={screeningLanguages}
-                  cinemas={cinemas}
-                  fixed={cinemaId}
-                  today={today}
-                  tomorrow={tomorrow}
-                  weekend={weekend}
-                />
+                {showScreeningFilters ? (
+                  <Filters
+                    selection={selection}
+                    onSelection={onSelection}
+                    screeningLanguages={screeningLanguages}
+                    cinemas={cinemas}
+                    fixed={cinemaId}
+                    today={today}
+                    tomorrow={tomorrow}
+                    weekend={weekend}
+                  />
+                ) : (
+                  <p>{today} · Montréal local time</p>
+                )}
                 {invalid ? (
                   <p role="alert">
                     Start must be before end. Choose a valid date and daily time
@@ -590,6 +619,11 @@ export function MinimalCatalogue({
                         />
                       ))}
                     </div>
+                  </div>
+                ) : state === "error" && !matching.length ? (
+                  <div className="minimal-state" role="alert">
+                    <p>Could not load screenings.</p>
+                    <button onClick={onRetry}>Retry</button>
                   </div>
                 ) : (
                   <>
@@ -620,6 +654,10 @@ export function MinimalCatalogue({
                             key={m.id}
                             movie={m}
                             cinemas={cinemas}
+                            expanded={previewId === m.id}
+                            onExpanded={(open) =>
+                              setPreviewId(open ? m.id : null)
+                            }
                           />
                         ))}
                       </div>
@@ -650,18 +688,29 @@ export function MinimalCatalogue({
                   <span className="minimal-visually-hidden">Search movies</span>
                   <input
                     type="search"
-                    value={movieSearch}
+                    value={catalogueSearch ?? movieSearch}
                     placeholder="Search by title"
                     aria-label="Search movies"
-                    onChange={(event) => setMovieSearch(event.target.value)}
+                    onChange={(event) =>
+                      onCatalogueSearch
+                        ? onCatalogueSearch(event.target.value)
+                        : setMovieSearch(event.target.value)
+                    }
                   />
                 </label>
-                {allMovieMatches.length ? (
+                {catalogueState === "initial-loading" ? (
+                  <p role="status">Loading movies…</p>
+                ) : catalogueState === "error" ? (
+                  <div role="alert">
+                    <p>Could not load movies.</p>
+                    <button onClick={onCatalogueRetry}>Retry</button>
+                  </div>
+                ) : allMovieMatches.length ? (
                   <div className="minimal-library-grid">
                     {allMovieMatches.map((item) => (
                       <article className="minimal-library-card" key={item.id}>
                         <a
-                          href={`/movies/${item.id}`}
+                          href={`/movies/${encodeURIComponent(item.id)}`}
                           aria-label={`View ${item.title}`}
                         >
                           <Poster movie={item} />

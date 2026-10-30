@@ -4,6 +4,10 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-10-30
 
+### v0.2.29
+
+- Add an injected movie-first screening read query. Return 24 distinct movie cards ordered by their next upcoming screening and ID, with up to three qualifying previews and authoritative totals. Use inclusive Montreal date bounds and one request clock. Supports #333.
+
 ### v0.2.28
 
 - Look up films in TMDB during imports. Reuse a movie when its TMDB id is already known, save the id for new movies, and leave uncertain matches on the existing title path. Add the nullable database column, a unique index, a migration, and PostgreSQL import tests. Apply the migration before deploying the new code. Closes #321, #322, #323.

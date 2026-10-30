@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-30
+
+- Open the minimalist Screenings view on today in Montreal. Use the real API by default, separate catalogue search, persistent navigation, and direct movie metadata/schedule loading. Supports #333.
+
 ## 2026-10-20
 
 ### Changes

@@ -15,3 +15,9 @@ export type {
   ScreeningPage,
 } from "./discovery-client";
 export { toMontrealIsoDate, montrealDateTime } from "./montreal-date";
+
+export type {
+  BrowseClient,
+  ScreeningMovieApi,
+  ScreeningMovieQuery,
+} from "./browse-client";

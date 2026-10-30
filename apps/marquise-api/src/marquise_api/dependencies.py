@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import HTTPException, Request, status
 
 from marquise import (
+    BrowseScreeningMoviesQuery,
     GetCinemaMoviesUseCase,
     GetCinemaScreeningsQuery,
     GetCinemaUseCase,
@@ -90,3 +91,8 @@ def get_write_screening_use_case(request: Request) -> WriteScreeningUseCase:
 def get_screening_query(request: Request) -> GetScreeningQuery:
     """Return configured screening lookup query."""
     return request.app.state.factory.get_screening_query
+
+
+def get_browse_screening_movies_query(request: Request) -> BrowseScreeningMoviesQuery:
+    """Return the configured movie-first screening query."""
+    return request.app.state.factory.browse_screening_movies_query
