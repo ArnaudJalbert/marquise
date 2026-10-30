@@ -4,6 +4,10 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-10-30
 
+### v0.2.30
+
+- Persist metadata patches and successful enrichment atomically by stable movie ID. Reject stale revisions and title or TMDB identity collisions. Add a nullable enrichment timestamp migration; legacy linked movies remain pending. Merge implementation and final wiring remain in #356 and #355.
+
 ### v0.2.29
 
 - Publish additive metadata facts, workflow DTOs and execution/persistence contracts for #358. Distinguish confirmed TMDB identity from successful enrichment without changing existing callers. Final integration remains in #355.
