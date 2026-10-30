@@ -36,15 +36,15 @@ This is real PostgreSQL with controlled test rows. Film names and local artwork
 are recognizable, but all schedules and booking links are fictional. The API does
 not manufacture responses or switch to fixtures when it fails.
 
-- 29 real, named catalogue movies across seven test cinemas, all with local
-  poster artwork.
+- 53 real, named catalogue movies, all with local poster artwork. The catalogue
+  fills two pages of 24 and has a third page with five movies.
 - Dune: Part Two has 25 screenings per day for 14 Montreal days, 350 total, with
   source language acronyms across seven cinemas. Each local day converts to UTC
   independently, including DST transitions.
 - Perfect Days has one screening tomorrow. Arrival has none, and uses an opaque
-  ID with a slash. Twenty-six other films exercise a second movie page and
-  poster grid, with sparse metadata and the long title The Assassination of
-  Jesse James by the Coward Robert Ford.
+  ID with a slash. Fifty other films exercise catalogue pages and poster grids,
+  with sparse metadata and the long title The Assassination of Jesse James by
+  the Coward Robert Ford.
 - Posters mount from the existing dev-only artwork directory. Its
   [source record](../web/packages/components/demo/public/posters/SOURCES.md)
   applies. They are not copied into the local React image or production bundle.
@@ -83,17 +83,18 @@ binding in `compose.local.yml`. Do not point this configuration at production.
 
 On October 30, 2026, `make local-up` built the actual API and React image and
 reported all three services healthy. `make local-seed` repeated successfully.
-Postgres contained 29 movies, seven cinemas, and 377 screenings after reseeding.
-The API returned 24 distinct movie cards on page one and the shorter second page,
-a 29-movie catalogue, and the catalogue-only opaque ID correctly.
+Postgres contained 53 movies, seven cinemas, and 377 screenings after reseeding.
+The API returned 24 distinct screening cards on page one and the shorter second
+page, plus all three catalogue pages with 53 movies and working posters.
 
 ```sh
 uv run --with playwright python scripts/verify_local_stack.py
 ```
 
-The check passed with Chromium 156.0.8078.4. It queried every page of the 350-show
+The check passed with Chromium 156.0.8078.4. It queried every page of all 53
+catalogue movies, loaded each poster, and queried every page of the 350-show
 Dune window, asserted 25 per day across 14 days and seven cinemas, and exercised
-the actual React catalogue, all 29 local posters, combined title/cinema/language/hour
+the actual React catalogue, all 53 local posters, combined title/cinema/language/hour
 filters, URL Back restoration, dense detail, and the catalogue-only slash-ID route
 including refresh. It opened the filter panel at desktop and mobile sizes, checked
 that it does not shift the controls or grid, and moved both time handles with

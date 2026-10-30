@@ -34,6 +34,35 @@ These original-color film posters are local review fixtures, not a production as
 | princess-kaguya.jpg | [The Tale of the Princess Kaguya poster](https://en.wikipedia.org/wiki/The_Tale_of_the_Princess_Kaguya_(film)) |
 | tokyo-story.jpg | [Tokyo Story poster](https://en.wikipedia.org/wiki/Tokyo_Story) |
 
+The local integration stack adds these catalogue poster fixtures from their English Wikipedia film pages on October 30, 2026.
+
+| Local file | Source |
+| --- | --- |
+| the-godfather.jpg | [The Godfather poster](https://en.wikipedia.org/wiki/The_Godfather) |
+| the-godfather-part-ii.jpg | [The Godfather Part II poster](https://en.wikipedia.org/wiki/The_Godfather_Part_II) |
+| inception.jpg | [Inception poster](https://en.wikipedia.org/wiki/Inception) |
+| the-dark-knight.jpg | [The Dark Knight poster](https://en.wikipedia.org/wiki/The_Dark_Knight) |
+| pulp-fiction.jpg | [Pulp Fiction poster](https://en.wikipedia.org/wiki/Pulp_Fiction) |
+| shawshank-redemption.jpg | [The Shawshank Redemption poster](https://en.wikipedia.org/wiki/The_Shawshank_Redemption) |
+| goodfellas.jpg | [Goodfellas poster](https://en.wikipedia.org/wiki/Goodfellas) |
+| 2001-a-space-odyssey.png | [2001: A Space Odyssey poster](https://en.wikipedia.org/wiki/2001:_A_Space_Odyssey) |
+| blade-runner.png | [Blade Runner poster](https://en.wikipedia.org/wiki/Blade_Runner) |
+| before-sunrise.jpg | [Before Sunrise poster](https://en.wikipedia.org/wiki/Before_Sunrise) |
+| before-sunset.jpg | [Before Sunset poster](https://en.wikipedia.org/wiki/Before_Sunset) |
+| before-midnight.jpg | [Before Midnight poster](https://en.wikipedia.org/wiki/Before_Midnight) |
+| amelie.jpg | [Amélie poster](https://en.wikipedia.org/wiki/Am%C3%A9lie) |
+| chungking-express.jpg | [Chungking Express poster](https://en.wikipedia.org/wiki/Chungking_Express) |
+| royal-tenenbaums.jpg | [The Royal Tenenbaums poster](https://en.wikipedia.org/wiki/The_Royal_Tenenbaums) |
+| social-network.png | [The Social Network poster](https://en.wikipedia.org/wiki/The_Social_Network) |
+| phantom-thread.png | [Phantom Thread poster](https://en.wikipedia.org/wiki/Phantom_Thread) |
+| banshees-of-inisherin.jpg | [The Banshees of Inisherin poster](https://en.wikipedia.org/wiki/The_Banshees_of_Inisherin) |
+| anatomy-of-a-fall.jpg | [Anatomy of a Fall poster](https://en.wikipedia.org/wiki/Anatomy_of_a_Fall) |
+| the-holdovers.jpg | [The Holdovers poster](https://en.wikipedia.org/wiki/The_Holdovers) |
+| little-women-2019.jpg | [Little Women poster](https://en.wikipedia.org/wiki/Little_Women_(2019_film)) |
+| the-fabelmans.jpg | [The Fabelmans poster](https://en.wikipedia.org/wiki/The_Fabelmans) |
+| the-french-dispatch.jpg | [The French Dispatch poster](https://en.wikipedia.org/wiki/The_French_Dispatch) |
+| memories-of-murder.jpg | [Memories of Murder poster](https://en.wikipedia.org/wiki/Memories_of_Murder) |
+
 The prototype's six sample films have local poster files. The prototype makes no external image requests at runtime.
 
 The Perfect Days poster comes from its French distributor, Haut et Court, and was resized to at most 750 pixels for the fixture.
