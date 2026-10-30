@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-30
+
+### v0.1.16
+
+- Add injected metadata refresh handling for one movie or all confirmed movies, with per-movie outcomes and partial-failure reporting. Factory hookup and command registration remain in #355. Closes #354.
+
 ## 2026-10-07
 
 ### v0.1.15
