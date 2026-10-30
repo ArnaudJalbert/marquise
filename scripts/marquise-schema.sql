@@ -41,7 +41,9 @@ CREATE TABLE IF NOT EXISTS marquise.movies (
     original_title   TEXT,
     rating           TEXT,
     origin_countries TEXT,
-    tmdb_id          TEXT UNIQUE
+    tmdb_id          TEXT UNIQUE,
+    metadata_enriched_at TIMESTAMPTZ,
+    metadata_revision BIGINT NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS marquise.screenings (
@@ -108,3 +110,42 @@ BEGIN
     END IF;
 END;
 $$;
+
+
+-- Advance on every movie write, including existing import paths.
+CREATE OR REPLACE FUNCTION marquise.advance_movie_metadata_revision()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+    NEW.metadata_revision := OLD.metadata_revision + 1;
+    RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS movie_metadata_revision ON marquise.movies;
+CREATE TRIGGER movie_metadata_revision BEFORE UPDATE ON marquise.movies
+FOR EACH ROW EXECUTE FUNCTION marquise.advance_movie_metadata_revision();
+
+-- Reference edits must invalidate snapshots even after an insert/delete cycle.
+CREATE OR REPLACE FUNCTION marquise.advance_referenced_movie_revision()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE
+    old_id TEXT;
+    new_id TEXT;
+    target_id TEXT;
+BEGIN
+    IF TG_OP <> 'INSERT' THEN old_id := OLD.movie_id; END IF;
+    IF TG_OP <> 'DELETE' THEN new_id := NEW.movie_id; END IF;
+    -- Stable lock order also covers a screening moved between two movies.
+    FOR target_id IN
+        SELECT DISTINCT id FROM unnest(ARRAY[old_id, new_id]) AS ids(id)
+        WHERE id IS NOT NULL ORDER BY id
+    LOOP
+        UPDATE marquise.movies SET metadata_revision = metadata_revision + 1
+        WHERE id = target_id;
+    END LOOP;
+    RETURN NULL;
+END;
+$$;
+DROP TRIGGER IF EXISTS screening_movie_metadata_revision ON marquise.screenings;
+CREATE TRIGGER screening_movie_metadata_revision
+AFTER INSERT OR UPDATE OR DELETE ON marquise.screenings
+FOR EACH ROW EXECUTE FUNCTION marquise.advance_referenced_movie_revision();

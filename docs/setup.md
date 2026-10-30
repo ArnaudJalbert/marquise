@@ -174,3 +174,29 @@ uv run pytest packages/marquise-core/tests/integration_tests/ -q
 ```
 
 Requires `DATABASE_URL` in `.env`.
+
+### Existing databases: movie metadata enrichment state (#359)
+
+Apply [the additive lifecycle migration](../scripts/migrations/359-movie-enrichment-state.sql)
+before deploying metadata persistence. The prerequisite #321 migration must already
+provide `movies.tmdb_id` and its unique index. The new nullable
+`metadata_enriched_at TIMESTAMPTZ` records only a successful atomic metadata write.
+The internal `metadata_revision` counter and triggers invalidate snapshots on
+movie writes and screening reference changes, including insert/delete cycles.
+An existing TMDB ID with a NULL stamp remains pending first enrichment. No rows
+are matched, enriched, merged, deleted or backfilled by this migration.
+
+The script targets `marquise.movies`. For a disposable test or custom schema,
+change that qualified table name before running it. Use an approved quiet window.
+The transaction has a 5-second lock timeout and 60-second statement timeout;
+adding the columns and triggers takes locks on movies and screenings. On failure, issue `ROLLBACK` in the
+same session and inspect the cause before retrying. Rerunning preserves both
+pending rows and existing completion stamps. Bootstrap scripts create the column
+for fresh databases but do not upgrade existing tables.
+
+Verify both columns, the movie and screening revision triggers, and unchanged
+legacy metadata before enabling
+metadata persistence. Application rollback can leave the additive columns and triggers in place;
+dropping it would discard successful-enrichment history and is unnecessary. This
+change supplies no live rollout and no composition-root wiring. #355 owns wiring
+and assembled end-to-end verification; #356 owns guarded merge transactions.
