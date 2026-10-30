@@ -2,6 +2,7 @@
 
 import json
 from copy import deepcopy
+from http.client import IncompleteRead
 from pathlib import Path
 from unittest.mock import create_autospec
 from urllib.parse import parse_qs, urlparse
@@ -326,3 +327,14 @@ async def test_media_duplicates_across_locale_requests_keep_first_provider_order
     result = await adapter(data).movie_details(MOVIE)
     assert result.complete
     assert [m.kind for m in result.items[0].media] == ["teaser", "trailer", "other"]
+
+
+@pytest.mark.asyncio
+async def test_truncated_http_detail_returns_typed_partial_batch() -> None:
+    """A truncated body remains an incomplete result rather than a raw exception."""
+    data = payloads()
+    data["movie/1765072/credits"] = IncompleteRead(b"fake-secret", 100)
+    result = await adapter(data).movie_details(MOVIE)
+    assert not result.complete and result.failure.kind == "unavailable"
+    assert result.failure.retryable and result.items[0].identity == MOVIE
+    assert "fake-secret" not in repr(result)

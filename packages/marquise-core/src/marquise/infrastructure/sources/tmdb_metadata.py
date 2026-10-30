@@ -3,7 +3,7 @@
 import asyncio
 import json
 from collections.abc import Awaitable, Callable
-from http.client import HTTPMessage
+from http.client import HTTPException, HTTPMessage
 from typing import IO
 from urllib.error import HTTPError
 from urllib.parse import urlencode
@@ -82,7 +82,7 @@ class TmdbMetadataHttpSource:
             failure = MetadataFailure(
                 kind, f"TMDB HTTP {status}", status == 429 or status >= 500
             )
-        except (OSError, TimeoutError):
+        except (OSError, HTTPException):
             failure = MetadataFailure("unavailable", "TMDB request failed", True)
         except (ValueError, TypeError):
             failure = MetadataFailure("invalid_data", "Invalid TMDB JSON")
