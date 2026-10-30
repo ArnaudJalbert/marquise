@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from urllib.parse import urlencode
+from urllib.parse import parse_qs, urlencode, urlparse
 from urllib.request import urlopen
 from zoneinfo import ZoneInfo
 
@@ -20,7 +20,9 @@ ORIGIN = "http://127.0.0.1:4300"
 
 def read_page(path: str, params: dict) -> dict:
     """Read the real API through the app's same-origin reverse proxy."""
-    with urlopen(f"{ORIGIN}/v1/{path}?{urlencode(params)}", timeout=10) as response:
+    with urlopen(
+        f"{ORIGIN}/v1/{path}?{urlencode(params, doseq=True)}", timeout=10
+    ) as response:
         return json.load(response)
 
 
@@ -36,9 +38,9 @@ def verify() -> None:
     assert all(len(item["screenings"]) <= 3 for item in first["items"])
     catalogue = read_page("movies", {"size": 24})
     assert catalogue["total"] == 29 and catalogue["pages"] == 2
-    catalogue_items = catalogue["items"] + read_page("movies", {"size": 24, "page": 2})[
-        "items"
-    ]
+    catalogue_items = (
+        catalogue["items"] + read_page("movies", {"size": 24, "page": 2})["items"]
+    )
     assert len(catalogue_items) == 29
     assert all(item["poster_url"] for item in catalogue_items)
     assert not any(
@@ -46,6 +48,28 @@ def verify() -> None:
     )
     title = read_page("movies", {"title": "Arrival", "size": 24})
     assert [item["id"] for item in title["items"]] == ["local/catalogue-only"]
+    filtered = read_page(
+        "screening-movies",
+        {
+            **selection,
+            "title": "Dune",
+            "cinema": ["local-cinema-1"],
+            "language": ["VOSTF"],
+            "start_hour": 15,
+            "end_hour": 17,
+        },
+    )
+    assert [item["id"] for item in filtered["items"]] == ["local-dune"]
+    assert all(
+        item["cinema_id"] == "local-cinema-1"
+        and item["language"] == "VOSTF"
+        and "15:00"
+        <= datetime.fromisoformat(item["showtime"])
+        .astimezone(ZoneInfo("America/Montreal"))
+        .strftime("%H:%M")
+        <= "17:00"
+        for item in filtered["items"][0]["screenings"]
+    )
     # Calendar bounds include the DST transition when it falls in the next fortnight.
     zone = ZoneInfo("America/Montreal")
     start = datetime.combine(today, datetime.min.time(), zone)
@@ -92,6 +116,81 @@ def verify() -> None:
         )
         assert all(loaded_posters), "At least one local catalogue poster failed to load"
         expect(page.locator(".minimal-card")).to_have_count(24)
+        before = page.evaluate(
+            """() => Object.fromEntries(
+                ['.minimal-shortcuts', '.minimal-grid'].map(selector => {
+                    const element = document.querySelector(selector);
+                    const rect = element.getBoundingClientRect();
+                    const {x, y, width, height} = rect;
+                    return [selector, {x, y, width, height}];
+                })
+            )"""
+        )
+        page.get_by_text("Filters", exact=True).click()
+        panel = page.locator(".minimal-filter-panels")
+        expect(panel).to_be_visible()
+        bounds = panel.evaluate(
+            """element => {
+                const {x, y, right, bottom} = element.getBoundingClientRect();
+                return {x, y, right, bottom};
+            }"""
+        )
+        after = page.evaluate(
+            """() => Object.fromEntries(
+                ['.minimal-shortcuts', '.minimal-grid'].map(selector => {
+                    const element = document.querySelector(selector);
+                    const rect = element.getBoundingClientRect();
+                    const {x, y, width, height} = rect;
+                    return [selector, {x, y, width, height}];
+                })
+            )"""
+        )
+        assert before == after
+        assert bounds["x"] >= 0 and bounds["right"] <= 1280
+        start_slider = page.get_by_role("slider", name="Start time")
+        start_slider.press("ArrowRight")
+        expect(start_slider).to_have_value("1")
+        slider_bounds = start_slider.bounding_box()
+        assert slider_bounds is not None
+        y = slider_bounds["y"] + slider_bounds["height"] / 2
+        page.mouse.move(
+            slider_bounds["x"] + 8 + (slider_bounds["width"] - 16) / 24,
+            y,
+        )
+        page.mouse.down()
+        page.mouse.move(slider_bounds["x"] + slider_bounds["width"] / 2, y)
+        page.mouse.up()
+        expect(start_slider).to_have_value("12")
+        end_slider = page.get_by_role("slider", name="End time")
+        end_slider.press("ArrowLeft")
+        expect(end_slider).to_have_value("23")
+        slider_bounds = end_slider.bounding_box()
+        assert slider_bounds is not None
+        y = slider_bounds["y"] + slider_bounds["height"] / 2
+        page.mouse.move(
+            slider_bounds["x"] + 8 + (slider_bounds["width"] - 16) * 23 / 24,
+            y,
+        )
+        page.mouse.down()
+        page.mouse.move(
+            slider_bounds["x"] + 8 + (slider_bounds["width"] - 16) * 20 / 24,
+            y,
+        )
+        page.mouse.up()
+        expect(end_slider).to_have_value("20")
+        page.get_by_role("checkbox", name="Local test cinema 1").check()
+        page.get_by_role("checkbox", name="VOSTF").check()
+        page.get_by_role("searchbox", name="Movie title").fill("Dune")
+        page.wait_for_url("**title=Dune**")
+        expect(page.locator(".minimal-card")).to_have_count(1)
+        query = parse_qs(urlparse(page.url).query)
+        assert query["title"] == ["Dune"]
+        assert query["cinema"] == ["local-cinema-1"]
+        assert query["language"] == ["VOSTF"]
+        assert query["from"] == ["12:00"]
+        assert query["to"] == ["20:00"]
+        page.go_back()
+        expect(page.get_by_role("searchbox", name="Movie title")).to_have_value("")
         page.get_by_role("link", name="Movies", exact=True).click()
         page.get_by_role("searchbox", name="Search movies").fill("Dune: Part Two")
         link = page.get_by_role("link", name="View Dune: Part Two")
@@ -118,6 +217,91 @@ def verify() -> None:
             )
         ).to_be_visible()
         assert api_urls and all(url.startswith(ORIGIN + "/v1/") for url in api_urls)
+        mobile = browser.new_page(
+            viewport={"width": 390, "height": 844}, has_touch=True
+        )
+        mobile.goto(ORIGIN)
+        expect(mobile.locator(".minimal-card")).to_have_count(24)
+        assert mobile.evaluate(
+            "document.documentElement.scrollWidth <= window.innerWidth"
+        )
+        mobile_columns = mobile.locator(".minimal-grid").evaluate(
+            "element => getComputedStyle(element).gridTemplateColumns.split(' ').length"
+        )
+        assert mobile_columns == 2
+        mobile.get_by_text("Filters", exact=True).click()
+        mobile_panel = mobile.locator(".minimal-filter-panels")
+        expect(mobile_panel).to_be_visible()
+        assert mobile_panel.evaluate(
+            "element => element.getBoundingClientRect().right <= window.innerWidth"
+        )
+        mobile_slider = mobile.get_by_role("slider", name="Start time")
+        mobile_slider.scroll_into_view_if_needed()
+        slider_bounds = mobile_slider.bounding_box()
+        assert slider_bounds is not None
+        session = mobile.context.new_cdp_session(mobile)
+        y = slider_bounds["y"] + slider_bounds["height"] / 2
+        session.send(
+            "Input.dispatchTouchEvent",
+            {
+                "type": "touchStart",
+                "touchPoints": [{"x": slider_bounds["x"] + 8, "y": y, "id": 1}],
+            },
+        )
+        session.send(
+            "Input.dispatchTouchEvent",
+            {
+                "type": "touchMove",
+                "touchPoints": [
+                    {
+                        "x": slider_bounds["x"] + slider_bounds["width"] / 2,
+                        "y": y,
+                        "id": 1,
+                    }
+                ],
+            },
+        )
+        session.send(
+            "Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []}
+        )
+        expect(mobile_slider).to_have_value("12")
+        mobile_end = mobile.get_by_role("slider", name="End time")
+        slider_bounds = mobile_end.bounding_box()
+        assert slider_bounds is not None
+        y = slider_bounds["y"] + slider_bounds["height"] / 2
+        session.send(
+            "Input.dispatchTouchEvent",
+            {
+                "type": "touchStart",
+                "touchPoints": [
+                    {
+                        "x": slider_bounds["x"] + slider_bounds["width"] - 8,
+                        "y": y,
+                        "id": 1,
+                    }
+                ],
+            },
+        )
+        session.send(
+            "Input.dispatchTouchEvent",
+            {
+                "type": "touchMove",
+                "touchPoints": [
+                    {
+                        "x": slider_bounds["x"]
+                        + 8
+                        + (slider_bounds["width"] - 16) * 18 / 24,
+                        "y": y,
+                        "id": 1,
+                    }
+                ],
+            },
+        )
+        session.send(
+            "Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []}
+        )
+        expect(mobile_end).to_have_value("18")
+        mobile.close()
         browser.close()
     print(
         json.dumps(

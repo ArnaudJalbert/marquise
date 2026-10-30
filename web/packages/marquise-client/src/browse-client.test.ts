@@ -43,6 +43,40 @@ it("requests a bounded independent catalogue search through the endpoint", async
   expect(fetch).toHaveBeenCalledTimes(1);
 });
 
+it("serializes combined movie-first filters with repeated alternatives", async () => {
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockResolvedValue(
+      new Response(
+        JSON.stringify({ items: [], total: 0, page: 1, pages: 0, size: 24 }),
+      ),
+    );
+  const client = new HttpMarquiseClient({ baseUrl: "", fetch });
+  await client.fetchScreeningMoviesPage({
+    start: "2026-11-01",
+    end: "2026-11-05",
+    page: 1,
+    title: "Dune",
+    cinemas: ["c1", "c2"],
+    languages: ["VO", "VOSTF"],
+    startHour: 18,
+    endHour: 21,
+  });
+  const url = new URL(String(fetch.mock.calls[0]?.[0]), "https://api.example");
+  expect([...url.searchParams]).toEqual([
+    ["start", "2026-11-01"],
+    ["end", "2026-11-05"],
+    ["page", "1"],
+    ["title", "Dune"],
+    ["cinema", "c1"],
+    ["cinema", "c2"],
+    ["language", "VO"],
+    ["language", "VOSTF"],
+    ["start_hour", "18"],
+    ["end_hour", "21"],
+  ]);
+});
+
 it("propagates API failure and cancellation without a sample-data fallback", async () => {
   const fetch = vi
     .fn<typeof globalThis.fetch>()

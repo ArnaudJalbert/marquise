@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type {
   CatalogueCinema,
   CatalogueMovie,
@@ -167,6 +167,16 @@ function Filters({
   | "tomorrow"
   | "weekend"
 > & { fixed?: string }) {
+  const [titleValue, setTitleValue] = useState(s.title);
+  useEffect(() => setTitleValue(s.title), [s.title]);
+  useEffect(() => {
+    if (titleValue === s.title) return;
+    const timer = window.setTimeout(
+      () => onSelection({ ...s, title: titleValue }),
+      250,
+    );
+    return () => window.clearTimeout(timer);
+  }, [onSelection, s, titleValue]);
   const change = (patch: Partial<CatalogueSelection>) =>
     onSelection({ ...s, ...patch });
   const fromHour = timeToHour(s.from, 0);
@@ -184,9 +194,9 @@ function Filters({
           Movie title
           <input
             type="search"
-            value={s.title}
+            value={titleValue}
             placeholder="Search movies"
-            onChange={(e) => change({ title: e.target.value })}
+            onChange={(e) => setTitleValue(e.target.value)}
           />
         </label>
         <label>

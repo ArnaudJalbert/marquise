@@ -116,6 +116,15 @@ export class HttpMarquiseClient
       end: query.end,
       page: String(query.page),
     });
+    if (query.title?.trim()) params.set("title", query.title.trim());
+    query.cinemas?.forEach((id) => params.append("cinema", id));
+    query.languages?.forEach((language) =>
+      params.append("language", language),
+    );
+    if (query.startHour !== undefined && query.startHour > 0)
+      params.set("start_hour", String(query.startHour));
+    if (query.endHour !== undefined && query.endHour < 24)
+      params.set("end_hour", String(query.endHour));
     return this.fetchJson(`/v1/screening-movies?${params}`, signal);
   }
   async fetchMovieMetadata(
