@@ -2,7 +2,7 @@
 
 import json
 import traceback
-from http.client import HTTPMessage
+from http.client import BadStatusLine, HTTPMessage, IncompleteRead
 from io import BytesIO
 from unittest.mock import AsyncMock
 from urllib.error import HTTPError
@@ -130,3 +130,22 @@ async def test_complete_empty_search_is_distinct_from_failure() -> None:
     )
     result = await TmdbMetadataHttpSource("key", fetch=fetch).pages("search/person", {})
     assert result.complete and result.failure is None and result.items == ()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "error",
+    [IncompleteRead(b"private-test-key", 100), BadStatusLine("private-test-key")],
+)
+async def test_http_protocol_failure_is_retryable_and_sanitized(
+    error: IncompleteRead | BadStatusLine,
+) -> None:
+    """Truncated bodies and malformed HTTP status cannot escape the failure port."""
+    fetch = AsyncMock(side_effect=error)
+    source = TmdbMetadataHttpSource("private-test-key", fetch=fetch)
+    with pytest.raises(TmdbMetadataError) as caught:
+        await source.get("movie/42")
+    assert caught.value.failure.kind == "unavailable"
+    assert caught.value.failure.retryable
+    assert caught.value.__context__ is None
+    assert "private-test-key" not in "".join(traceback.format_exception(caught.value))
