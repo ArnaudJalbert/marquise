@@ -2,6 +2,10 @@
 
 Bootstrap Supabase (PostgreSQL) for local development and integration tests.
 
+Private Fly catalog preparation is documented in
+[Fly PostgreSQL setup and recovery](fly-postgres.md). Supabase Auth and the
+retained Supabase catalog remain separate from that new database.
+
 Env vars → [CONTRIBUTING.md](../CONTRIBUTING.md#environment-variables).
 
 ---
