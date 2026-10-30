@@ -251,9 +251,14 @@ it("handles unknown movies and browser navigation between independent sections",
 it("handles malformed movie URL escapes without crashing navigation", async () => {
   history.replaceState(null, "", "/movies/bad%escape");
   const client = clients();
-  client.fetchMovieMetadata.mockRejectedValue(new MovieNotFoundError("bad%escape"));
+  client.fetchMovieMetadata.mockRejectedValue(
+    new MovieNotFoundError("bad%escape"),
+  );
   render(<App client={client} />);
   await screen.findByRole("heading", { name: "Movie not found" });
-  expect(client.fetchMovieMetadata).toHaveBeenCalledWith("bad%escape", expect.any(AbortSignal));
+  expect(client.fetchMovieMetadata).toHaveBeenCalledWith(
+    "bad%escape",
+    expect.any(AbortSignal),
+  );
   expect(screen.getByRole("link", { name: "Screenings" })).toBeTruthy();
 });
