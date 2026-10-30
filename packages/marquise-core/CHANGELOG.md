@@ -4,9 +4,13 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-10-30
 
-### v0.2.29
+### v0.2.30
 
 - Recover Cinémathèque movie year, directors, cast and runtime from cinema detail pages linked by ticket performance IDs, retaining ticketing data when details are unavailable. Preserve original screening titles and parse Cineplex co-director separators. Add captured source fixtures and offline regression tests. Closes #351.
+
+### v0.2.29
+
+- Publish additive metadata facts, workflow DTOs and execution/persistence contracts for #358. Distinguish confirmed TMDB identity from successful enrichment without changing existing callers. Final integration remains in #355.
 
 ### v0.2.28
 
