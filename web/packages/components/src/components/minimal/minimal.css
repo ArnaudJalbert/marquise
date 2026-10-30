@@ -373,7 +373,7 @@
 }
 .minimal-preview {
   position: absolute;
-  top: calc(100% + 4px);
+  top: 100%;
   left: 0;
   width: 100%;
   max-height: min(240px, 50vh);
