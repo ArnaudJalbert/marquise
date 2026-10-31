@@ -55,3 +55,5 @@ export type {
 export { Button, buttonVariants } from "./components/ui/button";
 export { Card, CardContent } from "./components/ui/card";
 export { cn } from "./lib/utils";
+
+export { MinimalExperience } from "./components/minimal/MinimalExperience";

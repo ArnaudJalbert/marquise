@@ -57,6 +57,9 @@ from marquise.application.movie_workflows import (
     RefreshMoviesInputData,
     RefreshMoviesOutputData,
 )
+from marquise.application.queries.browse_screening_movies import (
+    BrowseScreeningMoviesQuery,
+)
 from marquise.application.queries.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
@@ -139,6 +142,7 @@ __all__ = [
     "EnrichMovieExecutor",
     "RefreshMoviesExecutor",
     "MergeMoviesExecutor",
+    "BrowseScreeningMoviesQuery",
     "AccountAlreadyExistsError",
     "ApplicationError",
     "AssignSourceUseCase",

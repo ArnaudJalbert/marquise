@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type {
   CatalogueCinema,
   CatalogueMovie,
@@ -13,7 +13,7 @@ export type {
   CatalogueState,
   MinimalCatalogueProps,
 } from "./catalogue-types";
-import { timeToHour, formatHour } from "./catalogue-format";
+import { timeToHour, formatHour, decodePathId } from "./catalogue-format";
 import { MovieSchedule } from "./MovieSchedule";
 import { Showtime } from "./Showtime";
 import "./minimal.css";
@@ -45,14 +45,40 @@ function SectionDescription({ text }: { text: string }) {
     </details>
   );
 }
+
+function EndSentinel({
+  enabled,
+  onReach,
+}: {
+  enabled: boolean;
+  onReach?: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const target = ref.current;
+    if (!enabled || !target || !onReach) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) onReach();
+    });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [enabled, onReach]);
+  return <div className="minimal-page-sentinel" ref={ref} aria-hidden="true" />;
+}
 export function MinimalMovieCard({
   movie,
   cinemas,
+  expanded,
+  onExpanded,
 }: {
+  expanded?: boolean;
+  onExpanded?: (open: boolean) => void;
   movie: CatalogueMovie;
   cinemas: readonly CatalogueCinema[];
 }) {
-  const [open, setOpen] = useState(false);
+  const [localOpen, setLocalOpen] = useState(false);
+  const open = expanded ?? localOpen;
+  const setOpen = onExpanded ?? setLocalOpen;
   const arrow = useRef<HTMLButtonElement>(null);
   const preview = movie.screenings.slice(0, 3);
   const id = `preview-${movie.id}`;
@@ -79,11 +105,14 @@ export function MinimalMovieCard({
         }
       }}
     >
-      <a href={`/movies/${movie.id}`} aria-label={`View ${movie.title}`}>
+      <a
+        href={`/movies/${encodeURIComponent(movie.id)}`}
+        aria-label={`View ${movie.title}`}
+      >
         <Poster movie={movie} />
       </a>
       <div className="minimal-caption">
-        <a href={`/movies/${movie.id}`} title={movie.title}>
+        <a href={`/movies/${encodeURIComponent(movie.id)}`} title={movie.title}>
           {movie.title}
         </a>
         <button
@@ -118,6 +147,7 @@ export function MinimalMovieCard({
               <div className="minimal-cinema-showtimes" key={cinema}>
                 <h3>
                   {cinemas.find((c) => c.id === cinema)?.name ??
+                    preview.find((s) => s.cinemaId === cinema)?.cinemaName ??
                     "Cinema unavailable"}
                 </h3>
                 {preview
@@ -132,7 +162,7 @@ export function MinimalMovieCard({
           ) : (
             <p>No matching upcoming screenings.</p>
           )}
-          <a href={`/movies/${movie.id}`}>Full schedule</a>
+          <a href={`/movies/${encodeURIComponent(movie.id)}`}>Full schedule</a>
         </section>
       )}
     </article>
@@ -157,6 +187,16 @@ function Filters({
   | "tomorrow"
   | "weekend"
 > & { fixed?: string }) {
+  const [titleValue, setTitleValue] = useState(s.title);
+  useEffect(() => setTitleValue(s.title), [s.title]);
+  useEffect(() => {
+    if (titleValue === s.title) return;
+    const timer = window.setTimeout(
+      () => onSelection({ ...s, title: titleValue }),
+      250,
+    );
+    return () => window.clearTimeout(timer);
+  }, [onSelection, s, titleValue]);
   const change = (patch: Partial<CatalogueSelection>) =>
     onSelection({ ...s, ...patch });
   const fromHour = timeToHour(s.from, 0);
@@ -174,9 +214,9 @@ function Filters({
           Movie title
           <input
             type="search"
-            value={s.title}
+            value={titleValue}
             placeholder="Search movies"
-            onChange={(e) => change({ title: e.target.value })}
+            onChange={(e) => setTitleValue(e.target.value)}
           />
         </label>
         <label>
@@ -364,6 +404,16 @@ export function MinimalCatalogue({
   movies,
   catalogueMovies = movies,
   catalogueNotice,
+  serverResults = false,
+  showScreeningFilters = true,
+  catalogueSearch,
+  onCatalogueSearch,
+  catalogueState = "ready",
+  catalogueHasMore = false,
+  onLoadMoreCatalogue,
+  onCatalogueRetry,
+  detailNotice,
+  directoryNotice,
   cinemas,
   screeningLanguages,
   selection,
@@ -374,6 +424,8 @@ export function MinimalCatalogue({
   tomorrow,
   weekend,
   state = "ready",
+  hasMore = false,
+  onLoadMore,
   onRetry,
   onLoadWeek,
 }: MinimalCatalogueProps) {
@@ -384,11 +436,14 @@ export function MinimalCatalogue({
       ? "movies"
       : "screenings";
   const movieId = /^\/movies\/([^/]+)$/.exec(path)?.[1];
-  const cinemaId = /^\/cinemas\/([^/]+)$/.exec(path)?.[1];
+  const decodedMovieId = movieId ? decodePathId(movieId) : undefined;
+  const cinemaPathId = /^\/cinemas\/([^/]+)\/?$/.exec(path)?.[1];
+  const cinemaId = cinemaPathId ? decodePathId(cinemaPathId) : undefined;
   const movie =
-    catalogueMovies.find((m) => m.id === movieId) ??
-    movies.find((m) => m.id === movieId);
+    catalogueMovies.find((m) => m.id === decodedMovieId) ??
+    movies.find((m) => m.id === decodedMovieId);
   const [movieSearch, setMovieSearch] = useState("");
+  const [previewId, setPreviewId] = useState<string | null>(null);
   const cinema = cinemas.find((c) => c.id === cinemaId);
   const from = selection.from
     ? `${String(timeToHour(selection.from, 0)).padStart(2, "0")}:00`
@@ -399,42 +454,46 @@ export function MinimalCatalogue({
   const invalid =
     selection.start > selection.end ||
     Boolean(selection.from && selection.to && selection.from > selection.to);
-  const matching = movies
-    .map((m) => ({
-      ...m,
-      screenings: m.screenings
+  const matching = serverResults
+    ? movies
+    : movies
+        .map((m) => ({
+          ...m,
+          screenings: m.screenings
+            .filter(
+              (s) =>
+                s.date >= selection.start &&
+                s.date <= selection.end &&
+                (!cinemaId || s.cinemaId === cinemaId) &&
+                (!selection.cinemas.length ||
+                  cinemaId ||
+                  selection.cinemas.includes(s.cinemaId)) &&
+                (!selection.languages.length ||
+                  (s.language !== undefined &&
+                    selection.languages.includes(s.language))) &&
+                (!from || s.time >= from) &&
+                (!to || s.time <= to),
+            )
+            .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)),
+        }))
         .filter(
-          (s) =>
-            s.date >= selection.start &&
-            s.date <= selection.end &&
-            (!cinemaId || s.cinemaId === cinemaId) &&
-            (!selection.cinemas.length ||
-              cinemaId ||
-              selection.cinemas.includes(s.cinemaId)) &&
-            (!selection.languages.length ||
-              (s.language !== undefined &&
-                selection.languages.includes(s.language))) &&
-            (!from || s.time >= from) &&
-            (!to || s.time <= to),
+          (m) =>
+            m.title.toLowerCase().includes(selection.title.toLowerCase()) &&
+            m.screenings.length,
         )
-        .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)),
-    }))
-    .filter(
-      (m) =>
-        m.title.toLowerCase().includes(selection.title.toLowerCase()) &&
-        m.screenings.length,
-    )
-    .sort(
-      (a, b) =>
-        (
-          (a.screenings[0]?.date ?? "") + (a.screenings[0]?.time ?? "")
-        ).localeCompare(
-          (b.screenings[0]?.date ?? "") + (b.screenings[0]?.time ?? ""),
-        ) || a.id.localeCompare(b.id),
-    );
-  const allMovieMatches = catalogueMovies.filter((item) =>
-    item.title.toLowerCase().includes(movieSearch.trim().toLowerCase()),
-  );
+        .sort(
+          (a, b) =>
+            (
+              (a.screenings[0]?.date ?? "") + (a.screenings[0]?.time ?? "")
+            ).localeCompare(
+              (b.screenings[0]?.date ?? "") + (b.screenings[0]?.time ?? ""),
+            ) || a.id.localeCompare(b.id),
+        );
+  const allMovieMatches = serverResults
+    ? catalogueMovies
+    : catalogueMovies.filter((item) =>
+        item.title.toLowerCase().includes(movieSearch.trim().toLowerCase()),
+      );
   return (
     <div
       className="minimal-site"
@@ -492,14 +551,15 @@ export function MinimalCatalogue({
         </nav>
       </header>
       <main id="minimal-main" tabIndex={-1}>
-        {path === "/cinemas" ? (
+        {path === "/cinemas" || path === "/cinemas/" ? (
           <>
             <h1>Cinemas</h1>
             <SectionDescription text="Browse Montréal cinemas and open one to see its upcoming showtimes. For example, choose your favorite venue to check what's playing this weekend." />
+            {directoryNotice}
             <ul className="minimal-directory">
               {cinemas.map((c) => (
                 <li key={c.id}>
-                  <a href={`/cinemas/${c.id}`}>{c.name}</a>
+                  <a href={`/cinemas/${encodeURIComponent(c.id)}`}>{c.name}</a>
                 </li>
               ))}
             </ul>
@@ -534,10 +594,10 @@ export function MinimalCatalogue({
               />
             </>
           ) : (
-            <h1>Movie not found</h1>
+            (detailNotice ?? <h1>Movie not found</h1>)
           )
         ) : cinemaId && !cinema ? (
-          <h1>Cinema not found</h1>
+          directoryNotice ?? <h1>Cinema not found</h1>
         ) : (
           <>
             {(cinemaId || activeSection === "screenings") && (
@@ -564,16 +624,20 @@ export function MinimalCatalogue({
                     )}
                   </header>
                 )}
-                <Filters
-                  selection={selection}
-                  onSelection={onSelection}
-                  screeningLanguages={screeningLanguages}
-                  cinemas={cinemas}
-                  fixed={cinemaId}
-                  today={today}
-                  tomorrow={tomorrow}
-                  weekend={weekend}
-                />
+                {showScreeningFilters ? (
+                  <Filters
+                    selection={selection}
+                    onSelection={onSelection}
+                    screeningLanguages={screeningLanguages}
+                    cinemas={cinemas}
+                    fixed={cinemaId}
+                    today={today}
+                    tomorrow={tomorrow}
+                    weekend={weekend}
+                  />
+                ) : (
+                  <p>{today} · Montréal local time</p>
+                )}
                 {invalid ? (
                   <p role="alert">
                     Start must be before end. Choose a valid date and daily time
@@ -591,38 +655,67 @@ export function MinimalCatalogue({
                       ))}
                     </div>
                   </div>
+                ) : state === "error" && !matching.length ? (
+                  <div className="minimal-state" role="alert">
+                    <p>Could not load screenings.</p>
+                    <button onClick={onRetry}>Retry</button>
+                  </div>
                 ) : (
                   <>
                     {state === "empty" || !matching.length ? (
                       <div className="minimal-state" role="status">
                         <h2>No matching screenings</h2>
-                        <p>Try another date or clear your filters.</p>
-                        <button
-                          onClick={() =>
-                            onSelection({
-                              start: today,
-                              end: today,
-                              title: "",
-                              cinemas: [],
-                              languages: [],
-                              from: "",
-                              to: "",
-                            })
-                          }
-                        >
-                          Reset selection
-                        </button>
+                        {showScreeningFilters ? (
+                          <>
+                            <p>Try another date or clear your filters.</p>
+                            <button
+                              onClick={() =>
+                                onSelection({
+                                  start: today,
+                                  end: today,
+                                  title: "",
+                                  cinemas: [],
+                                  languages: [],
+                                  from: "",
+                                  to: "",
+                                })
+                              }
+                            >
+                              Reset selection
+                            </button>
+                          </>
+                        ) : (
+                          <p>
+                            No upcoming screenings today.{" "}
+                            <a href="/?section=movies">Browse movies</a> to
+                            search the catalogue.
+                          </p>
+                        )}
                       </div>
                     ) : (
-                      <div className="minimal-grid">
-                        {matching.map((m) => (
-                          <MinimalMovieCard
-                            key={m.id}
-                            movie={m}
-                            cinemas={cinemas}
-                          />
-                        ))}
-                      </div>
+                      <>
+                        <div className="minimal-grid">
+                          {matching.map((m) => (
+                            <MinimalMovieCard
+                              key={m.id}
+                              movie={m}
+                              cinemas={cinemas}
+                              expanded={previewId === m.id}
+                              onExpanded={(open) =>
+                                setPreviewId(open ? m.id : null)
+                              }
+                            />
+                          ))}
+                        </div>
+                        <EndSentinel
+                          enabled={
+                            hasMore &&
+                            state !== "loading-more" &&
+                            state !== "error"
+                          }
+                          onReach={onLoadMore}
+                        />
+                      </>
                     )}
                     {state === "loading-more" && (
                       <p role="status" className="minimal-state">
@@ -650,27 +743,62 @@ export function MinimalCatalogue({
                   <span className="minimal-visually-hidden">Search movies</span>
                   <input
                     type="search"
-                    value={movieSearch}
+                    value={catalogueSearch ?? movieSearch}
                     placeholder="Search by title"
                     aria-label="Search movies"
-                    onChange={(event) => setMovieSearch(event.target.value)}
+                    onChange={(event) =>
+                      onCatalogueSearch
+                        ? onCatalogueSearch(event.target.value)
+                        : setMovieSearch(event.target.value)
+                    }
                   />
                 </label>
-                {allMovieMatches.length ? (
-                  <div className="minimal-library-grid">
-                    {allMovieMatches.map((item) => (
-                      <article className="minimal-library-card" key={item.id}>
-                        <a
-                          href={`/movies/${item.id}`}
-                          aria-label={`View ${item.title}`}
-                        >
-                          <Poster movie={item} />
-                          <strong>{item.title}</strong>
-                          {item.year && <small>{item.year}</small>}
-                        </a>
-                      </article>
-                    ))}
+                {catalogueState === "initial-loading" ? (
+                  <p role="status">Loading movies…</p>
+                ) : catalogueState === "error" && !catalogueMovies.length ? (
+                  <div role="alert">
+                    <p>Could not load movies.</p>
+                    <button onClick={onCatalogueRetry}>Retry</button>
                   </div>
+                ) : allMovieMatches.length ? (
+                  <>
+                    <div className="minimal-library-grid">
+                      {allMovieMatches.map((item) => (
+                        <article className="minimal-library-card" key={item.id}>
+                          <a
+                            href={`/movies/${encodeURIComponent(item.id)}`}
+                            aria-label={`View ${item.title}`}
+                          >
+                            <Poster movie={item} />
+                            <strong>{item.title}</strong>
+                            {item.year && <small>{item.year}</small>}
+                          </a>
+                        </article>
+                      ))}
+                    </div>
+                    <EndSentinel
+                      enabled={
+                        catalogueHasMore &&
+                        catalogueState !== "loading-more" &&
+                        catalogueState !== "error"
+                      }
+                      onReach={onLoadMoreCatalogue}
+                    />
+                    {catalogueState === "loading-more" && (
+                      <p role="status" className="minimal-state">
+                        Loading more movies…
+                      </p>
+                    )}
+                    {catalogueState === "error" && (
+                      <div className="minimal-state" role="alert">
+                        <p>
+                          Could not load more movies. Your loaded movies are
+                          still here.
+                        </p>
+                        <button onClick={onCatalogueRetry}>Retry</button>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <p role="status">No movies found.</p>
                 )}

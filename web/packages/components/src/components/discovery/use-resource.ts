@@ -5,6 +5,7 @@ type Resource<T> = { data?: T; error?: Error; loading: boolean };
 /** The memoized loader is the request identity, including the injected client. */
 export function useResource<T>(
   load: (signal: AbortSignal) => Promise<T>,
+  enabled = true,
 ): Resource<T> & { retry: () => void } {
   const [state, setState] = useState<Resource<T> & { load: typeof load }>({
     load,
@@ -12,6 +13,7 @@ export function useResource<T>(
   });
   const [retry, setRetry] = useState(0);
   useEffect(() => {
+    if (!enabled) return;
     const controller = new AbortController();
     setState({ load, loading: true });
     load(controller.signal).then(
@@ -29,7 +31,7 @@ export function useResource<T>(
       },
     );
     return () => controller.abort();
-  }, [load, retry]);
+  }, [load, retry, enabled]);
   // Do not show a previous query's results while the next effect starts.
   const current = state.load === load ? state : { loading: true };
   return { ...current, retry: () => setRetry((value) => value + 1) };

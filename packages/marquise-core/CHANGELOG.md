@@ -4,7 +4,7 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-10-30
 
-### v0.2.29
+### Unreleased
 
 - Import Montréal calendar dates across daylight saving transitions without losing late screenings.
 
@@ -12,6 +12,14 @@ Before 2026-07-15 this package was published as `marquise`.
 - Recover cinema source identity evidence and expose explicit metadata refresh and guarded movie merge workflows.
 - Persist enrichment state by stable movie ID. Apply migration `359-movie-enrichment-state.sql` before deploying.
 - Bound TMDB discovery to three pages and five detailed candidates. Incomplete discovery stays retryable.
+
+### v0.2.30
+
+- Apply title, cinema, source-language, and Montréal daily-hour filters to matching screenings before movie eligibility, ordering, and preview selection. Supports #335.
+
+### v0.2.29
+
+- Add an injected movie-first screening read query. Return 24 distinct movie cards ordered by their next upcoming screening and ID, with up to three qualifying previews and authoritative totals. Use inclusive Montreal date bounds and one request clock. Supports #333.
 
 ### v0.2.28
 
