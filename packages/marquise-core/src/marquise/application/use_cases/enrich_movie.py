@@ -1,6 +1,7 @@
 """Select usable metadata and atomically enrich a confirmed stable movie ID."""
 
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import datetime
 from urllib.parse import urlsplit
 
@@ -145,7 +146,19 @@ async def _enrich(
         enriched_at = clock()
         if enriched_at.tzinfo is None or enriched_at.utcoffset() is None:
             raise ValueError("Enrichment clock must return a timezone-aware timestamp")
-        await movies.update_metadata(snapshot, values, request.identity.id, enriched_at)
+        try:
+            await movies.update_metadata(
+                snapshot, values, request.identity.id, enriched_at
+            )
+        except MovieWorkflowConflictError:
+            # Another film owns the title, e.g. a remake: disambiguate by year.
+            year = values.release_year or snapshot.values.release_year
+            if values.title is None or year is None:
+                raise
+            values = replace(values, title=f"{values.title} ({year})")
+            await movies.update_metadata(
+                snapshot, values, request.identity.id, enriched_at
+            )
         return EnrichMovieOutputData(request.movie_id, "enriched")
     except (ValueError, MovieWorkflowConflictError) as error:
         return _failed(request.movie_id, MetadataFailure("invalid_data", str(error)))

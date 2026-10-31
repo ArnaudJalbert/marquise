@@ -359,14 +359,6 @@ async def test_director_assignment_can_reassign_an_earlier_typo() -> None:
     assert result.status == "matched"
 
 
-def test_screening_version_abbreviations_are_removed() -> None:
-    """Known version markers do not become part of the search title."""
-    from marquise.application.use_cases.match_movie import _search_title
-
-    for marker in ("VOSTF", "VOSTA", "VOF", "VF"):
-        assert _search_title(f"Carrie ({marker})") == "Carrie"
-
-
 @pytest.mark.asyncio
 async def test_source_identity_title_preserves_screening_title() -> None:
     """Search the film title while retaining the original event label."""
@@ -395,3 +387,30 @@ async def test_candidate_limit_reports_incomplete() -> None:
     assert result.status == "incomplete"
     assert result.identity is None
     assert repo.movie_details.await_count == 5
+
+
+@pytest.mark.asyncio
+async def test_case_and_screening_labels_do_not_block_a_match() -> None:
+    """An uppercase labelled source title matches the provider title."""
+    candidate = movie("The Shining", 1980, 146)
+    result = await MatchMovieUseCase(
+        repository((candidate,)), RapidFuzzNameDistance()
+    ).execute(MatchMovieInputData("THE SHINING (anglais avec s.t.f.)", 1980))
+    assert result.status == "matched"
+    assert result.titles == ("The Shining",)
+    assert result.release_year == 1980
+
+
+@pytest.mark.asyncio
+async def test_contained_title_matches_but_ranks_below_an_exact_title() -> None:
+    """Containment is a weaker title match; the exact title still wins."""
+    longer = movie("Street Fighter: The Legend", identity="longer")
+    exact = movie("Street Fighter", identity="exact")
+    use_case = MatchMovieUseCase(repository((longer, exact)), RapidFuzzNameDistance())
+    result = await use_case.execute(MatchMovieInputData("Street Fighter", 2026))
+    assert result.identity == ProviderIdentity("fixture", "exact")
+    only = MatchMovieUseCase(repository((exact,)), RapidFuzzNameDistance())
+    contained = await only.execute(
+        MatchMovieInputData("Street Fighter : le film (version française)", 2026)
+    )
+    assert contained.identity == ProviderIdentity("fixture", "exact")

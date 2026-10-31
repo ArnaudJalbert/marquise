@@ -72,6 +72,8 @@ class MatchMovieOutputData:
     status: Literal["matched", "unmatched", "failed", "incomplete"]
     identity: ProviderIdentity | None = None
     failure: MetadataFailure | None = None
+    titles: tuple[str, ...] = ()
+    release_year: int | None = None
 
     def __post_init__(self) -> None:
         """Reject ambiguous identity and failure outcomes."""

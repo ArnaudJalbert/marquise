@@ -50,6 +50,7 @@ class CreateMissingMoviesCommand:
         tmdb_id: str | None = None
         identity_title: str | None = None
         source_identifier: str | None = None
+        identity_titles: tuple[str, ...] = ()
 
         def __post_init__(self) -> None:
             if not self.title.strip():
@@ -190,7 +191,14 @@ class CreateMissingMoviesCommand:
                         )
                     )
                 else:
-                    remaining.append(replace(movie, tmdb_id=identity.id))
+                    remaining.append(
+                        replace(
+                            movie,
+                            tmdb_id=identity.id,
+                            release_year=movie.release_year or result.release_year,
+                            identity_titles=result.titles,
+                        )
+                    )
             except Exception as error:
                 logger.warning(
                     "Movie matching failed for %s: %s",
@@ -232,11 +240,14 @@ class CreateMissingMoviesCommand:
     @staticmethod
     def _search_terms(movies: tuple[MovieInput, ...]) -> list[str]:
         """Choose one broad database search term per canonical title."""
-        return [
-            max(key.split(), key=len)
-            for movie in movies
-            if (key := Movie.title_key(movie.title))
-        ]
+        return list(
+            dict.fromkeys(
+                max(key.split(), key=len)
+                for movie in movies
+                for title in (movie.title, *movie.identity_titles)
+                if (key := Movie.title_key(title))
+            )
+        )
 
     @classmethod
     def _separate_existing(
@@ -245,31 +256,36 @@ class CreateMissingMoviesCommand:
         found_movies: list[Movie],
     ) -> tuple[list[MovieData], dict[str, MovieInput]]:
         """Return existing movies and one pending input per known identity."""
-        candidates = cls._candidates_by_key(found_movies)
         existing: list[CreateMissingMoviesCommand.MovieData] = []
         missing: dict[str, CreateMissingMoviesCommand.MovieInput] = {}
+        aliases = cls._identity_aliases(movie_inputs)
 
         for movie_input in movie_inputs:
             title = cls._normalize_title(movie_input.title)
-            key = Movie.title_key(title)
-            title_candidates = candidates.get(key, [])
+            titles = (title, *movie_input.identity_titles)
+            candidates = found_movies
             if movie_input.tmdb_id is not None:
-                compatible = []
-                for candidate in title_candidates:
-                    if candidate.tmdb_id not in {None, movie_input.tmdb_id}:
-                        if (
-                            cls._normalize_title(candidate.title).casefold()
-                            == title.casefold()
-                        ):
-                            raise MovieIdentityConflictError(
-                                f"Movie '{title}' already has a different TMDB id"
-                            )
-                    else:
-                        compatible.append(candidate)
-                title_candidates = compatible
+                candidates = [
+                    movie
+                    for movie in found_movies
+                    if movie.tmdb_id in {None, movie_input.tmdb_id}
+                ]
+                if any(
+                    movie.tmdb_id not in {None, movie_input.tmdb_id}
+                    and Movie.search_title(movie.title).casefold()
+                    == Movie.search_title(title).casefold()
+                    for movie in found_movies
+                ):
+                    # Another film owns this title, e.g. a remake. Keep both.
+                    if movie_input.release_year is None:
+                        raise MovieIdentityConflictError(
+                            f"Movie '{title}' already has a different TMDB id"
+                        )
+                    title = f"{title} ({movie_input.release_year})"
+                    movie_input = replace(movie_input, title=title)
             movie = cls._find_match(
-                title_candidates,
-                title=title,
+                candidates,
+                titles=titles,
                 release_year=movie_input.release_year,
             )
             if movie is not None:
@@ -281,8 +297,33 @@ class CreateMissingMoviesCommand:
                     )
                 )
             else:
-                missing.setdefault(cls._movie_key(movie_input), movie_input)
+                key = cls._movie_key(movie_input, aliases)
+                if key.startswith("tmdb:") or key not in missing:
+                    missing[key] = (
+                        movie_input
+                        if key not in missing or movie_input.tmdb_id
+                        else missing[key]
+                    )
         return existing, missing
+
+    @staticmethod
+    def _identity_aliases(movie_inputs: tuple[MovieInput, ...]) -> dict[str, str]:
+        """Map title keys to the batch's single matched identity for that title.
+
+        Label variants such as ``Fjord (VOSTA)`` then share the matched row
+        instead of creating an unmatched twin in the same import.
+        """
+        owners: dict[str, set[str]] = {}
+        for movie in movie_inputs:
+            if movie.tmdb_id is not None:
+                for title in (movie.title, *movie.identity_titles):
+                    if key := Movie.title_key(title):
+                        owners.setdefault(key, set()).add(movie.tmdb_id)
+        return {
+            key: f"tmdb:{next(iter(ids))}"
+            for key, ids in owners.items()
+            if len(ids) == 1
+        }
 
     async def _save_missing(self, missing: dict[str, MovieInput]) -> dict[str, Movie]:
         """Create or reuse each distinct film without updating existing details."""
@@ -295,11 +336,12 @@ class CreateMissingMoviesCommand:
         return dict(zip(missing, saved, strict=True))
 
     @staticmethod
-    def _movie_key(movie: MovieInput) -> str:
+    def _movie_key(movie: MovieInput, aliases: dict[str, str] | None = None) -> str:
         """Prefer a known identity; title grouping is only a fallback."""
         if movie.tmdb_id is not None:
             return f"tmdb:{movie.tmdb_id}"
-        return f"title:{Movie.title_key(movie.title)}"
+        key = Movie.title_key(movie.title)
+        return (aliases or {}).get(key, f"title:{key}")
 
     @classmethod
     def _created_data(
@@ -308,6 +350,7 @@ class CreateMissingMoviesCommand:
         created: dict[str, Movie],
     ) -> list[MovieData]:
         """Build output rows for every input represented by a created movie."""
+        aliases = cls._identity_aliases(movie_inputs)
         return [
             cls.MovieData(
                 title=cls._normalize_title(movie_input.title),
@@ -315,16 +358,8 @@ class CreateMissingMoviesCommand:
                 source_identifier=movie_input.source_identifier,
             )
             for movie_input in movie_inputs
-            if (movie := created.get(cls._movie_key(movie_input))) is not None
+            if (movie := created.get(cls._movie_key(movie_input, aliases))) is not None
         ]
-
-    @staticmethod
-    def _candidates_by_key(found_movies: list[Movie]) -> dict[str, list[Movie]]:
-        """Group database search candidates by canonical title key."""
-        candidates: dict[str, list[Movie]] = {}
-        for movie in found_movies:
-            candidates.setdefault(Movie.title_key(movie.title), []).append(movie)
-        return candidates
 
     @staticmethod
     def _movie(movie_input: MovieInput) -> Movie:
@@ -356,10 +391,14 @@ class CreateMissingMoviesCommand:
         cls,
         candidates: list[Movie],
         *,
-        title: str,
+        titles: tuple[str, ...],
         release_year: int | None,
     ) -> Movie | None:
-        """Return one compatible movie candidate, or None when ambiguous."""
+        """Return the one compatible candidate by title key, then containment.
+
+        Comparison ignores case, accents, punctuation and screening labels.
+        Ambiguous candidates return None so a new movie is created instead.
+        """
         compatible = [
             movie
             for movie in candidates
@@ -367,12 +406,24 @@ class CreateMissingMoviesCommand:
             or movie.release_year is None
             or movie.release_year == release_year
         ]
-        exact = [
+        keys = {key for title in titles if (key := Movie.title_key(title))}
+        same = [movie for movie in compatible if Movie.title_key(movie.title) in keys]
+        if len(same) > 1:
+            exact = [
+                movie
+                for movie in same
+                if any(
+                    cls._normalize_title(movie.title).casefold()
+                    == cls._normalize_title(title).casefold()
+                    for title in titles
+                )
+            ]
+            same = exact if len(exact) == 1 else same
+        if same:
+            return same[0] if len(same) == 1 else None
+        overlapping = [
             movie
             for movie in compatible
-            if cls._normalize_title(movie.title).casefold()
-            == cls._normalize_title(title).casefold()
+            if any(Movie.titles_overlap(movie.title, title) for title in titles)
         ]
-        if len(exact) == 1:
-            return exact[0]
-        return compatible[0] if len(compatible) == 1 else None
+        return overlapping[0] if len(overlapping) == 1 else None

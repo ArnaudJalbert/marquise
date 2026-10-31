@@ -1,6 +1,5 @@
 """Discover and rank movie identities using independent source evidence."""
 
-import re
 import unicodedata
 from typing import Protocol
 
@@ -15,6 +14,7 @@ from marquise.application.movie_workflows import (
     MatchMovieInputData,
     MatchMovieOutputData,
 )
+from marquise.domain.entities import Movie
 
 _MAX_CANDIDATE_DETAILS = 5
 
@@ -35,24 +35,6 @@ def _normalize(value: str) -> str:
             if not unicodedata.combining(char)
         ).split()
     )
-
-
-def _search_title(title: str) -> str:
-    # Strip only complete, trailing screening labels, never arbitrary parentheses.
-    language = (
-        r"(?:fran[cç]ais(?:e)?|anglais(?:e)?|english|french|"
-        r"tamil|tamoul|punjabi|pendjabi|espagnol(?:e)?|spanish)"
-    )
-    label = (
-        rf"(?:version\s+{language}|{language}\s+(?:w/e\.s\.t\.|s\.t\.f\.)|"
-        r"TAM\.ENG\.SUB|VOSTF|VOSTA|VOF|VF|\d+(?:e|er|th)?\s+anniversaire)"
-    )
-    pattern = rf"(?:\s*\(\s*{label}\s*\)|\s*[:\-]\s*{label}|\s+{label})\s*$"
-    while True:
-        cleaned = re.sub(pattern, "", title, flags=re.IGNORECASE).strip()
-        if cleaned == title:
-            return cleaned
-        title = cleaned
 
 
 class MatchMovieUseCase:
@@ -113,7 +95,8 @@ class MatchMovieUseCase:
     def _rank(
         self, source: MatchMovieInputData, title: str, movie: MetadataMovie
     ) -> tuple[int, int, int, float] | None:
-        title_match = self._title_match(title, movie)
+        title_tier = self._title_tier(title, movie)
+        title_match = title_tier < 2
         year_match = (
             source.release_year is not None
             and source.release_year == movie.release_year
@@ -139,22 +122,32 @@ class MatchMovieUseCase:
         elif not (year_match and directors_agree and runtime <= 10):
             return None
         return (
-            int(not title_match),
+            title_tier,
             int(not year_match),
             spelling,
             runtime,
         )
 
     @staticmethod
-    def _title_match(title: str, movie: MetadataMovie) -> bool:
-        return bool(title) and title in {
-            _normalize(value)
+    def _title_tier(title: str, movie: MetadataMovie) -> int:
+        """0 for the same title, 1 when one contains the other, 2 otherwise."""
+        if not title:
+            return 2
+        values = [
+            value
             for value in (
                 *(fact.title for fact in movie.titles),
                 movie.original_title or "",
             )
             if value.strip()
-        }
+        ]
+        key = Movie.title_key(title)
+        if any(
+            _normalize(value) == title or Movie.title_key(value) == key
+            for value in values
+        ):
+            return 0
+        return 1 if any(Movie.titles_overlap(title, value) for value in values) else 2
 
     async def execute(self, input_data: MatchMovieInputData) -> MatchMovieOutputData:
         """Search with year, retry unfiltered, then discover through directors.
@@ -162,7 +155,7 @@ class MatchMovieUseCase:
         Each stage is ranked together. Partial retrieval cannot establish the
         best candidate, even if a returned candidate would otherwise qualify.
         """
-        title = _search_title(
+        title = Movie.search_title(
             (input_data.identity_title or "").strip() or input_data.title
         )
         batches: list[MetadataBatch[MetadataMovie] | MetadataBatch[PersonFact]] = []
@@ -181,7 +174,7 @@ class MatchMovieUseCase:
                     pending.append((index, item))
             pending.sort(
                 key=lambda pair: (
-                    not self._title_match(_normalize(title), pair[1]),
+                    self._title_tier(_normalize(title), pair[1]),
                     not (
                         input_data.release_year is not None
                         and pair[1].release_year == input_data.release_year
@@ -230,8 +223,22 @@ class MatchMovieUseCase:
                 return MatchMovieOutputData("failed", failure=failure)
             if any(not batch.complete for batch in batches):
                 return MatchMovieOutputData("incomplete")
+            identity = min(ranked, key=lambda pair: pair[0])[1]
+            chosen = candidates[identity]
             return MatchMovieOutputData(
-                "matched", min(ranked, key=lambda pair: pair[0])[1]
+                "matched",
+                identity,
+                titles=tuple(
+                    dict.fromkeys(
+                        value
+                        for value in (
+                            *(fact.title for fact in chosen.titles),
+                            chosen.original_title or "",
+                        )
+                        if value.strip()
+                    )
+                ),
+                release_year=chosen.release_year,
             )
 
         await collect(

@@ -562,3 +562,25 @@ def test_canonical_english_title_and_english_poster_are_selected() -> None:
     values = _select_values(movie)
     assert values.title == "Godzilla Minus One"
     assert values.poster_url == "https://example.org/en.jpg"
+
+
+@pytest.mark.asyncio
+async def test_title_owned_by_another_film_is_disambiguated_by_year(
+    movies: Mock, metadata: Mock
+) -> None:
+    """A remake's title conflict retries once with the release year appended."""
+    update = movies.update_metadata.side_effect
+    movies.update_metadata.side_effect = [MovieWorkflowConflictError("taken"), update]
+    metadata.movie_details.return_value = MetadataBatch(
+        (
+            MetadataMovie(
+                IDENTITY,
+                (TitleFact("Sense and Sensibility", "canonical", "en-US"),),
+                release_year=1995,
+            ),
+        )
+    )
+
+    assert (await use_case(movies, metadata).execute(REQUEST)).status == "enriched"
+    titles = [call.args[1].title for call in movies.update_metadata.await_args_list]
+    assert titles == ["Sense and Sensibility", "Sense and Sensibility (1995)"]
