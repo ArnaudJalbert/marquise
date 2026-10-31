@@ -4,6 +4,14 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-10-30
 
+### v0.2.35
+
+- Validate targeted duplicate movie merges through the shared matcher and exact approval snapshots. Add isolated read-only previews and atomic PostgreSQL moves with stable screening fields, collision/reference refusal and unchanged-state retries for #356. Wiring remains in #355.
+
+### v0.2.34
+
+- Persist metadata patches and successful enrichment atomically by stable movie ID. Reject stale revisions and title or TMDB identity collisions. Add a nullable enrichment timestamp migration; legacy linked movies remain pending. Merge implementation and final wiring remain in #356 and #355.
+
 ### v0.2.33
 
 - Add provider-independent initial enrichment and explicit refresh policy with stable-ID atomic update requests, locale/media/certification selection, usable-field preservation and failure retry tests for #353. Factory, import and CLI integration remain deferred to #355.
