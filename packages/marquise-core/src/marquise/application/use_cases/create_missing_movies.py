@@ -8,6 +8,14 @@ from dataclasses import dataclass, replace
 from uuid import uuid4
 
 from marquise.application.exceptions.movie import MovieIdentityConflictError
+from marquise.application.metadata import ProviderIdentity
+from marquise.application.movie_workflows import (
+    EnrichMovieExecutor,
+    EnrichMovieInputData,
+    MatchMovieExecutor,
+    MatchMovieInputData,
+    MovieMetadataRepository,
+)
 from marquise.application.repositories import MovieRepository
 from marquise.application.repositories.movie_identity_search import MovieIdentitySearch
 from marquise.domain.entities import Movie
@@ -41,6 +49,7 @@ class CreateMissingMoviesCommand:
         origin_countries: tuple[str, ...] | None = None
         tmdb_id: str | None = None
         identity_title: str | None = None
+        source_identifier: str | None = None
 
         def __post_init__(self) -> None:
             if not self.title.strip():
@@ -50,6 +59,7 @@ class CreateMissingMoviesCommand:
     class MovieData:
         title: str
         id: str
+        source_identifier: str | None = None
 
         def __post_init__(self) -> None:
             if not self.title.strip():
@@ -69,12 +79,22 @@ class CreateMissingMoviesCommand:
         self,
         movie_repository: MovieRepository,
         identity_search: MovieIdentitySearch | None = None,
+        matcher: MatchMovieExecutor | None = None,
+        enricher: EnrichMovieExecutor | None = None,
+        metadata_movies: MovieMetadataRepository | None = None,
     ) -> None:
         self.movie_repository = movie_repository
         self.identity_search = identity_search
+        self.matcher = matcher
+        self.enricher = enricher
+        self.metadata_movies = metadata_movies
 
     async def execute(self, request: InputData) -> OutputData:
-        resolved, unmatched = await self._resolve_identity(request.movies)
+        identities: dict[tuple[str, str | None], ProviderIdentity] = {}
+        if self.matcher is None:
+            resolved, unmatched = await self._resolve_identity(request.movies)
+        else:
+            resolved, unmatched, identities = await self._match_movies(request.movies)
         found_movies = await self.movie_repository.find_by_titles(
             self._search_terms(unmatched)
         )
@@ -82,12 +102,103 @@ class CreateMissingMoviesCommand:
         created = await self._save_missing(missing)
         movies = resolved + existing + self._created_data(unmatched, created)
 
+        if self.enricher is not None and self.metadata_movies is not None:
+            for movie in movies:
+                try:
+                    identity = identities.get(
+                        (movie.title.casefold(), movie.source_identifier)
+                    )
+                    if identity is None:
+                        snapshot = await self.metadata_movies.get(movie.id)
+                        if snapshot and snapshot.tmdb_id:
+                            identity = ProviderIdentity("tmdb", snapshot.tmdb_id)
+                    if identity is not None:
+                        result = await self.enricher.execute(
+                            EnrichMovieInputData(movie.id, identity)
+                        )
+                        if result.failure:
+                            logger.warning(
+                                "Movie enrichment failed: %s", result.failure.kind
+                            )
+                except Exception as error:
+                    logger.warning(
+                        "Movie enrichment failed for %s: %s",
+                        movie.id,
+                        type(error).__name__,
+                    )
+
         logger.info(
             "Created %d new movies, found %d existing",
             len(created),
             len(found_movies),
         )
         return self.OutputData(movies=tuple(movies))
+
+    async def _match_movies(
+        self, movies: tuple[MovieInput, ...]
+    ) -> tuple[
+        list[MovieData],
+        tuple[MovieInput, ...],
+        dict[tuple[str, str | None], ProviderIdentity],
+    ]:
+        """Resolve provider identities while keeping source titles for screenings."""
+        assert self.matcher is not None
+        resolved: list[CreateMissingMoviesCommand.MovieData] = []
+        remaining: list[CreateMissingMoviesCommand.MovieInput] = []
+        identities: dict[tuple[str, str | None], ProviderIdentity] = {}
+        for movie in movies:
+            try:
+                result = await self.matcher.execute(
+                    MatchMovieInputData(
+                        title=movie.title,
+                        release_year=movie.release_year,
+                        directors=movie.directors or (),
+                        duration_minutes=movie.duration_minutes,
+                        identity_title=movie.identity_title,
+                    )
+                )
+                if result.status != "matched" or result.identity is None:
+                    if result.failure:
+                        logger.warning(
+                            "Movie identity failed for %s: %s",
+                            movie.title,
+                            result.failure.kind,
+                        )
+                    else:
+                        logger.info(
+                            "Movie identity %s for %s", result.status, movie.title
+                        )
+                    remaining.append(movie)
+                    continue
+                identity = result.identity
+                if identity.provider != "tmdb":
+                    remaining.append(movie)
+                    continue
+                existing = await self.movie_repository.find_by_tmdb_id(identity.id)
+                identities[
+                    (
+                        self._normalize_title(movie.title).casefold(),
+                        movie.source_identifier,
+                    )
+                ] = identity
+                if existing is not None:
+                    resolved.append(
+                        self.MovieData(
+                            self._normalize_title(movie.title),
+                            existing.id.value,
+                            movie.source_identifier,
+                        )
+                    )
+                else:
+                    remaining.append(replace(movie, tmdb_id=identity.id))
+            except Exception as error:
+                logger.warning(
+                    "Movie matching failed for %s: %s",
+                    movie.title,
+                    type(error).__name__,
+                )
+                remaining.append(movie)
+        return resolved, tuple(remaining), identities
 
     async def _resolve_identity(
         self, movies: tuple[MovieInput, ...]
@@ -109,7 +220,9 @@ class CreateMissingMoviesCommand:
             if existing is not None:
                 resolved.append(
                     self.MovieData(
-                        self._normalize_title(movie.title), existing.id.value
+                        self._normalize_title(movie.title),
+                        existing.id.value,
+                        movie.source_identifier,
                     )
                 )
             else:
@@ -160,7 +273,13 @@ class CreateMissingMoviesCommand:
                 release_year=movie_input.release_year,
             )
             if movie is not None:
-                existing.append(cls.MovieData(title=title, id=movie.id.value))
+                existing.append(
+                    cls.MovieData(
+                        title=title,
+                        id=movie.id.value,
+                        source_identifier=movie_input.source_identifier,
+                    )
+                )
             else:
                 missing.setdefault(cls._movie_key(movie_input), movie_input)
         return existing, missing
@@ -193,6 +312,7 @@ class CreateMissingMoviesCommand:
             cls.MovieData(
                 title=cls._normalize_title(movie_input.title),
                 id=movie.id.value,
+                source_identifier=movie_input.source_identifier,
             )
             for movie_input in movie_inputs
             if (movie := created.get(cls._movie_key(movie_input))) is not None

@@ -58,12 +58,9 @@ survivor and screening IDs, move all references, then delete unreferenced
 movies. A missing/stale/conflicting target or unresolved reference returns blocked
 with reasons and no writes. This contract grants no live merge approval.
 
-## Downstream work
+## Verification
 
-No upstream prerequisite. #350 implements provider retrieval; #352 matching;
-#353 enrichment; #359 persistence; #354 refresh handling; #356 guarded merges.
-#351 source recovery proceeds independently. #355 owns final factories, command
-registration, import orchestration and end-to-end verification. Downstream tests
+Imports, factory composition and CLI commands use these contracts. Offline tests
 can copy the independent autospec examples in
 `packages/marquise-core/tests/unit_tests/application/contracts/test_movie_workflows.py`.
 No live provider or database is needed to exercise those seams.

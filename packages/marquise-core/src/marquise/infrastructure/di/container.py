@@ -51,6 +51,8 @@ from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
+from marquise.application.use_cases.merge_movies import MergeMoviesUseCase
+from marquise.application.use_cases.refresh_movies import RefreshMoviesUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.application.use_cases.update_screening import UpdateScreeningUseCase
@@ -66,6 +68,8 @@ from marquise.infrastructure.di.import_use_cases import (
     build_create_screenings_use_case,
     build_fetch_screenings_use_case,
     build_import_screenings_use_case,
+    build_merge_movies_use_case,
+    build_refresh_movies_use_case,
 )
 from marquise.infrastructure.di.queries import (
     build_get_cinema_screenings_query,
@@ -360,6 +364,20 @@ class Container:
             self._pool_property,
             self._schema,
             self._settings_provider.settings.tmdb_api_key,
+        )
+
+    @property
+    def refresh_movies_use_case(self) -> RefreshMoviesUseCase:
+        """Build the explicit metadata refresh workflow."""
+        return build_refresh_movies_use_case(
+            self._pool_property, self._schema, self._settings.tmdb_api_key
+        )
+
+    @property
+    def merge_movies_use_case(self) -> MergeMoviesUseCase:
+        """Build the guarded movie merge workflow."""
+        return build_merge_movies_use_case(
+            self._pool_property, self._schema, self._settings.tmdb_api_key
         )
 
     @property

@@ -47,9 +47,11 @@ class TmdbMetadataHttpSource:
         api_key: str,
         *,
         fetch: Callable[[str, dict[str, str]], Awaitable[bytes]] = _fetch,
+        max_pages: int | None = None,
     ) -> None:
         self._api_key = api_key
         self._fetch = fetch
+        self._max_pages = max_pages
 
     async def get(self, path: str, params: dict[str, str] | None = None) -> dict:
         """Retrieve an endpoint with typed failures and no secret in diagnostics."""
@@ -97,6 +99,8 @@ class TmdbMetadataHttpSource:
         expected_total: int | None = None
         expected_pages: int | None = None
         while True:
+            if self._max_pages is not None and page > self._max_pages:
+                return MetadataBatch(tuple(rows), False)
             try:
                 data = await self.get(path, {**params, "page": str(page)})
                 total = data["total_results"]

@@ -382,3 +382,16 @@ async def test_source_identity_title_preserves_screening_title() -> None:
     assert result.identity == candidate.identity
     assert evidence.title == "CINEMANIA: Julián"
     repo.search_movies.assert_awaited_once_with("Julián", 2025)
+
+
+@pytest.mark.asyncio
+async def test_candidate_limit_reports_incomplete() -> None:
+    """A bounded search never declares a match while candidates remain unchecked."""
+    candidates = tuple(movie(identity=str(i)) for i in range(6))
+    repo = repository(candidates)
+    result = await MatchMovieUseCase(repo, RapidFuzzNameDistance()).execute(
+        MatchMovieInputData("Film", 2026, (), 100)
+    )
+    assert result.status == "incomplete"
+    assert result.identity is None
+    assert repo.movie_details.await_count == 5

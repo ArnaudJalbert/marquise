@@ -65,6 +65,7 @@ class FetchScreeningsFromSourceQuery:
         ticket_url: str | None = None
         room: str | None = None
         language: str | None = None
+        identifier: str | None = None
 
         def __post_init__(self) -> None:
             if not self.movie_title.strip():
@@ -155,14 +156,13 @@ class FetchScreeningsFromSourceQuery:
                 len(unique_identifiers),
             )
 
-        seen_titles: dict[str, str | None] = {}
+        seen_titles: dict[tuple[str, str | None], None] = {}
         for row in raw_rows:
             norm = _normalize_title(row.movie_title)
-            if norm not in seen_titles:
-                seen_titles[norm] = row.identifier
+            seen_titles[(norm, row.identifier)] = None
 
         movie_list: list[FetchScreeningsFromSourceQuery.FetchedMovieData] = []
-        for title, ident in seen_titles.items():
+        for title, ident in seen_titles:
             detail = detail_map.get(ident) if ident else None
             movie_list.append(
                 self.FetchedMovieData(
@@ -203,6 +203,7 @@ class FetchScreeningsFromSourceQuery:
                     ticket_url=r.ticket_url,
                     room=r.room,
                     language=r.language,
+                    identifier=r.identifier,
                 )
                 for r in raw_rows
             ),

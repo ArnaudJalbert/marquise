@@ -89,12 +89,12 @@ class TmdbMetadataAdapter(MetadataRepository):
     async def search_movies(
         self, title: str, year: int | None = None
     ) -> MetadataBatch[MetadataMovie]:
-        """Hydrate every ordered candidate, including all provider pages."""
+        """Return ordered candidate facts without fetching full movie details."""
         params = {"query": title, "language": "en-US"}
         if year is not None:
             params["primary_release_year"] = str(year)
         batch = await self._source.pages("search/movie", params)
-        return await self._movies(batch)
+        return self._movie_summaries(batch)
 
     async def search_people(self, name: str) -> MetadataBatch[PersonFact]:
         """Return every person with aliases from that person's detail record."""
@@ -122,18 +122,19 @@ class TmdbMetadataAdapter(MetadataRepository):
             return MetadataBatch((), False, error.failure)
         except (KeyError, TypeError, ValueError, AttributeError):
             return MetadataBatch((), False, _invalid())
-        return await self._movies(MetadataBatch(directed))
+        return self._movie_summaries(MetadataBatch(directed))
 
-    async def _movies(self, batch: MetadataBatch[dict]) -> MetadataBatch[MetadataMovie]:
+    @staticmethod
+    def _movie_summaries(
+        batch: MetadataBatch[dict],
+    ) -> MetadataBatch[MetadataMovie]:
+        """Map search and credit rows without hydrating enrichment fields."""
         movies: list[MetadataMovie] = []
         failure = batch.failure
         for row in batch.items:
             try:
-                identity = _id(row["id"])
-                detail = await self.movie_details(identity)
-                movies.extend(detail.items)
-                failure = failure or detail.failure
-            except (KeyError, TypeError, ValueError):
+                movies.append(_base(row))
+            except (KeyError, TypeError, ValueError, AttributeError):
                 failure = failure or _invalid()
         return MetadataBatch(tuple(movies), batch.complete and failure is None, failure)
 
