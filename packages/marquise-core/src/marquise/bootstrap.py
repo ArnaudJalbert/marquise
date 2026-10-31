@@ -6,6 +6,9 @@ import types
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
+from marquise.application.queries.browse_screening_movies import (
+    BrowseScreeningMoviesQuery,
+)
 from marquise.application.queries.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
@@ -175,6 +178,11 @@ class MarquiseFactory:
     def get_movie_screenings_query(self) -> GetMovieScreeningsQuery:
         """Configured query for listing a movie's screenings."""
         return self._container.get_movie_screenings_query
+
+    @property
+    def browse_screening_movies_query(self) -> BrowseScreeningMoviesQuery:
+        """Configured movie-first screening query."""
+        return self._container.browse_screening_movies_query
 
     @property
     def search_screenings_query(self) -> SearchScreeningsQuery:

@@ -11,6 +11,9 @@ from uuid import uuid4
 import asyncpg
 from dotenv import load_dotenv
 
+from marquise.application.queries.browse_screening_movies import (
+    BrowseScreeningMoviesQuery,
+)
 from marquise.application.queries.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
@@ -72,6 +75,7 @@ from marquise.infrastructure.di.import_use_cases import (
     build_refresh_movies_use_case,
 )
 from marquise.infrastructure.di.queries import (
+    build_browse_screening_movies_query,
     build_get_cinema_screenings_query,
     build_get_movie_screenings_query,
     build_get_screening_query,
@@ -580,6 +584,11 @@ class Container:
     def get_cinema_screenings_query(self) -> GetCinemaScreeningsQuery:
         """Public cinema-screenings query (no authentication required)."""
         return self._get_cinema_screenings_query
+
+    @property
+    def browse_screening_movies_query(self) -> BrowseScreeningMoviesQuery:
+        """Configured movie-first screening query."""
+        return build_browse_screening_movies_query(self._pool_property, self._schema)
 
     @property
     def search_screenings_query(self) -> SearchScreeningsQuery:

@@ -39,3 +39,12 @@ export function formatHour(hour: number): string {
   if (hour === 0 || hour === 24) return "midnight";
   return `${hour % 12 || 12}:00 ${hour < 12 ? "AM" : "PM"}`;
 }
+
+/** Malformed URL escapes remain opaque IDs so the API can report not found. */
+export function decodePathId(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}

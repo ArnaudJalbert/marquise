@@ -1,6 +1,19 @@
 # Changelog
 
+## 2026-10-31
+
+- Preserve appended cinema results on Back and exclude already-started screenings from movie schedule requests. Remove redundant schedule state and date-window checks.
+
+- Complete cinema directory and venue pages with address, website, loading, error, retry, and fixed-cinema listings.
+- Load the complete movie schedule window on entry, keep date navigation usable during requests, and discard results from earlier windows.
+
 ## 2026-10-30
+
+- Automatically append Screenings and Movies pages, retain loaded cards with Retry after failures, and preserve filtered Screenings pages when returning from a movie. Supports #336.
+
+- Show the shared Screenings filters in production. Keep selections in the URL, debounce title search, and apply server-filtered movie-first results. Supports #335.
+
+- Connect the approved minimal UI through an injected production browse client. Keep catalogue and screening requests independent, show initial loading/error/Retry, and share one active preview across cards. Supports #333.
 
 ### Changes
 

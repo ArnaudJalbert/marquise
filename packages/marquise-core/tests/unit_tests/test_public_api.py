@@ -36,6 +36,7 @@ EXPECTED_PUBLIC_SURFACE: set[str] = {
     "EnrichMovieExecutor",
     "RefreshMoviesExecutor",
     "MergeMoviesExecutor",
+    "BrowseScreeningMoviesQuery",
     "AccountAlreadyExistsError",
     "ApplicationError",
     "AssignSourceUseCase",

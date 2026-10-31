@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-30
+
+### v0.1.13
+
+- Add repeated cinema and language filters, title search, and Montréal daily-hour bounds to the movie-first screening endpoint. Supports #335.
+
+### v0.1.12
+
+- Add uncached `GET /v1/screening-movies?start=YYYY-MM-DD&end=YYYY-MM-DD&page=1` with fixed 24-movie pages, metadata, and three upcoming previews per movie. Preserve the independent catalogue and screening endpoints. Requires core v0.2.29. Supports #333.
+
 ## 2026-10-07
 
 ### v0.1.11

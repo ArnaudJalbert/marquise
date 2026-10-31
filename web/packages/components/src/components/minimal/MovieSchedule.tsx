@@ -20,8 +20,7 @@ export function MovieSchedule({
   today,
   onLoadWeek,
 }: MovieScheduleProps) {
-  const initialWeek = movie.screenings.map((s) => s.date).sort()[0] ?? today;
-  const [weekStart, setWeekStart] = useState(initialWeek);
+  const [weekStart, setWeekStart] = useState(today);
   const [visibleDays, setVisibleDays] = useState(4);
   const [scheduleGrouping, setScheduleGrouping] = useState<"date" | "cinema">(
     "date",
@@ -30,26 +29,39 @@ export function MovieSchedule({
     "next" | "previous" | null
   >(null);
   const [weekData, setWeekData] = useState<{
+    start: string;
+    end: string;
     screenings: CatalogueScreening[];
     cinemas: CatalogueCinema[];
   } | null>(null);
   const [weekLoading, setWeekLoading] = useState(false);
-  const [rangeRequested, setRangeRequested] = useState(
-    movie.screenings.length === 0,
-  );
   const [retryAttempt, setRetryAttempt] = useState(0);
   const [weekError, setWeekError] = useState(false);
   const [scheduleCinemas, setScheduleCinemas] = useState<string[]>([]);
   const [scheduleLanguages, setScheduleLanguages] = useState<string[]>([]);
+  const currentWeekData =
+    weekData?.start === weekStart &&
+    weekData.end === addDays(weekStart, visibleDays - 1)
+      ? weekData
+      : undefined;
   const scheduleCinemaOptions = [
     ...new Map(
-      [...cinemas, ...(weekData?.cinemas ?? [])].map((item) => [item.id, item]),
+      [...cinemas, ...(currentWeekData?.cinemas ?? [])].map((item) => [
+        item.id,
+        item,
+      ]),
     ).values(),
   ];
   const scheduleDates = Array.from({ length: visibleDays }, (_, index) =>
     addDays(weekStart, index),
   );
-  const scheduleScreenings = (weekData?.screenings ?? movie.screenings).filter(
+  const loadingSchedule =
+    weekLoading ||
+    Boolean(onLoadWeek && !currentWeekData && !weekError);
+  const scheduleScreenings = (
+    currentWeekData?.screenings ??
+    (onLoadWeek ? [] : movie.screenings)
+  ).filter(
     (screening) =>
       scheduleDates.includes(screening.date) &&
       (!scheduleCinemas.length ||
@@ -64,7 +76,7 @@ export function MovieSchedule({
     return () => window.clearTimeout(timer);
   }, [weekDirection]);
   useEffect(() => {
-    if (!onLoadWeek || (!rangeRequested && movie.screenings.length > 0)) return;
+    if (!onLoadWeek) return;
     const controller = new AbortController();
     let current = true;
     setWeekData(null);
@@ -77,7 +89,12 @@ export function MovieSchedule({
       controller.signal,
     )
       .then((data) => {
-        if (current) setWeekData(data);
+        if (current)
+          setWeekData({
+            start: weekStart,
+            end: addDays(weekStart, visibleDays - 1),
+            ...data,
+          });
       })
       .catch(() => {
         if (current) setWeekError(true);
@@ -89,17 +106,19 @@ export function MovieSchedule({
       current = false;
       controller.abort();
     };
-  }, [movie, onLoadWeek, rangeRequested, weekStart, visibleDays, retryAttempt]);
+  }, [movie, onLoadWeek, weekStart, visibleDays, retryAttempt]);
   const moveWeek = (offset: number) => {
     const start = addDays(weekStart, offset);
     setWeekDirection(offset > 0 ? "next" : "previous");
     setWeekStart(start);
-    setRangeRequested(true);
+    setWeekData(null);
+    setWeekError(false);
   };
   const goToToday = () => {
     setWeekDirection(today > weekStart ? "next" : "previous");
     setWeekStart(today);
-    setRangeRequested(true);
+    setWeekData(null);
+    setWeekError(false);
   };
   return (
     <>
@@ -109,7 +128,6 @@ export function MovieSchedule({
         <button
           aria-label="Previous dates"
           onClick={() => moveWeek(-1)}
-          disabled={weekLoading}
         >
           ←
         </button>
@@ -128,7 +146,6 @@ export function MovieSchedule({
         <button
           aria-label="Next dates"
           onClick={() => moveWeek(1)}
-          disabled={weekLoading}
         >
           →
         </button>
@@ -141,7 +158,7 @@ export function MovieSchedule({
           </summary>
           <div className="minimal-filter-panels">
             <fieldset>
-              <legend>Theaters</legend>
+              <legend>Cinemas</legend>
               {scheduleCinemaOptions.map((item) => (
                 <label key={item.id}>
                   <input
@@ -206,7 +223,7 @@ export function MovieSchedule({
           </label>
           <button
             onClick={goToToday}
-            disabled={weekLoading || weekStart === today}
+            disabled={weekStart === today}
           >
             Today
           </button>
@@ -215,11 +232,11 @@ export function MovieSchedule({
             <select
               aria-label="Days to show"
               value={visibleDays}
-              disabled={weekLoading}
               onChange={(event) => {
                 const days = Number(event.target.value);
                 setVisibleDays(days);
-                setRangeRequested(true);
+                setWeekData(null);
+                setWeekError(false);
               }}
             >
               {[1, 2, 3, 4].map((days) => (
@@ -231,7 +248,7 @@ export function MovieSchedule({
           </label>
         </div>
       </div>
-      {weekLoading && <p role="status">Loading showtimes…</p>}
+      {loadingSchedule && <p role="status">Loading showtimes…</p>}
       {weekError && (
         <div role="alert">
           <p>
@@ -240,12 +257,18 @@ export function MovieSchedule({
               ? " Showing sample data where available."
               : ""}
           </p>
-          <button onClick={() => setRetryAttempt((attempt) => attempt + 1)}>
+          <button
+            onClick={() => {
+              setWeekError(false);
+              setWeekLoading(true);
+              setRetryAttempt((attempt) => attempt + 1);
+            }}
+          >
             Retry showtimes
           </button>
         </div>
       )}
-      {!weekLoading && !weekError && !scheduleScreenings.length && (
+      {!loadingSchedule && !weekError && !scheduleScreenings.length && (
         <p role="status">
           No screenings in these dates. Try another date or clear the filters.
         </p>
