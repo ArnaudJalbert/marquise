@@ -349,3 +349,29 @@ async def test_fetch_raises_when_no_assignment() -> None:
                 end_date=date(2026, 6, 7),
             )
         )
+
+
+@pytest.mark.asyncio
+async def test_import_window_uses_montreal_days_across_dst() -> None:
+    """Seven local dates include both DST offsets and exclude adjacent dates."""
+    cinema_repo = create_autospec(CinemaRepository, instance=True)
+    assignment_repo = create_autospec(CinemaSourceAssignmentRepository, instance=True)
+    registry = create_autospec(SourceRegistryQuery, instance=True)
+    cinema_repo.find_by_id.return_value = CINEMA
+    assignment_repo.find_by_cinema_id.return_value = ASSIGNMENT
+    registry.fetch_showtimes.return_value = [
+        _make_showtime("Before", datetime(2026, 10, 31, 3, 59, tzinfo=UTC)),
+        _make_showtime("First", datetime(2026, 10, 31, 4, 0, tzinfo=UTC)),
+        _make_showtime("Last", datetime(2026, 11, 7, 4, 59, tzinfo=UTC)),
+        _make_showtime("After", datetime(2026, 11, 7, 5, 0, tzinfo=UTC)),
+    ]
+    query = FetchScreeningsFromSourceQuery(cinema_repo, assignment_repo, registry)
+    result = await query.execute(
+        query.InputData("cin-123", date(2026, 10, 31), date(2026, 11, 6))
+    )
+    assert [item.movie_title for item in result.screenings] == ["First", "Last"]
+    args = registry.fetch_showtimes.await_args.kwargs
+    assert args["start_date"].astimezone(UTC) == datetime(
+        2026, 10, 31, 4, 0, tzinfo=UTC
+    )
+    assert args["end_date"].astimezone(UTC).date() == date(2026, 11, 7)

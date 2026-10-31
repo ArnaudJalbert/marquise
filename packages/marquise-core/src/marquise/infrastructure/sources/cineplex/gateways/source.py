@@ -152,7 +152,10 @@ def _extract_movie_detail(html: str) -> dict[str, Any] | None:
     directors: list[str] = []
     raw_director = movie.get("director", "")
     if raw_director:
-        directors = [d.strip() for d in str(raw_director).split(",") if d.strip()]
+        # Cineplex joins co-director credits with commas or the English "and".
+        directors = [
+            d.strip() for d in re.split(r",|\s+and\s+", str(raw_director)) if d.strip()
+        ]
 
     cast_list: list[str] = []
     raw_cast = movie.get("starring", "")
@@ -178,6 +181,22 @@ def _extract_movie_detail(html: str) -> dict[str, Any] | None:
         description = re.sub(r"<[^>]+>", " ", description)
         description = " ".join(description.split()).strip()
 
+    original_title = None
+    if description:
+        identity = re.search(
+            r"(?:filmmaker|director)\s+([^,.]+),\s*([^,.!?]+?)\s+is\s+(?:an?|the)\b",
+            description,
+            re.IGNORECASE,
+        )
+        if identity:
+            if not movie.get("director"):
+                directors = [
+                    name.strip()
+                    for name in re.split(r",|\s+and\s+", identity.group(1))
+                    if name.strip()
+                ]
+            original_title = identity.group(2).strip()
+
     release_year: int | None = None
     release_date_str = movie.get("releaseDate", "")
     if release_date_str:
@@ -188,7 +207,7 @@ def _extract_movie_detail(html: str) -> dict[str, Any] | None:
         except (ValueError, TypeError):
             pass
 
-    return {
+    result = {
         "description": description or None,
         "directors": directors if directors else None,
         "cast": cast_list if cast_list else None,
@@ -200,8 +219,11 @@ def _extract_movie_detail(html: str) -> dict[str, Any] | None:
         "trailer_url": None,
         "genres": genres if genres else None,
         "rating": rating,
-        "original_title": None,
+        "original_title": original_title,
     }
+    if original_title:
+        result["identity_title"] = original_title
+    return result
 
 
 def _is_in_range(

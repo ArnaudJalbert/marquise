@@ -8,6 +8,7 @@ from collections.abc import Callable, Sequence
 from marquise_cli.auth_commands import invite, set_role
 from marquise_cli.cinema_commands import create, delete, list_cinemas, update
 from marquise_cli.import_commands import import_all, import_cinema
+from marquise_cli.metadata_commands import merge_apply, merge_preview, refresh
 from marquise_cli.source_commands import (
     assign,
     list_registered_sources,
@@ -16,7 +17,7 @@ from marquise_cli.source_commands import (
     unregister_sources,
 )
 
-Handler = Callable[..., None]
+Handler = Callable[..., int | None]
 
 _ROLES = ("member", "editor", "administrator")
 
@@ -120,6 +121,38 @@ def create_parser() -> argparse.ArgumentParser:
         help="Days to import, starting today",
     )
 
+    movie = groups.add_parser("movie", help="Manage movie metadata")
+    movie_commands = movie.add_subparsers(required=True, title="commands")
+    refresh_command = _command(
+        movie_commands,
+        "refresh",
+        refresh,
+        "Refresh movie metadata.",
+        ("movie_id", "all_movies"),
+    )
+    target = refresh_command.add_mutually_exclusive_group(required=True)
+    target.add_argument("--movie-id")
+    target.add_argument("--all", action="store_true", dest="all_movies")
+    preview = _command(
+        movie_commands,
+        "merge-preview",
+        merge_preview,
+        "Preview a guarded merge.",
+        ("survivor_id", "duplicate_ids"),
+    )
+    preview.add_argument("survivor_id")
+    preview.add_argument("duplicate_ids", nargs="+")
+    apply = _command(
+        movie_commands,
+        "merge-apply",
+        merge_apply,
+        "Apply an approved merge preview.",
+        ("survivor_id", "duplicate_ids", "preview_file"),
+    )
+    apply.add_argument("survivor_id")
+    apply.add_argument("duplicate_ids", nargs="+")
+    apply.add_argument("--preview-file", required=True)
+
     auth = groups.add_parser("auth", help="Manage authenticated accounts")
     auth_commands = auth.add_subparsers(required=True, title="commands")
     invite_command = _command(
@@ -157,5 +190,5 @@ def dispatch(parser: argparse.ArgumentParser, argv: Sequence[str]) -> int:
     """
     namespace = parser.parse_args(argv)
     arguments = {name: getattr(namespace, name) for name in namespace.handler_arguments}
-    namespace.handler(**arguments)
-    return 0
+    result = namespace.handler(**arguments)
+    return result if isinstance(result, int) else 0

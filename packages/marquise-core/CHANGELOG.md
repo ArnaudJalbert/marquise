@@ -4,6 +4,18 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-10-30
 
+### v0.2.31
+
+- Prefer English TMDB titles, posters, synopses and trailers when enriching. French remains a fallback for everything except the title.
+- Reuse existing movies across title case, accents, English articles, known trailing screening labels such as `(VOSTF)` or `(Japanese w/e.s.t.)`, and whole-word title containment. Matched imports also find movies stored under the provider's title.
+- Keep same-title films with different TMDB identities apart by release year, for example `Sense and Sensibility (1995)`, instead of failing the cinema import.
+- Import Montréal calendar dates across daylight saving transitions without losing late screenings.
+
+- Match cinema source films using provider-independent identity rules, then enrich confirmed movies while preserving source screening links and handling provider failures.
+- Recover cinema source identity evidence and expose explicit metadata refresh and guarded movie merge workflows.
+- Persist enrichment state by stable movie ID. Apply migration `359-movie-enrichment-state.sql` before deploying.
+- Bound TMDB discovery to three pages and five detailed candidates. Incomplete discovery stays retryable.
+
 ### v0.2.30
 
 - Apply title, cinema, source-language, and Montréal daily-hour filters to matching screenings before movie eligibility, ordering, and preview selection. Supports #335.

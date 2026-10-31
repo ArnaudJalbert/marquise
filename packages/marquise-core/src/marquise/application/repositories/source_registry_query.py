@@ -80,6 +80,8 @@ class MovieEnrichmentData:
         rating: Content rating string (e.g. ``"18+"``).  ``None`` if unavailable.
         original_title: Original title in the native language.
             ``None`` if unavailable.
+        identity_title: Film title from the linked detail page, without a
+            source event label when the page distinguishes the two.
     """
 
     description: str | None = None
@@ -93,6 +95,7 @@ class MovieEnrichmentData:
     genres: tuple[str, ...] | None = None
     rating: str | None = None
     original_title: str | None = None
+    identity_title: str | None = None
 
 
 class SourceRegistryQuery(ABC):
