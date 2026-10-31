@@ -67,6 +67,7 @@ class ImportScreeningsCommand:
                 movies=tuple(
                     CreateMissingMoviesCommand.MovieInput(
                         title=movie.title,
+                        identity_title=movie.identity_title,
                         description=movie.description,
                         directors=movie.directors,
                         cast=movie.cast,

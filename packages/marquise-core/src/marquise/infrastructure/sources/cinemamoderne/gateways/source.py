@@ -51,6 +51,8 @@ _EVENEMENT_ID_RE = re.compile(r"EvenementID=(\d+)")
 _LANGUAGE_MARKER_RE = re.compile(r"\(([A-Za-z]{2,8})\)\s*$")
 
 _DL_PAIR_RE = re.compile(r"<dt>([^<]+)</dt><dd>([^<]*)</dd>")
+_ENTRY_TITLE_RE = re.compile(r"<h1[^>]*>(.*?)</h1>", re.DOTALL)
+_FESTIVAL_PREFIX_RE = re.compile(r"^CINEMANIA:\s*(.+)$", re.IGNORECASE)
 _ENTRY_CONTENT_RE = re.compile(
     r'<div class="cm-Entry__content[^"]*">.*?<p>(.*?)</p>', re.DOTALL
 )
@@ -299,6 +301,11 @@ def _extract_cinemamoderne_film_detail(html: str) -> dict[str, Any]:
         A flat dict of movie metadata.
     """
     result: dict[str, Any] = {}
+
+    if title_match := _ENTRY_TITLE_RE.search(html):
+        title = _clean_text(title_match.group(1))
+        if festival := _FESTIVAL_PREFIX_RE.fullmatch(title):
+            result["identity_title"] = festival.group(1).strip()
 
     pairs = dict(_DL_PAIR_RE.findall(html))
 

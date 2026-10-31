@@ -109,16 +109,20 @@ def test_extract_available_dates_finds_all_option_values() -> None:
 @pytest.mark.parametrize(
     ("title", "expected"),
     [
-        ("Romería (VOSTF)", ("Romería", "VOSTF")),
-        ("Santo vs. the Evil Brain (VOSTA)", ("Santo vs. the Evil Brain", "VOSTA")),
-        ("Le chant des forêts (VOF)", ("Le chant des forêts", "VOF")),
+        ("Romería (VOSTF)", ("Romería (VOSTF)", "VOSTF")),
+        (
+            "Santo vs. the Evil Brain (VOSTA)",
+            ("Santo vs. the Evil Brain (VOSTA)", "VOSTA"),
+        ),
+        ("Le chant des forêts (VOF)", ("Le chant des forêts (VOF)", "VOF")),
         ("A Movie With No Marker", ("A Movie With No Marker", None)),
+        ("A Movie (Alien)", ("A Movie (Alien)", None)),
     ],
 )
-def test_split_title_and_language_strips_trailing_marker(
+def test_split_title_and_language_preserves_title(
     title: str, expected: tuple[str, str | None]
 ) -> None:
-    """A trailing parenthetical version marker is stripped off the title."""
+    """A version marker supplies language without changing the source title."""
     assert _split_title_and_language(title) == expected
 
 
@@ -154,7 +158,7 @@ def test_parse_movie_data_builds_showtime_rows() -> None:
 
     assert rows == [
         {
-            "movie_title": "Romería",
+            "movie_title": "Romería (VOSTF)",
             "showtime": "2026-07-09T18:00:00+00:00",
             "identifier": "2026-07-09|123",
             "external_id": "14093",
@@ -362,3 +366,31 @@ async def test_fetch_movie_detail_returns_none_on_http_error() -> None:
         result = await source.fetch_movie_detail("2026-07-09|123")
 
     assert result is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "failure",
+    [
+        TimeoutError(),
+        ConnectionResetError(),
+        HTTPError("url", 403, "Forbidden", {}, None),
+    ],
+)
+async def test_unavailable_cinema_website_keeps_ticketing_facts(
+    failure: OSError,
+) -> None:
+    """Network failures during website recovery retain ticketing enrichment."""
+    html = _schedule_html(
+        {"123": _film("123", "Source Film", synopsis=["Source synopsis"])}
+    )
+    with patch(
+        "marquise.infrastructure.sources.cinematheque.gateways.source._fetch",
+        side_effect=[html, failure],
+    ):
+        result = await CinemathequeSource().fetch_movie_detail("2026-07-09|123")
+    assert result is not None
+    assert result["description"] == "Source synopsis"
+    assert result["duration_minutes"] == 90
+    assert "release_year" not in result
+    assert "directors" not in result
