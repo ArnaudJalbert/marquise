@@ -57,6 +57,7 @@ class MatchMovieInputData:
     release_year: int | None = None
     directors: tuple[str, ...] = ()
     duration_minutes: int | None = None
+    identity_title: str | None = None
 
     def __post_init__(self) -> None:
         """Require a title for discovery."""
