@@ -2,6 +2,11 @@
 
 Production deployments are automated via GitHub Actions (`.github/workflows/fly-deploy.yml`) using path-filtered triggers and workspace-root build contexts.
 
+The private self-managed catalog database has a separate manual setup. See
+[Fly PostgreSQL setup and recovery](fly-postgres.md) for provisioning, the
+configuration-only transfer, costs, and backup limitations. This preparation
+does not switch the API or scheduled imports away from Supabase.
+
 ## Architecture
 
 - **Backend API (`apps/marquise-api`)**: Built from the monorepo root context using `apps/marquise-api/fly.toml`.
