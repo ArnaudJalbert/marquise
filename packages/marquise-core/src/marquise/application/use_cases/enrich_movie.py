@@ -103,6 +103,8 @@ def _select_values(movie: MetadataMovie) -> MovieMetadataValues:
             ),
             None,
         ),
+        tmdb_rating=movie.tmdb_rating,
+        tmdb_vote_count=movie.tmdb_vote_count,
     )
 
 
@@ -129,7 +131,11 @@ async def _enrich(
             )
         if snapshot.tmdb_id not in (None, request.identity.id):
             raise MovieWorkflowConflictError("Confirmed identity conflicts with movie")
-        if snapshot.metadata_enriched_at is not None and not refresh:
+        if (
+            snapshot.metadata_enriched_at is not None
+            and snapshot.values.tmdb_vote_count is not None
+            and not refresh
+        ):
             return EnrichMovieOutputData(request.movie_id, "unchanged")
         batch = await metadata.movie_details(request.identity)
         if batch.failure is not None:
