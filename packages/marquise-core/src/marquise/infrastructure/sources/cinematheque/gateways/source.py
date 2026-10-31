@@ -8,15 +8,16 @@ blocks automated scraping, but its ticketing backend is not).
 Each day's schedule page (``?schdate=YYYY-MM-DD``) embeds the full
 programming for that date as a JavaScript object literal
 (``var gMovieData = {...};``), keyed by an opaque film code, plus a
-``<select id="calendar">`` listing every other date with programming. There
-is no separate film detail page — enrichment data (synopsis, runtime,
-rating, poster) already lives inside the same per-date payload, so
-``fetch_movie_detail`` re-fetches that date's page and looks the film code
-back up.
+``<select id="calendar">`` listing every other date with programming.
+
+The ticketing payload omits year and people. The cinema website's film cards
+link ticket modals to detail pages through performance IDs; those pages supply
+the missing identity evidence when available. Ticketing data remains the fallback.
 """
 
 from __future__ import annotations
 
+import http.client
 import json
 import re
 import ssl
@@ -30,14 +31,19 @@ from urllib.parse import urljoin
 import certifi
 
 from marquise.infrastructure.sources._timezone import montreal_local_to_utc_iso
+from marquise.infrastructure.sources.cinematheque.gateways.detail import (
+    extract_detail,
+    find_detail_url,
+)
 
 _SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 
 BASE_URL = "https://omniwebticketing6.com/cinematheque/"
+CINEMA_URL = "https://www.cinematheque.qc.ca/en/cinema/"
 
 _MOVIE_DATA_RE = re.compile(r"var gMovieData\s*=\s*(\{.*?\})\s*</script>", re.DOTALL)
 _DATE_OPTION_RE = re.compile(r'<option value="(\d{4}-\d{2}-\d{2})">')
-_LANGUAGE_RE = re.compile(r"\(([A-Za-z]{2,8})\)\s*$")
+_LANGUAGE_RE = re.compile(r"\((VO[A-Z]{0,5}|VF|VA)\)\s*$")
 _RUNTIME_RE = re.compile(r"(?:(\d+)\s*hr)?\s*(?:(\d+)\s*min)?")
 
 
@@ -52,7 +58,7 @@ def _fetch(url: str) -> str:
     """
     headers = {"User-Agent": "Mozilla/5.0 (compatible; Marquise/1.0)"}
     req = urllib.request.Request(url, headers=headers)
-    with urllib.request.urlopen(req, context=_SSL_CONTEXT) as resp:
+    with urllib.request.urlopen(req, context=_SSL_CONTEXT, timeout=15) as resp:
         return resp.read().decode()
 
 
@@ -85,20 +91,20 @@ def _extract_available_dates(html: str) -> list[str]:
 
 
 def _split_title_and_language(title: str) -> tuple[str, str | None]:
-    """Strip a trailing parenthetical version marker off a title.
+    """Read a provider version marker while preserving the source title.
 
     Args:
         title: The film title, e.g. ``"Romería (VOSTF)"``.
 
     Returns:
-        A ``(clean_title, marker)`` tuple, e.g. ``("Romería", "VOSTF")``.
+        A ``(source_title, marker)`` tuple, preserving screening annotations.
         ``marker`` is ``None`` if the title has no such marker, in which
-        case ``clean_title`` is the title unchanged.
+        case ``source_title`` is the title unchanged.
     """
     match = _LANGUAGE_RE.search(title)
     if not match:
         return title, None
-    return title[: match.start()].rstrip(), match.group(1)
+    return title, match.group(1)
 
 
 def _parse_runtime(run_time_str: str | None) -> int | None:
@@ -316,7 +322,7 @@ class CinemathequeSource:
         self,
         identifier: str,
     ) -> dict[str, Any] | None:
-        """Fetch enriched movie metadata from Cinémathèque québécoise.
+        """Fetch ticketing facts and recover evidence from the linked cinema page.
 
         Args:
             identifier: A ``"YYYY-MM-DD|<film code>"`` string as returned in
@@ -331,11 +337,26 @@ class CinemathequeSource:
             return None
         try:
             html = _fetch(f"{BASE_URL}?schdate={date_str}")
-        except urllib.error.HTTPError:
+        except OSError:
             return None
         movie_data = _extract_movie_data(html)
         film = movie_data.get(code)
         if not film:
             return None
         result = _extract_cinematheque_film_detail(film)
+        performances = {
+            (perf.get("schDateStr") or date_str, str(perf["perfIx"]))
+            for aud in (film.get("schAuds") or {}).values()
+            for group in ("schPerfsReserved", "schPerfsGeneral")
+            for perf in (aud.get(group) or {}).values()
+            if perf.get("perfIx")
+        }
+        if performances:
+            try:
+                index_html = _fetch(CINEMA_URL)
+                detail_url = find_detail_url(index_html, performances, CINEMA_URL)
+                if detail_url:
+                    result.update(extract_detail(_fetch(detail_url)))
+            except (OSError, http.client.HTTPException):
+                pass  # The ticketing facts remain usable if the website is unavailable.
         return result or None
