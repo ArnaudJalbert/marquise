@@ -152,3 +152,22 @@ def test_merge_requires_targeted_snapshot() -> None:
             MergeMoviesInputData("keep", duplicates)
     with pytest.raises(ValueError, match="exactly"):
         MergeMoviesInputData("keep", ("other",), (keep,))
+
+
+def test_blank_workflow_inputs_are_rejected() -> None:
+    """Matching and single-movie operations reject blank identifiers."""
+    import pytest
+
+    from marquise.application.metadata import ProviderIdentity
+    from marquise.application.movie_workflows import (
+        EnrichMovieInputData,
+        MatchMovieInputData,
+        RefreshMoviesInputData,
+    )
+
+    with pytest.raises(ValueError):
+        MatchMovieInputData(" ")
+    with pytest.raises(ValueError):
+        EnrichMovieInputData(" ", ProviderIdentity("tmdb", "1"))
+    with pytest.raises(ValueError):
+        RefreshMoviesInputData(" ")
