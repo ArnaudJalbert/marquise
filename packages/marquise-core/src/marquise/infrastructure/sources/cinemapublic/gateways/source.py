@@ -515,6 +515,7 @@ def _extract_cinemapublic_film_detail(html: str, movie_url: str) -> dict[str, An
         # Strip HTML from description if present
         if description:
             description = re.sub(r"<[^>]+>", " ", description)
+            description = html_mod.unescape(description)
             description = " ".join(description.split()).strip()
         result["description"] = description or None
 
@@ -523,7 +524,9 @@ def _extract_cinemapublic_film_detail(html: str, movie_url: str) -> dict[str, An
             director_name = raw_director.get("name")
             if director_name:
                 result["directors"] = [
-                    d.strip() for d in str(director_name).split(",") if d.strip()
+                    d.strip()
+                    for d in html_mod.unescape(str(director_name)).split(",")
+                    if d.strip()
                 ]
 
         duration_str = movie_ld.get("duration", "")
