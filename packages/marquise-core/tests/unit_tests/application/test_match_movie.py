@@ -365,3 +365,20 @@ def test_screening_version_abbreviations_are_removed() -> None:
 
     for marker in ("VOSTF", "VOSTA", "VOF", "VF"):
         assert _search_title(f"Carrie ({marker})") == "Carrie"
+
+
+@pytest.mark.asyncio
+async def test_source_identity_title_preserves_screening_title() -> None:
+    """Search the film title while retaining the original event label."""
+    candidate = movie("Julián", 2025, 85)
+    repo = repository((candidate,))
+    evidence = MatchMovieInputData(
+        title="CINEMANIA: Julián",
+        release_year=2025,
+        duration_minutes=85,
+        identity_title="Julián",
+    )
+    result = await MatchMovieUseCase(repo, RapidFuzzNameDistance()).execute(evidence)
+    assert result.identity == candidate.identity
+    assert evidence.title == "CINEMANIA: Julián"
+    repo.search_movies.assert_awaited_once_with("Julián", 2025)
