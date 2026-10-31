@@ -16,6 +16,7 @@ from marquise.application.metadata import (
     MovieMedia,
     PersonFact,
     ProviderIdentity,
+    TitleFact,
 )
 from marquise.application.movie_workflows import (
     EnrichMovieInputData,
@@ -113,7 +114,7 @@ def use_case(movies: Mock, metadata: Mock) -> EnrichMovieUseCase:
 async def test_selects_all_fields_and_preserves_stable_ids(
     movies: Mock, metadata: Mock
 ) -> None:
-    """French Canadian values win per field and only the intended ID is patched."""
+    """English values win per field and only the intended ID is patched."""
     person = PersonFact(ProviderIdentity("tmdb", "person"), " Director ")
     metadata.movie_details.return_value = MetadataBatch(
         (
@@ -157,7 +158,7 @@ async def test_selects_all_fields_and_preserves_stable_ids(
     assert snapshot.tmdb_id == "123"
     assert snapshot.metadata_enriched_at == NOW
     assert snapshot.values == MovieMetadataValues(
-        title="Québec",
+        title="English",
         original_title="Original",
         description="English synopsis",
         release_year=2025,
@@ -166,8 +167,8 @@ async def test_selects_all_fields_and_preserves_stable_ids(
         cast=("Actor",),
         genres=("Drama",),
         origin_countries=("Canada",),
-        poster_url="https://fr/poster",
-        trailer_url="https://fr/trailer",
+        poster_url="https://en/poster",
+        trailer_url="https://en/trailer",
         rating="14A",
     )
     metadata.movie_details.assert_awaited_once_with(IDENTITY)
@@ -182,10 +183,8 @@ async def test_selects_all_fields_and_preserves_stable_ids(
 
 
 @pytest.mark.asyncio
-async def test_english_fallback_and_provider_order(
-    movies: Mock, metadata: Mock
-) -> None:
-    """English fills absent Canadian French fields and ties retain provider order."""
+async def test_french_fallback_and_provider_order(movies: Mock, metadata: Mock) -> None:
+    """French fills absent English media, never the title; ties keep provider order."""
     metadata.movie_details.return_value = MetadataBatch(
         (
             MetadataMovie(
@@ -199,13 +198,13 @@ async def test_english_fallback_and_provider_order(
                         "https://wrong/poster",
                     ),
                     LocalizedMovieMetadata(
-                        "en-US", "English", "Synopsis", "https://en/poster"
+                        "fr-CA", "Québec", "Synopsis", "https://fr/poster"
                     ),
                 ),
                 media=(
-                    MovieMedia("broken", "fr", "trailer", True),
-                    MovieMedia("https://en/first", "en", "trailer", True),
-                    MovieMedia("https://en/second", "en", "trailer", True),
+                    MovieMedia("broken", "en", "trailer", True),
+                    MovieMedia("https://fr/first", "fr", "trailer", True),
+                    MovieMedia("https://fr/second", "fr", "trailer", True),
                 ),
                 certifications=(
                     MovieCertification("CA", " "),
@@ -218,11 +217,11 @@ async def test_english_fallback_and_provider_order(
     assert (await use_case(movies, metadata).execute(REQUEST)).status == "enriched"
     values = movies.update_metadata.call_args.args[1]
     assert (values.title, values.description, values.poster_url) == (
-        "English",
+        None,
         "Synopsis",
-        "https://en/poster",
+        "https://fr/poster",
     )
-    assert values.trailer_url == "https://en/first"
+    assert values.trailer_url == "https://fr/first"
     assert values.rating == "G"
 
 
@@ -522,7 +521,6 @@ async def test_equivalent_fake_providers_make_identical_use_case_decisions() -> 
         patches
         == [
             MovieMetadataValues(
-                title="Titre",
                 original_title="Original",
                 duration_minutes=100,
                 trailer_url="https://media/trailer",
@@ -543,3 +541,24 @@ def test_provider_language_poster_is_selected() -> None:
         ),
     )
     assert _select_values(movie).poster_url == "https://example.org/poster.jpg"
+
+
+def test_canonical_english_title_and_english_poster_are_selected() -> None:
+    """TMDB's English title and poster beat translations and other languages."""
+    movie = MetadataMovie(
+        IDENTITY,
+        (
+            TitleFact("ゴジラ-1.0", "original", "ja"),
+            TitleFact("Godzilla Minus One", "canonical", "en-US"),
+        ),
+        localized=(
+            LocalizedMovieMetadata("fr-CA", "Godzilla Moins Un"),
+            LocalizedMovieMetadata("en-US", "English translation"),
+            LocalizedMovieMetadata("fr", poster_url="https://example.org/fr.jpg"),
+            LocalizedMovieMetadata("und", poster_url="https://example.org/und.jpg"),
+            LocalizedMovieMetadata("en", poster_url="https://example.org/en.jpg"),
+        ),
+    )
+    values = _select_values(movie)
+    assert values.title == "Godzilla Minus One"
+    assert values.poster_url == "https://example.org/en.jpg"

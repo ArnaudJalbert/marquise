@@ -49,23 +49,27 @@ def _positive(value: int | None) -> int | None:
 
 
 def _select_values(movie: MetadataMovie) -> MovieMetadataValues:
+    # English-first for now; French titles are deliberately not selected.
     localized = [
         item
-        for locale in ("fr-CA", "en-US")
+        for locale in ("en-US", "fr-CA")
         for item in movie.localized
         if item.locale == locale
     ]
+    english_titles = [
+        fact.title
+        for fact in movie.titles
+        if fact.kind == "canonical" and fact.locale == "en-US"
+    ] + [item.title for item in localized if item.locale == "en-US"]
     return MovieMetadataValues(
-        title=next(
-            (_text(item.title) for item in localized if _text(item.title)), None
-        ),
+        title=next((_text(title) for title in english_titles if _text(title)), None),
         description=next(
             (_text(item.synopsis) for item in localized if _text(item.synopsis)), None
         ),
         poster_url=next(
             (
                 _url(item.poster_url)
-                for locale in ("fr-CA", "fr", "en-US", "en", "und")
+                for locale in ("en-US", "en", "und", "fr-CA", "fr")
                 for item in movie.localized
                 if item.locale == locale and _url(item.poster_url)
             ),
@@ -81,7 +85,7 @@ def _select_values(movie: MetadataMovie) -> MovieMetadataValues:
         trailer_url=next(
             (
                 _url(media.url)
-                for language in ("fr", "en")
+                for language in ("en", "fr")
                 for media in movie.media
                 if media.language == language
                 and media.official
