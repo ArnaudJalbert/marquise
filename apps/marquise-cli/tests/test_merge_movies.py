@@ -11,6 +11,7 @@ from marquise import (
     MergeMoviesOutputData,
     MovieMetadataSnapshot,
     MovieMetadataValues,
+    ProviderIdentity,
 )
 from marquise_cli.merge_movies import apply_merge, dry_run_merge, format_merge
 
@@ -29,7 +30,9 @@ async def test_preview_and_exact_approval_roundtrip() -> None:
         )
         for name in ("survivor", "duplicate")
     )
-    executor.execute.return_value = MergeMoviesOutputData("preview", snapshots)
+    executor.execute.return_value = MergeMoviesOutputData(
+        "preview", snapshots, confirmed_identity=ProviderIdentity("tmdb", "42")
+    )
     preview = await dry_run_merge(executor, "survivor", ("duplicate",))
     executor.execute.assert_awaited_once_with(
         MergeMoviesInputData("survivor", ("duplicate",))
@@ -38,7 +41,9 @@ async def test_preview_and_exact_approval_roundtrip() -> None:
     assert "screening_counts" in text and "duplicate-screening" in text
     await apply_merge(executor, "survivor", ("duplicate",), text)
     assert executor.execute.await_args.args == (
-        MergeMoviesInputData("survivor", ("duplicate",), snapshots),
+        MergeMoviesInputData(
+            "survivor", ("duplicate",), snapshots, ProviderIdentity("tmdb", "42")
+        ),
     )
 
 

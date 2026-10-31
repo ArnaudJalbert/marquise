@@ -58,7 +58,11 @@ def _snapshot(
         ("origin_countries", "origin_countries"),
     ):
         value = movie.get(column)
-        fields[name] = tuple(value.split(", ")) if value is not None else None
+        fields[name] = (
+            tuple(part.strip() for part in value.split(","))
+            if value is not None
+            else None
+        )
     values = MovieMetadataValues(
         **{name: fields.get(name) for name in MovieMetadataValues.__dataclass_fields__}
     )

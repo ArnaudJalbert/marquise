@@ -118,6 +118,7 @@ class MergeMoviesInputData:
     survivor_id: str
     duplicate_ids: tuple[str, ...]
     approved_snapshot: tuple[MovieMetadataSnapshot, ...] | None = None
+    approved_identity: ProviderIdentity | None = None
 
     def __post_init__(self) -> None:
         """Require distinct nonempty targets; absence of approval means dry run."""
@@ -140,6 +141,7 @@ class MergeMoviesOutputData:
     snapshots: tuple[MovieMetadataSnapshot, ...]
     moved_screening_ids: tuple[str, ...] = ()
     blockers: tuple[str, ...] = ()
+    confirmed_identity: ProviderIdentity | None = None
 
 
 class MovieWorkflowConflictError(ApplicationError):
