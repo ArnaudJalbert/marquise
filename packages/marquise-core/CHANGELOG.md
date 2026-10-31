@@ -6,6 +6,9 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ### Unreleased
 
+- Prefer English TMDB titles, posters, synopses and trailers when enriching. French remains a fallback for everything except the title.
+- Reuse existing movies across title case, accents, English articles, known trailing screening labels such as `(VOSTF)` or `(Japanese w/e.s.t.)`, and whole-word title containment. Matched imports also find movies stored under the provider's title.
+- Keep same-title films with different TMDB identities apart by release year, for example `Sense and Sensibility (1995)`, instead of failing the cinema import.
 - Import Montréal calendar dates across daylight saving transitions without losing late screenings.
 
 - Match cinema source films using provider-independent identity rules, then enrich confirmed movies while preserving source screening links and handling provider failures.
