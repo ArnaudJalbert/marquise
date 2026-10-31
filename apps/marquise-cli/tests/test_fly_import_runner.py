@@ -17,13 +17,13 @@ def test_runner_propagates_machine_failure_and_destroys_machine(
         "#!/bin/sh\n"
         'echo "$*" >> "$CALLS_FILE"\n'
         'case "$1" in\n'
-        '  machine)\n'
+        "  machine)\n"
         '    if [ "$2" = run ]; then echo "Machine ID: machine-123"; exit 1; fi\n'
         '    if [ "$2" = status ]; then echo "State: stopped exit_code=23"; fi\n'
         '    if [ "$2" = destroy ]; then exit 0; fi\n'
-        '    ;;\n'
+        "    ;;\n"
         '  logs) echo "import log output" ;;\n'
-        'esac\n'
+        "esac\n"
     )
     flyctl.chmod(0o755)
     env = {
@@ -45,8 +45,5 @@ def test_runner_propagates_machine_failure_and_destroys_machine(
     assert result.returncode == 23
     assert "import log output" in result.stdout
     calls = calls_file.read_text()
-    assert (
-        "machine destroy --app marquise-db --force machine-123"
-        in calls
-    )
+    assert "machine destroy --app marquise-db --force machine-123" in calls
     assert "TMDB_API_KEY=" not in calls
