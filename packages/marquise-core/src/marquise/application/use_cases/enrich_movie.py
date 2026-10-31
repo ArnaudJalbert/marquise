@@ -63,7 +63,13 @@ def _select_values(movie: MetadataMovie) -> MovieMetadataValues:
             (_text(item.synopsis) for item in localized if _text(item.synopsis)), None
         ),
         poster_url=next(
-            (_url(item.poster_url) for item in localized if _url(item.poster_url)), None
+            (
+                _url(item.poster_url)
+                for locale in ("fr-CA", "fr", "en-US", "en", "und")
+                for item in movie.localized
+                if item.locale == locale and _url(item.poster_url)
+            ),
+            None,
         ),
         original_title=_text(movie.original_title),
         release_year=_positive(movie.release_year),

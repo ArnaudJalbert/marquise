@@ -531,3 +531,15 @@ async def test_equivalent_fake_providers_make_identical_use_case_decisions() -> 
         ]
         * 2
     )
+
+
+def test_provider_language_poster_is_selected() -> None:
+    """A French provider poster is usable even without a regional locale."""
+    movie = MetadataMovie(
+        IDENTITY,
+        (),
+        localized=(
+            LocalizedMovieMetadata("fr", poster_url="https://example.org/poster.jpg"),
+        ),
+    )
+    assert _select_values(movie).poster_url == "https://example.org/poster.jpg"
