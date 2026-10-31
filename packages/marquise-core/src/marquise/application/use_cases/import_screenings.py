@@ -67,6 +67,8 @@ class ImportScreeningsCommand:
                 movies=tuple(
                     CreateMissingMoviesCommand.MovieInput(
                         title=movie.title,
+                        identity_title=movie.identity_title,
+                        source_identifier=movie.identifier,
                         description=movie.description,
                         directors=movie.directors,
                         cast=movie.cast,
@@ -84,14 +86,18 @@ class ImportScreeningsCommand:
             )
         )
         title_to_id = {
-            _normalize_title(movie.title).lower(): movie.id for movie in movies.movies
+            (_normalize_title(movie.title).lower(), movie.source_identifier): movie.id
+            for movie in movies.movies
         }
         screenings = await self.create_screenings_use_case.execute(
             CreateScreeningsCommand.InputData(
                 screenings=tuple(
                     CreateScreeningsCommand.ScreeningInput(
                         movie_id=title_to_id[
-                            _normalize_title(screening.movie_title).lower()
+                            (
+                                _normalize_title(screening.movie_title).lower(),
+                                screening.identifier,
+                            )
                         ],
                         movie_title=screening.movie_title,
                         cinema_id=fetched.cinema_id,

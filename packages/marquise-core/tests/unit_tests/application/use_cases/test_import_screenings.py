@@ -56,3 +56,47 @@ async def test_import_normalizes_movie_title_case_before_linking_screenings() ->
     assert result.imported_count == 1
     screening_input = screenings.execute.call_args.args[0].screenings[0]
     assert screening_input.movie_id == "movie-1"
+
+
+@pytest.mark.asyncio
+async def test_source_identifiers_keep_same_title_screenings_distinct() -> None:
+    """Two source films with the same title retain their own screening links."""
+    fetch = create_autospec(FetchScreeningsFromSourceQuery, instance=True)
+    day = datetime(2026, 10, 31, tzinfo=UTC)
+    fetch.execute.return_value = FetchScreeningsFromSourceQuery.OutputData(
+        cinema_id="cin-1",
+        cinema_name="Cinema",
+        source_name="source",
+        movies=(
+            FetchScreeningsFromSourceQuery.FetchedMovieData(
+                title="Same", identifier="one"
+            ),
+            FetchScreeningsFromSourceQuery.FetchedMovieData(
+                title="Same", identifier="two"
+            ),
+        ),
+        screenings=(
+            FetchScreeningsFromSourceQuery.FetchedScreeningData(
+                movie_title="Same", showtime=day, identifier="one"
+            ),
+            FetchScreeningsFromSourceQuery.FetchedScreeningData(
+                movie_title="Same", showtime=day, identifier="two"
+            ),
+        ),
+    )
+    movies = create_autospec(CreateMissingMoviesCommand, instance=True)
+    movies.execute.return_value = CreateMissingMoviesCommand.OutputData(
+        movies=(
+            CreateMissingMoviesCommand.MovieData("Same", "movie-1", "one"),
+            CreateMissingMoviesCommand.MovieData("Same", "movie-2", "two"),
+        )
+    )
+    screenings = create_autospec(CreateScreeningsCommand, instance=True)
+    screenings.execute.return_value = CreateScreeningsCommand.OutputData((), 2, 2, 0, 0)
+    command = ImportScreeningsCommand(fetch, movies, screenings)
+    await command.execute(
+        command.InputData(cinema_id="cin-1", start_date=day.date(), end_date=day.date())
+    )
+    assert [
+        item.movie_id for item in screenings.execute.await_args.args[0].screenings
+    ] == ["movie-1", "movie-2"]

@@ -5,7 +5,8 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 from marquise.application.exceptions import (
     CinemaNotFoundError,
@@ -20,6 +21,7 @@ from marquise.application.repositories import (
 from marquise.domain.value_objects import CinemaId
 
 logger = logging.getLogger(__name__)
+_MONTREAL = ZoneInfo("America/Toronto")
 
 
 class FetchScreeningsFromSourceQuery:
@@ -55,6 +57,7 @@ class FetchScreeningsFromSourceQuery:
         original_title: str | None = None
         rating: str | None = None
         origin_countries: tuple[str, ...] | None = None
+        identity_title: str | None = None
 
     @dataclass(frozen=True, slots=True)
     class FetchedScreeningData:
@@ -64,6 +67,7 @@ class FetchScreeningsFromSourceQuery:
         ticket_url: str | None = None
         room: str | None = None
         language: str | None = None
+        identifier: str | None = None
 
         def __post_init__(self) -> None:
             if not self.movie_title.strip():
@@ -105,11 +109,11 @@ class FetchScreeningsFromSourceQuery:
 
         source_name = str(assignment.source.name)
 
-        start_dt = datetime.combine(request.start_date, datetime.min.time()).replace(
-            tzinfo=UTC
+        start_dt = datetime.combine(
+            request.start_date, datetime.min.time(), tzinfo=_MONTREAL
         )
-        end_dt = datetime.combine(request.end_date, datetime.max.time()).replace(
-            tzinfo=UTC
+        end_dt = datetime.combine(
+            request.end_date, datetime.max.time(), tzinfo=_MONTREAL
         )
 
         raw_rows = await self.source_registry.fetch_showtimes(
@@ -118,6 +122,7 @@ class FetchScreeningsFromSourceQuery:
             start_date=start_dt,
             end_date=end_dt,
         )
+        raw_rows = [row for row in raw_rows if start_dt <= row.showtime <= end_dt]
         logger.info(
             "Fetched %d showtime rows for cinema '%s' (%s) from source '%s'",
             len(raw_rows),
@@ -154,19 +159,19 @@ class FetchScreeningsFromSourceQuery:
                 len(unique_identifiers),
             )
 
-        seen_titles: dict[str, str | None] = {}
+        seen_titles: dict[tuple[str, str | None], None] = {}
         for row in raw_rows:
             norm = _normalize_title(row.movie_title)
-            if norm not in seen_titles:
-                seen_titles[norm] = row.identifier
+            seen_titles[(norm, row.identifier)] = None
 
         movie_list: list[FetchScreeningsFromSourceQuery.FetchedMovieData] = []
-        for title, ident in seen_titles.items():
+        for title, ident in seen_titles:
             detail = detail_map.get(ident) if ident else None
             movie_list.append(
                 self.FetchedMovieData(
                     title=title,
                     identifier=ident,
+                    identity_title=detail.identity_title if detail else None,
                     description=detail.description if detail else None,
                     directors=detail.directors if detail else None,
                     cast=detail.cast if detail else None,
@@ -201,6 +206,7 @@ class FetchScreeningsFromSourceQuery:
                     ticket_url=r.ticket_url,
                     room=r.room,
                     language=r.language,
+                    identifier=r.identifier,
                 )
                 for r in raw_rows
             ),

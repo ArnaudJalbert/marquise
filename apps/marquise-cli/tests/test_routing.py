@@ -104,3 +104,25 @@ def test_dispatch_passes_parsed_arguments_to_handler() -> None:
 
     assert dispatch(parser, []) == 0
     handler.assert_called_once_with(days=7)
+
+
+def test_metadata_refresh_route_returns_handler_status(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A refresh failure reaches the shell as a nonzero exit code."""
+    handler = Mock(return_value=1)
+    monkeypatch.setattr("marquise_cli.routing.refresh", handler)
+    assert dispatch(create_parser(), ["movie", "refresh", "--movie-id", "movie-1"]) == 1
+    handler.assert_called_once_with(movie_id="movie-1", all_movies=False)
+
+
+def test_guarded_merge_routes_require_a_preview_file() -> None:
+    """Apply requires the exact preview to be supplied by the operator."""
+    with pytest.raises(SystemExit):
+        create_parser().parse_args(["movie", "merge-apply", "keep", "duplicate"])
+    args = create_parser().parse_args(
+        ["movie", "merge-apply", "keep", "duplicate", "--preview-file", "preview.json"]
+    )
+    assert args.survivor_id == "keep"
+    assert args.duplicate_ids == ["duplicate"]
+    assert args.preview_file == "preview.json"

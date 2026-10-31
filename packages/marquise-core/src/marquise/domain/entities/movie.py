@@ -2,10 +2,33 @@
 
 from __future__ import annotations
 
+import html
+import re
+import unicodedata
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from ..value_objects import MovieId
+
+_LANGUAGE = (
+    r"(?:fran[cç]ais(?:e)?|anglais(?:e)?|english|french|tamil|tamoul|punjabi|"
+    r"pendjabi|espagnol(?:e)?|spanish|japanese|japonais(?:e)?|hindi|german|"
+    r"allemand(?:e)?|korean|cor[ée]en(?:ne)?|italian|italien(?:ne)?|"
+    r"multilingual|multilingue)"
+)
+_SUBTITLES = r"(?:w[/.]e\.s\.t\.?|(?:avec\s+)?s\.?t\.?f\.?|dubbed)"
+# Screening labels that cinemas append to a film title. Only complete trailing
+# labels are removed, never arbitrary parentheses or subtitles.
+_LABEL = (
+    rf"(?:version\s+{_LANGUAGE}|{_LANGUAGE}\s+{_SUBTITLES}|"
+    r"[A-Z]{3}\.ENG\.SUB|VOSTF|VOSTA|VOA|VOF|VF|"
+    r"\d+(?:e|er|th)?\s+anniversaire|derni[eè]re\s+s[ée]ance|"
+    r"(?:an\s+)?imax(?:\s+3d)?(?:\s+experience)?|3d)"
+)
+_TRAILING_LABEL = re.compile(
+    rf"(?:\s*[(\[]\s*(?:{_LABEL}|{_LANGUAGE})\s*[)\]]|\s*[:\-]\s*{_LABEL}|\s+{_LABEL})\s*$",
+    re.IGNORECASE,
+)
 
 
 @dataclass(kw_only=True, slots=True)
@@ -41,7 +64,9 @@ class Movie:
     original_title: str | None = None
     rating: str | None = None
     origin_countries: tuple[str, ...] | None = None
+    # Identity confirmation alone does not mean metadata enrichment succeeded.
     tmdb_id: str | None = None
+    metadata_enriched_at: datetime | None = None
 
     def __post_init__(self) -> None:
         """Validate movie data after initialization.
@@ -62,15 +87,45 @@ class Movie:
         if self.release_year is not None and self.release_year <= 0:
             raise ValueError("Movie release year must be positive")
 
+    @staticmethod
+    def search_title(title: str) -> str:
+        """Return the film title without trailing screening version labels."""
+        title = " ".join(html.unescape(title).split())
+        while (cleaned := _TRAILING_LABEL.sub("", title).strip()) != title:
+            title = cleaned
+        return title
+
     @classmethod
     def title_key(cls, title: str) -> str:
-        """Return a canonical key for comparing movie title variants."""
-        words = "".join(
-            char if char.isalnum() else " " for char in title.casefold()
-        ).split()
-        if len(words) > 1 and words[0] in {"a", "an", "the"}:
-            words.pop(0)
-        return " ".join(words)
+        """Return a canonical key for comparing movie title variants.
+
+        Case, accents, punctuation, English articles and screening labels
+        such as ``(VOSTF)`` or ``(Japanese w/e.s.t.)`` are ignored.
+        """
+        folded = "".join(
+            char
+            for char in unicodedata.normalize("NFKD", cls.search_title(title))
+            if not unicodedata.combining(char)
+        ).casefold()
+        words = "".join(char if char.isalnum() else " " for char in folded).split()
+        # English articles are dropped anywhere: "Beast of Mossy Bottom" and
+        # "The Beast of Mossy Bottom" are one film. A title made only of
+        # articles keeps its words.
+        return " ".join(
+            [word for word in words if word not in {"a", "an", "the"}] or words
+        )
+
+    @classmethod
+    def titles_overlap(cls, left: str, right: str) -> bool:
+        """Whether one title key equals or contains the other as whole words.
+
+        The shorter key needs at least two words or six characters, so a
+        generic one-word title never absorbs a longer, different film.
+        """
+        a, b = sorted((cls.title_key(left), cls.title_key(right)), key=len)
+        if not a or (a.count(" ") == 0 and len(a) < 6):
+            return False
+        return a == b or f" {a} " in f" {b} "
 
     def is_recent(self, years: int = 1) -> bool:
         """Check if the movie was released within the last specified years.

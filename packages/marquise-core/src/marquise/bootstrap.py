@@ -49,6 +49,8 @@ from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
+from marquise.application.use_cases.merge_movies import MergeMoviesUseCase
+from marquise.application.use_cases.refresh_movies import RefreshMoviesUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.application.use_cases.update_screening import UpdateScreeningUseCase
@@ -273,6 +275,16 @@ class MarquiseFactory:
     def import_screenings_use_case(self) -> ImportScreeningsCommand:
         """Configured application workflow for importing one cinema."""
         return self._container.import_screenings_use_case
+
+    @property
+    def refresh_movies_use_case(self) -> RefreshMoviesUseCase:
+        """Configured explicit metadata refresh workflow."""
+        return self._container.refresh_movies_use_case
+
+    @property
+    def merge_movies_use_case(self) -> MergeMoviesUseCase:
+        """Configured guarded movie merge workflow."""
+        return self._container.merge_movies_use_case
 
     # ------------------------------------------------------------------
     # Async context manager

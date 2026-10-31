@@ -12,14 +12,12 @@ from marquise.application.use_cases.create_missing_movies import (
     CreateMissingMoviesCommand,
 )
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
+from marquise.application.use_cases.enrich_movie import EnrichMovieUseCase
+from marquise.application.use_cases.match_movie import MatchMovieUseCase
 from marquise.infrastructure.di.import_use_cases import (
     build_create_movies_use_case,
     build_create_screenings_use_case,
     build_fetch_screenings_use_case,
-)
-from marquise.infrastructure.sources.tmdb import TmdbSource
-from marquise.interface_adapters.repositories.source_adapters.tmdb import (
-    TmdbSearchAdapter,
 )
 
 
@@ -46,8 +44,8 @@ def test_movie_builder_wires_supplied_pool_and_schema() -> None:
     command = build_create_movies_use_case(pool, "test_schema", "fake-key")
 
     assert isinstance(command, CreateMissingMoviesCommand)
-    assert isinstance(command.identity_search, TmdbSearchAdapter)
-    assert isinstance(command.identity_search._source, TmdbSource)
+    assert isinstance(command.matcher, MatchMovieUseCase)
+    assert isinstance(command.enricher, EnrichMovieUseCase)
     assert command.movie_repository._gateway._pool is pool
     assert command.movie_repository._gateway._table == '"test_schema".movies'
     pool.acquire.assert_not_called()
@@ -63,3 +61,15 @@ def test_screening_builder_wires_supplied_pool_and_schema() -> None:
     assert command.screening_repository._gateway._pool is pool
     assert command.screening_repository._gateway._schema == "test_schema"
     pool.acquire.assert_not_called()
+
+
+def test_metadata_workflows_are_available_through_factory() -> None:
+    """Factory exposes the configured refresh and guarded merge workflows."""
+    from marquise import MarquiseFactory
+    from marquise.application.use_cases.merge_movies import MergeMoviesUseCase
+    from marquise.application.use_cases.refresh_movies import RefreshMoviesUseCase
+
+    factory = MarquiseFactory()
+    factory._container._pool = MagicMock()
+    assert isinstance(factory.refresh_movies_use_case, RefreshMoviesUseCase)
+    assert isinstance(factory.merge_movies_use_case, MergeMoviesUseCase)

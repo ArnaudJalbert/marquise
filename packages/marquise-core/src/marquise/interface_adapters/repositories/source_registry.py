@@ -168,6 +168,7 @@ class SourceRegistry(SourceRegistryQuery):
             genres=_to_tuple(raw.get("genres")),
             rating=raw.get("rating"),
             original_title=raw.get("original_title"),
+            identity_title=raw.get("identity_title"),
         )
 
 

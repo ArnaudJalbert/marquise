@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-30
+
+### v0.1.16
+
+- Add `movie refresh`, `movie merge-preview`, and `movie merge-apply` commands. Applying a merge requires an explicit saved preview.
+
 ## 2026-10-07
 
 ### v0.1.15
