@@ -4,7 +4,7 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-10-30
 
-### Unreleased
+### v0.2.31
 
 - Prefer English TMDB titles, posters, synopses and trailers when enriching. French remains a fallback for everything except the title.
 - Reuse existing movies across title case, accents, English articles, known trailing screening labels such as `(VOSTF)` or `(Japanese w/e.s.t.)`, and whole-word title containment. Matched imports also find movies stored under the provider's title.
