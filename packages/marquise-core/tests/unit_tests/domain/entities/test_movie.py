@@ -39,6 +39,67 @@ def test_movie_title_key_ignores_case_articles_and_punctuation() -> None:
     assert Movie.title_key("The Odyssey: Part One") == "odyssey part one"
 
 
+@pytest.mark.parametrize(
+    ("title", "film"),
+    [
+        ("Carrie (VOSTF)", "Carrie"),
+        ("Carrie (VF)", "Carrie"),
+        ("In Bruges (VOA)", "In Bruges"),
+        ("Gentle Monster (VOSTA)", "Gentle Monster"),
+        ("Le déclin de l’empire américain(VOF)", "Le déclin de l’empire américain"),
+        ("Fjord (Multilingual w/e.s.t.)", "Fjord"),
+        ("Fjord (multilingue s.t.f.)", "Fjord"),
+        ("Godzilla Minus Zero (Japonaise avec s.t.f.)", "Godzilla Minus Zero"),
+        ("THE SHINING (anglais avec s.t.f.)", "THE SHINING"),
+        ("Rembrandt (Français s.t.f.)", "Rembrandt"),
+        ("Street Fighter : le film (version française)", "Street Fighter : le film"),
+        ("Ramayana (Hindi w/e.s.t.) - An IMAX 3D Experience", "Ramayana"),
+        ("RAMAYANA HIN.ENG.SUB", "RAMAYANA"),
+        ("Ramayana (English Dubbed)", "Ramayana"),
+        ("Rammstein - Live in Mexico City (German)", "Rammstein - Live in Mexico City"),
+        ("Scream: 30e anniversaire", "Scream"),
+        ("Jacquot de Nantes [DERNIÈRE SÉANCE]", "Jacquot de Nantes"),
+        ("L&apos;aile ou la cuisse (VOF)", "L'aile ou la cuisse"),
+        ("Johnny English", "Johnny English"),
+        ("The English Patient", "The English Patient"),
+    ],
+)
+def test_search_title_strips_only_trailing_screening_labels(
+    title: str, film: str
+) -> None:
+    """Cinema version labels are removed; titles ending in a language are kept."""
+    assert Movie.search_title(title) == film
+
+
+def test_title_key_ignores_case_accents_and_labels() -> None:
+    """Label and case variants of one film share a key."""
+    assert (
+        Movie.title_key("GODZILLA MINUS ZERO")
+        == Movie.title_key("Godzilla Minus Zero (Japanese w/e.s.t.)")
+        == "godzilla minus zero"
+    )
+    assert Movie.title_key("SPIDER MAN BRAND NEW DAY") == Movie.title_key(
+        "Spider-Man: Brand New Day"
+    )
+    assert Movie.title_key("Amélie") == Movie.title_key("AMELIE")
+
+
+@pytest.mark.parametrize(
+    ("left", "right", "overlap"),
+    [
+        ("Street Fighter : le film (version française)", "Street Fighter", True),
+        ("Ramayana (Hindi w/e.s.t.)", "Ramayana: Rise of a Legend", True),
+        ("SUSPIRIA", "Suspiria", True),
+        ("Shock", "Aftershock", False),
+        ("Elf", "Elf 2", False),
+        ("Heated Rivalry - Episodes 1 & 2", "Heated Rivalry - Episodes 3 & 4", False),
+    ],
+)
+def test_titles_overlap_by_whole_words(left: str, right: str, overlap: bool) -> None:
+    """Containment needs whole words and enough title to be distinctive."""
+    assert Movie.titles_overlap(left, right) is overlap
+
+
 def test_movie_rejects_empty_title() -> None:
     """Verify that creating a Movie with an empty title raises ValueError."""
     with pytest.raises(ValueError, match="Movie title cannot be empty"):
