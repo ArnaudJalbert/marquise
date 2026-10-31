@@ -2,11 +2,9 @@
 
 ## 2026-10-30
 
-### v0.1.17
+### v0.1.16
 
 - Add injected duplicate merge preview/apply handlers with exact explicit snapshot approval and screening/reference reporting for #356. Factory hookup and command registration remain in #355.
-
-### v0.1.16
 
 - Add injected metadata refresh handling for one movie or all confirmed movies, with per-movie outcomes and partial-failure reporting. Factory hookup and command registration remain in #355. Closes #354.
 
