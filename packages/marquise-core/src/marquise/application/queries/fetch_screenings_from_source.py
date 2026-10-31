@@ -55,6 +55,7 @@ class FetchScreeningsFromSourceQuery:
         original_title: str | None = None
         rating: str | None = None
         origin_countries: tuple[str, ...] | None = None
+        identity_title: str | None = None
 
     @dataclass(frozen=True, slots=True)
     class FetchedScreeningData:
@@ -167,6 +168,7 @@ class FetchScreeningsFromSourceQuery:
                 self.FetchedMovieData(
                     title=title,
                     identifier=ident,
+                    identity_title=detail.identity_title if detail else None,
                     description=detail.description if detail else None,
                     directors=detail.directors if detail else None,
                     cast=detail.cast if detail else None,

@@ -181,6 +181,22 @@ def _extract_movie_detail(html: str) -> dict[str, Any] | None:
         description = re.sub(r"<[^>]+>", " ", description)
         description = " ".join(description.split()).strip()
 
+    original_title = None
+    if description:
+        identity = re.search(
+            r"(?:filmmaker|director)\s+([^,.]+),\s*([^,.!?]+?)\s+is\s+(?:an?|the)\b",
+            description,
+            re.IGNORECASE,
+        )
+        if identity:
+            if not movie.get("director"):
+                directors = [
+                    name.strip()
+                    for name in re.split(r",|\s+and\s+", identity.group(1))
+                    if name.strip()
+                ]
+            original_title = identity.group(2).strip()
+
     release_year: int | None = None
     release_date_str = movie.get("releaseDate", "")
     if release_date_str:
@@ -203,7 +219,8 @@ def _extract_movie_detail(html: str) -> dict[str, Any] | None:
         "trailer_url": None,
         "genres": genres if genres else None,
         "rating": rating,
-        "original_title": None,
+        "original_title": original_title,
+        "identity_title": original_title,
     }
 
 

@@ -40,6 +40,7 @@ class CreateMissingMoviesCommand:
         rating: str | None = None
         origin_countries: tuple[str, ...] | None = None
         tmdb_id: str | None = None
+        identity_title: str | None = None
 
         def __post_init__(self) -> None:
             if not self.title.strip():
@@ -98,7 +99,7 @@ class CreateMissingMoviesCommand:
         remaining: list[CreateMissingMoviesCommand.MovieInput] = []
         for movie in movies:
             candidates = await self.identity_search.search(
-                movie.title, movie.release_year
+                movie.identity_title or movie.title, movie.release_year
             )
             if len(candidates) != 1 or candidates[0].provider != "tmdb":
                 remaining.append(movie)
