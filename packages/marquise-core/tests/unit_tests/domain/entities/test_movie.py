@@ -82,6 +82,10 @@ def test_title_key_ignores_case_accents_and_labels() -> None:
         "Spider-Man: Brand New Day"
     )
     assert Movie.title_key("Amélie") == Movie.title_key("AMELIE")
+    assert Movie.title_key("SHAUN THE SHEEP: BEAST OF MOSSY BOTTOM") == (
+        Movie.title_key("Shaun the Sheep: The Beast of Mossy Bottom")
+    )
+    assert Movie.title_key("The A") == "the a"
 
 
 @pytest.mark.parametrize(

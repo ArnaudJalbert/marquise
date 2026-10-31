@@ -99,7 +99,7 @@ class Movie:
     def title_key(cls, title: str) -> str:
         """Return a canonical key for comparing movie title variants.
 
-        Case, accents, punctuation, a leading article and screening labels
+        Case, accents, punctuation, English articles and screening labels
         such as ``(VOSTF)`` or ``(Japanese w/e.s.t.)`` are ignored.
         """
         folded = "".join(
@@ -108,9 +108,12 @@ class Movie:
             if not unicodedata.combining(char)
         ).casefold()
         words = "".join(char if char.isalnum() else " " for char in folded).split()
-        if len(words) > 1 and words[0] in {"a", "an", "the"}:
-            words.pop(0)
-        return " ".join(words)
+        # English articles are dropped anywhere: "Beast of Mossy Bottom" and
+        # "The Beast of Mossy Bottom" are one film. A title made only of
+        # articles keeps its words.
+        return " ".join(
+            [word for word in words if word not in {"a", "an", "the"}] or words
+        )
 
     @classmethod
     def titles_overlap(cls, left: str, right: str) -> bool:
