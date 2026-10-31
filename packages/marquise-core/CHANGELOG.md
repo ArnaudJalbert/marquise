@@ -2,6 +2,13 @@
 
 Before 2026-07-15 this package was published as `marquise`.
 
+## 2026-10-31
+
+### v0.2.32
+
+- Decode HTML entities in Cinema Public director names and Cinémathèque titles, so translated films resolve to their English TMDB identity instead of producing duplicate movies.
+- Give title search and director discovery independent detail budgets, and accept an exact title, year, and director match even when another strategy was truncated, so noisy title searches no longer block director-based discovery.
+
 ## 2026-10-30
 
 ### v0.2.31
