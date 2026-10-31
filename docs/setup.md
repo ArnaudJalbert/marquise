@@ -210,3 +210,24 @@ leave the additive column, table and trigger in place. Dropping the timestamp
 would discard successful-enrichment history and is unnecessary. This change
 supplies no live rollout and no composition-root wiring. #355 owns wiring and
 assembled end-to-end verification; #356 owns guarded merge transactions.
+
+### Existing databases: TMDB movie scores (#373)
+
+Apply [the additive score migration](../scripts/migrations/373-add-movies-tmdb-score.sql)
+before deploying code that reads or writes `movies.tmdb_rating` or
+`movies.tmdb_vote_count`. It adds nullable `DOUBLE PRECISION` and `INTEGER`
+columns. Existing rows and metadata remain unchanged, with both scores NULL
+until enrichment fetches them. The script targets `marquise.movies`; replace
+the schema qualifier for a disposable test or custom schema.
+
+Run it during a quiet window. The transaction has a 5-second lock timeout and
+60-second statement timeout. On failure, issue `ROLLBACK` in the same session
+before retrying. `ADD COLUMN IF NOT EXISTS` makes reruns safe. Verify both
+column types and existing row counts before enabling score reads and writes.
+
+For application rollback, deploy the earlier code and leave the nullable
+columns in place. To remove the columns later, first stop score readers and
+writers and back up their data; `ALTER TABLE marquise.movies DROP COLUMN
+tmdb_rating, DROP COLUMN tmdb_vote_count` permanently deletes stored scores.
+The bootstrap scripts create both columns for fresh databases but do not alter
+existing tables.

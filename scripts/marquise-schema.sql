@@ -42,6 +42,8 @@ CREATE TABLE IF NOT EXISTS marquise.movies (
     rating           TEXT,
     origin_countries TEXT,
     tmdb_id          TEXT UNIQUE,
+    tmdb_rating      DOUBLE PRECISION,
+    tmdb_vote_count  INTEGER,
     metadata_enriched_at TIMESTAMPTZ
 );
 

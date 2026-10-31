@@ -95,6 +95,8 @@ async def db_pool(
                 rating           TEXT,
                 origin_countries TEXT,
                 tmdb_id          TEXT UNIQUE,
+                tmdb_rating      DOUBLE PRECISION,
+                tmdb_vote_count  INTEGER,
                 metadata_enriched_at TIMESTAMPTZ
             )
             """
@@ -105,6 +107,11 @@ async def db_pool(
         await conn.execute(
             f'ALTER TABLE "{TEST_SCHEMA}".movies '
             "ADD COLUMN IF NOT EXISTS metadata_enriched_at TIMESTAMPTZ"
+        )
+        await conn.execute(
+            f'ALTER TABLE "{TEST_SCHEMA}".movies '
+            "ADD COLUMN IF NOT EXISTS tmdb_rating DOUBLE PRECISION, "
+            "ADD COLUMN IF NOT EXISTS tmdb_vote_count INTEGER"
         )
         await conn.execute(
             f"CREATE UNIQUE INDEX IF NOT EXISTS movies_tmdb_id_key "
