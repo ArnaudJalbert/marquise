@@ -5,6 +5,7 @@ from typing import Protocol
 
 from marquise.application.metadata import (
     MetadataBatch,
+    MetadataFailure,
     MetadataMovie,
     MetadataRepository,
     PersonFact,
@@ -152,45 +153,71 @@ class MatchMovieUseCase:
     async def execute(self, input_data: MatchMovieInputData) -> MatchMovieOutputData:
         """Search with year, retry unfiltered, then discover through directors.
 
-        Each stage is ranked together. Partial retrieval cannot establish the
-        best candidate, even if a returned candidate would otherwise qualify.
+        Each discovery strategy owns its detail budget and its completeness.
+        A confirmed match (exact title, matching year, exact supplied director)
+        cannot be outranked by an unexamined candidate, so it wins even when
+        another strategy was truncated. Otherwise a strategy must be exhaustive
+        (all relevant candidates hydrated, every page seen) before its winner is
+        accepted; a truncated strategy defers to the other strategies and, when
+        nothing resolves, reports incomplete rather than unmatched.
         """
         title = Movie.search_title(
             (input_data.identity_title or "").strip() or input_data.title
         )
-        batches: list[MetadataBatch[MetadataMovie] | MetadataBatch[PersonFact]] = []
+        normalized_title = _normalize(title)
+        source_year = input_data.release_year
         candidates: dict[ProviderIdentity, MetadataMovie] = {}
-        candidate_details_remaining = _MAX_CANDIDATE_DETAILS
-        candidate_limit_reached = False
+        director_candidates: set[ProviderIdentity] = set()
+        failures: list[MetadataFailure] = []
+        title_complete = True
+        director_complete = True
+        title_remaining = _MAX_CANDIDATE_DETAILS
+        director_remaining = _MAX_CANDIDATE_DETAILS
+        title_budget_exhausted = False
+        director_year_cut = False
 
-        async def collect(batch: MetadataBatch[MetadataMovie]) -> None:
-            nonlocal candidate_details_remaining, candidate_limit_reached
-            batches.append(batch)
+        async def hydrate(
+            batch: MetadataBatch[MetadataMovie], *, director: bool
+        ) -> None:
+            nonlocal title_complete, director_complete
+            nonlocal title_remaining, director_remaining
+            nonlocal title_budget_exhausted, director_year_cut
+            if director:
+                director_complete = director_complete and batch.complete
+            else:
+                title_complete = title_complete and batch.complete
+            if batch.failure is not None:
+                failures.append(batch.failure)
             seen = set(candidates)
-            pending = []
+            pending: list[tuple[int, MetadataMovie]] = []
             for index, item in enumerate(batch.items):
                 if item.identity not in seen:
                     seen.add(item.identity)
                     pending.append((index, item))
             pending.sort(
                 key=lambda pair: (
-                    self._title_tier(_normalize(title), pair[1]),
+                    self._title_tier(normalized_title, pair[1]),
                     not (
-                        input_data.release_year is not None
-                        and pair[1].release_year == input_data.release_year
+                        source_year is not None and pair[1].release_year == source_year
                     ),
                     pair[0],
                 )
             )
-            hydrated: dict[ProviderIdentity, MetadataMovie] = {}
-            for _, item in pending:
-                if candidate_details_remaining == 0:
-                    candidate_limit_reached = True
+            for position, (_, item) in enumerate(pending):
+                remaining = director_remaining if director else title_remaining
+                if remaining == 0:
+                    if director and source_year is not None:
+                        director_year_cut = director_year_cut or any(
+                            movie.release_year == source_year
+                            for _, movie in pending[position:]
+                        )
+                    else:
+                        title_budget_exhausted = True
                     break
                 details = await self._metadata.movie_details(item.identity)
-                batches.append(details)
-                candidate_details_remaining -= 1
-                hydrated[item.identity] = next(
+                if details.failure is not None:
+                    failures.append(details.failure)
+                hydrated = next(
                     (
                         detail
                         for detail in details.items
@@ -198,62 +225,77 @@ class MatchMovieUseCase:
                     ),
                     item,
                 )
-            for _, item in sorted(pending, key=lambda pair: pair[0]):
-                if item.identity in hydrated:
-                    candidates[item.identity] = hydrated[item.identity]
+                candidates[item.identity] = hydrated
+                if director:
+                    director_candidates.add(item.identity)
+                    director_remaining -= 1
+                else:
+                    title_remaining -= 1
 
-        def result() -> MatchMovieOutputData | None:
-            if candidate_limit_reached:
-                failure = next(
-                    (batch.failure for batch in batches if batch.failure), None
-                )
-                if failure:
-                    return MatchMovieOutputData("failed", failure=failure)
-                return MatchMovieOutputData("incomplete")
+        def decide() -> MatchMovieOutputData:
             ranked = [
-                (rank, movie.identity)
-                for movie in candidates.values()
-                if (rank := self._rank(input_data, _normalize(title), movie))
-                is not None
+                (rank, identity)
+                for identity, movie in candidates.items()
+                if (rank := self._rank(input_data, normalized_title, movie)) is not None
             ]
-            if not ranked:
-                return None
-            failure = next((batch.failure for batch in batches if batch.failure), None)
-            if failure:
-                return MatchMovieOutputData("failed", failure=failure)
-            if any(not batch.complete for batch in batches):
-                return MatchMovieOutputData("incomplete")
-            identity = min(ranked, key=lambda pair: pair[0])[1]
-            chosen = candidates[identity]
-            return MatchMovieOutputData(
-                "matched",
-                identity,
-                titles=tuple(
-                    dict.fromkeys(
-                        value
-                        for value in (
-                            *(fact.title for fact in chosen.titles),
-                            chosen.original_title or "",
-                        )
-                        if value.strip()
+            if failures:
+                return MatchMovieOutputData("failed", failure=failures[0])
+            if ranked:
+                winner_identity = min(ranked, key=lambda pair: pair[0])[1]
+                winner_rank = next(
+                    rank for rank, identity in ranked if identity == winner_identity
+                )
+                confirmed = (
+                    winner_rank[0] == 0
+                    and winner_rank[1] == 0
+                    and winner_rank[2] == 0
+                    and bool(input_data.directors)
+                )
+                if winner_identity in director_candidates:
+                    complete = director_complete and not director_year_cut
+                else:
+                    complete = title_complete and not title_budget_exhausted
+                if confirmed or complete:
+                    chosen = candidates[winner_identity]
+                    return MatchMovieOutputData(
+                        "matched",
+                        winner_identity,
+                        titles=tuple(
+                            dict.fromkeys(
+                                value
+                                for value in (
+                                    *(fact.title for fact in chosen.titles),
+                                    chosen.original_title or "",
+                                )
+                                if value.strip()
+                            )
+                        ),
+                        release_year=chosen.release_year,
                     )
-                ),
-                release_year=chosen.release_year,
+                return MatchMovieOutputData("incomplete")
+            incomplete = (
+                not title_complete
+                or title_budget_exhausted
+                or not director_complete
+                or director_year_cut
             )
+            return MatchMovieOutputData("incomplete" if incomplete else "unmatched")
 
-        await collect(
-            await self._metadata.search_movies(title, input_data.release_year)
+        await hydrate(
+            await self._metadata.search_movies(title, source_year), director=False
         )
-        if selected := result():
+        if (selected := decide()).status in ("matched", "failed"):
             return selected
-        if input_data.release_year is not None:
-            await collect(await self._metadata.search_movies(title))
-            if selected := result():
+        if source_year is not None:
+            await hydrate(await self._metadata.search_movies(title), director=False)
+            if (selected := decide()).status in ("matched", "failed"):
                 return selected
         seen_people: set[ProviderIdentity] = set()
         for name in input_data.directors:
             people = await self._metadata.search_people(name)
-            batches.append(people)
+            if people.failure is not None:
+                failures.append(people.failure)
+            director_complete = director_complete and people.complete
             for person in people.items:
                 if (
                     person.identity in seen_people
@@ -261,14 +303,8 @@ class MatchMovieUseCase:
                 ):
                     continue
                 seen_people.add(person.identity)
-                await collect(await self._metadata.directed_movies(person.identity))
-        if selected := result():
-            return selected
-        failure = next((batch.failure for batch in batches if batch.failure), None)
-        if failure:
-            return MatchMovieOutputData("failed", failure=failure)
-        return MatchMovieOutputData(
-            "incomplete"
-            if any(not batch.complete for batch in batches)
-            else "unmatched"
-        )
+                await hydrate(
+                    await self._metadata.directed_movies(person.identity),
+                    director=True,
+                )
+        return decide()

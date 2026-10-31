@@ -176,6 +176,43 @@ async def test_discovery_retry_and_every_director() -> None:
 
 
 @pytest.mark.asyncio
+async def test_exact_match_survives_noisy_search() -> None:
+    """An exact title, year, and director win despite noisy search results."""
+    winner = movie("& Sons", 2026, 119, (person("Pablo Trapero"),), identity="1291829")
+    noise = tuple(
+        movie(f"{index} & Sons", 2026, 100, (), identity=str(index))
+        for index in range(7)
+    )
+    repo = repository((winner, *noise))
+    result = await MatchMovieUseCase(repo, RapidFuzzNameDistance()).execute(
+        MatchMovieInputData("& Sons", 2026, ("Pablo Trapero",), 119)
+    )
+    assert result.status == "matched"
+    assert result.identity == winner.identity
+
+
+@pytest.mark.asyncio
+async def test_director_discovery_survives_noisy_title_search() -> None:
+    """A translated title drowned out by noise resolves via director credits."""
+    candidate = movie(
+        "Fatherland", 2026, 82, (person("Pawel Pawlikowski"),), identity="1437696"
+    )
+    noise = tuple(
+        movie(f"La patrie {index}", 2015 + index, 100, (), identity=str(index))
+        for index in range(8)
+    )
+    repo = repository((candidate, *noise))
+    repo.search_movies.side_effect = [MetadataBatch(), MetadataBatch(noise)]
+    repo.search_people.return_value = MetadataBatch(candidate.directors)
+    repo.directed_movies.return_value = MetadataBatch((candidate,))
+    result = await MatchMovieUseCase(repo, RapidFuzzNameDistance()).execute(
+        MatchMovieInputData("La Patrie", 2026, ("Pawel Pawlikowski",), 82)
+    )
+    assert result.status == "matched"
+    assert result.identity == candidate.identity
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "dimension", ["title", "year", "spelling", "runtime", "unknown", "tie"]
 )
