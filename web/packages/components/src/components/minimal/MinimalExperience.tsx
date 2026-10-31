@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   MovieNotFoundError,
   posterRenditionUrl,
@@ -20,7 +20,7 @@ import type {
 } from "./catalogue-types";
 
 const timeFormatter = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "America/Montreal",
+  timeZone: "America/Toronto",
   hour: "2-digit",
   minute: "2-digit",
   hourCycle: "h23",
@@ -117,7 +117,14 @@ export function MinimalExperience({
   const today = toMontrealIsoDate(new Date(currentTime));
   const isListing = url.pathname === "/";
   const isCatalogue = isListing && url.searchParams.get("section") === "movies";
-  const isScreenings = isListing && !isCatalogue;
+  const cinemaMatch = /^\/cinemas\/([^/]+)\/?$/.exec(url.pathname);
+  const cinemaId = cinemaMatch?.[1]
+    ? decodePathId(cinemaMatch[1])
+    : undefined;
+  const isCinemaDirectory =
+    url.pathname === "/cinemas" || url.pathname === "/cinemas/";
+  const isCinemaPage = cinemaId !== undefined;
+  const isScreenings = (isListing && !isCatalogue) || isCinemaPage;
   const [screeningsHref, setScreeningsHref] = useState(href);
   if (isScreenings && screeningsHref !== href) setScreeningsHref(href);
   // Detail and catalogue URLs must not replace the retained Screenings query.
@@ -143,7 +150,7 @@ export function MinimalExperience({
             end: selection.end,
             page,
             title: selection.title,
-            cinemas: selection.cinemas,
+            cinemas: cinemaId ? [cinemaId] : selection.cinemas,
             languages: selection.languages,
             startHour: selection.from ? timeToHour(selection.from, 0) : 0,
             endHour: selection.to ? timeToHour(selection.to, 24) : 24,
@@ -159,6 +166,7 @@ export function MinimalExperience({
         selection.languages.join("\0"),
         selection.from,
         selection.to,
+        cinemaId,
       ],
     ),
     isScreenings &&
@@ -175,7 +183,7 @@ export function MinimalExperience({
       }
       return items;
     }, [client]),
-    isScreenings,
+      isScreenings || isCinemaDirectory,
   );
   const catalogue = usePageResource(
     useCallback(
@@ -237,19 +245,33 @@ export function MinimalExperience({
     },
     [client],
   );
-  const movies = screenings.items.map((item) => ({
-    ...movieData(item),
-    screenings: item.screenings.map(screeningData),
-  }));
-  const catalogueMovies = decodedId
-    ? detail.data
-      ? [detail.data]
-      : []
-    : catalogue.items.map(movieData);
-  const cinemas = (cinemaResource.data ?? []).map(({ id, name }) => ({
-    id,
-    name,
-  }));
+  const movies = useMemo(
+    () =>
+      screenings.items.map((item) => ({
+        ...movieData(item),
+        screenings: item.screenings.map(screeningData),
+      })),
+    [screenings.items],
+  );
+  const catalogueMovies = useMemo(
+    () =>
+      decodedId
+        ? detail.data
+          ? [detail.data]
+          : []
+        : catalogue.items.map(movieData),
+    [catalogue.items, decodedId, detail.data],
+  );
+  const cinemas = useMemo(
+    () =>
+      (cinemaResource.data ?? []).map(({ id, name, address, website }) => ({
+        id,
+        name,
+        address: address ?? undefined,
+        website: website ?? undefined,
+      })),
+    [cinemaResource.data],
+  );
 
   return (
     <MinimalCatalogue
@@ -262,7 +284,7 @@ export function MinimalExperience({
       catalogueHasMore={catalogue.hasMore}
       onLoadMoreCatalogue={catalogue.loadNext}
       onCatalogueRetry={catalogue.retry}
-      cinemas={url.pathname.startsWith("/cinemas") ? [] : cinemas}
+      cinemas={cinemas}
       screeningLanguages={screeningLanguages}
       selection={selection}
       onSelection={onSelection}
@@ -288,7 +310,18 @@ export function MinimalExperience({
           </div>
         )
       }
-      directoryNotice={<p>Cinema browsing is coming soon.</p>}
+      directoryNotice={
+        cinemaResource.loading ? (
+          <p role="status">Loading cinemas…</p>
+        ) : cinemaResource.error ? (
+          <div role="alert">
+            <p>Could not load cinemas.</p>
+            <button onClick={cinemaResource.retry}>Retry</button>
+          </div>
+        ) : cinemas.length === 0 ? (
+          <p role="status">No cinemas found.</p>
+        ) : null
+      }
     />
   );
 }

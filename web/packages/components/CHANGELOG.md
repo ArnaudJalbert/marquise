@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-31
+
+- Complete cinema directory and venue pages with address, website, loading, error, retry, and fixed-cinema listings.
+- Load the complete movie schedule window on entry, keep date navigation usable during requests, and discard results from earlier windows.
+
 ## 2026-10-30
 
 - Automatically append Screenings and Movies pages, retain loaded cards with Retry after failures, and preserve filtered Screenings pages when returning from a movie. Supports #336.

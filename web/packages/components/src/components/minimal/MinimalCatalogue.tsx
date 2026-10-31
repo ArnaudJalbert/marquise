@@ -437,7 +437,8 @@ export function MinimalCatalogue({
       : "screenings";
   const movieId = /^\/movies\/([^/]+)$/.exec(path)?.[1];
   const decodedMovieId = movieId ? decodePathId(movieId) : undefined;
-  const cinemaId = /^\/cinemas\/([^/]+)$/.exec(path)?.[1];
+  const cinemaPathId = /^\/cinemas\/([^/]+)\/?$/.exec(path)?.[1];
+  const cinemaId = cinemaPathId ? decodePathId(cinemaPathId) : undefined;
   const movie =
     catalogueMovies.find((m) => m.id === decodedMovieId) ??
     movies.find((m) => m.id === decodedMovieId);
@@ -550,7 +551,7 @@ export function MinimalCatalogue({
         </nav>
       </header>
       <main id="minimal-main" tabIndex={-1}>
-        {path === "/cinemas" ? (
+        {path === "/cinemas" || path === "/cinemas/" ? (
           <>
             <h1>Cinemas</h1>
             <SectionDescription text="Browse Montréal cinemas and open one to see its upcoming showtimes. For example, choose your favorite venue to check what's playing this weekend." />
@@ -558,7 +559,7 @@ export function MinimalCatalogue({
             <ul className="minimal-directory">
               {cinemas.map((c) => (
                 <li key={c.id}>
-                  <a href={`/cinemas/${c.id}`}>{c.name}</a>
+                  <a href={`/cinemas/${encodeURIComponent(c.id)}`}>{c.name}</a>
                 </li>
               ))}
             </ul>
@@ -596,7 +597,7 @@ export function MinimalCatalogue({
             (detailNotice ?? <h1>Movie not found</h1>)
           )
         ) : cinemaId && !cinema ? (
-          <h1>Cinema not found</h1>
+          directoryNotice ?? <h1>Cinema not found</h1>
         ) : (
           <>
             {(cinemaId || activeSection === "screenings") && (
