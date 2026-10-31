@@ -227,7 +227,13 @@ def verify() -> None:
         expect(
             page.get_by_role("heading", name="Dune: Part Two", exact=True)
         ).to_be_visible()
-        expect(page.locator(".minimal-time")).to_have_count(100)
+        upcoming_window = sum(
+            datetime.fromisoformat(item["showtime"]) > datetime.now(zone)
+            and datetime.fromisoformat(item["showtime"]).astimezone(zone).date()
+            < today + timedelta(days=4)
+            for item in items
+        )
+        expect(page.locator(".minimal-time")).to_have_count(upcoming_window)
         page.screenshot(path=str(output / "dense-schedule.png"), full_page=True)
         page.get_by_role("link", name="Movies", exact=True).click()
         page.get_by_role("searchbox", name="Search movies").fill("Arrival")

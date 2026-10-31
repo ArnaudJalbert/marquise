@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   MovieNotFoundError,
   posterRenditionUrl,
@@ -128,10 +128,14 @@ export function MinimalExperience({
   const [screeningsHref, setScreeningsHref] = useState(href);
   if (isScreenings && screeningsHref !== href) setScreeningsHref(href);
   // Detail and catalogue URLs must not replace the retained Screenings query.
-  const selection = parseSelection(
-    isScreenings ? url : new URL(screeningsHref, "http://marquise.invalid"),
-    today,
-  );
+  const listingUrl = isScreenings
+    ? url
+    : new URL(screeningsHref, "http://marquise.invalid");
+  const selection = parseSelection(listingUrl, today);
+  const fixedCinemaPath = /^\/cinemas\/([^/]+)\/?$/.exec(listingUrl.pathname)?.[1];
+  const fixedCinemaId = fixedCinemaPath ? decodePathId(fixedCinemaPath) : undefined;
+  const clock = useRef(currentTime);
+  clock.current = currentTime;
   const movieId = /^\/movies\/([^/]+)$/.exec(url.pathname)?.[1];
   const decodedId = movieId ? decodePathId(movieId) : undefined;
   const [search, setSearch] = useState("");
@@ -150,7 +154,7 @@ export function MinimalExperience({
             end: selection.end,
             page,
             title: selection.title,
-            cinemas: cinemaId ? [cinemaId] : selection.cinemas,
+            cinemas: fixedCinemaId ? [fixedCinemaId] : selection.cinemas,
             languages: selection.languages,
             startHour: selection.from ? timeToHour(selection.from, 0) : 0,
             endHour: selection.to ? timeToHour(selection.to, 24) : 24,
@@ -166,7 +170,7 @@ export function MinimalExperience({
         selection.languages.join("\0"),
         selection.from,
         selection.to,
-        cinemaId,
+        fixedCinemaId,
       ],
     ),
     isScreenings &&
@@ -206,6 +210,7 @@ export function MinimalExperience({
     NonNullable<MinimalCatalogueProps["onLoadWeek"]>
   >(
     async (movie, start, end, signal) => {
+      const requestTime = Date.parse(clock.current);
       const first = await client.fetchScreeningRangePage(
         movie.id,
         start,
@@ -229,7 +234,9 @@ export function MinimalExperience({
         );
       }
       return {
-        screenings: items.map(screeningData),
+        screenings: items
+          .filter((item) => Date.parse(item.showtime) > requestTime)
+          .map(screeningData),
         cinemas: [
           ...new Map(
             items.map((item) => [

@@ -118,7 +118,7 @@ beforeEach(() => {
   endObservers.length = 0;
   vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
   vi.useFakeTimers({ toFake: ["Date"] });
-  vi.setSystemTime(new Date("2026-11-02T01:00:00Z")); // Still November 1 in Montreal.
+  vi.setSystemTime(new Date("2026-11-01T22:00:00Z")); // Still November 1 in Montreal.
   history.replaceState(null, "", "/");
   vi.stubGlobal("scrollTo", vi.fn());
 });
@@ -245,9 +245,9 @@ it("keeps loaded catalogue movies after a page failure and retries that page", a
   expect(client.fetchMoviePage).toHaveBeenCalledTimes(3);
 });
 
-it("restores filtered screening pages after visiting a movie and another section", async () => {
+it.each(["/", "/cinemas/c1"])("restores filtered pages from %s after visiting a movie", async (route) => {
   const listing =
-    "/?start=2026-11-03&end=2026-11-05&cinema=c1&language=VO&title=Wanted&from=18:00&to=22:00";
+    `${route}?start=2026-11-03&end=2026-11-05&cinema=c1&language=VO&title=Wanted&from=18:00&to=22:00`;
   history.replaceState(null, "", listing);
   const client = clients();
   client.fetchScreeningMoviesPage.mockImplementation(
@@ -619,6 +619,20 @@ it("does not refetch a movie schedule when the clock updates", async () => {
     vi.advanceTimersByTime(60_000);
   });
   expect(client.fetchScreeningRangePage).toHaveBeenCalledOnce();
+});
+
+it("excludes started screenings from the complete schedule window", async () => {
+  history.replaceState(null, "", "/movies/movie-1");
+  const client = clients();
+  client.fetchScreeningRangePage.mockResolvedValue(page([
+    { ...show, id: "past", showtime: "2026-11-01T21:00:00Z" },
+    { ...show, id: "now", showtime: "2026-11-01T22:00:00Z" },
+    show,
+  ]));
+  render(<App client={client} />);
+  expect(await screen.findByText("18:00")).toBeTruthy();
+  expect(screen.queryByText("16:00")).toBeNull();
+  expect(screen.queryByText("17:00")).toBeNull();
 });
 
 it("shows an initial screening error with Retry, then an honest empty state", async () => {
