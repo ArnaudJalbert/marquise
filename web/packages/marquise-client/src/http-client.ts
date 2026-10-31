@@ -1,3 +1,8 @@
+import type {
+  BrowseClient,
+  ScreeningMovieApi,
+  ScreeningMovieQuery,
+} from "./browse-client";
 import type { CinemaApi, MovieApi, Page, ScreeningApi } from "./api-types";
 import type { CinemaShowtime } from "./cinema";
 import type {
@@ -38,7 +43,7 @@ export interface HttpMarquiseClientOptions {
 }
 /** Every read requests exactly one API page. Nothing drains paginated endpoints. */
 export class HttpMarquiseClient
-  implements MovieGridClient, MovieDetailClient, DiscoveryClient
+  implements MovieGridClient, MovieDetailClient, DiscoveryClient, BrowseClient
 {
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
@@ -93,10 +98,39 @@ export class HttpMarquiseClient
     page: number,
     signal?: AbortSignal,
     title?: string,
+    size = 100,
   ): Promise<Page<MovieApi>> {
-    const params = new URLSearchParams({ page: String(page), size: "100" });
+    const params = new URLSearchParams({
+      page: String(page),
+      size: String(size),
+    });
     if (title) params.set("title", title);
     return this.fetchJson(`/v1/movies?${params}`, signal);
+  }
+  async fetchScreeningMoviesPage(
+    query: ScreeningMovieQuery,
+    signal?: AbortSignal,
+  ): Promise<Page<ScreeningMovieApi>> {
+    const params = new URLSearchParams({
+      start: query.start,
+      end: query.end,
+      page: String(query.page),
+    });
+    return this.fetchJson(`/v1/screening-movies?${params}`, signal);
+  }
+  async fetchMovieMetadata(
+    id: string,
+    signal?: AbortSignal,
+  ): Promise<MovieApi> {
+    // Query IDs preserve opaque slashes that ASGI decodes before path matching.
+    const params = new URLSearchParams({ ids: id, page: "1", size: "1" });
+    const result = await this.fetchJson<Page<MovieApi>>(
+      `/v1/movies?${params}`,
+      signal,
+    );
+    const movie = result.items.find((item) => item.id === id);
+    if (!movie) throw new MovieNotFoundError(id);
+    return movie;
   }
   async fetchScreeningRangePage(
     movieId: string,

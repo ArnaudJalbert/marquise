@@ -7,7 +7,7 @@ so these tests touch no database.
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
+from datetime import date, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, create_autospec
 
@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 from fastapi_cache.backends.inmemory import InMemoryBackend
 
 from marquise import (
+    BrowseScreeningMoviesQuery,
     CinemaNotFoundError,
     GetCinemaMoviesUseCase,
     GetCinemaScreeningsQuery,
@@ -1499,3 +1500,91 @@ def test_get_cinema_movies_pagination(client: TestClient, factory: MagicMock) ->
     assert body["total"] == 5
     assert body["page"] == 2
     assert body["size"] == 2
+
+
+def test_screening_movies_page_and_validation(
+    client: TestClient, factory: MagicMock
+) -> None:
+    """Movie-first reads return terminal metadata and validate before querying."""
+    query = create_autospec(BrowseScreeningMoviesQuery, instance=True)
+    factory.browse_screening_movies_query = query
+    query.execute.return_value = BrowseScreeningMoviesQuery.OutputData(
+        movies=(), total=25
+    )
+    response = client.get("/v1/screening-movies?start=2026-11-01&end=2026-11-01&page=2")
+    assert response.status_code == 200
+    assert response.json() == {
+        "items": [],
+        "page": 2,
+        "size": 24,
+        "pages": 2,
+        "total": 25,
+    }
+    query.execute.assert_awaited_once_with(
+        BrowseScreeningMoviesQuery.InputData(date(2026, 11, 1), date(2026, 11, 1), 2)
+    )
+    query.execute.reset_mock()
+    for params in [
+        "start=bad&end=2026-11-01",
+        "start=2026-11-02&end=2026-11-01",
+        "start=2026-11-01&end=2026-11-01&page=0",
+    ]:
+        assert client.get(f"/v1/screening-movies?{params}").status_code == 422
+    query.execute.assert_not_awaited()
+
+
+def test_screening_movie_metadata_and_preview_response(
+    client: TestClient, factory: MagicMock
+) -> None:
+    """Card metadata, source language and the original booking URL reach delivery."""
+    query = create_autospec(BrowseScreeningMoviesQuery, instance=True)
+    factory.browse_screening_movies_query = query
+    query.execute.return_value = SimpleNamespace(
+        movies=[
+            SimpleNamespace(
+                id="film",
+                title="Film",
+                release_year=2026,
+                directors=("Director",),
+                duration_minutes=90,
+                description=None,
+                poster_url="https://posters.example/film.jpg",
+                screenings=[
+                    SimpleNamespace(
+                        id="show",
+                        movie_id="film",
+                        movie_title="Film",
+                        cinema_id="cinema",
+                        cinema_name="Cinema",
+                        showtime=datetime.fromisoformat("2026-11-01T23:00:00+00:00"),
+                        ticket_url="https://tickets.example/original",
+                        room=None,
+                        language="VOSTF",
+                    )
+                ],
+            )
+        ],
+        total=1,
+    )
+    data = client.get("/v1/screening-movies?start=2026-11-01&end=2026-11-01").json()
+    assert data["total"] == 1 and data["pages"] == 1
+    assert data["items"][0]["directors"] == ["Director"]
+    assert data["items"][0]["screenings"][0]["language"] == "VOSTF"
+    assert (
+        data["items"][0]["screenings"][0]["ticket_url"]
+        == "https://tickets.example/original"
+    )
+
+
+def test_list_movies_preserves_opaque_slash_id(
+    client: TestClient, factory: MagicMock
+) -> None:
+    """The one-ID query preserves slashes that cannot survive route matching."""
+    factory.list_movies_use_case.execute.return_value = SimpleNamespace(
+        movies=[], total=0
+    )
+    response = client.get("/v1/movies?ids=catalogue%2Fid&page=1&size=1")
+    assert response.status_code == 200
+    factory.list_movies_use_case.execute.assert_awaited_once_with(
+        ListMoviesUseCase.InputData(ids=("catalogue/id",), page=1, size=1)
+    )

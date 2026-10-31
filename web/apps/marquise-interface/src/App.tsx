@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { MarquiseExperience } from "marquise-components";
-import type { DiscoveryClient, MovieDetailClient } from "marquise-client";
+import { MinimalExperience } from "marquise-components";
+import type { BrowseClient } from "marquise-client";
 import { createMarquiseClient } from "./api-client";
 
 export interface AppProps {
-  discoveryClient?: DiscoveryClient;
-  movieDetailClient?: MovieDetailClient;
+  client?: BrowseClient;
 }
 /** Composition root only. The shared package owns the interface. */
-export function App({ discoveryClient, movieDetailClient }: AppProps) {
+export function App({ client }: AppProps) {
   const [defaultClient] = useState(() => createMarquiseClient());
   const [href, setHref] = useState(window.location.href);
   const [now, setNow] = useState(() => new Date().toISOString());
@@ -29,19 +28,15 @@ export function App({ discoveryClient, movieDetailClient }: AppProps) {
     if (target.href === window.location.href) return;
     history.pushState(null, "", target);
     setHref(target.href);
-    document.getElementById("main-content")?.focus({ preventScroll: true });
+    document.getElementById("minimal-main")?.focus({ preventScroll: true });
     if (!target.hash) window.scrollTo({ top: 0, behavior: "instant" });
   }, []);
   return (
-    <MarquiseExperience
+    <MinimalExperience
       href={href}
-      client={discoveryClient ?? defaultClient}
-      movieDetailClient={movieDetailClient ?? defaultClient}
+      client={client ?? defaultClient}
       navigate={navigate}
       currentTime={now}
-      demo={
-        !discoveryClient && import.meta.env.VITE_MARQUISE_DATA_SOURCE !== "api"
-      }
     />
   );
 }
