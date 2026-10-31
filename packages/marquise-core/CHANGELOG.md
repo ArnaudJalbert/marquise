@@ -6,6 +6,8 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ### v0.2.29
 
+- Import Montréal calendar dates across daylight saving transitions without losing late screenings.
+
 - Match cinema source films using provider-independent identity rules, then enrich confirmed movies while preserving source screening links and handling provider failures.
 - Recover cinema source identity evidence and expose explicit metadata refresh and guarded movie merge workflows.
 - Persist enrichment state by stable movie ID. Apply migration `359-movie-enrichment-state.sql` before deploying.
