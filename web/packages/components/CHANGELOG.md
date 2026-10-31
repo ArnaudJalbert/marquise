@@ -2,6 +2,8 @@
 
 ## 2026-10-31
 
+- Preserve appended cinema results on Back and exclude already-started screenings from movie schedule requests. Remove redundant schedule state and date-window checks.
+
 - Complete cinema directory and venue pages with address, website, loading, error, retry, and fixed-cinema listings.
 - Load the complete movie schedule window on entry, keep date navigation usable during requests, and discard results from earlier windows.
 

@@ -35,36 +35,32 @@ export function MovieSchedule({
     cinemas: CatalogueCinema[];
   } | null>(null);
   const [weekLoading, setWeekLoading] = useState(false);
-  const [rangeRequested, setRangeRequested] = useState(true);
   const [retryAttempt, setRetryAttempt] = useState(0);
   const [weekError, setWeekError] = useState(false);
   const [scheduleCinemas, setScheduleCinemas] = useState<string[]>([]);
   const [scheduleLanguages, setScheduleLanguages] = useState<string[]>([]);
-  const scheduleCinemaOptions = [
-    ...new Map(
-      [
-        ...cinemas,
-        ...(weekData?.start === weekStart &&
-        weekData.end === addDays(weekStart, visibleDays - 1)
-          ? weekData.cinemas
-          : []),
-      ].map((item) => [item.id, item]),
-    ).values(),
-  ];
-  const scheduleDates = Array.from({ length: visibleDays }, (_, index) =>
-    addDays(weekStart, index),
-  );
   const currentWeekData =
     weekData?.start === weekStart &&
     weekData.end === addDays(weekStart, visibleDays - 1)
       ? weekData
       : undefined;
+  const scheduleCinemaOptions = [
+    ...new Map(
+      [...cinemas, ...(currentWeekData?.cinemas ?? [])].map((item) => [
+        item.id,
+        item,
+      ]),
+    ).values(),
+  ];
+  const scheduleDates = Array.from({ length: visibleDays }, (_, index) =>
+    addDays(weekStart, index),
+  );
   const loadingSchedule =
     weekLoading ||
-    Boolean(onLoadWeek && rangeRequested && !currentWeekData && !weekError);
+    Boolean(onLoadWeek && !currentWeekData && !weekError);
   const scheduleScreenings = (
     currentWeekData?.screenings ??
-    (onLoadWeek && rangeRequested ? [] : movie.screenings)
+    (onLoadWeek ? [] : movie.screenings)
   ).filter(
     (screening) =>
       scheduleDates.includes(screening.date) &&
@@ -80,7 +76,7 @@ export function MovieSchedule({
     return () => window.clearTimeout(timer);
   }, [weekDirection]);
   useEffect(() => {
-    if (!onLoadWeek || (!rangeRequested && movie.screenings.length > 0)) return;
+    if (!onLoadWeek) return;
     const controller = new AbortController();
     let current = true;
     setWeekData(null);
@@ -110,21 +106,19 @@ export function MovieSchedule({
       current = false;
       controller.abort();
     };
-  }, [movie, onLoadWeek, rangeRequested, weekStart, visibleDays, retryAttempt]);
+  }, [movie, onLoadWeek, weekStart, visibleDays, retryAttempt]);
   const moveWeek = (offset: number) => {
     const start = addDays(weekStart, offset);
     setWeekDirection(offset > 0 ? "next" : "previous");
     setWeekStart(start);
     setWeekData(null);
     setWeekError(false);
-    setRangeRequested(true);
   };
   const goToToday = () => {
     setWeekDirection(today > weekStart ? "next" : "previous");
     setWeekStart(today);
     setWeekData(null);
     setWeekError(false);
-    setRangeRequested(true);
   };
   return (
     <>
@@ -243,7 +237,6 @@ export function MovieSchedule({
                 setVisibleDays(days);
                 setWeekData(null);
                 setWeekError(false);
-                setRangeRequested(true);
               }}
             >
               {[1, 2, 3, 4].map((days) => (
