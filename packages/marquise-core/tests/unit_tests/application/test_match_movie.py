@@ -357,3 +357,11 @@ async def test_director_assignment_can_reassign_an_earlier_typo() -> None:
         repository((candidate,)), RapidFuzzNameDistance()
     ).execute(MatchMovieInputData("Film", 2026, ("Jon Smith", "John Smith"), 100))
     assert result.status == "matched"
+
+
+def test_screening_version_abbreviations_are_removed() -> None:
+    """Known version markers do not become part of the search title."""
+    from marquise.application.use_cases.match_movie import _search_title
+
+    for marker in ("VOSTF", "VOSTA", "VOF", "VF"):
+        assert _search_title(f"Carrie ({marker})") == "Carrie"
