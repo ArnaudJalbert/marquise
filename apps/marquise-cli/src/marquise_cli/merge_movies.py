@@ -10,6 +10,7 @@ from marquise import (
     MergeMoviesOutputData,
     MovieMetadataSnapshot,
     MovieMetadataValues,
+    ProviderIdentity,
 )
 
 
@@ -66,9 +67,11 @@ async def apply_merge(
         or data["blockers"]
         or data["survivor_id"] != survivor_id
         or data["duplicate_ids"] != list(duplicate_ids)
+        or not data.get("confirmed_identity")
     ):
         raise ValueError("Approval requires an unblocked dry-run preview")
     snapshots = tuple(_read_snapshot(item) for item in data["snapshots"])
+    identity = ProviderIdentity(**data["confirmed_identity"])
     return await executor.execute(
-        MergeMoviesInputData(survivor_id, duplicate_ids, snapshots)
+        MergeMoviesInputData(survivor_id, duplicate_ids, snapshots, identity)
     )

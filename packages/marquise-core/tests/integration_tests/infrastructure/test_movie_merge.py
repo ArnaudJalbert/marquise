@@ -230,3 +230,19 @@ async def test_new_external_identity_owner_invalidates_approval(
         await gateway.merge(MergeMoviesInputData("0", ("1", "2"), preview.snapshots))
     ).status == "blocked"
     assert await rows(db_pool) == before
+
+
+@pytest.mark.asyncio
+async def test_preview_preserves_comma_delimited_directors(
+    db_pool: asyncpg.Pool,
+) -> None:
+    """A preview returns stored co-directors as separate names."""
+    gateway = await seed(db_pool)
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            f"UPDATE {TABLE}.movies SET directors = $1 WHERE id = '0'",
+            "Director One,Director Two",
+        )
+    preview = await gateway.merge(MergeMoviesInputData("0", ("1", "2")))
+    survivor = next(s for s in preview.snapshots if s.movie_id == "0")
+    assert survivor.values.directors == ("Director One", "Director Two")

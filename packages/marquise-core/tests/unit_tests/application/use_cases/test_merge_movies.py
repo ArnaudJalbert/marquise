@@ -68,7 +68,9 @@ async def test_apply_passes_exact_approval_after_rematching() -> None:
         MergeMoviesOutputData("preview", snapshots()),
         MergeMoviesOutputData("applied", snapshots(), ("b-screening", "c-screening")),
     ]
-    request = MergeMoviesInputData("a", ("b", "c"), snapshots())
+    request = MergeMoviesInputData(
+        "a", ("b", "c"), snapshots(), ProviderIdentity("tmdb", "1401459")
+    )
     assert (await use_case.execute(request)).status == "applied"
     assert repo.merge.await_args.args == (request,)
     assert matcher.execute.await_count == 3
@@ -131,10 +133,10 @@ async def test_existing_owner_outside_targets_blocks() -> None:
 @pytest.mark.parametrize("provider", ["tmdb", "another-provider"])
 @pytest.mark.parametrize("stored_id", [None, "", "   "])
 @pytest.mark.asyncio
-async def test_unlinked_groups_refuse_without_persisted_identity(
+async def test_unlinked_groups_preview_with_confirmed_identity(
     provider: str, stored_id: str | None
 ) -> None:
-    """Unlinked groups refuse until approval can retain confirmed identity."""
+    """Unlinked groups record the identity established by the matcher."""
     repo, matcher, use_case = collaborators()
     unlinked = tuple(replace(s, tmdb_id=stored_id) for s in snapshots())
     repo.merge.return_value = MergeMoviesOutputData("preview", unlinked)
@@ -142,6 +144,25 @@ async def test_unlinked_groups_refuse_without_persisted_identity(
     matcher.execute.return_value = MatchMovieOutputData(
         "matched", ProviderIdentity(provider, "42")
     )
-    assert (
-        await use_case.execute(MergeMoviesInputData("a", ("b", "c")))
-    ).status == "blocked"
+    result = await use_case.execute(MergeMoviesInputData("a", ("b", "c")))
+    assert result.status == "preview"
+    assert result.confirmed_identity == ProviderIdentity(provider, "42")
+
+
+@pytest.mark.asyncio
+async def test_changed_identity_blocks_unlinked_apply() -> None:
+    """A new matcher result cannot authorize a previously approved plan."""
+    repo, matcher, use_case = collaborators()
+    unlinked = tuple(replace(s, tmdb_id=None) for s in snapshots())
+    repo.merge.return_value = MergeMoviesOutputData("preview", unlinked)
+    repo.find_by_tmdb_id.return_value = None
+    matcher.execute.return_value = MatchMovieOutputData(
+        "matched", ProviderIdentity("tmdb", "new")
+    )
+    request = MergeMoviesInputData(
+        "a", ("b", "c"), unlinked, ProviderIdentity("tmdb", "old")
+    )
+    result = await use_case.execute(request)
+    assert result.status == "blocked"
+    assert "Approved identity is missing or changed" in result.blockers
+    repo.merge.assert_awaited_once()
