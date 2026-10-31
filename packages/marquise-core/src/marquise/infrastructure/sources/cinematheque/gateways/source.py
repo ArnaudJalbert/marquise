@@ -17,6 +17,7 @@ the missing identity evidence when available. Ticketing data remains the fallbac
 
 from __future__ import annotations
 
+import http.client
 import json
 import re
 import ssl
@@ -356,6 +357,6 @@ class CinemathequeSource:
                 detail_url = find_detail_url(index_html, performances, CINEMA_URL)
                 if detail_url:
                     result.update(extract_detail(_fetch(detail_url)))
-            except OSError:
+            except (OSError, http.client.HTTPException):
                 pass  # The ticketing facts remain usable if the website is unavailable.
         return result or None

@@ -88,3 +88,25 @@ async def test_la_bola_negra_splits_only_cineplex_director_credits(
     assert detail["duration_minutes"] == 160
     assert detail["release_year"] == 2026
     assert requests == [("/movie/la-bola-negra", None)]
+
+
+@pytest.mark.asyncio
+async def test_truncated_detail_preserves_ticketing_facts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An incomplete optional website response does not discard ticketing data."""
+    from http.client import IncompleteRead
+
+    schedule = (_FIXTURES / "carrie-schedule.html").read_text()
+
+    def fetch(url: str) -> str:
+        if "schdate=" in url:
+            return schedule
+        raise IncompleteRead(b"partial")
+
+    monkeypatch.setattr(cinema, "_fetch", fetch)
+    detail = await cinema.CinemathequeSource().fetch_movie_detail(
+        "2026-10-30|242894996"
+    )
+    assert detail is not None
+    assert detail["duration_minutes"] == 98
