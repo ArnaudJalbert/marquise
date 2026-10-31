@@ -41,6 +41,11 @@ class MergeMoviesUseCase:
         ids = (request.survivor_id, *request.duplicate_ids)
         if len(snapshots) != len(ids) or {s.movie_id for s in snapshots} != set(ids):
             return ["Snapshots must cover each target exactly once"]
+        survivor = next(s for s in snapshots if s.movie_id == request.survivor_id)
+        if survivor.tmdb_id is None:
+            return [
+                "A stored TMDB-linked survivor is required to bind approved identity"
+            ]
         blockers = []
         identities = []
         for snapshot in snapshots:

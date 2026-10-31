@@ -24,7 +24,9 @@ metadata repository implementation.
   that delivery boundary.
 
 The explicitly named survivor must be the existing TMDB owner when present.
-All target identities must be confirmed and agree. Known TMDB identity cannot be
+The survivor must have a stored TMDB identity. Entirely unlinked groups refuse
+until a coordinated #358 extension can retain confirmed provider identity in
+approval. All target identities must be confirmed and agree. Known TMDB identity cannot be
 replaced with another provider's ID. The merge writes only screening `movie_id`
 and deletes duplicate movies. It never enriches or assigns a new identity.
 
