@@ -58,6 +58,11 @@ class MatchMovieInputData:
     directors: tuple[str, ...] = ()
     duration_minutes: int | None = None
 
+    def __post_init__(self) -> None:
+        """Require a title for discovery."""
+        if not self.title.strip():
+            raise ValueError("Movie title must not be blank")
+
 
 @dataclass(frozen=True, slots=True)
 class MatchMovieOutputData:
@@ -82,6 +87,11 @@ class EnrichMovieInputData:
     movie_id: str
     identity: ProviderIdentity
 
+    def __post_init__(self) -> None:
+        """Require a stable movie identifier."""
+        if not self.movie_id.strip():
+            raise ValueError("Movie ID must not be blank")
+
 
 @dataclass(frozen=True, slots=True)
 class EnrichMovieOutputData:
@@ -102,6 +112,11 @@ class RefreshMoviesInputData:
     """None selects all confirmed TMDB movies; a string selects exactly one."""
 
     movie_id: str | None = None
+
+    def __post_init__(self) -> None:
+        """Accept all movies or a nonblank movie identifier."""
+        if self.movie_id is not None and not self.movie_id.strip():
+            raise ValueError("Movie ID must not be blank")
 
 
 @dataclass(frozen=True, slots=True)
