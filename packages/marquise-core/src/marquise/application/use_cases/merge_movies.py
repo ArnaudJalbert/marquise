@@ -42,7 +42,7 @@ class MergeMoviesUseCase:
         if len(snapshots) != len(ids) or {s.movie_id for s in snapshots} != set(ids):
             return ["Snapshots must cover each target exactly once"]
         survivor = next(s for s in snapshots if s.movie_id == request.survivor_id)
-        if survivor.tmdb_id is None:
+        if not survivor.tmdb_id or not survivor.tmdb_id.strip():
             return [
                 "A stored TMDB-linked survivor is required to bind approved identity"
             ]
