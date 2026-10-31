@@ -156,7 +156,9 @@ class MatchMovieUseCase:
         Each stage is ranked together. Partial retrieval cannot establish the
         best candidate, even if a returned candidate would otherwise qualify.
         """
-        title = _search_title(input_data.title)
+        title = _search_title(
+            (input_data.identity_title or "").strip() or input_data.title
+        )
         batches: list[MetadataBatch[MetadataMovie] | MetadataBatch[PersonFact]] = []
         candidates: dict[ProviderIdentity, MetadataMovie] = {}
 
