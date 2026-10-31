@@ -4,9 +4,7 @@
 
 ### v0.1.16
 
-- Add injected duplicate merge preview/apply handlers with exact explicit snapshot approval and screening/reference reporting for #356. Factory hookup and command registration remain in #355.
-
-- Add injected metadata refresh handling for one movie or all confirmed movies, with per-movie outcomes and partial-failure reporting. Factory hookup and command registration remain in #355. Closes #354.
+- Add `movie refresh`, `movie merge-preview`, and `movie merge-apply` commands. Applying a merge requires an explicit saved preview.
 
 ## 2026-10-07
 

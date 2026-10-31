@@ -1,4 +1,4 @@
-"""Thin targeted merge handlers. Factory and command registration belong to #355."""
+"""Thin targeted merge handlers using explicit approval evidence."""
 
 import json
 from dataclasses import asdict

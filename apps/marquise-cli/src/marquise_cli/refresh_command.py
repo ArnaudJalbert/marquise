@@ -1,4 +1,4 @@
-"""Metadata refresh delivery, injected and registered by issue #355."""
+"""Metadata refresh delivery through an injected executor."""
 
 import sys
 
@@ -46,7 +46,7 @@ async def run_refresh_movies(
     Return 0 on success, 1 for execution/per-record failures, or 2 for invalid
     input. IDs are opaque strings and pass through unchanged. The executor owns
     eligibility, enrichment policy, ordering and per-record failure isolation.
-    Factory lifecycle, authentication/configuration and routing belong to #355.
+    Factory lifecycle and routing belong to the CLI composition layer.
     """
     if (movie_id is None and not all_movies) or (
         movie_id is not None and (all_movies or not movie_id.strip())

@@ -92,7 +92,7 @@ def payloads() -> dict:
             "page": 1,
             "total_pages": 1,
             "total_results": 1,
-            "results": [{"id": 1765072}],
+            "results": [{"id": 1765072, "title": "You Can See Everything"}],
         },
         "search/person:1": {
             "page": 1,
@@ -101,7 +101,10 @@ def payloads() -> dict:
             "results": [{"id": 2001262}],
         },
         "person/2001262/movie_credits": {
-            "crew": [{"id": 99, "job": "Producer"}, {"id": 1765072, "job": "Director"}]
+            "crew": [
+                {"id": 99, "job": "Producer"},
+                {"id": 1765072, "job": "Director", "title": "You Can See Everything"},
+            ]
         },
     }
 
@@ -196,7 +199,7 @@ async def test_search_paginates_and_retains_provider_order_and_filters() -> None
         "page": 2,
         "total_pages": 2,
         "total_results": 2,
-        "results": [{"id": 680770}],
+        "results": [{"id": 680770, "title": "Le Monde de Wishy"}],
     }
     for key, value in list(data.items()):
         if key.startswith("movie/1765072"):
@@ -213,7 +216,8 @@ async def test_search_paginates_and_retains_provider_order_and_filters() -> None
         "1765072",
         "680770",
     ]
-    assert result.items[1].titles[3].title == "Le Monde de Wishy"
+    assert result.items[1].titles[0].title == "Le Monde de Wishy"
+    assert not any(path.startswith("movie/") for path, _ in calls)
     search_calls = [params for path, params in calls if path == "search/movie"]
     assert [p["page"] for p in search_calls] == [["1"], ["2"]]
     assert all(p["primary_release_year"] == ["2026"] for p in search_calls)

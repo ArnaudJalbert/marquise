@@ -16,6 +16,8 @@ from marquise.application.movie_workflows import (
     MatchMovieOutputData,
 )
 
+_MAX_CANDIDATE_DETAILS = 5
+
 
 class NameDistance(Protocol):
     """Injected deterministic Damerau-Levenshtein calculation."""
@@ -111,14 +113,7 @@ class MatchMovieUseCase:
     def _rank(
         self, source: MatchMovieInputData, title: str, movie: MetadataMovie
     ) -> tuple[int, int, int, float] | None:
-        title_match = bool(title) and title in {
-            _normalize(value)
-            for value in (
-                *(fact.title for fact in movie.titles),
-                movie.original_title or "",
-            )
-            if value.strip()
-        }
+        title_match = self._title_match(title, movie)
         year_match = (
             source.release_year is not None
             and source.release_year == movie.release_year
@@ -150,6 +145,17 @@ class MatchMovieUseCase:
             runtime,
         )
 
+    @staticmethod
+    def _title_match(title: str, movie: MetadataMovie) -> bool:
+        return bool(title) and title in {
+            _normalize(value)
+            for value in (
+                *(fact.title for fact in movie.titles),
+                movie.original_title or "",
+            )
+            if value.strip()
+        }
+
     async def execute(self, input_data: MatchMovieInputData) -> MatchMovieOutputData:
         """Search with year, retry unfiltered, then discover through directors.
 
@@ -161,15 +167,37 @@ class MatchMovieUseCase:
         )
         batches: list[MetadataBatch[MetadataMovie] | MetadataBatch[PersonFact]] = []
         candidates: dict[ProviderIdentity, MetadataMovie] = {}
+        candidate_details_remaining = _MAX_CANDIDATE_DETAILS
+        candidate_limit_reached = False
 
         async def collect(batch: MetadataBatch[MetadataMovie]) -> None:
+            nonlocal candidate_details_remaining, candidate_limit_reached
             batches.append(batch)
-            for item in batch.items:
-                if item.identity in candidates:
-                    continue
+            seen = set(candidates)
+            pending = []
+            for index, item in enumerate(batch.items):
+                if item.identity not in seen:
+                    seen.add(item.identity)
+                    pending.append((index, item))
+            pending.sort(
+                key=lambda pair: (
+                    not self._title_match(_normalize(title), pair[1]),
+                    not (
+                        input_data.release_year is not None
+                        and pair[1].release_year == input_data.release_year
+                    ),
+                    pair[0],
+                )
+            )
+            hydrated: dict[ProviderIdentity, MetadataMovie] = {}
+            for _, item in pending:
+                if candidate_details_remaining == 0:
+                    candidate_limit_reached = True
+                    break
                 details = await self._metadata.movie_details(item.identity)
                 batches.append(details)
-                candidates[item.identity] = next(
+                candidate_details_remaining -= 1
+                hydrated[item.identity] = next(
                     (
                         detail
                         for detail in details.items
@@ -177,8 +205,18 @@ class MatchMovieUseCase:
                     ),
                     item,
                 )
+            for _, item in sorted(pending, key=lambda pair: pair[0]):
+                if item.identity in hydrated:
+                    candidates[item.identity] = hydrated[item.identity]
 
         def result() -> MatchMovieOutputData | None:
+            if candidate_limit_reached:
+                failure = next(
+                    (batch.failure for batch in batches if batch.failure), None
+                )
+                if failure:
+                    return MatchMovieOutputData("failed", failure=failure)
+                return MatchMovieOutputData("incomplete")
             ranked = [
                 (rank, movie.identity)
                 for movie in candidates.values()
