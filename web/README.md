@@ -9,9 +9,17 @@ backend in the same repository.
 > the only prerequisites are Node.js and pnpm. See [AGENTS.md](../AGENTS.md) for enforced
 > rules and [CONTRIBUTING.md](../CONTRIBUTING.md) for paths and commands.
 
-## Minimalist design review, issue #332
+## Minimalist browsing
 
-Run `pnpm install --frozen-lockfile`, then `pnpm prototype` from `web/`. Open `http://localhost:4174`. The React prototype uses labelled sample data and does not replace the delivery app or call a live API. Design decisions, old-interface baseline, screenshots, verification and the pending approval gate are in [design/332/README.md](design/332/README.md). Run `pnpm build && pnpm prototype:build` to typecheck and build the local preview.
+The production app uses the approved shared minimalist UI against the real API.
+`/` opens today's Montreal Screenings. `/?section=movies` searches the independent
+catalogue. Both views request the first bounded page. Automatic append, full
+listing filters, and cinema data/pages follow in #335 through #337. Movie links
+resolve metadata by exact ID and load the requested schedule window.
+
+The approved sample prototype stays in `packages/components/demo`, outside the
+production bundle. Run `pnpm prototype` for it. See
+[design/332/README.md](design/332/README.md) for its data and historical evidence.
 
 ## Design
 
@@ -64,57 +72,34 @@ pnpm lint       # oxlint across the workspace
 pnpm typecheck  # tsc --noEmit across the workspace
 pnpm test       # vitest across the workspace
 
-# The landing page (mock data by default):
+# The production interface, using the real API:
 pnpm --filter marquise-interface dev
 # → http://localhost:5173
 
-# Use live API data (proxies /v1/* to http://localhost:8000 — run `make api`):
-VITE_MARQUISE_DATA_SOURCE=api pnpm --filter marquise-interface dev
+# Same-origin /v1/* requests proxy to http://localhost:8000. Run `make api`.
+# For another API origin, set VITE_MARQUISE_API_BASE_URL at build/dev time.
 ```
 
-## Notes
+## API and production builds
 
-- `/` is a poster-first discovery page with categories drawn from the current
-  screening page's real movie genres. `/screenings` defaults to today in Montréal;
-  date, movie title, cinema ID, exact language code (such as `VOF` or `VOSTF`),
-  local time bounds, and page live in the URL and filter on the server.
-  Legacy `/?date=…&cinema=…` links still open filtered daily listings. Old numeric
-  hour bounds are supported; obsolete display controls and local genre filters
-  are no longer controls in this interface.
-- `/cinemas` searches names on the server and shows addresses, websites and links
-  into cinema-filtered daily screenings. `/movies/<id>` resolves real movie
-  metadata and pages that film's screenings for the selected date.
-- Each active endpoint fetches **one requested page**: screenings and movie
-  showtimes use 48 rows, cinemas use 100. Poster counts are unique films on that
-  page; API pagination counts screenings. Films can recur on subsequent pages.
-  Movie metadata enrichment requests at most 100 IDs from that page in one bulk
-  call. Optional cinema website enrichment uses only the first 100 cinemas and
-  never drains the directory. Missing optional cinema metadata preserves times
-  and ticket links.
-- The new interface uses the injected `DiscoveryClient` protocol. Retained
-  `MovieGridClient.fetchForDate` and `MovieDetailClient.fetchShowtimes` APIs are
-  compatibility collections: **HTTP returns only page one**, capped at 100 and
-  48 screenings respectively. Their old local UI controls operate on that
-  collection, not a complete date's catalogue. Use `DiscoveryClient` for totals,
-  server filters and pagination. No endpoint is eagerly drained.
-- Hover a poster for times; use its Showtimes button with keyboard or touch for
-  the same preview, tickets and movie details. Previews render in a portal above
-  horizontal rails. Posters lazy-load with reserved dimensions and title
-  fallbacks; navigation, focus styles and reduced-motion support use native CSS.
-- Local development defaults to explicitly labelled **demo** data. Production's
-  Dockerfile defaults to `VITE_MARQUISE_DATA_SOURCE=api` and
-  `VITE_MARQUISE_API_BASE_URL=https://api.marquise.mov`; set these at build time
-  when building outside Docker. Turborepo forwards and includes both variables
-  in its build cache key. No account or backend changes are required.
-- On hosts with constrained worker/thread limits, run the full test suite as
-  `RAYON_NUM_THREADS=2 pnpm test -- --maxWorkers=1`.
-
-- `packages/components` ships a **prebuilt CSS bundle** (`dist/index.css`), so external
-  consumers do not need their own Tailwind install. The workspace app resolves both the
-  component code and stylesheet from source for fresh-checkout development and HMR.
-- `marquise-interface` is the development and visual-test consumer for the shared component
-  package; there is no second demo application to keep in sync.
-- `marquise-interface` uses client-side routes including `/screenings`, `/cinemas`
-  and `/movies/<id>`. Production
-  static hosting must rewrite unknown document requests to `index.html` so direct movie
-  links and refreshes load the Vite app.
+- The injected `BrowseClient` separates `GET /v1/screening-movies` from
+  `GET /v1/movies`. Screening pages contain 24 distinct movies, ordered by the
+  earliest upcoming show and ID, plus at most three qualifying screenings each.
+  Catalogue pages contain 24 movies and accept an endpoint title search without
+  screening constraints. Both expose authoritative totals and page counts.
+- Movie routes use `GET /v1/movies?ids=<encoded-id>&size=1` and the existing exact-ID
+  screening endpoint for inclusive Montreal date windows. Metadata and booking
+  URLs remain real. Missing posters, metadata, and booking links have plain
+  fallbacks. API failures show Retry and never substitute sample data.
+- The default client always uses HTTP. Docker defaults the API origin to
+  `https://api.marquise.mov`; other builds use same-origin requests unless
+  `VITE_MARQUISE_API_BASE_URL` is supplied. The older client interfaces remain
+  available to independent consumers.
+- The shared package ships `dist/index.css`. Workspace development resolves the
+  component code and stylesheet from source. The demo stays outside library
+  output. Run `node packages/components/demo/check-isolation.mjs` after building.
+- Static hosting must rewrite document requests to `index.html` for movie links,
+  refreshes, and subsequent cinema routes. Automatic append and Back restoration
+  are separate delivery work in #336.
+- On constrained hosts, use `pnpm lint -- --threads=2` and
+  `pnpm test -- --maxWorkers=2`.

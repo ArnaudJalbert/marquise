@@ -27,6 +27,9 @@ from marquise.application.exceptions import (
     SourceNotFoundError,
     TooManyMovieIdsError,
 )
+from marquise.application.queries.browse_screening_movies import (
+    BrowseScreeningMoviesQuery,
+)
 from marquise.application.queries.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
@@ -83,6 +86,7 @@ from marquise.bootstrap import (
 )
 
 __all__ = [
+    "BrowseScreeningMoviesQuery",
     "AccountAlreadyExistsError",
     "ApplicationError",
     "AssignSourceUseCase",

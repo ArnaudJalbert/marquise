@@ -48,6 +48,7 @@ from marquise_api.rate_limit import limiter
 from marquise_api.routers import (
     cinemas_router,
     movies_router,
+    screening_movies_router,
     screenings_router,
 )
 
@@ -295,6 +296,7 @@ or authorization.
     v1_router.include_router(cinemas_router)
     v1_router.include_router(movies_router)
     v1_router.include_router(screenings_router)
+    v1_router.include_router(screening_movies_router)
     app.include_router(v1_router)
 
     add_pagination(app)

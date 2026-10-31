@@ -1,0 +1,116 @@
+"""Movie-first pagination against a disposable PostgreSQL database."""
+
+from datetime import UTC, datetime, timedelta
+
+import asyncpg
+import pytest
+
+from marquise.infrastructure.supabase.gateways.screening_movie_reader import (
+    SupabaseScreeningMovieReadGateway,
+)
+from marquise.interface_adapters.readers.screening_movie_reader import (
+    SupabaseScreeningMovieReader,
+)
+
+
+@pytest.mark.asyncio
+async def test_distinct_movie_pages_previews_and_end_metadata(
+    db_pool: asyncpg.Pool,
+) -> None:
+    """Many shows cannot consume a movie page; preview selection precedes grouping."""
+    async with db_pool.acquire() as conn:
+        await conn.execute("""INSERT INTO "marquise-test".cinemas(id,name)
+                              VALUES ('c1','Cinema One'),('c2','Cinema Two')""")
+        await conn.executemany(
+            'INSERT INTO "marquise-test".movies(id,title,directors) VALUES($1,$2,$3)',
+            [(f"m{i:02}", f"Film {i}", "Director One,Director Two") for i in range(27)],
+        )
+        # All movies tie on their first show. One has more than an old 100-show page.
+        start = datetime(2026, 11, 1, 4, tzinfo=UTC)
+        shows = [
+            (
+                f"s{i:02}-{j:03}",
+                f"m{i:02}",
+                "c1" if j % 2 == 0 else "c2",
+                (start + timedelta(hours=1, minutes=j)).replace(tzinfo=None),
+                "VO" if j % 2 == 0 else "VOSTF",
+                "https://tickets.example/real" if j else None,
+            )
+            for i in range(27)
+            for j in range(120 if i == 0 else 1)
+        ]
+        # Already-started and out-of-window films must not become eligible.
+        await conn.execute("""INSERT INTO "marquise-test".movies(id,title)
+                              VALUES ('past','Past'),('future','Future')""")
+        shows.extend(
+            [
+                ("started", "past", "c1", start.replace(tzinfo=None), "VF", None),
+                ("outside", "future", "c1", datetime(2026, 11, 2, 5), "VF", None),
+            ]
+        )
+        await conn.executemany(
+            """INSERT INTO "marquise-test".screenings
+            (id,movie_id,cinema_id,showtime,language,ticket_url)
+            VALUES($1,$2,$3,$4,$5,$6)""",
+            shows,
+        )
+    reader = SupabaseScreeningMovieReader(
+        SupabaseScreeningMovieReadGateway(db_pool, "marquise-test")
+    )
+    end = datetime(2026, 11, 2, 4, 59, 59, 999999, tzinfo=UTC)
+    first = await reader.search(start, end, start, 1)
+    second = await reader.search(start, end, start, 2)
+    beyond = await reader.search(start, end, start, 3)
+    assert [m.id for m in first.items] == [f"m{i:02}" for i in range(24)]
+    assert [m.id for m in second.items] == ["m24", "m25", "m26"]
+    assert first.total == second.total == beyond.total == 27
+    assert beyond.items == []
+    preview = first.items[0]
+    assert preview.directors == ("Director One", "Director Two")
+    assert [s.id for s in preview.screenings] == ["s00-000", "s00-001", "s00-002"]
+    assert [s.cinema_name for s in preview.screenings] == [
+        "Cinema One",
+        "Cinema Two",
+        "Cinema One",
+    ]
+    assert preview.screenings[0].ticket_url is None
+    assert preview.screenings[1].ticket_url == "https://tickets.example/real"
+    assert all(s.showtime.tzinfo is not None for s in preview.screenings)
+    empty = await reader.search(
+        end + timedelta(days=1), end + timedelta(days=2), start, 1
+    )
+    assert empty.items == [] and empty.total == 0
+
+
+@pytest.mark.asyncio
+async def test_inclusive_dst_bounds_ordering_and_started_previews(
+    db_pool: asyncpg.Pool,
+) -> None:
+    """Both repeated autumn hours and the last local instant qualify before paging."""
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            """INSERT INTO "marquise-test".cinemas(id,name) VALUES('c1','Cinema')"""
+        )
+        await conn.execute("""INSERT INTO "marquise-test".movies(id,title)
+                              VALUES ('a','A'),('z','Z'),('outside','Outside')""")
+        await conn.executemany(
+            """INSERT INTO "marquise-test".screenings
+            (id,movie_id,cinema_id,showtime) VALUES($1,$2,'c1',$3)""",
+            [
+                ("started", "a", datetime(2026, 11, 1, 4)),
+                ("first-repeated-hour", "z", datetime(2026, 11, 1, 5, 30)),
+                ("second-repeated-hour", "a", datetime(2026, 11, 1, 6, 30)),
+                ("last-local-instant", "a", datetime(2026, 11, 2, 4, 59, 59, 999999)),
+                ("next-local-midnight", "outside", datetime(2026, 11, 2, 5)),
+            ],
+        )
+    gateway = SupabaseScreeningMovieReadGateway(db_pool, "marquise-test")
+    start = datetime(2026, 11, 1, 4, tzinfo=UTC)
+    end = datetime(2026, 11, 2, 4, 59, 59, 999999, tzinfo=UTC)
+    result = await gateway.search(start, end, start, 1)
+    assert [m["id"] for m in result.rows] == ["z", "a"]
+    assert result.total == 2
+    assert [s["id"] for s in result.rows[1]["screenings"]] == [
+        "second-repeated-hour",
+        "last-local-instant",
+    ]
