@@ -13,6 +13,10 @@ type MovieScheduleProps = Pick<
   "cinemas" | "screeningLanguages" | "today" | "onLoadWeek"
 > & { movie: CatalogueMovie };
 
+// Narrow enough for four days on desktop, wide enough that cinema names
+// wrap by word on a phone. Below this the day row scrolls sideways.
+const SCHEDULE_COLUMN_MIN_WIDTH = 150;
+
 export function MovieSchedule({
   movie,
   cinemas,
@@ -279,8 +283,8 @@ export function MovieSchedule({
             className={`minimal-schedule-by-date${weekDirection ? ` slide-${weekDirection}` : ""}`}
             style={
               {
-                gridTemplateColumns: `repeat(${visibleDays}, minmax(0, 1fr))`,
-                "--date-step": `calc(100% / ${visibleDays})`,
+                gridTemplateColumns: `repeat(${visibleDays}, minmax(${SCHEDULE_COLUMN_MIN_WIDTH}px, 1fr))`,
+                "--date-step": `max(${SCHEDULE_COLUMN_MIN_WIDTH}px, calc(100% / ${visibleDays}))`,
               } as CSSProperties
             }
           >
