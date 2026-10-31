@@ -5,7 +5,8 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 from marquise.application.exceptions import (
     CinemaNotFoundError,
@@ -20,6 +21,7 @@ from marquise.application.repositories import (
 from marquise.domain.value_objects import CinemaId
 
 logger = logging.getLogger(__name__)
+_MONTREAL = ZoneInfo("America/Toronto")
 
 
 class FetchScreeningsFromSourceQuery:
@@ -107,11 +109,11 @@ class FetchScreeningsFromSourceQuery:
 
         source_name = str(assignment.source.name)
 
-        start_dt = datetime.combine(request.start_date, datetime.min.time()).replace(
-            tzinfo=UTC
+        start_dt = datetime.combine(
+            request.start_date, datetime.min.time(), tzinfo=_MONTREAL
         )
-        end_dt = datetime.combine(request.end_date, datetime.max.time()).replace(
-            tzinfo=UTC
+        end_dt = datetime.combine(
+            request.end_date, datetime.max.time(), tzinfo=_MONTREAL
         )
 
         raw_rows = await self.source_registry.fetch_showtimes(
@@ -120,6 +122,7 @@ class FetchScreeningsFromSourceQuery:
             start_date=start_dt,
             end_date=end_dt,
         )
+        raw_rows = [row for row in raw_rows if start_dt <= row.showtime <= end_dt]
         logger.info(
             "Fetched %d showtime rows for cinema '%s' (%s) from source '%s'",
             len(raw_rows),
