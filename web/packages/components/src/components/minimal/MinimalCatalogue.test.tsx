@@ -62,6 +62,32 @@ const props: MinimalCatalogueProps = {
 };
 
 describe("minimalist prototype", () => {
+  it("keeps inclusive date shortcuts selected from URL-backed dates", () => {
+    const onSelection = vi.fn();
+    const { rerender } = render(
+      <MinimalCatalogue {...props} onSelection={onSelection} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Today" }));
+    expect(onSelection).toHaveBeenLastCalledWith(
+      expect.objectContaining({ start: "2026-10-30", end: "2026-10-30" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Tomorrow" }));
+    expect(onSelection).toHaveBeenLastCalledWith(
+      expect.objectContaining({ start: "2026-10-31", end: "2026-10-31" }),
+    );
+    rerender(
+      <MinimalCatalogue
+        {...props}
+        onSelection={onSelection}
+        selection={{ ...props.selection, start: "2026-10-31", end: "2026-11-01" }}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "This weekend" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
   it("opens only three screenings with the arrow, separate from movie navigation", () => {
     render(<MinimalMovieCard movie={movie} cinemas={cinemas} />);
     expect(screen.queryByRole("region")).not.toBeInTheDocument();
@@ -223,15 +249,41 @@ it("moves the schedule one date and requests the new four-day window", async () 
   ]);
 });
 
+it("keeps the date columns when grouping the schedule by cinema", async () => {
+  const loadWeek = vi
+    .fn()
+    .mockResolvedValue({ screenings: movie.screenings, cinemas });
+  render(
+    <MinimalCatalogue {...props} href="/movies/film" onLoadWeek={loadWeek} />,
+  );
+  await screen.findByText("18:00");
+  fireEvent.change(screen.getByRole("combobox", { name: "Group schedule by" }), {
+    target: { value: "cinema" },
+  });
+  const table = screen.getByRole("table");
+  expect(within(table).getAllByRole("columnheader")).toHaveLength(5);
+  expect(within(table).getByRole("row", { name: /Cinema A/ })).toBeInTheDocument();
+  expect(within(table).getByRole("row", { name: /Cinema B/ })).toBeInTheDocument();
+  expect(within(table).queryByText("—")).not.toBeInTheDocument();
+});
+
 it("ignores a previous movie's response after navigating to another movie", async () => {
-  let finish: (value: {
-    screenings: typeof movie.screenings;
-    cinemas: typeof cinemas;
-  }) => void = () => {};
+  const pending: {
+    finish: (value: {
+      screenings: typeof movie.screenings;
+      cinemas: typeof cinemas;
+    }) => void;
+    signal: AbortSignal;
+  }[] = [];
   const loadWeek = vi.fn().mockImplementation(
-    () =>
+    (
+      _movie: typeof movie,
+      _start: string,
+      _end: string,
+      signal: AbortSignal,
+    ) =>
       new Promise((resolve) => {
-        finish = resolve;
+        pending.push({ finish: resolve, signal });
       }),
   );
   const secondMovie = {
@@ -248,9 +300,15 @@ it("ignores a previous movie's response after navigating to another movie", asyn
   const { rerender } = render(
     <MinimalCatalogue {...common} href="/movies/film" />,
   );
+  expect(loadWeek).toHaveBeenCalledOnce();
   fireEvent.click(screen.getByRole("button", { name: "Next dates" }));
+  expect(pending[0]!.signal.aborted).toBe(true);
   rerender(<MinimalCatalogue {...common} href="/movies/second" />);
-  await act(async () => finish({ screenings: movie.screenings, cinemas }));
+  expect(pending[1]!.signal.aborted).toBe(true);
+  await act(async () => {
+    pending[0]!.finish({ screenings: movie.screenings, cinemas });
+    pending[2]!.finish({ screenings: secondMovie.screenings, cinemas });
+  });
   expect(screen.getByText("12:15")).toBeInTheDocument();
   expect(screen.queryByText("18:00")).not.toBeInTheDocument();
   expect(
@@ -363,7 +421,7 @@ it("recovers the detail poster and highlights Movies after navigating from a fai
   ).toHaveAttribute("aria-current", "page");
 });
 
-it("loads showtimes when fresh metadata replaces the same movie's cached screenings", async () => {
+it("loads the complete schedule when the movie has cached preview screenings", async () => {
   const loadWeek = vi
     .fn()
     .mockResolvedValue({
@@ -378,7 +436,8 @@ it("loads showtimes when fresh metadata replaces the same movie's cached screeni
       onLoadWeek={loadWeek}
     />,
   );
-  expect(loadWeek).not.toHaveBeenCalled();
+  expect(await screen.findByText("15:45")).toBeInTheDocument();
+  expect(loadWeek).toHaveBeenCalledOnce();
   rerender(
     <MinimalCatalogue
       {...props}
@@ -388,6 +447,6 @@ it("loads showtimes when fresh metadata replaces the same movie's cached screeni
     />,
   );
   expect(await screen.findByText("15:45")).toBeInTheDocument();
-  expect(loadWeek).toHaveBeenCalledOnce();
+  expect(loadWeek).toHaveBeenCalledTimes(2);
   expect(screen.queryByText("18:00")).not.toBeInTheDocument();
 });

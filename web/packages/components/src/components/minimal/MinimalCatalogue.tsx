@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type {
   CatalogueCinema,
   CatalogueMovie,
@@ -44,6 +44,26 @@ function SectionDescription({ text }: { text: string }) {
       <p>{text}</p>
     </details>
   );
+}
+
+function EndSentinel({
+  enabled,
+  onReach,
+}: {
+  enabled: boolean;
+  onReach?: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const target = ref.current;
+    if (!enabled || !target || !onReach) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) onReach();
+    });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [enabled, onReach]);
+  return <div className="minimal-page-sentinel" ref={ref} aria-hidden="true" />;
 }
 export function MinimalMovieCard({
   movie,
@@ -167,6 +187,16 @@ function Filters({
   | "tomorrow"
   | "weekend"
 > & { fixed?: string }) {
+  const [titleValue, setTitleValue] = useState(s.title);
+  useEffect(() => setTitleValue(s.title), [s.title]);
+  useEffect(() => {
+    if (titleValue === s.title) return;
+    const timer = window.setTimeout(
+      () => onSelection({ ...s, title: titleValue }),
+      250,
+    );
+    return () => window.clearTimeout(timer);
+  }, [onSelection, s, titleValue]);
   const change = (patch: Partial<CatalogueSelection>) =>
     onSelection({ ...s, ...patch });
   const fromHour = timeToHour(s.from, 0);
@@ -184,9 +214,9 @@ function Filters({
           Movie title
           <input
             type="search"
-            value={s.title}
+            value={titleValue}
             placeholder="Search movies"
-            onChange={(e) => change({ title: e.target.value })}
+            onChange={(e) => setTitleValue(e.target.value)}
           />
         </label>
         <label>
@@ -379,6 +409,8 @@ export function MinimalCatalogue({
   catalogueSearch,
   onCatalogueSearch,
   catalogueState = "ready",
+  catalogueHasMore = false,
+  onLoadMoreCatalogue,
   onCatalogueRetry,
   detailNotice,
   directoryNotice,
@@ -392,6 +424,8 @@ export function MinimalCatalogue({
   tomorrow,
   weekend,
   state = "ready",
+  hasMore = false,
+  onLoadMore,
   onRetry,
   onLoadWeek,
 }: MinimalCatalogueProps) {
@@ -403,7 +437,8 @@ export function MinimalCatalogue({
       : "screenings";
   const movieId = /^\/movies\/([^/]+)$/.exec(path)?.[1];
   const decodedMovieId = movieId ? decodePathId(movieId) : undefined;
-  const cinemaId = /^\/cinemas\/([^/]+)$/.exec(path)?.[1];
+  const cinemaPathId = /^\/cinemas\/([^/]+)\/?$/.exec(path)?.[1];
+  const cinemaId = cinemaPathId ? decodePathId(cinemaPathId) : undefined;
   const movie =
     catalogueMovies.find((m) => m.id === decodedMovieId) ??
     movies.find((m) => m.id === decodedMovieId);
@@ -516,7 +551,7 @@ export function MinimalCatalogue({
         </nav>
       </header>
       <main id="minimal-main" tabIndex={-1}>
-        {path === "/cinemas" ? (
+        {path === "/cinemas" || path === "/cinemas/" ? (
           <>
             <h1>Cinemas</h1>
             <SectionDescription text="Browse Montréal cinemas and open one to see its upcoming showtimes. For example, choose your favorite venue to check what's playing this weekend." />
@@ -524,7 +559,7 @@ export function MinimalCatalogue({
             <ul className="minimal-directory">
               {cinemas.map((c) => (
                 <li key={c.id}>
-                  <a href={`/cinemas/${c.id}`}>{c.name}</a>
+                  <a href={`/cinemas/${encodeURIComponent(c.id)}`}>{c.name}</a>
                 </li>
               ))}
             </ul>
@@ -562,7 +597,7 @@ export function MinimalCatalogue({
             (detailNotice ?? <h1>Movie not found</h1>)
           )
         ) : cinemaId && !cinema ? (
-          <h1>Cinema not found</h1>
+          directoryNotice ?? <h1>Cinema not found</h1>
         ) : (
           <>
             {(cinemaId || activeSection === "screenings") && (
@@ -658,19 +693,29 @@ export function MinimalCatalogue({
                         )}
                       </div>
                     ) : (
-                      <div className="minimal-grid">
-                        {matching.map((m) => (
-                          <MinimalMovieCard
-                            key={m.id}
-                            movie={m}
-                            cinemas={cinemas}
-                            expanded={previewId === m.id}
-                            onExpanded={(open) =>
-                              setPreviewId(open ? m.id : null)
-                            }
-                          />
-                        ))}
-                      </div>
+                      <>
+                        <div className="minimal-grid">
+                          {matching.map((m) => (
+                            <MinimalMovieCard
+                              key={m.id}
+                              movie={m}
+                              cinemas={cinemas}
+                              expanded={previewId === m.id}
+                              onExpanded={(open) =>
+                                setPreviewId(open ? m.id : null)
+                              }
+                            />
+                          ))}
+                        </div>
+                        <EndSentinel
+                          enabled={
+                            hasMore &&
+                            state !== "loading-more" &&
+                            state !== "error"
+                          }
+                          onReach={onLoadMore}
+                        />
+                      </>
                     )}
                     {state === "loading-more" && (
                       <p role="status" className="minimal-state">
@@ -710,26 +755,50 @@ export function MinimalCatalogue({
                 </label>
                 {catalogueState === "initial-loading" ? (
                   <p role="status">Loading movies…</p>
-                ) : catalogueState === "error" ? (
+                ) : catalogueState === "error" && !catalogueMovies.length ? (
                   <div role="alert">
                     <p>Could not load movies.</p>
                     <button onClick={onCatalogueRetry}>Retry</button>
                   </div>
                 ) : allMovieMatches.length ? (
-                  <div className="minimal-library-grid">
-                    {allMovieMatches.map((item) => (
-                      <article className="minimal-library-card" key={item.id}>
-                        <a
-                          href={`/movies/${encodeURIComponent(item.id)}`}
-                          aria-label={`View ${item.title}`}
-                        >
-                          <Poster movie={item} />
-                          <strong>{item.title}</strong>
-                          {item.year && <small>{item.year}</small>}
-                        </a>
-                      </article>
-                    ))}
-                  </div>
+                  <>
+                    <div className="minimal-library-grid">
+                      {allMovieMatches.map((item) => (
+                        <article className="minimal-library-card" key={item.id}>
+                          <a
+                            href={`/movies/${encodeURIComponent(item.id)}`}
+                            aria-label={`View ${item.title}`}
+                          >
+                            <Poster movie={item} />
+                            <strong>{item.title}</strong>
+                            {item.year && <small>{item.year}</small>}
+                          </a>
+                        </article>
+                      ))}
+                    </div>
+                    <EndSentinel
+                      enabled={
+                        catalogueHasMore &&
+                        catalogueState !== "loading-more" &&
+                        catalogueState !== "error"
+                      }
+                      onReach={onLoadMoreCatalogue}
+                    />
+                    {catalogueState === "loading-more" && (
+                      <p role="status" className="minimal-state">
+                        Loading more movies…
+                      </p>
+                    )}
+                    {catalogueState === "error" && (
+                      <div className="minimal-state" role="alert">
+                        <p>
+                          Could not load more movies. Your loaded movies are
+                          still here.
+                        </p>
+                        <button onClick={onCatalogueRetry}>Retry</button>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <p role="status">No movies found.</p>
                 )}

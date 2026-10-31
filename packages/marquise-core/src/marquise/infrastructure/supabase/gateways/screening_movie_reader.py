@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, time
 
 import asyncpg
 
@@ -19,7 +19,16 @@ class SupabaseScreeningMovieReadGateway:
         self._schema = schema
 
     async def search(
-        self, start: datetime, end: datetime, now: datetime, page: int
+        self,
+        start: datetime,
+        end: datetime,
+        now: datetime,
+        page: int,
+        title: str | None = None,
+        cinemas: tuple[str, ...] = (),
+        languages: tuple[str, ...] = (),
+        start_time: time | None = None,
+        end_time: time | None = None,
     ) -> GatewayPage:
         """Use one SQL snapshot for eligibility, totals, ordering and previews."""
         async with self._pool.acquire() as connection:
@@ -35,12 +44,21 @@ class SupabaseScreeningMovieReadGateway:
                     JOIN "{self._schema}".movies m ON m.id = s.movie_id
                     WHERE s.showtime >= $1 AND s.showtime <= $2
                       AND s.showtime > $3
+                      AND ($4::text IS NULL OR m.title ILIKE '%' || $4 || '%')
+                      AND (cardinality($5::text[]) = 0 OR s.cinema_id = ANY($5))
+                      AND (cardinality($6::text[]) = 0 OR s.language = ANY($6))
+                      AND ($7::time IS NULL OR
+                           ((s.showtime AT TIME ZONE 'UTC')
+                               AT TIME ZONE 'America/Montreal')::time >= $7)
+                      AND ($8::time IS NULL OR
+                           ((s.showtime AT TIME ZONE 'UTC')
+                               AT TIME ZONE 'America/Montreal')::time <= $8)
                 ), eligible AS (
                     SELECT movie_id, showtime AS next_showtime
                     FROM qualifying WHERE rank = 1
                 ), selected AS (
                     SELECT * FROM eligible
-                    ORDER BY next_showtime, movie_id LIMIT 24 OFFSET $4
+                    ORDER BY next_showtime, movie_id LIMIT 24 OFFSET $9
                 )
                 SELECT totals.total, m.id, m.title, m.release_year, m.directors,
                        m.duration_minutes, m.description, m.poster_url,
@@ -55,6 +73,11 @@ class SupabaseScreeningMovieReadGateway:
                 _naive_utc(start),
                 _naive_utc(end),
                 _naive_utc(now),
+                None if not title else title.strip(),
+                list(cinemas),
+                list(languages),
+                start_time,
+                end_time,
                 (page - 1) * 24,
             )
         movies: dict[str, dict] = {}

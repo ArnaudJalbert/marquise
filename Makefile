@@ -51,3 +51,24 @@ web-live:
 	API_PID=$$!; \
 	trap 'kill $$API_PID 2>/dev/null' EXIT INT TERM; \
 	cd web && VITE_MARQUISE_DATA_SOURCE=api pnpm --filter marquise-interface dev
+
+# Isolated real API + Postgres + built React app. Never load a project .env.
+LOCAL_COMPOSE = docker compose --env-file /dev/null --project-name marquise-local -f compose.local.yml
+
+.PHONY: local-up local-down local-logs local-seed local-status
+local-up:
+	$(LOCAL_COMPOSE) up --build -d --wait
+	$(MAKE) local-seed
+
+local-down:
+	$(LOCAL_COMPOSE) down
+
+local-logs:
+	$(LOCAL_COMPOSE) logs --tail=100 -f
+
+local-status:
+	$(LOCAL_COMPOSE) ps
+
+# Replace only the generated local screenings; retain non-fixture rows.
+local-seed:
+	$(LOCAL_COMPOSE) exec -T db psql -v ON_ERROR_STOP=1 -U marquise_local -d marquise_local < local/seed.sql
