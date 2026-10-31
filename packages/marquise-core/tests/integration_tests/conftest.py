@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import AsyncIterator
+from pathlib import Path
 
 import asyncpg
 import pytest
@@ -93,12 +94,17 @@ async def db_pool(
                 original_title   TEXT,
                 rating           TEXT,
                 origin_countries TEXT,
-                tmdb_id          TEXT UNIQUE
+                tmdb_id          TEXT UNIQUE,
+                metadata_enriched_at TIMESTAMPTZ
             )
             """
         )
         await conn.execute(
             f'ALTER TABLE "{TEST_SCHEMA}".movies ADD COLUMN IF NOT EXISTS tmdb_id TEXT'
+        )
+        await conn.execute(
+            f'ALTER TABLE "{TEST_SCHEMA}".movies '
+            "ADD COLUMN IF NOT EXISTS metadata_enriched_at TIMESTAMPTZ"
         )
         await conn.execute(
             f"CREATE UNIQUE INDEX IF NOT EXISTS movies_tmdb_id_key "
@@ -132,6 +138,16 @@ async def db_pool(
             "DROP CONSTRAINT IF EXISTS screenings_external_id_key, "
             "ADD CONSTRAINT screenings_external_id_key UNIQUE (cinema_id, external_id)"
         )
+    async with pool.acquire() as conn:
+        migration = (
+            (
+                Path(__file__).resolve().parents[4]
+                / "scripts/migrations/359-movie-enrichment-state.sql"
+            )
+            .read_text()
+            .replace("marquise.", f'"{TEST_SCHEMA}".')
+        )
+        await conn.execute(migration)
     async with pool.acquire() as conn:
         await conn.execute(
             f'''TRUNCATE TABLE
