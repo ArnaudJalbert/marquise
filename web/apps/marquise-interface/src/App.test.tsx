@@ -446,6 +446,82 @@ it("uses separate date-independent endpoint search and keeps navigation active",
   expect(screen.getByRole("link", { name: "Screenings" })).toBeTruthy();
 });
 
+it("loads the cinema directory and fixes screening results to the selected venue", async () => {
+  history.replaceState(null, "", "/cinemas");
+  const client = clients();
+  client.fetchCinemaPage.mockResolvedValueOnce({
+    items: [
+      {
+        id: "c1",
+        name: "Cinema One",
+        address: "123 Example Street",
+        city: "Montréal",
+        website: "https://cinema.example",
+      },
+    ],
+    total: 1,
+    page: 1,
+    pages: 1,
+    size: 100,
+  });
+  render(<App client={client} />);
+  const venue = await screen.findByRole("link", { name: "Cinema One" });
+  fireEvent.click(venue);
+  expect(await screen.findByRole("heading", { name: "Cinema One" })).toBeTruthy();
+  expect(screen.getByText("123 Example Street")).toBeTruthy();
+  expect(screen.getByRole("link", { name: "Cinema website" }).getAttribute("href")).toBe(
+    "https://cinema.example",
+  );
+  expect(screen.queryByRole("group", { name: "Cinemas" })).toBeNull();
+  await waitFor(() =>
+    expect(client.fetchScreeningMoviesPage).toHaveBeenCalledWith(
+      expect.objectContaining({ cinemas: ["c1"] }),
+      expect.any(AbortSignal),
+    ),
+  );
+  history.replaceState(null, "", "/cinemas/c1?cinema=other");
+  window.dispatchEvent(new PopStateEvent("popstate"));
+  await screen.findByRole("heading", { name: "Cinema One" });
+  await waitFor(() =>
+    expect(client.fetchScreeningMoviesPage).toHaveBeenLastCalledWith(
+      expect.objectContaining({ cinemas: ["c1"] }),
+      expect.any(AbortSignal),
+    ),
+  );
+});
+
+it("reads every cinema directory page", async () => {
+  history.replaceState(null, "", "/cinemas");
+  const client = clients();
+  client.fetchCinemaPage.mockImplementation(async (pageNumber) => ({
+    items: [
+      {
+        id: `c${pageNumber}`,
+        name: `Cinema ${pageNumber}`,
+        address: null,
+        city: "Montréal",
+        website: null,
+      },
+    ],
+    total: 2,
+    page: pageNumber,
+    pages: 2,
+    size: 1,
+  }));
+  render(<App client={client} />);
+  expect(await screen.findByRole("link", { name: "Cinema 2" })).toBeTruthy();
+  expect(client.fetchCinemaPage).toHaveBeenNthCalledWith(
+    1,
+    1,
+    expect.any(AbortSignal),
+  );
+  expect(client.fetchCinemaPage).toHaveBeenNthCalledWith(
+    2,
+    2,
+    expect.any(AbortSignal),
+  );
+});
+
 it("keeps preview activation separate, displays languages, and preserves booking links", async () => {
   render(<App client={clients()} />);
   fireEvent.click(
@@ -492,6 +568,57 @@ it("loads exact metadata and a schedule on catalogue direct entry with no cached
   expect(
     screen.getByRole("link", { name: "Movies" }).getAttribute("aria-current"),
   ).toBe("page");
+});
+
+it("loads every page in the movie's requested Montréal date window", async () => {
+  history.replaceState(null, "", "/movies/movie-1");
+  const client = clients();
+  const secondShow = {
+    ...show,
+    id: "show-2",
+    showtime: "2026-11-02T15:00:00Z",
+    ticket_url: null,
+  };
+  client.fetchScreeningRangePage.mockImplementation(
+    async (_id, _start, _end, pageNumber) => ({
+      items: pageNumber === 1 ? [show] : [secondShow],
+      total: 2,
+      page: pageNumber,
+      pages: 2,
+      size: 100,
+    }),
+  );
+  render(<App client={client} />);
+  expect(await screen.findByText("18:00")).toBeTruthy();
+  expect(await screen.findByText("10:00")).toBeTruthy();
+  expect(client.fetchScreeningRangePage).toHaveBeenNthCalledWith(
+    1,
+    "movie-1",
+    "2026-11-01",
+    "2026-11-04",
+    1,
+    expect.any(AbortSignal),
+  );
+  expect(client.fetchScreeningRangePage).toHaveBeenNthCalledWith(
+    2,
+    "movie-1",
+    "2026-11-01",
+    "2026-11-04",
+    2,
+    expect.any(AbortSignal),
+  );
+});
+
+it("does not refetch a movie schedule when the clock updates", async () => {
+  history.replaceState(null, "", "/movies/movie-1");
+  const client = clients();
+  render(<App client={client} />);
+  expect(await screen.findByText("18:00")).toBeTruthy();
+  expect(client.fetchScreeningRangePage).toHaveBeenCalledOnce();
+  await act(async () => {
+    vi.advanceTimersByTime(60_000);
+  });
+  expect(client.fetchScreeningRangePage).toHaveBeenCalledOnce();
 });
 
 it("shows an initial screening error with Retry, then an honest empty state", async () => {

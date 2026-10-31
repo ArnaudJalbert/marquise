@@ -240,6 +240,34 @@ def verify() -> None:
                 "No screenings in these dates. Try another date or clear the filters."
             )
         ).to_be_visible()
+        page.goto(ORIGIN + "/cinemas")
+        expect(page.get_by_role("heading", name="Cinemas", exact=True)).to_be_visible()
+        page.get_by_role("link", name="Local test cinema 1", exact=True).click()
+        expect(
+            page.get_by_role("heading", name="Local test cinema 1", exact=True)
+        ).to_be_visible()
+        expect(page.get_by_text("1 Test Street")).to_be_visible()
+        expect(page.get_by_role("link", name="Cinema website")).to_have_attribute(
+            "href", "https://example.com/local-cinema-1"
+        )
+        expect(page.get_by_role("group", name="Cinemas")).to_have_count(0)
+        expect(page.locator(".minimal-card").first).to_be_visible()
+        page.screenshot(path=str(output / "cinema-page.png"), full_page=True)
+
+        # A shared venue URL cannot override its fixed cinema through query state.
+        page.goto(ORIGIN + "/cinemas/local-cinema-1?cinema=local-cinema-2")
+        expect(
+            page.get_by_role("heading", name="Local test cinema 1", exact=True)
+        ).to_be_visible()
+        expect(page.locator(".minimal-card").first).to_be_visible()
+        venue_queries = [
+            parse_qs(urlparse(url).query)
+            for url in api_urls
+            if urlparse(url).path == "/v1/screening-movies"
+            and parse_qs(urlparse(url).query).get("cinema")
+        ]
+        assert venue_queries
+        assert all(query["cinema"] == ["local-cinema-1"] for query in venue_queries)
         assert api_urls and all(url.startswith(ORIGIN + "/v1/") for url in api_urls)
         catalogue_request_pages = {
             parse_qs(urlparse(url).query).get("page", [""])[0]
