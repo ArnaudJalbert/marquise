@@ -131,7 +131,7 @@ async def test_existing_owner_outside_targets_blocks() -> None:
 @pytest.mark.parametrize("provider", ["tmdb", "another-provider"])
 @pytest.mark.asyncio
 async def test_unlinked_groups_refuse_without_persisted_identity(provider: str) -> None:
-    """Unlinked groups refuse regardless of provider until approval can bind identity."""
+    """Unlinked groups refuse until approval can retain confirmed identity."""
     repo, matcher, use_case = collaborators()
     unlinked = tuple(replace(s, tmdb_id=None) for s in snapshots())
     repo.merge.return_value = MergeMoviesOutputData("preview", unlinked)
