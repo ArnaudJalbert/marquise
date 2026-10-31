@@ -43,7 +43,7 @@ def _search_title(title: str) -> str:
     )
     label = (
         rf"(?:version\s+{language}|{language}\s+(?:w/e\.s\.t\.|s\.t\.f\.)|"
-        r"TAM\.ENG\.SUB|\d+(?:e|er|th)?\s+anniversaire)"
+        r"TAM\.ENG\.SUB|VOSTF|VOSTA|VOF|VF|\d+(?:e|er|th)?\s+anniversaire)"
     )
     pattern = rf"(?:\s*\(\s*{label}\s*\)|\s*[:\-]\s*{label}|\s+{label})\s*$"
     while True:
