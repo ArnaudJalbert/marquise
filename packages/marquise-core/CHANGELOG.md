@@ -4,6 +4,10 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-10-30
 
+### v0.2.30
+
+- Apply title, cinema, source-language, and Montréal daily-hour filters to matching screenings before movie eligibility, ordering, and preview selection. Supports #335.
+
 ### v0.2.29
 
 - Add an injected movie-first screening read query. Return 24 distinct movie cards ordered by their next upcoming screening and ID, with up to three qualifying previews and authoritative totals. Use inclusive Montreal date bounds and one request clock. Supports #333.

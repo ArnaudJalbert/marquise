@@ -48,6 +48,8 @@ export interface MinimalCatalogueProps {
   catalogueSearch?: string;
   onCatalogueSearch?: (title: string) => void;
   catalogueState?: CatalogueState;
+  catalogueHasMore?: boolean;
+  onLoadMoreCatalogue?: () => void;
   onCatalogueRetry?: () => void;
   detailNotice?: ReactNode;
   directoryNotice?: ReactNode;
@@ -61,6 +63,8 @@ export interface MinimalCatalogueProps {
   tomorrow: string;
   weekend: readonly [string, string];
   state?: CatalogueState;
+  hasMore?: boolean;
+  onLoadMore?: () => void;
   onRetry: () => void;
   onLoadWeek?: (
     movie: CatalogueMovie,

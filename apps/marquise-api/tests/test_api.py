@@ -1533,6 +1533,42 @@ def test_screening_movies_page_and_validation(
     query.execute.assert_not_awaited()
 
 
+def test_screening_movies_filters_reach_the_query_and_reject_inverted_hours(
+    client: TestClient, factory: MagicMock
+) -> None:
+    """Repeated filters and daily hours reach one movie-first query."""
+    query = create_autospec(BrowseScreeningMoviesQuery, instance=True)
+    factory.browse_screening_movies_query = query
+    query.execute.return_value = BrowseScreeningMoviesQuery.OutputData(
+        movies=(), total=0
+    )
+    response = client.get(
+        "/v1/screening-movies?start=2026-11-01&end=2026-11-05&page=1"
+        "&title=Dune&cinema=c1&cinema=c2&language=VO&language=VOSTF"
+        "&start_hour=18&end_hour=21"
+    )
+    assert response.status_code == 200
+    query.execute.assert_awaited_once_with(
+        BrowseScreeningMoviesQuery.InputData(
+            start=date(2026, 11, 1),
+            end=date(2026, 11, 5),
+            page=1,
+            title="Dune",
+            cinemas=("c1", "c2"),
+            languages=("VO", "VOSTF"),
+            start_hour=18,
+            end_hour=21,
+        )
+    )
+    assert (
+        client.get(
+            "/v1/screening-movies?start=2026-11-01&end=2026-11-05"
+            "&start_hour=21&end_hour=18"
+        ).status_code
+        == 422
+    )
+
+
 def test_screening_movie_metadata_and_preview_response(
     client: TestClient, factory: MagicMock
 ) -> None:

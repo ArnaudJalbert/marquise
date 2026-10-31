@@ -3,7 +3,7 @@
 from datetime import date
 from math import ceil
 
-from fastapi import APIRouter, Depends, Query, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel
 
 from marquise import BrowseScreeningMoviesQuery
@@ -43,6 +43,11 @@ async def browse_screening_movies(
     start: date,
     end: date,
     page: int = Query(default=1, ge=1),
+    title: str | None = Query(default=None, max_length=200),
+    cinema: list[str] | None = Query(default=None),
+    language: list[str] | None = Query(default=None),
+    start_hour: int | None = Query(default=None, ge=0, le=23),
+    end_hour: int | None = Query(default=None, ge=0, le=24),
     query: BrowseScreeningMoviesQuery = Depends(get_browse_screening_movies_query),
 ) -> ScreeningMoviePage:
     """List 24 distinct movies in inclusive Montreal dates, excluding started shows.
@@ -50,8 +55,21 @@ async def browse_screening_movies(
     This endpoint is uncached so upcoming eligibility uses the current request's
     clock rather than a cached response's clock.
     """
+    if start > end or (
+        start_hour is not None and end_hour is not None and start_hour > end_hour
+    ):
+        raise HTTPException(status_code=422, detail="Invalid screening filter range")
     result = await query.execute(
-        BrowseScreeningMoviesQuery.InputData(start=start, end=end, page=page)
+        BrowseScreeningMoviesQuery.InputData(
+            start=start,
+            end=end,
+            page=page,
+            title=title,
+            cinemas=tuple(cinema or ()),
+            languages=tuple(language or ()),
+            start_hour=start_hour,
+            end_hour=end_hour,
+        )
     )
     return ScreeningMoviePage(
         items=[ScreeningMovieResponse.model_validate(movie) for movie in result.movies],

@@ -2,6 +2,8 @@
 
 ## 2026-10-30
 
+- Serialize title, cinema, source-language, and hourly filters for the movie-first screening query. Add paged cinema reads to the browsing client. Supports #335.
+
 - Add typed, bounded movie-first listing reads and abortable exact movie metadata. Allow 24-item catalogue pages independently of screening filters. Supports #333.
 
 ### Changes

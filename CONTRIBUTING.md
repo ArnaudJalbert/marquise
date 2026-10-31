@@ -373,3 +373,11 @@ GoTrue credential-bearing requests reject redirects, including same-origin redir
 Configure the final HTTPS endpoint directly. TLS certificate verification remains enabled.
 The configured JWKS URL also requires HTTPS (or the explicit loopback development opt-in).
 This does not configure inbound API HTTPS; enforce that at the deployment proxy.
+
+## Isolated local integration stack
+
+Run `make local-up` to build and start a local Postgres database, real API, and
+React app at `http://localhost:4300`. No production environment files or services
+are required. The database contains controlled test schedules. See
+[local/README.md](local/README.md) for data, ports, rebuild/reseed/stop commands and
+the real HTTP/browser verification script.
