@@ -15,6 +15,7 @@ from marquise.application.movie_workflows import (
     MergeMoviesOutputData,
     MovieMetadataSnapshot,
     MovieMetadataValues,
+    MovieWorkflowConflictError,
 )
 from marquise.infrastructure.supabase.connection_pool import ConnectionPool
 
@@ -103,6 +104,8 @@ class SupabaseMovieMergeGateway:
                         "IN SHARE ROW EXCLUSIVE MODE"
                     )
                 return await self._merge(conn, request)
+        except MovieWorkflowConflictError as exc:
+            return MergeMoviesOutputData("blocked", (), blockers=(str(exc),))
         except (
             asyncpg.IntegrityConstraintViolationError,
             asyncpg.DeadlockDetectedError,
@@ -205,10 +208,38 @@ class SupabaseMovieMergeGateway:
             request.survivor_id,
             list(request.duplicate_ids),
         )
+        remaining = await conn.fetchval(
+            f"SELECT count(*) FROM {self._screenings} WHERE movie_id = ANY($1::text[])",
+            list(request.duplicate_ids),
+        )
+        if remaining or await self._references(conn, ids, True):
+            raise MovieWorkflowConflictError("References remain after reassignment")
         await conn.execute(
             f"DELETE FROM {self._movies} WHERE id = ANY($1::text[])",
             list(request.duplicate_ids),
         )
+        # Triggers must not suppress deletion or rewrite source screening fields.
+        post_movies = await conn.fetch(
+            f"SELECT to_jsonb(m) AS data FROM {self._movies} m "
+            "WHERE id = ANY($1::text[]) ORDER BY id",
+            ids,
+        )
+        post_screenings = [
+            json.loads(row["data"])
+            for row in await conn.fetch(
+                f"SELECT to_jsonb(s) AS data FROM {self._screenings} s "
+                "WHERE movie_id = ANY($1::text[]) ORDER BY id",
+                ids,
+            )
+        ]
+        post = tuple(
+            _snapshot(
+                json.loads(row["data"]), post_screenings, (), request, identity_owners
+            )
+            for row in post_movies
+        )
+        if not self._is_retry(request, post):
+            raise MovieWorkflowConflictError("Unexpected post-merge state; rolled back")
         return MergeMoviesOutputData("applied", snapshots, moved)
 
     def _is_retry(
