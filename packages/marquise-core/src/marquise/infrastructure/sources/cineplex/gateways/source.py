@@ -207,7 +207,7 @@ def _extract_movie_detail(html: str) -> dict[str, Any] | None:
         except (ValueError, TypeError):
             pass
 
-    return {
+    result = {
         "description": description or None,
         "directors": directors if directors else None,
         "cast": cast_list if cast_list else None,
@@ -220,8 +220,10 @@ def _extract_movie_detail(html: str) -> dict[str, Any] | None:
         "genres": genres if genres else None,
         "rating": rating,
         "original_title": original_title,
-        "identity_title": original_title,
     }
+    if original_title:
+        result["identity_title"] = original_title
+    return result
 
 
 def _is_in_range(
