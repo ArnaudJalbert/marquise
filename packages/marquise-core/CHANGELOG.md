@@ -4,9 +4,21 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-10-30
 
-### v0.2.30
+### v0.2.33
 
 - Add provider-independent initial enrichment and explicit refresh policy with stable-ID atomic update requests, locale/media/certification selection, usable-field preservation and failure retry tests for #353. Factory, import and CLI integration remain deferred to #355.
+
+### v0.2.32
+
+- Add provider-independent movie discovery, eligibility and deterministic ranking with an injected RapidFuzz name-distance adapter. Preserve source evidence and distinguish incomplete discovery from no match. Composition-root integration remains in #355.
+
+### v0.2.31
+
+- Add an injectable TMDB metadata HTTP source and adapter for ordered movie/person discovery, verified translations and aliases, directed credits, localized text and posters, media and certifications. Preserve partial retrieval and typed sanitized failures. Factory and import integration remain in #355. Closes #350.
+
+### v0.2.30
+
+- Recover Cinémathèque movie year, directors, cast and runtime from cinema detail pages linked by ticket performance IDs, retaining ticketing data when details are unavailable. Preserve original screening titles and parse Cineplex co-director separators. Add captured source fixtures and offline regression tests. Closes #351.
 
 ### v0.2.29
 
