@@ -743,17 +743,7 @@
   padding: 8px 12px;
 }
 .minimal-email {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
   font-size: 16px;
-}
-.minimal-tag {
-  font-size: 12px;
-  border: 1px solid #000;
-  border-radius: 3px;
-  padding: 1px 6px;
 }
 .minimal-placeholder-text {
   color: #555;

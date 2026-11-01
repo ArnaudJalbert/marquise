@@ -811,11 +811,12 @@ it.each([
   for (const read of Object.values(client)) expect(read).not.toHaveBeenCalled();
 });
 
-it("labels draft content, the example address, and policy placeholders", () => {
+it("shows the contact address and labels draft content and policy placeholders", () => {
   history.replaceState(null, "", "/contact");
   const { unmount } = render(<App client={clients()} />);
-  expect(screen.getByRole("link", { name: "hello@example.com" })).toBeTruthy();
-  expect(screen.getByText("Example address, not a real inbox")).toBeTruthy();
+  expect(
+    screen.getByRole("link", { name: "arno.jalbert@gmail.com" }).getAttribute("href"),
+  ).toBe("mailto:arno.jalbert@gmail.com");
   expect(screen.getByRole("note").textContent).toMatch(/Draft copy/);
   expect(screen.getByText(/booking/i, { selector: "h2" })).toBeTruthy();
   unmount();

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 const API_DOCS_URL = "https://marquise-api.fly.dev/docs";
-// Reserved example domain until a real public inbox is approved (#380).
-const EXAMPLE_EMAIL = "hello@example.com";
+// Public contact address approved by Arnaud for #402.
+const CONTACT_EMAIL = "arno.jalbert@gmail.com";
 
 /** One destination list feeds both the header Info menu and the footer. */
 const destinations = [
@@ -160,8 +160,7 @@ function Contact() {
       <Draft>Draft copy for review. Wording is not approved.</Draft>
       <p>Write to Marquise by email:</p>
       <p className="minimal-email">
-        <a href={`mailto:${EXAMPLE_EMAIL}`}>{EXAMPLE_EMAIL}</a>
-        <span className="minimal-tag">Example address, not a real inbox</span>
+        <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
       </p>
       <p>
         The address is plain text, so you can copy it into any email
