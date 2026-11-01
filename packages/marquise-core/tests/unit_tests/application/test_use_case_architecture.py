@@ -73,11 +73,11 @@ ALLOWLIST = {
 
 
 def _use_case_modules(root: Path) -> dict[str, tuple[str, ast.Module]]:
-    """Map each public use case module name to its relative path and AST."""
+    """Map each use case module name to its relative path and AST."""
     modules: dict[str, tuple[str, ast.Module]] = {}
     for package in USE_CASE_PACKAGES:
         for path in sorted((root / package).rglob("*.py")):
-            if path.name.startswith("_"):
+            if path.name == "__init__.py":
                 continue
             rel = path.relative_to(root)
             name = "marquise.application." + ".".join(rel.with_suffix("").parts)
@@ -139,10 +139,21 @@ def _resolve_import_module(rel: str, node: ast.ImportFrom) -> str | None:
     return ".".join(package_parts)
 
 
+def _annotation_nodes(annotation: ast.expr) -> list[ast.AST]:
+    """Include names inside quoted forward references in annotation scans."""
+    nodes = list(ast.walk(annotation))
+    for node in nodes.copy():
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            nodes.extend(_annotation_nodes(ast.parse(node.value, mode="eval").body))
+    return nodes
+
+
 def _uses_nested_type(
     annotation: ast.expr | None, cls: ast.ClassDef, name: str
 ) -> bool:
     """Return whether an annotation names this use case's nested type."""
+    if isinstance(annotation, ast.Constant) and isinstance(annotation.value, str):
+        annotation = ast.parse(annotation.value, mode="eval").body
     return (
         isinstance(annotation, ast.Name)
         and annotation.id == name
@@ -239,7 +250,7 @@ def find_violations(root: Path) -> set[str]:
                     f"{rel}: {cls.name} execute does not use its nested OutputData"
                 )
             for annotation in _contract_annotations(cls):
-                for node in ast.walk(annotation):
+                for node in _annotation_nodes(annotation):
                     if (
                         isinstance(node, ast.Attribute)
                         and isinstance(node.value, ast.Name)
@@ -299,7 +310,7 @@ def test_guard_flags_shared_and_cross_use_case_types(tmp_path: Path) -> None:
             """),
         encoding="utf-8",
     )
-    (use_cases / "second.py").write_text(
+    (use_cases / "_second.py").write_text(
         textwrap.dedent("""\
             from dataclasses import dataclass
             from marquise.application.use_cases.first import (
@@ -313,63 +324,30 @@ def test_guard_flags_shared_and_cross_use_case_types(tmp_path: Path) -> None:
 
             class SecondUseCase:
                 class InputData:
-                    inner: FirstUseCase.InputData
+                    inner: list["FirstUseCase.InputData"]
 
                 class OutputData:
                     value: str
 
-                async def execute(self, input_data: Row) -> Row: ...
+                async def execute(self, input_data: "Row") -> "Row": ...
             """),
         encoding="utf-8",
     )
     (use_cases / "third.py").write_text(
         textwrap.dedent("""\
             from marquise.application.movie_workflows import SharedInputData
-
-            class ThirdUseCase:
-                class InputData:
-                    value: str
-
-                class OutputData:
-                    value: str
-
-                async def execute(
-                    self, input_data: InputData
-                ) -> OutputData: ...
             """),
         encoding="utf-8",
     )
     (use_cases / "fourth.py").write_text(
         textwrap.dedent("""\
             from marquise.application.use_cases import FirstUseCase, SharedData
-
-            class FourthUseCase:
-                class InputData:
-                    value: str
-
-                class OutputData:
-                    value: str
-
-                async def execute(
-                    self, input_data: InputData
-                ) -> OutputData: ...
             """),
         encoding="utf-8",
     )
     (use_cases / "fifth.py").write_text(
         textwrap.dedent("""\
             import marquise.application.use_cases.first as first
-
-            class FifthUseCase:
-                class InputData:
-                    value: str
-
-                class OutputData:
-                    value: str
-
-                async def execute(
-                    self, input_data: InputData
-                ) -> OutputData: ...
             """),
         encoding="utf-8",
     )
@@ -381,12 +359,12 @@ def test_guard_flags_shared_and_cross_use_case_types(tmp_path: Path) -> None:
         "marquise.application.use_cases.first",
         "use_cases/fourth.py: imports SharedData from use case module "
         "marquise.application.use_cases",
-        "use_cases/second.py: imports Row from use case module "
+        "use_cases/_second.py: imports Row from use case module "
         "marquise.application.use_cases.first",
-        "use_cases/second.py: SecondUseCase contract uses FirstUseCase.InputData",
-        "use_cases/second.py: SecondUseCase contract uses module-level Row",
-        "use_cases/second.py: SecondUseCase execute does not use its nested InputData",
-        "use_cases/second.py: SecondUseCase execute does not use its nested OutputData",
+        "use_cases/_second.py: SecondUseCase contract uses FirstUseCase.InputData",
+        "use_cases/_second.py: SecondUseCase contract uses module-level Row",
+        "use_cases/_second.py: SecondUseCase execute does not use its nested InputData",
+        "use_cases/_second.py: SecondUseCase execute does not use its nested OutputData",
         "use_cases/third.py: imports SharedInputData from shared use case module "
         "marquise.application.movie_workflows",
     }
@@ -427,8 +405,8 @@ def test_guard_allows_nested_types_and_collaborator_calls(tmp_path: Path) -> Non
                     self.first = first
 
                 async def execute(
-                    self, input_data: SecondUseCase.InputData
-                ) -> SecondUseCase.OutputData:
+                    self, input_data: "SecondUseCase.InputData"
+                ) -> "SecondUseCase.OutputData":
                     await self.first.execute(FirstUseCase.InputData(value="x"))
             """),
         encoding="utf-8",
