@@ -8,7 +8,9 @@ from dataclasses import asdict, dataclass, fields, replace
 from datetime import UTC, datetime
 from hashlib import sha256
 
-from marquise.application.exceptions.base import ApplicationError
+from marquise.application.exceptions.screening import (
+    ScreeningIdempotencyConflictError,
+)
 from marquise.application.transactions.screening_write import (
     ScreeningReplay,
     ScreeningWriteResult,
@@ -24,14 +26,6 @@ from marquise.domain.value_objects.screening_audit import (
     ScreeningAuditRecord,
     ScreeningSnapshot,
 )
-
-
-class ScreeningIdempotencyConflictError(ApplicationError):
-    """A successful key was reused for a different intended request."""
-
-
-class ScreeningWriteBusyError(ApplicationError):
-    """A duplicate could not obtain its committed result within the wait limit."""
 
 
 @dataclass(frozen=True, slots=True)
