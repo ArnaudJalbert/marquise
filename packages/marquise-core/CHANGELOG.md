@@ -2,6 +2,12 @@
 
 Before 2026-07-15 this package was published as `marquise`.
 
+## 2026-11-01
+
+### v0.2.33
+
+- Persist TMDB vote average and count, and expose them through movie reads and the screening-movies projection. Requires migration `373-add-movies-tmdb-score.sql`. Closes #375.
+
 ## 2026-10-30
 
 ### v0.2.31

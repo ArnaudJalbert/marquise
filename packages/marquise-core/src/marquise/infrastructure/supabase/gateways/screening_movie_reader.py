@@ -62,6 +62,7 @@ class SupabaseScreeningMovieReadGateway:
                 )
                 SELECT totals.total, m.id, m.title, m.release_year, m.directors,
                        m.duration_minutes, m.description, m.poster_url,
+                       m.tmdb_rating, m.tmdb_vote_count,
                        q.id AS screening_id, q.cinema_id, q.cinema_name,
                        q.showtime, q.language, q.ticket_url, q.room
                 FROM (SELECT count(*) AS total FROM eligible) totals
@@ -96,6 +97,8 @@ class SupabaseScreeningMovieReadGateway:
                         "duration_minutes",
                         "description",
                         "poster_url",
+                        "tmdb_rating",
+                        "tmdb_vote_count",
                     )
                 },
             )
