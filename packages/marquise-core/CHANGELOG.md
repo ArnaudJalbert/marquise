@@ -2,6 +2,12 @@
 
 Before 2026-07-15 this package was published as `marquise`.
 
+## 2026-11-01
+
+### v0.2.32
+
+- Capture TMDB vote average and vote count during metadata enrichment. Closes #374.
+
 ## 2026-10-30
 
 ### v0.2.31

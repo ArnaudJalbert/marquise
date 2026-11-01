@@ -94,6 +94,8 @@ class MetadataMovie:
     origin_countries: tuple[str, ...] = ()
     media: tuple[MovieMedia, ...] = ()
     certifications: tuple[MovieCertification, ...] = ()
+    tmdb_rating: float | None = None
+    tmdb_vote_count: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
