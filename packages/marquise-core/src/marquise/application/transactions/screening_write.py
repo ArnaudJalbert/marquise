@@ -3,11 +3,9 @@
 from abc import ABC, abstractmethod
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
+from datetime import datetime
 
 from marquise.application.repositories import MovieRepository, ScreeningRepository
-from marquise.application.use_cases.create_screening import CreateScreeningUseCase
-from marquise.application.use_cases.delete_screening import DeleteScreeningUseCase
-from marquise.application.use_cases.update_screening import UpdateScreeningUseCase
 from marquise.domain.value_objects.screening_audit import ScreeningAuditRecord
 
 
@@ -15,9 +13,23 @@ from marquise.domain.value_objects.screening_audit import ScreeningAuditRecord
 class ScreeningWriteResult:
     """Persisted success independent of HTTP status codes or response headers."""
 
+    @dataclass(frozen=True, slots=True)
+    class Screening:
+        """Committed screening values with parent display names."""
+
+        id: str
+        movie_id: str
+        movie_title: str
+        cinema_id: str
+        cinema_name: str
+        showtime: datetime
+        ticket_url: str | None = None
+        room: str | None = None
+        language: str | None = None
+
     screening_id: str
     changed: bool
-    screening: CreateScreeningUseCase.OutputData | None = None
+    screening: Screening | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,11 +41,11 @@ class ScreeningReplay:
 
 
 class ScreeningWriteSession(ABC):
-    """Transaction-scoped collaborators plus audit and replay persistence."""
+    """Transaction-scoped repositories plus audit and replay persistence.
 
-    create: CreateScreeningUseCase
-    update: UpdateScreeningUseCase
-    delete: DeleteScreeningUseCase
+    Consumers subclass this to declare the mutation collaborators they call.
+    """
+
     screenings: ScreeningRepository
     movies: MovieRepository
 
@@ -54,11 +66,9 @@ class ScreeningWriteSession(ABC):
         """Save a successful result in the current transaction."""
 
 
-class ScreeningWriteTransaction(ABC):
+class ScreeningWriteTransaction[SessionT: ScreeningWriteSession](ABC):
     """Exclusive account/key transaction with bounded duplicate-request waiting."""
 
     @abstractmethod
-    def open(
-        self, account: str, key: str
-    ) -> AbstractAsyncContextManager[ScreeningWriteSession]:
+    def open(self, account: str, key: str) -> AbstractAsyncContextManager[SessionT]:
         """Open an atomic write, serializing requests sharing this account/key."""

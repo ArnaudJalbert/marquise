@@ -12,6 +12,7 @@ from marquise.application.exceptions.base import ApplicationError
 from marquise.application.transactions.screening_write import (
     ScreeningReplay,
     ScreeningWriteResult,
+    ScreeningWriteSession,
     ScreeningWriteTransaction,
 )
 from marquise.application.use_cases._screening_helpers import is_provided
@@ -75,10 +76,39 @@ class WriteScreeningUseCase:
             | DeleteScreeningUseCase.InputData
         )
 
-    OutputData = ScreeningWriteResult
+    @dataclass(frozen=True, slots=True)
+    class OutputData:
+        """Committed outcome; ``screening`` is ``None`` after deletion."""
+
+        @dataclass(frozen=True, slots=True)
+        class Screening:
+            """Written screening values with parent display names."""
+
+            id: str
+            movie_id: str
+            movie_title: str
+            cinema_id: str
+            cinema_name: str
+            showtime: datetime
+            ticket_url: str | None = None
+            room: str | None = None
+            language: str | None = None
+
+        screening_id: str
+        changed: bool
+        screening: Screening | None = None
+
+    class Session(ScreeningWriteSession):
+        """Write session carrying the transaction-scoped mutation use cases."""
+
+        create: CreateScreeningUseCase
+        update: UpdateScreeningUseCase
+        delete: DeleteScreeningUseCase
 
     def __init__(
-        self, transaction: ScreeningWriteTransaction, clock: Callable[[], datetime]
+        self,
+        transaction: ScreeningWriteTransaction[Session],
+        clock: Callable[[], datetime],
     ) -> None:
         """Inject transaction factory and timezone-aware clock."""
         self._transaction = transaction
@@ -118,7 +148,7 @@ class WriteScreeningUseCase:
                     raise ScreeningIdempotencyConflictError(
                         "Idempotency-Key already used for a different request"
                     )
-                return replay.result
+                return self._output(replay.result)
 
             before = None
             removed_movie = None
@@ -132,12 +162,13 @@ class WriteScreeningUseCase:
                 before = ScreeningSnapshot.from_screening(existing)
 
             if isinstance(mutation, CreateScreeningUseCase.InputData):
-                output = await session.create.execute(mutation)
+                created = await session.create.execute(mutation)
+                output = ScreeningWriteResult.Screening(**asdict(created))
                 changed = True
                 target = output.id
             elif isinstance(mutation, UpdateScreeningUseCase.InputData):
                 updated = await session.update.execute(mutation)
-                output = CreateScreeningUseCase.OutputData(**asdict(updated))
+                output = ScreeningWriteResult.Screening(**asdict(updated))
                 changed = any(name != "screening_id" for name in values)
                 target = output.id
             else:
@@ -174,10 +205,22 @@ class WriteScreeningUseCase:
                         removed_movie=removed_movie,
                     )
                 )
-            result = self.OutputData(
+            result = ScreeningWriteResult(
                 screening_id=target, changed=changed, screening=output
             )
             await session.save_replay(
                 ScreeningReplay(fingerprint=fingerprint, result=result)
             )
-            return result
+            return self._output(result)
+
+    @classmethod
+    def _output(cls, result: ScreeningWriteResult) -> OutputData:
+        """Map the transaction's committed result into this command's output."""
+        screening = result.screening
+        return cls.OutputData(
+            screening_id=result.screening_id,
+            changed=result.changed,
+            screening=None
+            if screening is None
+            else cls.OutputData.Screening(**asdict(screening)),
+        )

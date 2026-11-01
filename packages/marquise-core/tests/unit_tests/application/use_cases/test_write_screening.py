@@ -8,7 +8,7 @@ import pytest
 
 from marquise.application.repositories import MovieRepository, ScreeningRepository
 from marquise.application.transactions.screening_write import (
-    ScreeningWriteSession,
+    ScreeningWriteResult,
     ScreeningWriteTransaction,
 )
 from marquise.application.use_cases.create_screening import CreateScreeningUseCase
@@ -31,7 +31,7 @@ CONTEXT = ScreeningWriteContext(
 @pytest.fixture
 def session() -> MagicMock:
     """Inject autospecced transaction-scoped collaborators without I/O."""
-    session = create_autospec(ScreeningWriteSession, instance=True)
+    session = create_autospec(WriteScreeningUseCase.Session, instance=True)
     session.create = create_autospec(CreateScreeningUseCase, instance=True)
     session.update = create_autospec(UpdateScreeningUseCase, instance=True)
     session.delete = create_autospec(DeleteScreeningUseCase, instance=True)
@@ -90,7 +90,22 @@ async def test_create_records_audit_and_replay_inside_transaction(
 ) -> None:
     """Creation records attributable persisted values and replay in one session."""
     result = await use_case.execute(create_request())
-    assert result.screening.id == "scr-1"
+    assert result == WriteScreeningUseCase.OutputData(
+        screening_id="scr-1",
+        changed=True,
+        screening=WriteScreeningUseCase.OutputData.Screening(
+            id="scr-1",
+            movie_id="mov-1",
+            movie_title="Movie One",
+            cinema_id="cin-1",
+            cinema_name="Cinema One",
+            showtime=NOW,
+        ),
+    )
+    saved = session.save_replay.await_args.args[0].result
+    assert isinstance(saved, ScreeningWriteResult)
+    assert isinstance(saved.screening, ScreeningWriteResult.Screening)
+    assert saved.screening.id == "scr-1"
     audit = session.save_audit.await_args.args[0]
     assert (audit.account, audit.key, audit.operation, audit.target) == (
         "editor-1",
