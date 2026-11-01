@@ -124,6 +124,8 @@ async def test_patch_mapping_keeps_none_and_passes_stable_id_revision() -> None:
         "poster_url": None,
         "trailer_url": None,
         "rating": None,
+        "tmdb_rating": None,
+        "tmdb_vote_count": None,
     }
     assert result.revision == "new" and result.metadata_enriched_at == stamp
 

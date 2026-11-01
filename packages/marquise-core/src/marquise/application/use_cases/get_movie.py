@@ -49,6 +49,8 @@ class GetMovieUseCase:
             original_title: Original title (optional).
             rating: Content rating (optional).
             origin_countries: Production country names (optional).
+            tmdb_rating: TMDB user score out of ten (optional).
+            tmdb_vote_count: Number of TMDB user votes (optional).
         """
 
         id: str
@@ -64,6 +66,8 @@ class GetMovieUseCase:
         original_title: str | None = None
         rating: str | None = None
         origin_countries: tuple[str, ...] | None = None
+        tmdb_rating: float | None = None
+        tmdb_vote_count: int | None = None
 
     def __init__(self, movie_repository: MovieRepository) -> None:
         """Initialize the use case.
@@ -105,4 +109,6 @@ class GetMovieUseCase:
             original_title=movie.original_title,
             rating=movie.rating,
             origin_countries=movie.origin_countries,
+            tmdb_rating=movie.tmdb_rating,
+            tmdb_vote_count=movie.tmdb_vote_count,
         )
