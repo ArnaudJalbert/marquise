@@ -100,7 +100,7 @@ def metadata() -> Mock:
     """Return structured facts, without selecting a locale or field winner."""
     repository = create_autospec(MetadataRepository, instance=True)
     repository.movie_details.return_value = MetadataBatch(
-        (MetadataMovie(IDENTITY, ()),)
+        (MetadataMovie(IDENTITY, (), tmdb_vote_count=0),)
     )
     return repository
 
@@ -147,6 +147,8 @@ async def test_selects_all_fields_and_preserves_stable_ids(
                     MovieCertification("US", "R"),
                     MovieCertification("CA", "14A"),
                 ),
+                tmdb_rating=8.1,
+                tmdb_vote_count=1234,
             ),
         )
     )
@@ -170,6 +172,8 @@ async def test_selects_all_fields_and_preserves_stable_ids(
         poster_url="https://en/poster",
         trailer_url="https://en/trailer",
         rating="14A",
+        tmdb_rating=8.1,
+        tmdb_vote_count=1234,
     )
     metadata.movie_details.assert_awaited_once_with(IDENTITY)
     movies.update_metadata.assert_awaited_once()
@@ -271,7 +275,12 @@ async def test_legacy_identity_enriches_once_and_refresh_reuses_policy(
     case = use_case(movies, metadata)
     assert (await case.execute(REQUEST)).status == "enriched"
     written = movies.update_metadata.call_args.args[1]
-    movies.get.return_value = replace(before, tmdb_id="123", metadata_enriched_at=NOW)
+    movies.get.return_value = replace(
+        before,
+        tmdb_id="123",
+        metadata_enriched_at=NOW,
+        values=replace(before.values, tmdb_vote_count=0),
+    )
     assert (await case.execute(REQUEST)).status == "unchanged"
     metadata.movie_details.assert_awaited_once()
     movies.update_metadata.assert_awaited_once()
@@ -280,6 +289,26 @@ async def test_legacy_identity_enriches_once_and_refresh_reuses_policy(
     assert result.results[0].status == "enriched"
     assert metadata.movie_details.await_count == 2
     assert movies.update_metadata.call_args.args[1] == written
+
+
+@pytest.mark.asyncio
+async def test_stamped_movie_with_null_vote_count_backfills_once(
+    movies: Mock, metadata: Mock
+) -> None:
+    """A prior enrichment stamp does not block the score backfill."""
+    before = await movies.get(REQUEST.movie_id)
+    stamped = replace(before, tmdb_id="123", metadata_enriched_at=NOW)
+    movies.get.side_effect = None
+    movies.get.return_value = stamped
+    movies.update_metadata.side_effect = None
+    case = use_case(movies, metadata)
+    assert (await case.execute(REQUEST)).status == "enriched"
+    assert movies.update_metadata.call_args.args[1].tmdb_vote_count == 0
+    movies.get.return_value = replace(
+        stamped, values=replace(stamped.values, tmdb_vote_count=0)
+    )
+    assert (await case.execute(REQUEST)).status == "unchanged"
+    metadata.movie_details.assert_awaited_once_with(IDENTITY)
 
 
 @pytest.mark.asyncio

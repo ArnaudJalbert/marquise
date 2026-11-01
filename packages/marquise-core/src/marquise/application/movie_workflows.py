@@ -30,6 +30,8 @@ class MovieMetadataValues:
     poster_url: str | None = None
     trailer_url: str | None = None
     rating: str | None = None
+    tmdb_rating: float | None = None
+    tmdb_vote_count: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
