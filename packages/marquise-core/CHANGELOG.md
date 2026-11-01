@@ -6,6 +6,8 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ### v0.2.34
 
+- Preserve provider order when prioritizing candidate details, keep partial details incomplete, and require unbeatable runtime evidence before accepting a match from truncated discovery.
+
 - Decode HTML entities in Cinema Public director names and Cinémathèque titles, so translated films resolve to their English TMDB identity instead of producing duplicate movies.
 - Give title search and director discovery independent detail budgets, and accept an exact title, year, and director match even when another strategy was truncated, so noisy title searches no longer block director-based discovery.
 

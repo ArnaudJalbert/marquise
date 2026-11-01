@@ -154,8 +154,8 @@ class MatchMovieUseCase:
         """Search with year, retry unfiltered, then discover through directors.
 
         Each discovery strategy owns its detail budget and its completeness.
-        A confirmed match (exact title, matching year, exact supplied director)
-        cannot be outranked by an unexamined candidate, so it wins even when
+        A confirmed match with the best possible evidence and no unchecked
+        earlier candidates cannot be outranked, so it wins even when
         another strategy was truncated. Otherwise a strategy must be exhaustive
         (all relevant candidates hydrated, every page seen) before its winner is
         accepted; a truncated strategy defers to the other strategies and, when
@@ -167,7 +167,9 @@ class MatchMovieUseCase:
         normalized_title = _normalize(title)
         source_year = input_data.release_year
         candidates: dict[ProviderIdentity, MetadataMovie] = {}
+        candidate_order: dict[ProviderIdentity, int] = {}
         director_candidates: set[ProviderIdentity] = set()
+        details_complete = True
         failures: list[MetadataFailure] = []
         title_complete = True
         director_complete = True
@@ -179,7 +181,7 @@ class MatchMovieUseCase:
         async def hydrate(
             batch: MetadataBatch[MetadataMovie], *, director: bool
         ) -> None:
-            nonlocal title_complete, director_complete
+            nonlocal title_complete, director_complete, details_complete
             nonlocal title_remaining, director_remaining
             nonlocal title_budget_exhausted, director_year_cut
             if director:
@@ -191,6 +193,7 @@ class MatchMovieUseCase:
             seen = set(candidates)
             pending: list[tuple[int, MetadataMovie]] = []
             for index, item in enumerate(batch.items):
+                candidate_order.setdefault(item.identity, len(candidate_order))
                 if item.identity not in seen:
                     seen.add(item.identity)
                     pending.append((index, item))
@@ -215,6 +218,7 @@ class MatchMovieUseCase:
                         title_budget_exhausted = True
                     break
                 details = await self._metadata.movie_details(item.identity)
+                details_complete = details_complete and details.complete
                 if details.failure is not None:
                     failures.append(details.failure)
                 hydrated = next(
@@ -241,21 +245,23 @@ class MatchMovieUseCase:
             if failures:
                 return MatchMovieOutputData("failed", failure=failures[0])
             if ranked:
-                winner_identity = min(ranked, key=lambda pair: pair[0])[1]
-                winner_rank = next(
-                    rank for rank, identity in ranked if identity == winner_identity
+                winner_rank, winner_identity = min(
+                    ranked, key=lambda pair: (pair[0], candidate_order[pair[1]])
                 )
                 confirmed = (
-                    winner_rank[0] == 0
-                    and winner_rank[1] == 0
-                    and winner_rank[2] == 0
+                    winner_rank == (0, 0, 0, 0)
                     and bool(input_data.directors)
+                    and all(
+                        identity in candidates
+                        for identity, order in candidate_order.items()
+                        if order < candidate_order[winner_identity]
+                    )
                 )
                 if winner_identity in director_candidates:
                     complete = director_complete and not director_year_cut
                 else:
                     complete = title_complete and not title_budget_exhausted
-                if confirmed or complete:
+                if details_complete and (confirmed or complete):
                     chosen = candidates[winner_identity]
                     return MatchMovieOutputData(
                         "matched",
@@ -274,7 +280,8 @@ class MatchMovieUseCase:
                     )
                 return MatchMovieOutputData("incomplete")
             incomplete = (
-                not title_complete
+                not details_complete
+                or not title_complete
                 or title_budget_exhausted
                 or not director_complete
                 or director_year_cut

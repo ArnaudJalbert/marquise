@@ -451,3 +451,72 @@ async def test_contained_title_matches_but_ranks_below_an_exact_title() -> None:
         MatchMovieInputData("Street Fighter : le film (version française)", 2026)
     )
     assert contained.identity == ProviderIdentity("fixture", "exact")
+
+
+@pytest.mark.asyncio
+async def test_confirmed_match_does_not_bypass_runtime_ranking() -> None:
+    """An unseen exact-runtime candidate prevents a worse confirmed match."""
+    candidates = tuple(
+        movie(runtime=runtime, directors=(person("Director Name"),), identity=str(i))
+        for i, runtime in enumerate((130, 140, 140, 140, 140, 100))
+    )
+    repo = repository(candidates)
+    result = await MatchMovieUseCase(repo, RapidFuzzNameDistance()).execute(
+        MatchMovieInputData("Film", 2026, ("Director Name",), 100)
+    )
+    assert result.status == "incomplete"
+    assert result.identity is None
+    assert repo.movie_details.await_count == 5
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("discovery", ["title", "director"])
+@pytest.mark.parametrize("directors", [(), ("Director Name",)])
+async def test_incomplete_details_do_not_confirm_a_match(
+    discovery: str, directors: tuple[str, ...]
+) -> None:
+    """Partial details remain incomplete even with otherwise perfect evidence."""
+    candidate = movie(directors=(person("Director Name"),))
+    repo = repository((candidate,))
+    if discovery == "director":
+        repo.search_movies.return_value = MetadataBatch()
+        repo.search_people.return_value = MetadataBatch(candidate.directors)
+        repo.directed_movies.return_value = MetadataBatch((candidate,))
+    repo.movie_details.side_effect = None
+    repo.movie_details.return_value = MetadataBatch((candidate,), complete=False)
+    result = await MatchMovieUseCase(repo, RapidFuzzNameDistance()).execute(
+        MatchMovieInputData("Film", 2026, directors, 100)
+    )
+    expected = "incomplete" if discovery == "title" or directors else "unmatched"
+    assert result.status == expected
+    assert result.identity is None
+
+
+@pytest.mark.asyncio
+async def test_hydration_priority_preserves_provider_tie_order() -> None:
+    """A translation found in details retains the first provider position."""
+    first = movie("Other", identity="first")
+    second = movie("Film", identity="second")
+    repo = repository((first, second))
+    translated = replace(first, titles=(TitleFact("Film", "translation"),))
+    repo.movie_details.side_effect = lambda identity: MetadataBatch(
+        (translated if identity == first.identity else second,)
+    )
+    result = await MatchMovieUseCase(repo, RapidFuzzNameDistance()).execute(
+        MatchMovieInputData("Film", 2026, (), 100)
+    )
+    assert result.identity == first.identity
+    assert repo.movie_details.await_args_list[0].args == (second.identity,)
+
+
+@pytest.mark.asyncio
+async def test_confirmed_match_waits_for_earlier_provider_candidates() -> None:
+    """An unchecked earlier candidate could tie after its titles are hydrated."""
+    first = movie("Other", directors=(person("Director Name"),), identity="first")
+    exact = tuple(movie(directors=first.directors, identity=str(i)) for i in range(5))
+    repo = repository((first, *exact))
+    result = await MatchMovieUseCase(repo, RapidFuzzNameDistance()).execute(
+        MatchMovieInputData("Film", 2026, ("Director Name",), 100)
+    )
+    assert result.status == "incomplete"
+    assert result.identity is None
