@@ -10,7 +10,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal, Protocol
 
-from marquise.application.exceptions import ApplicationError
+from marquise.application.exceptions import (
+    MovieWorkflowConflictError as MovieWorkflowConflictError,
+)
 from marquise.application.metadata import MetadataFailure, ProviderIdentity
 
 
@@ -162,10 +164,6 @@ class MergeMoviesOutputData:
     moved_screening_ids: tuple[str, ...] = ()
     blockers: tuple[str, ...] = ()
     confirmed_identity: ProviderIdentity | None = None
-
-
-class MovieWorkflowConflictError(ApplicationError):
-    """Stale state, identity conflict or unsafe references prevented a write."""
 
 
 class MovieMetadataRepository(ABC):

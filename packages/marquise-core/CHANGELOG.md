@@ -4,6 +4,10 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-11-01
 
+### v0.2.41
+
+- Move the movie workflow conflict error into application exceptions while preserving existing imports. Closes #390.
+
 ### v0.2.34
 
 - Preserve provider order when prioritizing candidate details, keep partial details incomplete, and require unbeatable runtime evidence before accepting a match from truncated discovery.
