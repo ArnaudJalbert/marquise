@@ -674,7 +674,7 @@
   position: absolute;
   right: 0;
   top: 100%;
-  z-index: 5;
+  z-index: 6; /* above the open Filters panel */
   min-width: 180px;
   padding: 4px 0;
   background: #fff;

@@ -784,6 +784,15 @@ it("opens Info, closes it with Escape and restores focus, then navigates from it
       .getByRole("link", { name: "About" })
       .getAttribute("aria-current"),
   ).toBe("page");
+
+  fireEvent.click(screen.getByRole("button", { name: "Info" }));
+  fireEvent.click(
+    within(screen.getByRole("navigation", { name: "Site information" })).getByRole("link", {
+      name: "About",
+    }),
+  );
+  expect(location.pathname).toBe("/about");
+  expect(screen.getByRole("button", { name: "Info" }).getAttribute("aria-expanded")).toBe("false");
 });
 
 it.each([

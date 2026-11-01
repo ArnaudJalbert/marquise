@@ -73,7 +73,15 @@ export function InfoMenu({ path }: { path: string }) {
       >
         Info<span aria-hidden="true"> ▾</span>
       </button>
-      <nav id="minimal-info-panel" aria-label="Site information" hidden={!open}>
+      <nav
+        id="minimal-info-panel"
+        aria-label="Site information"
+        hidden={!open}
+        // Also closes when the chosen link is the current page.
+        onClick={(event) => {
+          if ((event.target as Element).closest("a")) setOpen(false);
+        }}
+      >
         <DestinationLinks path={path} />
       </nav>
     </div>
