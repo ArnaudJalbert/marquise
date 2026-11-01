@@ -48,3 +48,7 @@ export function decodePathId(value: string): string {
     return value;
   }
 }
+
+export function formatScore(score: number | null | undefined): string {
+  return score == null ? "" : `${score.toFixed(1)}/10`;
+}

@@ -41,3 +41,9 @@ Arnaud approved the interactive prototype in PR #339: “Ok I am happy with this
 | #336 | Bounded automatic pagination and navigation restoration for both browse modes |
 | #337 | Cinema directory and fixed-cinema pages |
 | #338 | Integrated production verification and current browser evidence |
+
+## TMDB score metadata, issue #376
+
+Film detail metadata includes the TMDB score to one decimal place, such as `8.1/10`. Missing scores add no text or separator. Vote counts travel through the client without display. Grid cards keep their existing compact metadata. Sample scores are fictional.
+
+Current issue #376 baselines: [detail text](detail-score.txt) and [desktop screenshot](detail-score-desktop.png), captured from the local sample API prototype at `/movies/dune`, viewport 1280 by 800. Earlier evidence remains historical.

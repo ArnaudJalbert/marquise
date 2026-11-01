@@ -25,6 +25,8 @@ class ScreeningMovieReader(ABC):
         description: str | None
         poster_url: str | None
         screenings: tuple[ScreeningReader.ScreeningData, ...]
+        tmdb_rating: float | None = None
+        tmdb_vote_count: int | None = None
 
     @abstractmethod
     async def search(

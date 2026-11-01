@@ -718,3 +718,168 @@ it("handles malformed movie URL escapes without crashing navigation", async () =
   );
   expect(screen.getByRole("link", { name: "Screenings" })).toBeTruthy();
 });
+
+function destinationLinks(name: string) {
+  return within(screen.getByRole("navigation", { name }))
+    .getAllByRole("link")
+    .map((link) => [link.getAttribute("aria-label") ?? link.textContent, link.getAttribute("href")]);
+}
+
+it("offers the same five destinations in the footer and the header Info menu", async () => {
+  render(<App client={clients()} />);
+  await screen.findByRole("link", { name: "View Wanted film" });
+  fireEvent.click(screen.getByRole("button", { name: "Info" }));
+
+  const footer = destinationLinks("Footer");
+  expect(footer).toEqual([
+    ["About", "/about"],
+    ["API docs (external site: marquise-api.fly.dev)", "https://marquise-api.fly.dev/docs"],
+    ["Contact", "/contact"],
+    ["Terms", "/terms"],
+    ["Privacy", "/privacy"],
+  ]);
+  expect(destinationLinks("Site information")).toEqual(footer);
+  expect(within(screen.getByRole("contentinfo")).getByText("Marquise")).toBeTruthy();
+
+  const apiDocs = within(screen.getByRole("navigation", { name: "Footer" })).getByRole("link", {
+    name: "API docs (external site: marquise-api.fly.dev)",
+  });
+  expect(apiDocs.hasAttribute("target")).toBe(false);
+  expect(apiDocs.textContent).toBe("API docs↗");
+});
+
+it("opens Info, closes it with Escape and restores focus, then navigates from it", async () => {
+  const client = clients();
+  render(<App client={client} />);
+  await screen.findByRole("link", { name: "View Wanted film" });
+  const info = screen.getByRole("button", { name: "Info" });
+  expect(info.getAttribute("aria-expanded")).toBe("false");
+  expect(screen.queryByRole("navigation", { name: "Site information" })).toBeNull();
+
+  fireEvent.click(info);
+  expect(info.getAttribute("aria-expanded")).toBe("true");
+  const menu = screen.getByRole("navigation", { name: "Site information" });
+  within(menu).getByRole("link", { name: "Contact" }).focus();
+  fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+  expect(info.getAttribute("aria-expanded")).toBe("false");
+  expect(document.activeElement).toBe(info);
+
+  fireEvent.click(info);
+  fireEvent.pointerDown(document.body);
+  expect(info.getAttribute("aria-expanded")).toBe("false");
+
+  fireEvent.click(info);
+  fireEvent.click(
+    within(screen.getByRole("navigation", { name: "Site information" })).getByRole("link", {
+      name: "About",
+    }),
+  );
+  expect(location.pathname).toBe("/about");
+  expect(screen.getByRole("heading", { level: 1, name: "About Marquise" })).toBeTruthy();
+  expect(document.title).toBe("About · Marquise");
+  expect(document.activeElement).toBe(screen.getByRole("main"));
+  expect(screen.getByRole("button", { name: "Info" }).getAttribute("aria-expanded")).toBe("false");
+  expect(
+    within(screen.getByRole("navigation", { name: "Footer" }))
+      .getByRole("link", { name: "About" })
+      .getAttribute("aria-current"),
+  ).toBe("page");
+
+  fireEvent.click(screen.getByRole("button", { name: "Info" }));
+  fireEvent.click(
+    within(screen.getByRole("navigation", { name: "Site information" })).getByRole("link", {
+      name: "About",
+    }),
+  );
+  expect(location.pathname).toBe("/about");
+  expect(screen.getByRole("button", { name: "Info" }).getAttribute("aria-expanded")).toBe("false");
+});
+
+it.each([
+  ["/contact", "Contact"],
+  ["/terms", "Terms of use"],
+  ["/privacy", "Privacy"],
+  ["/about/", "About Marquise"],
+])("loads %s on direct entry without reading listings", async (path, heading) => {
+  history.replaceState(null, "", path);
+  const client = clients();
+  render(<App client={client} />);
+  expect(screen.getByRole("heading", { level: 1, name: heading })).toBeTruthy();
+  expect(screen.getByRole("navigation", { name: "Main navigation" })).toBeTruthy();
+  expect(screen.getByRole("contentinfo")).toBeTruthy();
+  await act(async () => {});
+  for (const read of Object.values(client)) expect(read).not.toHaveBeenCalled();
+});
+
+it("shows the contact address and labels draft content and policy placeholders", () => {
+  history.replaceState(null, "", "/contact");
+  const { unmount } = render(<App client={clients()} />);
+  expect(
+    screen.getByRole("link", { name: "me@arnaudjalbert.com" }).getAttribute("href"),
+  ).toBe("mailto:me@arnaudjalbert.com");
+  expect(screen.getByRole("note").textContent).toMatch(/Draft copy/);
+  expect(screen.getByText(/booking/i, { selector: "h2" })).toBeTruthy();
+  unmount();
+
+  history.replaceState(null, "", "/about");
+  const about = render(<App client={clients()} />);
+  expect(screen.getAllByRole("note").map((note) => note.textContent)).toEqual([
+    expect.stringMatching(/Draft copy/),
+    expect.stringMatching(/^Unconfirmed attribution/),
+  ]);
+  about.unmount();
+
+  for (const path of ["/terms", "/privacy"]) {
+    history.replaceState(null, "", path);
+    const policy = render(<App client={clients()} />);
+    expect(screen.getByRole("note").textContent).toMatch(
+      /^Draft placeholder\. This is not a published policy/,
+    );
+    policy.unmount();
+  }
+});
+
+it("moves between information pages and listings with Back and Forward", async () => {
+  history.replaceState(null, "", "/?section=movies");
+  const client = clients();
+  client.fetchMoviePage.mockImplementation(async (requestedPage) => ({
+    items: [{ ...movie, id: `movie-${requestedPage}`, title: `Movie ${requestedPage}` }],
+    total: 2,
+    page: requestedPage,
+    pages: 2,
+    size: 24,
+  }));
+  render(<App client={client} />);
+  await screen.findByRole("link", { name: "View Movie 1" });
+  const footer = () => within(screen.getByRole("navigation", { name: "Footer" }));
+  fireEvent.click(footer().getByRole("link", { name: "About" }));
+  fireEvent.click(footer().getByRole("link", { name: "Terms" }));
+  expect(screen.getByRole("heading", { level: 1, name: "Terms of use" })).toBeTruthy();
+
+  const traverse = async (url: string) =>
+    act(async () => {
+      history.replaceState(null, "", url);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+  await traverse("/about");
+  expect(screen.getByRole("heading", { level: 1, name: "About Marquise" })).toBeTruthy();
+  await traverse("/?section=movies");
+  await screen.findByRole("link", { name: "View Movie 1" });
+  await act(async () => endObservers.at(-1)?.reachEnd());
+  await screen.findByRole("link", { name: "View Movie 2" });
+  await traverse("/about");
+  expect(screen.getByRole("heading", { level: 1, name: "About Marquise" })).toBeTruthy();
+});
+
+it.each(["/", "/?section=movies", "/cinemas", "/about"])(
+  "skips to content on %s without changing the URL",
+  async (path) => {
+    history.replaceState(null, "", path);
+    render(<App client={clients()} />);
+    const before = location.href;
+    fireEvent.click(screen.getByRole("link", { name: "Skip to content" }));
+    expect(document.activeElement).toBe(screen.getByRole("main"));
+    expect(location.href).toBe(before);
+    await act(async () => {});
+  },
+);

@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-01
+
+- Carry TMDB scores and vote counts for film detail metadata.
+
+
 ## 2026-10-30
 
 - Serialize title, cinema, source-language, and hourly filters for the movie-first screening query. Add paged cinema reads to the browsing client. Supports #335.

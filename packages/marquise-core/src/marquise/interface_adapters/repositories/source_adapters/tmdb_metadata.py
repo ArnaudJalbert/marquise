@@ -54,6 +54,22 @@ def _path(identity: ProviderIdentity, resource: str) -> str:
     return f"{resource}/{identity.id}"
 
 
+def _score(value: int | float | None) -> float | None:
+    if value is None:
+        return None
+    if type(value) not in (int, float) or not 0 <= value <= 10:
+        raise ValueError("invalid vote average")
+    return float(value)
+
+
+def _votes(value: int | None) -> int | None:
+    if value is None:
+        return None
+    if type(value) is not int or value < 0:
+        raise ValueError("invalid vote count")
+    return value
+
+
 def _base(row: dict) -> MetadataMovie:
     title = _text(row["title"])
     if title is None:
@@ -167,6 +183,8 @@ class TmdbMetadataAdapter(MetadataRepository):
                 raise ValueError("movie identity mismatch")
             movie = replace(
                 movie,
+                tmdb_rating=_score(data.get("vote_average")),
+                tmdb_vote_count=_votes(data.get("vote_count")),
                 genres=tuple(
                     row["name"] for row in _rows(data, "genres") if _text(row["name"])
                 ),

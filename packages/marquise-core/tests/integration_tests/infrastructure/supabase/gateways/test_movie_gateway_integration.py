@@ -21,6 +21,21 @@ async def test_save_and_find_by_tmdb_id(movie_gateway: SupabaseMovieGateway) -> 
 
 
 @pytest.mark.asyncio
+async def test_score_round_trip_and_null_upsert_preserves_values(
+    movie_gateway: SupabaseMovieGateway,
+) -> None:
+    """A stored TMDB score survives reads and an unrelated title upsert."""
+    saved = await movie_gateway.save(
+        movie_id="scored", title="Scored", tmdb_rating=8.1, tmdb_vote_count=1234
+    )
+    assert (saved["tmdb_rating"], saved["tmdb_vote_count"]) == (8.1, 1234)
+    await movie_gateway.save(movie_id="other", title="Scored", description="Updated")
+    found = await movie_gateway.find_by_id("scored")
+    assert found is not None
+    assert (found["tmdb_rating"], found["tmdb_vote_count"]) == (8.1, 1234)
+
+
+@pytest.mark.asyncio
 async def test_same_tmdb_id_keeps_existing_movie(
     movie_gateway: SupabaseMovieGateway,
 ) -> None:

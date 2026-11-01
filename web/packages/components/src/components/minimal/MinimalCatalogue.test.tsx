@@ -177,7 +177,7 @@ describe("minimalist prototype", () => {
 
 it("keeps every section available from the cinema directory", () => {
   render(<MinimalCatalogue {...props} href="/cinemas" />);
-  const navigation = within(screen.getByRole("navigation"));
+  const navigation = within(screen.getByRole("navigation", { name: "Main navigation" }));
   expect(
     navigation.getByRole("link", { name: "Screenings" }),
   ).toBeInTheDocument();
@@ -415,7 +415,7 @@ it("recovers the detail poster and highlights Movies after navigating from a fai
     "/second.jpg",
   );
   expect(
-    within(screen.getByRole("navigation")).getByRole("link", {
+    within(screen.getByRole("navigation", { name: "Main navigation" })).getByRole("link", {
       name: "Movies",
     }),
   ).toHaveAttribute("aria-current", "page");
@@ -449,4 +449,10 @@ it("loads the complete schedule when the movie has cached preview screenings", a
   expect(await screen.findByText("15:45")).toBeInTheDocument();
   expect(loadWeek).toHaveBeenCalledTimes(2);
   expect(screen.queryByText("18:00")).not.toBeInTheDocument();
+});
+
+it.each([8.1, null])("renders detail score only when present: %s", (score) => {
+  render(<MinimalCatalogue {...props} movies={[{...movie, tmdbRating: score}]} catalogueMovies={[{...movie, tmdbRating: score}]} href="/movies/film" />);
+  if (score === null) expect(screen.queryByText(/8.1\/10/)).not.toBeInTheDocument();
+  else expect(screen.getByText(/8.1\/10/)).toBeInTheDocument();
 });

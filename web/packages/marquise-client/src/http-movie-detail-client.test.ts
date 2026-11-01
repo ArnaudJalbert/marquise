@@ -85,6 +85,8 @@ describe("HttpMarquiseClient detail", () => {
       directors: ["Director A"],
       cast: null,
       duration_minutes: 123,
+      tmdb_rating: 8.1,
+      tmdb_vote_count: 1234,
       description: null,
       poster_url: "https://example.com/poster.jpg",
       trailer_url: null,
@@ -108,6 +110,8 @@ describe("HttpMarquiseClient detail", () => {
       releaseYear: 2026,
       directors: ["Director A"],
       durationMinutes: 123,
+      tmdbRating: 8.1,
+      tmdbVoteCount: 1234,
       posterUrl: "https://example.com/poster.jpg",
       genres: ["Drama"],
     });

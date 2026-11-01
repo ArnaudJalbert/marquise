@@ -2,12 +2,20 @@
 
 Before 2026-07-15 this package was published as `marquise`.
 
-## 2026-10-31
+## 2026-11-01
 
-### v0.2.32
+### v0.2.34
 
 - Decode HTML entities in Cinema Public director names and Cinémathèque titles, so translated films resolve to their English TMDB identity instead of producing duplicate movies.
 - Give title search and director discovery independent detail budgets, and accept an exact title, year, and director match even when another strategy was truncated, so noisy title searches no longer block director-based discovery.
+
+### v0.2.33
+
+- Persist TMDB vote average and count, and expose them through movie reads and the screening-movies projection. Requires migration `373-add-movies-tmdb-score.sql`. Closes #375.
+
+### v0.2.32
+
+- Capture TMDB vote average and vote count during metadata enrichment. Closes #374.
 
 ## 2026-10-30
 
