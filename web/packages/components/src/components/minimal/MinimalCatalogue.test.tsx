@@ -177,7 +177,7 @@ describe("minimalist prototype", () => {
 
 it("keeps every section available from the cinema directory", () => {
   render(<MinimalCatalogue {...props} href="/cinemas" />);
-  const navigation = within(screen.getByRole("navigation"));
+  const navigation = within(screen.getByRole("navigation", { name: "Main navigation" }));
   expect(
     navigation.getByRole("link", { name: "Screenings" }),
   ).toBeInTheDocument();
@@ -415,7 +415,7 @@ it("recovers the detail poster and highlights Movies after navigating from a fai
     "/second.jpg",
   );
   expect(
-    within(screen.getByRole("navigation")).getByRole("link", {
+    within(screen.getByRole("navigation", { name: "Main navigation" })).getByRole("link", {
       name: "Movies",
     }),
   ).toHaveAttribute("aria-current", "page");

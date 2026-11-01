@@ -16,6 +16,7 @@ export type {
 import { timeToHour, formatHour, decodePathId } from "./catalogue-format";
 import { MovieSchedule } from "./MovieSchedule";
 import { Showtime } from "./Showtime";
+import { InfoMenu, SiteFooter, infoPages } from "./SiteInfo";
 import "./minimal.css";
 
 function Poster({ movie }: { movie: CatalogueMovie }) {
@@ -445,6 +446,8 @@ export function MinimalCatalogue({
   const [movieSearch, setMovieSearch] = useState("");
   const [previewId, setPreviewId] = useState<string | null>(null);
   const cinema = cinemas.find((c) => c.id === cinemaId);
+  const infoPath = path.replace(/(.)\/$/, "$1");
+  const infoPage = infoPages[infoPath];
   const from = selection.from
     ? `${String(timeToHour(selection.from, 0)).padStart(2, "0")}:00`
     : "";
@@ -514,7 +517,15 @@ export function MinimalCatalogue({
         }
       }}
     >
-      <a href="#minimal-main" className="minimal-skip">
+      <a
+        href="#minimal-main"
+        className="minimal-skip"
+        onClick={(event) => {
+          // Focus only: a hash change would alter the current route's URL.
+          event.preventDefault();
+          document.getElementById("minimal-main")?.focus();
+        }}
+      >
         Skip to content
       </a>
       <header className="minimal-nav">
@@ -549,9 +560,19 @@ export function MinimalCatalogue({
             Cinemas
           </a>
         </nav>
+        <InfoMenu key={infoPath} path={infoPath} />
       </header>
-      <main id="minimal-main" tabIndex={-1}>
-        {path === "/cinemas" || path === "/cinemas/" ? (
+      <main
+        id="minimal-main"
+        tabIndex={-1}
+        className={infoPage ? "minimal-page" : undefined}
+      >
+        {infoPage ? (
+          <>
+            <title>{`${infoPage.title} · Marquise`}</title>
+            <infoPage.body />
+          </>
+        ) : path === "/cinemas" || path === "/cinemas/" ? (
           <>
             <h1>Cinemas</h1>
             <SectionDescription text="Browse Montréal cinemas and open one to see its upcoming showtimes. For example, choose your favorite venue to check what's playing this weekend." />
@@ -807,6 +828,7 @@ export function MinimalCatalogue({
           </>
         )}
       </main>
+      <SiteFooter path={infoPath} />
     </div>
   );
 }
