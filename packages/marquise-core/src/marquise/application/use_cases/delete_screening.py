@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from marquise.application.exceptions import ScreeningNotFoundError
 from marquise.application.repositories import ScreeningRepository
 from marquise.application.use_cases._screening_helpers import require_non_empty
 from marquise.domain.value_objects import ScreeningId
@@ -56,7 +57,11 @@ class DeleteScreeningUseCase:
         Raises:
             ScreeningNotFoundError: If no screening with the given ID exists.
         """
-        await self.screening_repository.delete(
+        deleted = await self.screening_repository.delete(
             screening_id=ScreeningId(value=request.screening_id)
         )
+        if not deleted:
+            raise ScreeningNotFoundError(
+                f"A screening with ID '{request.screening_id}' was not found"
+            )
         return self.OutputData(screening_id=request.screening_id)
