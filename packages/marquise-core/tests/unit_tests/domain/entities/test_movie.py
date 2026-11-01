@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import cast
 
 import pytest
 
@@ -154,6 +155,44 @@ def test_movie_rejects_non_positive_release_year() -> None:
             directors=("Christopher Nolan",),
             release_year=0,
         )
+
+
+@pytest.mark.parametrize("tmdb_rating", [-0.1, 10.1, float("nan"), float("inf"), True])
+def test_movie_rejects_invalid_tmdb_rating(tmdb_rating: float | bool) -> None:
+    """TMDB scores must be finite numbers from zero through ten."""
+    with pytest.raises(ValueError, match="Movie TMDB rating must be between 0 and 10"):
+        Movie(
+            id=MovieId(value="mov-123"),
+            title="Inception",
+            tmdb_rating=tmdb_rating,
+        )
+
+
+@pytest.mark.parametrize("tmdb_vote_count", [-1, 1.5, True])
+def test_movie_rejects_invalid_tmdb_vote_count(
+    tmdb_vote_count: int | float | bool,
+) -> None:
+    """TMDB vote counts must be non-negative integers."""
+    with pytest.raises(
+        ValueError, match="Movie TMDB vote count must be a non-negative integer"
+    ):
+        Movie(
+            id=MovieId(value="mov-123"),
+            title="Inception",
+            tmdb_vote_count=cast(int, tmdb_vote_count),
+        )
+
+
+def test_movie_accepts_zero_tmdb_score_and_vote_count() -> None:
+    """Zero is a valid score and vote count from TMDB."""
+    movie = Movie(
+        id=MovieId(value="mov-123"),
+        title="Inception",
+        tmdb_rating=0.0,
+        tmdb_vote_count=0,
+    )
+    assert movie.tmdb_rating == 0.0
+    assert movie.tmdb_vote_count == 0
 
 
 def test_movie_allows_none_duration() -> None:
