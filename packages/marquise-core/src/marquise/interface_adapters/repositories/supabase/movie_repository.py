@@ -59,6 +59,8 @@ class SupabaseMovieRepository(MovieRepository):
             if movie.origin_countries is not None
             else None,
             tmdb_id=movie.tmdb_id,
+            tmdb_rating=movie.tmdb_rating,
+            tmdb_vote_count=movie.tmdb_vote_count,
             update_existing=update_existing,
         )
         return self._to_entity(data)
@@ -195,4 +197,6 @@ class SupabaseMovieRepository(MovieRepository):
             rating=data.get("rating"),
             origin_countries=origin_countries,
             tmdb_id=data.get("tmdb_id"),
+            tmdb_rating=data.get("tmdb_rating"),
+            tmdb_vote_count=data.get("tmdb_vote_count"),
         )

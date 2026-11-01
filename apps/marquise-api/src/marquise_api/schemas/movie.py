@@ -30,6 +30,8 @@ class MovieResponse(BaseModel):
                     "original_title": "Dune: Part Two",
                     "rating": "13+",
                     "origin_countries": ["US"],
+                    "tmdb_rating": 8.1,
+                    "tmdb_vote_count": 1234,
                 }
             ]
         },
@@ -48,3 +50,5 @@ class MovieResponse(BaseModel):
     original_title: str | None = None
     rating: str | None = None
     origin_countries: tuple[str, ...] | None = None
+    tmdb_rating: float | None = None
+    tmdb_vote_count: int | None = None
