@@ -141,10 +141,27 @@ def _resolve_import_module(rel: str, node: ast.ImportFrom) -> str | None:
 
 def _annotation_nodes(annotation: ast.expr) -> list[ast.AST]:
     """Include names inside quoted forward references in annotation scans."""
-    nodes = list(ast.walk(annotation))
-    for node in nodes.copy():
-        if isinstance(node, ast.Constant) and isinstance(node.value, str):
-            nodes.extend(_annotation_nodes(ast.parse(node.value, mode="eval").body))
+    if isinstance(annotation, ast.Constant) and isinstance(annotation.value, str):
+        return _annotation_nodes(ast.parse(annotation.value, mode="eval").body)
+    nodes: list[ast.AST] = [annotation]
+    if isinstance(annotation, ast.Subscript):
+        name = (
+            annotation.value.id
+            if isinstance(annotation.value, ast.Name)
+            else getattr(annotation.value, "attr", None)
+        )
+        if name == "Literal":
+            return nodes
+        if name == "Annotated":
+            first = (
+                annotation.slice.elts[0]
+                if isinstance(annotation.slice, ast.Tuple)
+                else annotation.slice
+            )
+            return nodes + _annotation_nodes(first)
+    for child in ast.iter_child_nodes(annotation):
+        if isinstance(child, ast.expr):
+            nodes.extend(_annotation_nodes(child))
     return nodes
 
 
@@ -179,6 +196,7 @@ def find_violations(root: Path) -> set[str]:
     use_case_names = {
         name: {cls.name for cls in _use_case_classes(tree)}
         for name, (_, tree) in modules.items()
+        if _use_case_classes(tree)
     }
     all_use_case_names = set().union(*use_case_names.values())
     violations: set[str] = set()
@@ -190,10 +208,7 @@ def find_violations(root: Path) -> set[str]:
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 for alias in node.names:
-                    if any(
-                        alias.name.startswith(f"marquise.application.{package}.")
-                        for package in USE_CASE_PACKAGES
-                    ):
+                    if alias.name in use_case_names:
                         violations.add(f"{rel}: imports use case module {alias.name}")
                 continue
             if not isinstance(node, ast.ImportFrom):
@@ -201,7 +216,7 @@ def find_violations(root: Path) -> set[str]:
             module = _resolve_import_module(rel, node)
             if module is None:
                 continue
-            is_use_case_module = module in modules or module in {
+            is_use_case_module = module in use_case_names or module in {
                 f"marquise.application.{package}" for package in USE_CASE_PACKAGES
             }
             for alias in node.names:
@@ -325,6 +340,7 @@ def test_guard_flags_shared_and_cross_use_case_types(tmp_path: Path) -> None:
             class SecondUseCase:
                 class InputData:
                     inner: list["FirstUseCase.InputData"]
+                    quoted: 'Annotated[list["FirstUseCase.InputData"], "metadata"]'
 
                 class OutputData:
                     value: str
@@ -390,13 +406,25 @@ def test_guard_allows_nested_types_and_collaborator_calls(tmp_path: Path) -> Non
             """),
         encoding="utf-8",
     )
+    (use_cases / "_helpers.py").write_text(
+        "class Row: pass\n",
+        encoding="utf-8",
+    )
     (use_cases / "second.py").write_text(
         textwrap.dedent("""\
+            from typing import Annotated, Literal
+            import marquise.application.use_cases._helpers
+            from marquise.application.use_cases._helpers import Row
             from marquise.application.use_cases.first import FirstUseCase
+
+            class Row:
+                pass
 
             class SecondUseCase:
                 class InputData:
-                    value: str
+                    value: Annotated[Literal["", "Row"], "human readable"]
+                    quoted: 'Annotated[list["str"], "human readable"]'
+                    nested: list[Literal["Row"]]
 
                 class OutputData:
                     count: int
