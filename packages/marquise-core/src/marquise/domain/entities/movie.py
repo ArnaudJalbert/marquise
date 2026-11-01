@@ -77,7 +77,8 @@ class Movie:
 
         Raises:
             ValueError: If the title is empty, no directors are provided,
-                a director name is empty, or duration is non-positive.
+                a director name is empty, duration or release year is
+                non-positive, or a TMDB score is out of range.
         """
         if not self.title.strip():
             raise ValueError("Movie title cannot be empty")
@@ -90,6 +91,18 @@ class Movie:
             raise ValueError("Movie duration must be positive")
         if self.release_year is not None and self.release_year <= 0:
             raise ValueError("Movie release year must be positive")
+        if self.tmdb_rating is not None and (
+            isinstance(self.tmdb_rating, bool)
+            or not isinstance(self.tmdb_rating, (int, float))
+            or not 0 <= self.tmdb_rating <= 10
+        ):
+            raise ValueError("Movie TMDB rating must be between 0 and 10")
+        if self.tmdb_vote_count is not None and (
+            isinstance(self.tmdb_vote_count, bool)
+            or not isinstance(self.tmdb_vote_count, int)
+            or self.tmdb_vote_count < 0
+        ):
+            raise ValueError("Movie TMDB vote count must be a non-negative integer")
 
     @staticmethod
     def search_title(title: str) -> str:
