@@ -199,6 +199,12 @@ def find_violations(root: Path) -> set[str]:
         if _use_case_classes(tree)
     }
     all_use_case_names = set().union(*use_case_names.values())
+    packages = {
+        ".".join(parts[:depth])
+        for name in modules
+        for parts in [name.split(".")]
+        for depth in range(3, len(parts))
+    }
     violations: set[str] = set()
     for rel, tree in modules.values():
         module_classes = {
@@ -216,15 +222,20 @@ def find_violations(root: Path) -> set[str]:
             module = _resolve_import_module(rel, node)
             if module is None:
                 continue
-            is_use_case_module = module in use_case_names or module in {
-                f"marquise.application.{package}" for package in USE_CASE_PACKAGES
-            }
+            is_use_case_module = module in use_case_names or module in packages
             for alias in node.names:
                 if is_use_case_module and alias.name in use_case_names.get(
                     module, all_use_case_names
                 ):
                     foreign_use_cases.add(alias.asname or alias.name)
                 elif is_use_case_module:
+                    imported_module = f"{module}.{alias.name}"
+                    if (
+                        module in packages
+                        and imported_module in modules
+                        and imported_module not in use_case_names
+                    ):
+                        continue
                     violations.add(
                         f"{rel}: imports {alias.name} from use case module {module}"
                     )
@@ -306,7 +317,11 @@ def test_guard_flags_shared_and_cross_use_case_types(tmp_path: Path) -> None:
     """Scenario: a use case with outside and borrowed types is reported."""
     use_cases = tmp_path / "use_cases"
     use_cases.mkdir()
-    (use_cases / "first.py").write_text(
+    (use_cases / "auth").mkdir()
+    (use_cases / "auth" / "__init__.py").write_text(
+        "from .first import FirstUseCase\n", encoding="utf-8"
+    )
+    (use_cases / "auth" / "first.py").write_text(
         textwrap.dedent("""\
             from dataclasses import dataclass
 
@@ -328,8 +343,8 @@ def test_guard_flags_shared_and_cross_use_case_types(tmp_path: Path) -> None:
     (use_cases / "_second.py").write_text(
         textwrap.dedent("""\
             from dataclasses import dataclass
-            from marquise.application.use_cases.first import (
-                FirstUseCase,
+            from marquise.application.use_cases.auth import FirstUseCase
+            from marquise.application.use_cases.auth.first import (
                 Row as ImportedRow,
             )
 
@@ -340,7 +355,7 @@ def test_guard_flags_shared_and_cross_use_case_types(tmp_path: Path) -> None:
             class SecondUseCase:
                 class InputData:
                     inner: list["FirstUseCase.InputData"]
-                    quoted: 'Annotated[list["FirstUseCase.InputData"], "metadata"]'
+                    quoted: 'Annotated[list["FirstUseCase.OutputData"], "metadata"]'
 
                 class OutputData:
                     value: str
@@ -363,24 +378,27 @@ def test_guard_flags_shared_and_cross_use_case_types(tmp_path: Path) -> None:
     )
     (use_cases / "fifth.py").write_text(
         textwrap.dedent("""\
-            import marquise.application.use_cases.first as first
+            import marquise.application.use_cases.auth.first as first
             """),
         encoding="utf-8",
     )
 
     assert find_violations(tmp_path) == {
-        "use_cases/first.py: FirstUseCase contract uses module-level Row",
-        "use_cases/first.py: FirstUseCase execute does not use its nested InputData",
+        "use_cases/auth/first.py: FirstUseCase contract uses module-level Row",
+        "use_cases/auth/first.py: FirstUseCase execute does not use its nested "
+        "InputData",
         "use_cases/fifth.py: imports use case module "
-        "marquise.application.use_cases.first",
+        "marquise.application.use_cases.auth.first",
         "use_cases/fourth.py: imports SharedData from use case module "
         "marquise.application.use_cases",
         "use_cases/_second.py: imports Row from use case module "
-        "marquise.application.use_cases.first",
+        "marquise.application.use_cases.auth.first",
         "use_cases/_second.py: SecondUseCase contract uses FirstUseCase.InputData",
+        "use_cases/_second.py: SecondUseCase contract uses FirstUseCase.OutputData",
         "use_cases/_second.py: SecondUseCase contract uses module-level Row",
         "use_cases/_second.py: SecondUseCase execute does not use its nested InputData",
-        "use_cases/_second.py: SecondUseCase execute does not use its nested OutputData",
+        "use_cases/_second.py: SecondUseCase execute does not use its nested "
+        "OutputData",
         "use_cases/third.py: imports SharedInputData from shared use case module "
         "marquise.application.movie_workflows",
     }
@@ -414,6 +432,8 @@ def test_guard_allows_nested_types_and_collaborator_calls(tmp_path: Path) -> Non
         textwrap.dedent("""\
             from typing import Annotated, Literal
             import marquise.application.use_cases._helpers
+            from marquise.application.use_cases import _helpers
+            from . import _helpers
             from marquise.application.use_cases._helpers import Row
             from marquise.application.use_cases.first import FirstUseCase
 
