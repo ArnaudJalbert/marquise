@@ -8,9 +8,7 @@ from dataclasses import asdict, dataclass, fields, replace
 from datetime import UTC, datetime
 from hashlib import sha256
 
-from marquise.application.exceptions.screening import (
-    ScreeningIdempotencyConflictError,
-)
+from marquise.application.exceptions import ScreeningIdempotencyConflictError
 from marquise.application.transactions.screening_write import (
     ScreeningReplay,
     ScreeningWriteResult,
