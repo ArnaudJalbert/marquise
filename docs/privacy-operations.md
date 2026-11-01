@@ -22,7 +22,7 @@ Read-only Fly machine inspection on 2026-11-01 found the API and interface Machi
 
 ## Retention and access
 
-- Support email: the owner has confirmed Gmail. The retention rule is awaiting his separate answer. Do not claim a 90-day deletion rule until adopted, and do not delete existing messages without checking exceptions and explicit deletion authorization.
+- Support email: Arnaud adopted deletion when no longer needed, without a fixed period. When closing a support request, review the message and attachments for any remaining request, dispute, or legal purpose. Delete them from the Gmail mailbox when none remains. If preservation is necessary, record the reason and review it when that purpose ends. Do not promise a 90-day timer, immediate erasure of provider backups, or deletion of unrelated personal email. This PR does not access or clean the mailbox.
 - Application output on Fly: rely on its published platform expiry, with no additional log export configured by this work. If an export is added, record its purpose, destination, access, and expiry before using it. Do not claim an export does not exist merely because this PR does not add one.
 - Account, edit-history, and replay data: inventory these separately. Successful replay keys currently do not expire. Do not silently delete or anonymize records in a way that breaks audit attribution, retries, or legal preservation. Choose and implement a justified schedule in a focused change before promising one publicly.
 - Case records: keep only what is necessary for a request, complaint, or incident. Store real records in an access-controlled location outside Git, research notes, issue comments, and chat. Never put a requester's documents, message contents, IPs, or account tokens in a public or broadly shared tracker.
@@ -83,7 +83,7 @@ This inquiry has not been sent. Do not contact a regulator or lawyer on the owne
 ## Deployment and publication checklist
 
 - Verify effective access-log flags, Nginx configuration, and the no-referrer header after a separately authorized deployment. Do not print visitor log contents to prove logging behavior.
-- Confirm the email-retention choice, forwarding service, processor arrangements, and relevant account/audit retention. Apply any mailbox procedure manually until an authorized mechanism exists.
+- Confirm the forwarding service, processor arrangements, and relevant account/audit retention. Apply the adopted support-email procedure manually; no mailbox timer or cleanup automation is installed by this PR.
 - Make sure public copy matches the deployed configuration and adopted practices. Do not remove draft labels by treating this procedure as final copy approval or legal clearance.
 - Keep the separately accepted Cineplex and Cinémathèque risks settled. An affiliation disclaimer and source credit do not create downstream content rights.
 - Keep [#410](https://github.com/ArnaudJalbert/marquise/issues/410) separate. The current metadata patch contract preserves `None` values and lacks per-field provenance; expiry must not erase cinema-supplied values or pretend failed refreshes made old values fresh.

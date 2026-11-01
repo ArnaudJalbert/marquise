@@ -320,6 +320,12 @@ function Privacy() {
         Gmail is provided by Google. See{" "}
         <a href="https://policies.google.com/privacy">Google&apos;s privacy policy</a>.
       </p>
+      <p>
+        We delete support messages from the mailbox when they are no longer
+        needed to handle your request, an ongoing dispute, or a legal
+        obligation. There is no fixed retention period. Provider deletion
+        and backup practices also apply.
+      </p>
       <h2>Privacy questions and requests</h2>
       <p>
         Arnaud Jalbert is responsible for the protection of personal

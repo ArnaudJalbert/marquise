@@ -24,7 +24,7 @@ This research does not reopen that decision. A separate source's restrictions or
 
 After reading the findings, Arnaud explicitly chose to keep Cinémathèque and accept its separate collection/reuse risk. This settles that source decision without claiming permission or changing the underlying terms.
 
-Arnaud also explained that the contact alias uses a Squarespace-managed domain and forwards to his personal Gmail inbox. Gmail is confirmed; the actual forwarding service, processing locations, and adopted email-retention rule remain unverified. A separate retention question is pending.
+Arnaud also explained that the contact alias uses a Squarespace-managed domain and forwards to his personal Gmail inbox. He adopted deletion of support messages when no longer needed, without a fixed retention period. The actual forwarding service and its processing locations remain unverified. The [operating procedure](../privacy-operations.md) specifies manual review and deletion; this work has not accessed or cleaned the mailbox.
 
 ## Implementation update
 
