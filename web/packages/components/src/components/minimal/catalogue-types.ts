@@ -20,6 +20,8 @@ export interface CatalogueMovie {
   year?: number;
   director?: string;
   runtime?: number;
+  tmdbRating?: number | null;
+  tmdbVoteCount?: number | null;
   synopsis?: string;
   screenings: readonly CatalogueScreening[];
 }

@@ -13,7 +13,7 @@ export type {
   CatalogueState,
   MinimalCatalogueProps,
 } from "./catalogue-types";
-import { timeToHour, formatHour, decodePathId } from "./catalogue-format";
+import { formatScore, timeToHour, formatHour, decodePathId } from "./catalogue-format";
 import { MovieSchedule } from "./MovieSchedule";
 import { Showtime } from "./Showtime";
 import "./minimal.css";
@@ -577,6 +577,7 @@ export function MinimalCatalogue({
                       movie.year,
                       movie.director,
                       movie.runtime ? `${movie.runtime} min` : undefined,
+                      formatScore(movie.tmdbRating),
                     ]
                       .filter(Boolean)
                       .join(" · ") || "Movie metadata unavailable"}

@@ -240,6 +240,8 @@ export class HttpMarquiseClient
     return {
       id: movie.id,
       title: movie.title,
+      tmdbRating: movie.tmdb_rating ?? null,
+      tmdbVoteCount: movie.tmdb_vote_count ?? null,
       posterUrl: posterRenditionUrl(movie.poster_url),
       releaseYear: movie.release_year,
       durationMinutes: movie.duration_minutes,

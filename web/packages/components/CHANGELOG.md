@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-01
+
+- Carry TMDB scores and vote counts for film detail metadata.
+
+
 ## 2026-10-31
 
 - Preserve appended cinema results on Back and exclude already-started screenings from movie schedule requests. Remove redundant schedule state and date-window checks.
