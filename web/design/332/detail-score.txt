@@ -88,7 +88,7 @@ Cinéma Moderne
 12:30 VOF16:00 VOSTF19:30 VOSTA
 Cinéma Beaubien
 13:00 VOSTF16:30 VOSTA20:00 VF
-Sample state 
+Sample state
 ready
 initial-loading
 loading-more
