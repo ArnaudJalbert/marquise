@@ -745,8 +745,15 @@
 .minimal-email {
   font-size: 16px;
 }
-.minimal-placeholder-text {
-  color: #555;
+.minimal-tmdb-credit {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+.minimal-tmdb-logo {
+  display: block;
+  width: 100px;
+  height: auto;
 }
 .minimal-skip {
   position: absolute;

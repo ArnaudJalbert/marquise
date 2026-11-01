@@ -811,31 +811,60 @@ it.each([
   for (const read of Object.values(client)) expect(read).not.toHaveBeenCalled();
 });
 
-it("shows the contact address and labels draft content and policy placeholders", () => {
+it("shows the approved contact address and keeps policy drafts clearly labelled", () => {
   history.replaceState(null, "", "/contact");
   const { unmount } = render(<App client={clients()} />);
   expect(
     screen.getByRole("link", { name: "me@arnaudjalbert.com" }).getAttribute("href"),
   ).toBe("mailto:me@arnaudjalbert.com");
-  expect(screen.getByRole("note").textContent).toMatch(/Draft copy/);
+  expect(screen.queryByRole("note")).toBeNull();
   expect(screen.getByText(/booking/i, { selector: "h2" })).toBeTruthy();
   unmount();
 
   history.replaceState(null, "", "/about");
   const about = render(<App client={clients()} />);
-  expect(screen.getAllByRole("note").map((note) => note.textContent)).toEqual([
-    expect.stringMatching(/Draft copy/),
-    expect.stringMatching(/^Unconfirmed attribution/),
-  ]);
+  expect(screen.getByRole("note").textContent).toMatch(/Draft copy for review/);
+  expect(screen.getByText(/not officially affiliated with Cineplex, TMDB/)).toBeTruthy();
+  expect(screen.getByRole("main").textContent).not.toMatch(/public website|ticketing pages|API key/);
+  expect(screen.getByText(/not endorsed, certified, or otherwise approved by TMDB/)).toBeTruthy();
+  expect(screen.getByRole("link", { name: "Cinemas page" }).getAttribute("href")).toBe("/cinemas");
+  const logo = screen.getByRole("img", { name: "The Movie Database (TMDB)" });
+  expect(logo.closest("a")?.getAttribute("href")).toBe("https://www.themoviedb.org");
+  expect(logo.getAttribute("src")).not.toMatch(/^https?:/);
   about.unmount();
 
   for (const path of ["/terms", "/privacy"]) {
     history.replaceState(null, "", path);
     const policy = render(<App client={clients()} />);
     expect(screen.getByRole("note").textContent).toMatch(
-      /^Draft placeholder\. This is not a published policy/,
+      /^Draft for review\..*not been approved for publication/,
     );
+    expect(screen.queryByText(/Placeholder paragraph/)).toBeNull();
     policy.unmount();
+  }
+});
+
+it("explains public API use without granting third-party content rights", () => {
+  history.replaceState(null, "", "/terms");
+  render(<App client={clients()} />);
+  expect(screen.getByRole("heading", { name: "Public API" })).toBeTruthy();
+  expect(screen.getByText(/intended for independent applications/)).toBeTruthy();
+  expect(screen.getByText(/does not grant permission to reuse third-party material/)).toBeTruthy();
+  expect(screen.getByText(/not officially affiliated with Cineplex, TMDB/)).toBeTruthy();
+  expect(screen.getByRole("link", { name: "source credits" }).getAttribute("href")).toBe("/about");
+});
+
+it("discloses server logs, editor records, forwarded email, and the privacy contact", () => {
+  history.replaceState(null, "", "/privacy");
+  render(<App client={clients()} />);
+  expect(screen.getByText(/Server logs can include client addresses/)).toBeTruthy();
+  expect(screen.getByText(/separate request-completion log/)).toBeTruthy();
+  expect(screen.getByText(/outside Québec/)).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Authorized editors" })).toBeTruthy();
+  expect(screen.getByText(/personal inbox/)).toBeTruthy();
+  expect(screen.getByText(/Arnaud Jalbert is responsible/)).toBeTruthy();
+  for (const contact of screen.getAllByRole("link", { name: "me@arnaudjalbert.com" })) {
+    expect(contact.getAttribute("href")).toBe("mailto:me@arnaudjalbert.com");
   }
 });
 
