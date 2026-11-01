@@ -11,10 +11,7 @@ from marquise.application.queries.fetch_screenings_from_source import (
 from marquise.application.use_cases.create_missing_movies import (
     CreateMissingMoviesCommand,
 )
-from marquise.application.use_cases.create_screenings import (
-    CreateScreeningsCommand,
-    ImportedScreeningData,
-)
+from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 
 
 class ImportScreeningsCommand:
@@ -33,11 +30,27 @@ class ImportScreeningsCommand:
                 raise ValueError("start_date must not be after end_date")
 
     @dataclass(frozen=True, slots=True)
+    class ScreeningData:
+        """Summary of a single imported or already-existing screening.
+
+        Attributes:
+            movie_title: The title of the movie.
+            showtime: The showtime in ISO format.
+            imported: True if newly created.
+            rescheduled: True if an existing screening moved to a new showtime.
+        """
+
+        movie_title: str
+        showtime: str
+        imported: bool
+        rescheduled: bool = False
+
+    @dataclass(frozen=True, slots=True)
     class OutputData:
         cinema_id: str
         cinema_name: str
         source_name: str
-        screenings: tuple[ImportedScreeningData, ...]
+        screenings: tuple[ImportScreeningsCommand.ScreeningData, ...]
         total_count: int
         imported_count: int
         updated_count: int
@@ -117,7 +130,15 @@ class ImportScreeningsCommand:
             cinema_id=fetched.cinema_id,
             cinema_name=fetched.cinema_name,
             source_name=fetched.source_name,
-            screenings=screenings.screenings,
+            screenings=tuple(
+                self.ScreeningData(
+                    movie_title=item.movie_title,
+                    showtime=item.showtime,
+                    imported=item.imported,
+                    rescheduled=item.rescheduled,
+                )
+                for item in screenings.screenings
+            ),
             total_count=screenings.total_count,
             imported_count=screenings.imported_count,
             updated_count=screenings.updated_count,
