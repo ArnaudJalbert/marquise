@@ -450,3 +450,9 @@ it("loads the complete schedule when the movie has cached preview screenings", a
   expect(loadWeek).toHaveBeenCalledTimes(2);
   expect(screen.queryByText("18:00")).not.toBeInTheDocument();
 });
+
+it.each([8.1, null])("renders detail score only when present: %s", (score) => {
+  render(<MinimalCatalogue {...props} movies={[{...movie, tmdbRating: score}]} catalogueMovies={[{...movie, tmdbRating: score}]} href="/movies/film" />);
+  if (score === null) expect(screen.queryByText(/8.1\/10/)).not.toBeInTheDocument();
+  else expect(screen.getByText(/8.1\/10/)).toBeInTheDocument();
+});
