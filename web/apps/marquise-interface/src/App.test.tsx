@@ -857,11 +857,13 @@ it("explains public API use without granting third-party content rights", () => 
 it("discloses server logs, editor records, forwarded email, and the privacy contact", () => {
   history.replaceState(null, "", "/privacy");
   render(<App client={clients()} />);
-  expect(screen.getByText(/Server logs can include client addresses/)).toBeTruthy();
+  expect(screen.getByText(/Routine web-server access logs are disabled/)).toBeTruthy();
   expect(screen.getByText(/separate request-completion log/)).toBeTruthy();
+  expect(screen.getByRole("link", { name: "published logging policy" }).getAttribute("href")).toBe("https://fly.io/legal/security-questionnaire/");
   expect(screen.getByText(/outside Québec/)).toBeTruthy();
   expect(screen.getByRole("heading", { name: "Authorized editors" })).toBeTruthy();
-  expect(screen.getByText(/personal inbox/)).toBeTruthy();
+  expect(screen.getByText(/personal Gmail inbox/)).toBeTruthy();
+  expect(screen.getByRole("link", { name: "Google's privacy policy" }).getAttribute("href")).toBe("https://policies.google.com/privacy");
   expect(screen.getByText(/Arnaud Jalbert is responsible/)).toBeTruthy();
   for (const contact of screen.getAllByRole("link", { name: "me@arnaudjalbert.com" })) {
     expect(contact.getAttribute("href")).toBe("mailto:me@arnaudjalbert.com");

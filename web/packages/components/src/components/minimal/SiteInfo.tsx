@@ -237,6 +237,12 @@ function Terms() {
         source terms and attribution requirements before reusing content.
         See the <a href="/about">source credits</a>.
       </p>
+      <p>
+        A license for Marquise&apos;s source code applies to the code, not
+        automatically to API content. Reusing showtime facts is different
+        from reusing descriptions and images. Nothing here restricts reuse
+        rights you already have under applicable law.
+      </p>
       <h2>Availability and your rights</h2>
       <p>
         The website and API are provided as available, without a guarantee of
@@ -271,8 +277,9 @@ function Privacy() {
       <p>
         Web servers and our hosting provider, Fly.io, process connection and
         request information to deliver, protect, and troubleshoot the service.
-        Server logs can include client addresses, requested paths and query
-        strings, response status, timestamps, referrers, and browser information.
+        Routine web-server access logs are disabled. Operational and error
+        logs may still contain client addresses, requested paths, timestamps,
+        and error details.
       </p>
       <p>
         The API also records request identifiers and response times. Its
@@ -281,7 +288,9 @@ function Privacy() {
         available to the API to limit excessive requests.
       </p>
       <p>
-        Service providers may process information outside Québec. See{" "}
+        Fly.io retains application output logs for seven days under its{" "}
+        <a href="https://fly.io/legal/security-questionnaire/">published logging policy</a>.
+        Hosting and email providers may process information outside Québec. See{" "}
         <a href="https://fly.io/legal/privacy-policy/">Fly.io&apos;s privacy statement</a>.
       </p>
       <h2>External images and links</h2>
@@ -303,9 +312,13 @@ function Privacy() {
         If you email <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>,
         your address and message are used to respond to your request and
         address reported problems. The contact address forwards to Arnaud
-        Jalbert&apos;s personal inbox. The services forwarding, delivering,
+        Jalbert&apos;s personal Gmail inbox. The services forwarding, delivering,
         and storing the message also process it. Please do not send sensitive
         information that is unnecessary for your request.
+      </p>
+      <p>
+        Gmail is provided by Google. See{" "}
+        <a href="https://policies.google.com/privacy">Google&apos;s privacy policy</a>.
       </p>
       <h2>Privacy questions and requests</h2>
       <p>

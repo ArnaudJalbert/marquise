@@ -3,6 +3,7 @@
 ## 2026-11-01
 
 - Replace Terms and Privacy layout placeholders with review drafts; clarify source non-affiliation, TMDB credits, public API reuse, server logging, and the privacy contact.
+- Explain the seven-day hosting-log retention and Gmail delivery; distinguish code licensing from API content rights.
 
 - Carry TMDB scores and vote counts for film detail metadata.
 

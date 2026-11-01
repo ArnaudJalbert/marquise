@@ -24,7 +24,15 @@ This research does not reopen that decision. A separate source's restrictions or
 
 After reading the findings, Arnaud explicitly chose to keep Cinémathèque and accept its separate collection/reuse risk. This settles that source decision without claiming permission or changing the underlying terms.
 
-Arnaud also explained that the contact alias uses a Squarespace-managed domain and forwards to his personal email. The actual forwarding/mailbox services, their processing locations, and retention settings were not established by that description. No support-email or server-log retention periods were supplied.
+Arnaud also explained that the contact alias uses a Squarespace-managed domain and forwards to his personal Gmail inbox. Gmail is confirmed; the actual forwarding service, processing locations, and adopted email-retention rule remain unverified. A separate retention question is pending.
+
+## Implementation update
+
+Arnaud subsequently requested implementation of the remaining measures. The policy branch now disables routine Nginx/Uvicorn access logging, sets a no-referrer policy, adds reuse/non-affiliation guidance and policy links to the API reference, and includes the [privacy operating procedure and Québec scope assessment](../privacy-operations.md). These configuration changes have not been deployed. Public pages remain review drafts.
+
+Read-only Fly inspection confirmed `yyz` Machines and no custom command overrides; it did not read visitor logs or prove container-level settings. Fly's current questionnaire corrects the earlier platform-IP assumption: application output has seven-day retention, while its own proxy log store does not retain inbound client IPs. Application/error output must be considered separately. [Fly questionnaire, COMPLIANCE-12](https://fly.io/legal/security-questionnaire/).
+
+Arnaud chose assessment before adding French. The documented assessment identifies the unresolved economic-activity test rather than declaring the hobby exempt or requiring a French interface without establishing scope. No regulator inquiry has been sent. #410 remains a separate backend task; safe expiry needs to address preservation semantics and source provenance.
 
 Arnaud clarified in this research conversation on 2026-11-01 that Marquise is a personal hobby, with no business or organization, and that the public API is intended for independent public use. These are supplied operating facts, not a legal determination of enterprise status or a grant of third-party content rights.
 
@@ -36,7 +44,7 @@ Arnaud clarified in this research conversation on 2026-11-01 that Marquise is a 
 
 The frontend uses an official Nginx image and replaces its server configuration without overriding inherited access logging. Nginx's default combined format includes remote address, request, referrer, and user agent; the official image directs logs to stdout/stderr. That is additional server processing, beyond Fly's own processing. Runtime overrides could change it. [Frontend Dockerfile](https://github.com/ArnaudJalbert/marquise/blob/f80ba0edff2790546668dd65cc1ef1a6d9784e8d/web/apps/marquise-interface/Dockerfile), [Server configuration](https://github.com/ArnaudJalbert/marquise/blob/f80ba0edff2790546668dd65cc1ef1a6d9784e8d/web/apps/marquise-interface/nginx.conf), [Nginx logging defaults](https://nginx.org/en/docs/http/ngx_http_log_module.html), [Official image logging](https://docs.nginx.com/nginx/admin-guide/installing-nginx/installing-nginx-docker/).
 
-**Action.** Inventory application, access, exception, platform, and exported logs independently. Confirm formats, destinations, access, retention, and deletion. Either accurately disclose retained fields or deliberately minimize them. Keep #415's narrowly qualified completion-log statement; do not broaden it to "Marquise does not log IPs or queries."
+**Action.** The proposed configuration now disables routine access logs. Verify this after deployment and finish the exception/export inventory. Keep #415's narrowly qualified completion-log statement; do not broaden it to "Marquise does not log IPs or queries."
 
 ### An API client address may identify a proxy
 
@@ -167,7 +175,7 @@ Arnaud confirmed that independent public use is intended. This makes downstream 
 ## Remaining facts to establish
 
 - Which human editors/administrators have accounts, and which auth/audit features are live?
-- Which database, Auth project, mailbox and alias-routing services, log destinations, backup arrangements, processing regions, and provider agreements are active?
+- Which database, Auth project, alias-routing service, log destinations, backup arrangements, processing regions, and provider agreements are active? Gmail is confirmed as the destination mailbox.
 - What retention, deletion, request-handling, incident, and privacy-assessment procedures already exist?
 - Are there permissions or agreements for cinema descriptions/images and Cinémathèque access that were not available to this research?
 
