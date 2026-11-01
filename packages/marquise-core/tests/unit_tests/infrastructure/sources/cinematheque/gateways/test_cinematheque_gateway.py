@@ -195,6 +195,15 @@ def test_parse_movie_data_skips_films_without_title() -> None:
     assert _parse_movie_data(movie_data, "2026-07-09") == []
 
 
+def test_parse_movie_data_unescapes_html_entities_in_title() -> None:
+    """An entity-encoded title is decoded before it reaches the movie row."""
+    movie_data = {"123": _film("123", "L&apos;aile ou de la cuisse (VOF)")}
+
+    rows = _parse_movie_data(movie_data, "2026-07-09")
+
+    assert rows[0]["movie_title"] == "L'aile ou de la cuisse (VOF)"
+
+
 @pytest.mark.asyncio
 async def test_fetch_showtimes_combines_today_and_future_dates() -> None:
     """Today's page bootstraps the date list; other in-range dates are fetched."""
