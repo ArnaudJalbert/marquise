@@ -22,6 +22,8 @@ async def test_get_movie_returns_movie() -> None:
         title="The Odyssey",
         release_year=2026,
         directors=("Jane Director",),
+        tmdb_rating=8.1,
+        tmdb_vote_count=1234,
     )
 
     use_case = GetMovieUseCase(movie_repository=mock_repo)
@@ -30,6 +32,7 @@ async def test_get_movie_returns_movie() -> None:
     assert result.id == "mov-1"
     assert result.title == "The Odyssey"
     assert result.directors == ("Jane Director",)
+    assert result.tmdb_rating == 8.1 and result.tmdb_vote_count == 1234
     mock_repo.find_by_id.assert_awaited_once()
 
 

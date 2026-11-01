@@ -32,6 +32,8 @@ def sample_movie() -> Movie:
         original_title="Inception",
         rating="PG-13",
         origin_countries=("United States", "United Kingdom"),
+        tmdb_rating=8.1,
+        tmdb_vote_count=1234,
     )
 
 
@@ -52,6 +54,8 @@ def gateway_dict() -> dict:
         "original_title": "Inception",
         "rating": "PG-13",
         "origin_countries": "United States,United Kingdom",
+        "tmdb_rating": 8.1,
+        "tmdb_vote_count": 1234,
     }
 
 
@@ -74,6 +78,8 @@ async def test_save(sample_movie: Movie, update_existing: bool) -> None:
         "original_title": "Inception",
         "rating": "PG-13",
         "origin_countries": "United States,United Kingdom",
+        "tmdb_rating": 8.1,
+        "tmdb_vote_count": 1234,
     }
 
     repo = SupabaseMovieRepository(gateway=mock_gateway)
@@ -87,6 +93,7 @@ async def test_save(sample_movie: Movie, update_existing: bool) -> None:
     assert result.duration_minutes == 148
     assert result.poster_url == "https://example.com/poster.jpg"
     assert result.genres == ("Sci-Fi", "Action")
+    assert result.tmdb_rating == 8.1 and result.tmdb_vote_count == 1234
     mock_gateway.save.assert_awaited_once_with(
         movie_id="mov-123",
         title="Inception",
@@ -102,6 +109,8 @@ async def test_save(sample_movie: Movie, update_existing: bool) -> None:
         rating="PG-13",
         origin_countries="United States,United Kingdom",
         tmdb_id=None,
+        tmdb_rating=8.1,
+        tmdb_vote_count=1234,
         update_existing=update_existing,
     )
 
@@ -260,6 +269,8 @@ async def test_save_handles_minimal_movie() -> None:
         rating=None,
         origin_countries=None,
         tmdb_id=None,
+        tmdb_rating=None,
+        tmdb_vote_count=None,
         update_existing=True,
     )
 
@@ -314,6 +325,8 @@ async def test_save_handles_none_fields() -> None:
         rating=None,
         origin_countries=None,
         tmdb_id=None,
+        tmdb_rating=None,
+        tmdb_vote_count=None,
         update_existing=True,
     )
 

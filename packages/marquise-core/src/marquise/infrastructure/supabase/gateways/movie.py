@@ -15,7 +15,7 @@ DEFAULT_SCHEMA = "marquise"
 _COLUMNS = (
     "id, title, release_year, directors, cast_members, duration_minutes, description,"
     " poster_url, trailer_url, genres, original_title, rating,"
-    " origin_countries, tmdb_id"
+    " origin_countries, tmdb_id, tmdb_rating, tmdb_vote_count"
 )
 
 
@@ -48,6 +48,8 @@ class SupabaseMovieGateway:
         rating: str | None = None,
         origin_countries: str | None = None,
         tmdb_id: str | None = None,
+        tmdb_rating: float | None = None,
+        tmdb_vote_count: int | None = None,
         *,
         update_existing: bool = True,
     ) -> dict:
@@ -70,6 +72,8 @@ class SupabaseMovieGateway:
             rating: Content rating (optional).
             origin_countries: Comma-separated origin countries (optional).
             tmdb_id: Known TMDB identity, if any.
+            tmdb_rating: TMDB user score, if fetched.
+            tmdb_vote_count: TMDB vote count, if fetched.
             update_existing: Update matching titles, or return them unchanged.
 
         Returns:
@@ -85,8 +89,10 @@ class SupabaseMovieGateway:
                 INSERT INTO {self._table}
                     (id, title, release_year, directors, cast_members,
                      duration_minutes, description, poster_url, trailer_url,
-                     genres, original_title, rating, origin_countries, tmdb_id)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+                     genres, original_title, rating, origin_countries, tmdb_id,
+                     tmdb_rating, tmdb_vote_count)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8,
+                        $9, $10, $11, $12, $13, $14, $15, $16)
                 ON CONFLICT (title) DO UPDATE
                     SET release_year = COALESCE(EXCLUDED.release_year,
                                                 movies.release_year),
@@ -110,8 +116,12 @@ class SupabaseMovieGateway:
                                           movies.rating),
                         origin_countries = COALESCE(EXCLUDED.origin_countries,
                                                     movies.origin_countries),
-                        tmdb_id = COALESCE(EXCLUDED.tmdb_id, movies.tmdb_id)
-                WHERE $15 AND (movies.tmdb_id IS NULL OR EXCLUDED.tmdb_id IS NULL
+                        tmdb_id = COALESCE(EXCLUDED.tmdb_id, movies.tmdb_id),
+                        tmdb_rating = COALESCE(EXCLUDED.tmdb_rating,
+                                               movies.tmdb_rating),
+                        tmdb_vote_count = COALESCE(EXCLUDED.tmdb_vote_count,
+                                                   movies.tmdb_vote_count)
+                WHERE $17 AND (movies.tmdb_id IS NULL OR EXCLUDED.tmdb_id IS NULL
                     OR movies.tmdb_id = EXCLUDED.tmdb_id)
                 RETURNING {_COLUMNS}
                 """,
@@ -129,6 +139,8 @@ class SupabaseMovieGateway:
                     rating,
                     origin_countries,
                     tmdb_id,
+                    tmdb_rating,
+                    tmdb_vote_count,
                     update_existing,
                 )
         except UniqueViolationError as exc:

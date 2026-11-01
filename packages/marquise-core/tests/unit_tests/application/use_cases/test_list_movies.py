@@ -129,6 +129,8 @@ async def test_list_movies_maps_all_fields_correctly() -> None:
                 original_title="Le Film Complet",
                 rating="13+",
                 origin_countries=("Canada",),
+                tmdb_rating=8.1,
+                tmdb_vote_count=1234,
             ),
         ],
         total=1,
@@ -153,6 +155,7 @@ async def test_list_movies_maps_all_fields_correctly() -> None:
     assert movie.original_title == "Le Film Complet"
     assert movie.rating == "13+"
     assert movie.origin_countries == ("Canada",)
+    assert movie.tmdb_rating == 8.1 and movie.tmdb_vote_count == 1234
 
 
 @pytest.mark.asyncio
@@ -183,6 +186,7 @@ async def test_list_movies_maps_optional_none_fields() -> None:
     assert movie.original_title is None
     assert movie.rating is None
     assert movie.origin_countries is None
+    assert movie.tmdb_rating is None and movie.tmdb_vote_count is None
 
 
 @pytest.mark.asyncio
