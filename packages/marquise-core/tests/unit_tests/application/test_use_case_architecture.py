@@ -22,16 +22,42 @@ USE_CASE_PACKAGES = ("use_cases", "queries")
 ALLOWLIST = {
     "use_cases/create_screenings.py: CreateScreeningsCommand contract uses "
     "module-level ImportedScreeningData",
+    "use_cases/create_missing_movies.py: imports EnrichMovieInputData from "
+    "shared use case module marquise.application.movie_workflows",
+    "use_cases/create_missing_movies.py: imports MatchMovieInputData from "
+    "shared use case module marquise.application.movie_workflows",
+    "use_cases/enrich_movie.py: imports EnrichMovieInputData from shared use case "
+    "module marquise.application.movie_workflows",
+    "use_cases/enrich_movie.py: imports EnrichMovieOutputData from shared use "
+    "case module marquise.application.movie_workflows",
     "use_cases/enrich_movie.py: EnrichMovieUseCase has no nested InputData",
     "use_cases/enrich_movie.py: EnrichMovieUseCase has no nested OutputData",
     "use_cases/import_screenings.py: imports ImportedScreeningData from "
     "use case module marquise.application.use_cases.create_screenings",
     "use_cases/match_movie.py: MatchMovieUseCase has no nested InputData",
     "use_cases/match_movie.py: MatchMovieUseCase has no nested OutputData",
+    "use_cases/match_movie.py: imports MatchMovieInputData from shared use case "
+    "module marquise.application.movie_workflows",
+    "use_cases/match_movie.py: imports MatchMovieOutputData from shared use case "
+    "module marquise.application.movie_workflows",
     "use_cases/merge_movies.py: MergeMoviesUseCase has no nested InputData",
     "use_cases/merge_movies.py: MergeMoviesUseCase has no nested OutputData",
+    "use_cases/merge_movies.py: imports MatchMovieInputData from shared use case "
+    "module marquise.application.movie_workflows",
+    "use_cases/merge_movies.py: imports MergeMoviesInputData from shared use "
+    "case module marquise.application.movie_workflows",
+    "use_cases/merge_movies.py: imports MergeMoviesOutputData from shared use "
+    "case module marquise.application.movie_workflows",
     "use_cases/refresh_movies.py: RefreshMoviesUseCase has no nested InputData",
     "use_cases/refresh_movies.py: RefreshMoviesUseCase has no nested OutputData",
+    "use_cases/refresh_movies.py: imports EnrichMovieInputData from shared use case "
+    "module marquise.application.movie_workflows",
+    "use_cases/refresh_movies.py: imports EnrichMovieOutputData from shared use "
+    "case module marquise.application.movie_workflows",
+    "use_cases/refresh_movies.py: imports RefreshMoviesInputData from shared use "
+    "case module marquise.application.movie_workflows",
+    "use_cases/refresh_movies.py: imports RefreshMoviesOutputData from shared use "
+    "case module marquise.application.movie_workflows",
     "use_cases/refresh_movies.py: imports _enrich from use case module "
     "marquise.application.use_cases.enrich_movie",
     "use_cases/write_screening.py: WriteScreeningUseCase contract uses "
@@ -75,7 +101,7 @@ def _use_case_classes(tree: ast.Module) -> list[ast.ClassDef]:
 
 
 def _contract_annotations(cls: ast.ClassDef) -> list[ast.expr]:
-    """Collect field annotations of every class nested in a use case."""
+    """Collect nested contract fields and execute signature annotations."""
     annotations: list[ast.expr] = []
     for item in cls.body:
         if isinstance(item, ast.ClassDef):
@@ -83,7 +109,50 @@ def _contract_annotations(cls: ast.ClassDef) -> list[ast.expr]:
                 node.annotation for node in item.body if isinstance(node, ast.AnnAssign)
             ]
             annotations += _contract_annotations(item)
+        elif (
+            isinstance(item, ast.FunctionDef | ast.AsyncFunctionDef)
+            and item.name == "execute"
+        ):
+            annotations += [
+                arg.annotation
+                for arg in [
+                    *item.args.posonlyargs,
+                    *item.args.args,
+                    *item.args.kwonlyargs,
+                ]
+                if arg.arg != "self" and arg.annotation is not None
+            ]
+            if item.returns is not None:
+                annotations.append(item.returns)
     return annotations
+
+
+def _resolve_import_module(rel: str, node: ast.ImportFrom) -> str | None:
+    """Resolve an absolute or relative import from a scanned module."""
+    if node.level == 0:
+        return node.module
+    module_parts = ["marquise", "application", *Path(rel).with_suffix("").parts]
+    package_parts = module_parts[:-1]
+    package_parts = package_parts[: len(package_parts) - node.level + 1]
+    if node.module:
+        package_parts.extend(node.module.split("."))
+    return ".".join(package_parts)
+
+
+def _uses_nested_type(
+    annotation: ast.expr | None, cls: ast.ClassDef, name: str
+) -> bool:
+    """Return whether an annotation names this use case's nested type."""
+    return (
+        isinstance(annotation, ast.Name)
+        and annotation.id == name
+        or (
+            isinstance(annotation, ast.Attribute)
+            and annotation.attr == name
+            and isinstance(annotation.value, ast.Name)
+            and annotation.value.id == cls.name
+        )
+    )
 
 
 def find_violations(root: Path) -> set[str]:
@@ -100,6 +169,7 @@ def find_violations(root: Path) -> set[str]:
         name: {cls.name for cls in _use_case_classes(tree)}
         for name, (_, tree) in modules.items()
     }
+    all_use_case_names = set().union(*use_case_names.values())
     violations: set[str] = set()
     for rel, tree in modules.values():
         module_classes = {
@@ -107,21 +177,67 @@ def find_violations(root: Path) -> set[str]:
         }
         foreign_use_cases: set[str] = set()
         for node in ast.walk(tree):
-            if not isinstance(node, ast.ImportFrom) or node.module not in modules:
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    if any(
+                        alias.name.startswith(f"marquise.application.{package}.")
+                        for package in USE_CASE_PACKAGES
+                    ):
+                        violations.add(f"{rel}: imports use case module {alias.name}")
                 continue
+            if not isinstance(node, ast.ImportFrom):
+                continue
+            module = _resolve_import_module(rel, node)
+            if module is None:
+                continue
+            is_use_case_module = module in modules or module in {
+                f"marquise.application.{package}" for package in USE_CASE_PACKAGES
+            }
             for alias in node.names:
-                if alias.name in use_case_names[node.module]:
+                if is_use_case_module and alias.name in use_case_names.get(
+                    module, all_use_case_names
+                ):
                     foreign_use_cases.add(alias.asname or alias.name)
-                else:
+                elif is_use_case_module:
                     violations.add(
-                        f"{rel}: imports {alias.name} from use case module "
-                        f"{node.module}"
+                        f"{rel}: imports {alias.name} from use case module {module}"
+                    )
+                elif module.endswith(".movie_workflows") and alias.name.endswith(
+                    ("InputData", "OutputData")
+                ):
+                    violations.add(
+                        f"{rel}: imports {alias.name} from shared use case module "
+                        f"{module}"
                     )
         for cls in _use_case_classes(tree):
             nested = {item.name for item in cls.body if isinstance(item, ast.ClassDef)}
+            execute = next(
+                item
+                for item in cls.body
+                if isinstance(item, ast.FunctionDef | ast.AsyncFunctionDef)
+                and item.name == "execute"
+            )
             for kind in ("InputData", "OutputData"):
                 if kind not in nested:
                     violations.add(f"{rel}: {cls.name} has no nested {kind}")
+            if "InputData" in nested and not any(
+                arg.arg != "self"
+                and _uses_nested_type(arg.annotation, cls, "InputData")
+                for arg in [
+                    *execute.args.posonlyargs,
+                    *execute.args.args,
+                    *execute.args.kwonlyargs,
+                ]
+            ):
+                violations.add(
+                    f"{rel}: {cls.name} execute does not use its nested InputData"
+                )
+            if "OutputData" in nested and not _uses_nested_type(
+                execute.returns, cls, "OutputData"
+            ):
+                violations.add(
+                    f"{rel}: {cls.name} execute does not use its nested OutputData"
+                )
             for annotation in _contract_annotations(cls):
                 for node in ast.walk(annotation):
                     if (
@@ -174,34 +290,105 @@ def test_guard_flags_shared_and_cross_use_case_types(tmp_path: Path) -> None:
 
             class FirstUseCase:
                 class InputData:
-                    rows: list[Row]
+                    rows: list[str]
 
                 class OutputData:
                     pass
 
-                async def execute(self, input_data: InputData) -> OutputData: ...
+                async def execute(self, input_data: Row) -> OutputData: ...
             """),
         encoding="utf-8",
     )
     (use_cases / "second.py").write_text(
         textwrap.dedent("""\
-            from marquise.application.use_cases.first import FirstUseCase, Row
+            from dataclasses import dataclass
+            from marquise.application.use_cases.first import (
+                FirstUseCase,
+                Row as ImportedRow,
+            )
+
+            @dataclass
+            class Row:
+                value: str
 
             class SecondUseCase:
                 class InputData:
                     inner: FirstUseCase.InputData
 
+                class OutputData:
+                    value: str
+
                 async def execute(self, input_data: Row) -> Row: ...
+            """),
+        encoding="utf-8",
+    )
+    (use_cases / "third.py").write_text(
+        textwrap.dedent("""\
+            from marquise.application.movie_workflows import SharedInputData
+
+            class ThirdUseCase:
+                class InputData:
+                    value: str
+
+                class OutputData:
+                    value: str
+
+                async def execute(
+                    self, input_data: InputData
+                ) -> OutputData: ...
+            """),
+        encoding="utf-8",
+    )
+    (use_cases / "fourth.py").write_text(
+        textwrap.dedent("""\
+            from marquise.application.use_cases import FirstUseCase, SharedData
+
+            class FourthUseCase:
+                class InputData:
+                    value: str
+
+                class OutputData:
+                    value: str
+
+                async def execute(
+                    self, input_data: InputData
+                ) -> OutputData: ...
+            """),
+        encoding="utf-8",
+    )
+    (use_cases / "fifth.py").write_text(
+        textwrap.dedent("""\
+            import marquise.application.use_cases.first as first
+
+            class FifthUseCase:
+                class InputData:
+                    value: str
+
+                class OutputData:
+                    value: str
+
+                async def execute(
+                    self, input_data: InputData
+                ) -> OutputData: ...
             """),
         encoding="utf-8",
     )
 
     assert find_violations(tmp_path) == {
         "use_cases/first.py: FirstUseCase contract uses module-level Row",
+        "use_cases/first.py: FirstUseCase execute does not use its nested InputData",
+        "use_cases/fifth.py: imports use case module "
+        "marquise.application.use_cases.first",
+        "use_cases/fourth.py: imports SharedData from use case module "
+        "marquise.application.use_cases",
         "use_cases/second.py: imports Row from use case module "
         "marquise.application.use_cases.first",
         "use_cases/second.py: SecondUseCase contract uses FirstUseCase.InputData",
-        "use_cases/second.py: SecondUseCase has no nested OutputData",
+        "use_cases/second.py: SecondUseCase contract uses module-level Row",
+        "use_cases/second.py: SecondUseCase execute does not use its nested InputData",
+        "use_cases/second.py: SecondUseCase execute does not use its nested OutputData",
+        "use_cases/third.py: imports SharedInputData from shared use case module "
+        "marquise.application.movie_workflows",
     }
 
 
