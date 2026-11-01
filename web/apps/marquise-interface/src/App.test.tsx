@@ -815,8 +815,8 @@ it("shows the contact address and labels draft content and policy placeholders",
   history.replaceState(null, "", "/contact");
   const { unmount } = render(<App client={clients()} />);
   expect(
-    screen.getByRole("link", { name: "arno.jalbert@gmail.com" }).getAttribute("href"),
-  ).toBe("mailto:arno.jalbert@gmail.com");
+    screen.getByRole("link", { name: "me@arnaudjalbert.com" }).getAttribute("href"),
+  ).toBe("mailto:me@arnaudjalbert.com");
   expect(screen.getByRole("note").textContent).toMatch(/Draft copy/);
   expect(screen.getByText(/booking/i, { selector: "h2" })).toBeTruthy();
   unmount();

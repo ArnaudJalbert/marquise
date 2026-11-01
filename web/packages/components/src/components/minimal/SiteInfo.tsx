@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 const API_DOCS_URL = "https://marquise-api.fly.dev/docs";
 // Public contact address approved by Arnaud for #402.
-const CONTACT_EMAIL = "arno.jalbert@gmail.com";
+const CONTACT_EMAIL = "me@arnaudjalbert.com";
 
 /** One destination list feeds both the header Info menu and the footer. */
 const destinations = [
