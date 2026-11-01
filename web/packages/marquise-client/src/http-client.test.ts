@@ -372,6 +372,8 @@ describe("HttpMarquiseClient grid", () => {
       release_year: 2024,
       directors: ["Denis Villeneuve"],
       duration_minutes: 166,
+      tmdb_rating: 8.1,
+      tmdb_vote_count: 1234,
       poster_url: "https://posters.example.com/a.jpg",
       genres: ["Sci-Fi", "Drama"],
     });
@@ -414,6 +416,8 @@ describe("HttpMarquiseClient grid", () => {
         posterUrl: "https://posters.example.com/a.jpg",
         releaseYear: 2024,
         durationMinutes: 166,
+      tmdbRating: 8.1,
+      tmdbVoteCount: 1234,
         directors: ["Denis Villeneuve"],
         genres: ["Sci-Fi", "Drama"],
       },

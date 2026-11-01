@@ -3,6 +3,8 @@ export interface MovieCardData {
   /** The movie's API id; set when the movie is known to the data source. */
   id?: string;
   title: string;
+  tmdbRating?: number | null;
+  tmdbVoteCount?: number | null;
   posterUrl?: string | null;
   releaseYear?: number | null;
   durationMinutes?: number | null;

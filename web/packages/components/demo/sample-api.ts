@@ -48,6 +48,8 @@ export function sampleApiResponse(
         genres: null,
         original_title: null,
         rating: null,
+        tmdb_rating: movie.tmdbRating ?? null,
+        tmdb_vote_count: movie.tmdbVoteCount ?? null,
         origin_countries: null,
       }));
     return pageOf(items, query);

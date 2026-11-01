@@ -1,0 +1,101 @@
+Design prototype · Sample screenings · Sample API, no backend needed · Review date October 30, 2026, Montréal. Fictional listings and booking links.
+Skip to content
+Marquise
+Screenings
+Movies
+Cinemas
+Back to movies
+Dune: Part Two
+
+2024 · Denis Villeneuve · 166 min · 8.1/10
+
+Paul Atreides joins the Fremen on Arrakis. Sample synopsis for layout review.
+
+Upcoming screenings
+
+Montréal local time.
+
+←
+Friday October 30th to Monday November 2nd
+→
+Filters
+Group by
+By date
+By cinema
+Today
+Days
+1
+2
+3
+4
+Fri 30
+Cinéma Moderne
+10:00 VO13:30 VOA17:00 VOF20:30 VOSTF
+Cinéma Beaubien
+10:30 VOA14:00 VOF17:30 VOSTF21:00 VOSTA
+Cinémathèque québécoise
+11:00 VOF14:30 VOSTF18:00 VOSTA21:30 VF
+Cinéma du Parc
+11:30 VOSTF15:00 VOSTA18:30 VF22:00 VO
+Cineplex Forum
+12:00 VOSTA15:30 VF19:00 VO
+Cineplex Odeon Quartier Latin
+12:30 VF16:00 VO19:30 VOA
+Dollar Cinema
+13:00 VO16:30 VOA20:00 VOF
+Sat 31
+Cinéma du Parc
+10:00 VOA13:30 VOF17:00 VOSTF20:30 VOSTA
+Cineplex Forum
+10:30 VOF14:00 VOSTF17:30 VOSTA21:00 VF
+Cineplex Odeon Quartier Latin
+11:00 VOSTF14:30 VOSTA18:00 VF21:30 VO
+Dollar Cinema
+11:30 VOSTA15:00 VF18:30 VO22:00 VOA
+Cinéma Moderne
+12:00 VF15:30 VO19:00 VOA
+Cinéma Beaubien
+12:30 VO16:00 VOA19:30 VOF
+Cinémathèque québécoise
+13:00 VOA16:30 VOF20:00 VOSTF
+Sun 1
+Dollar Cinema
+10:00 VOF13:30 VOSTF17:00 VOSTA20:30 VF
+Cinéma Moderne
+10:30 VOSTF14:00 VOSTA17:30 VF21:00 VO
+Cinéma Beaubien
+11:00 VOSTA14:30 VF18:00 VO21:30 VOA
+Cinémathèque québécoise
+11:30 VF15:00 VO18:30 VOA22:00 VOF
+Cinéma du Parc
+12:00 VO15:30 VOA19:00 VOF
+Cineplex Forum
+12:30 VOA16:00 VOF19:30 VOSTF
+Cineplex Odeon Quartier Latin
+13:00 VOF16:30 VOSTF20:00 VOSTA
+Mon 2
+Cinémathèque québécoise
+10:00 VOSTF13:30 VOSTA17:00 VF20:30 VO
+Cinéma du Parc
+10:30 VOSTA14:00 VF17:30 VO21:00 VOA
+Cineplex Forum
+11:00 VF14:30 VO18:00 VOA21:30 VOF
+Cineplex Odeon Quartier Latin
+11:30 VO15:00 VOA18:30 VOF22:00 VOSTF
+Dollar Cinema
+12:00 VOA15:30 VOF19:00 VOSTF
+Cinéma Moderne
+12:30 VOF16:00 VOSTF19:30 VOSTA
+Cinéma Beaubien
+13:00 VOSTF16:30 VOSTA20:00 VF
+Sample state
+ready
+initial-loading
+loading-more
+empty
+error
+Reset prototype
+
+Sample booking links open example.com. All sample films have posters. The sample schedule ranges from one screening to 25 per day across seven cinemas and two weeks. This is a local design preview, not a production listing.
+
+Current sample selection
