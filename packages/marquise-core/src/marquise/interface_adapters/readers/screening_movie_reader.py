@@ -65,6 +65,8 @@ class SupabaseScreeningMovieReader(ScreeningMovieReader):
                     duration_minutes=row["duration_minutes"],
                     description=row["description"],
                     poster_url=row["poster_url"],
+                    tmdb_rating=row["tmdb_rating"],
+                    tmdb_vote_count=row["tmdb_vote_count"],
                     screenings=tuple(_to_data(s) for s in row["screenings"]),
                 )
                 for row in result.rows

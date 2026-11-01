@@ -173,6 +173,20 @@ async def test_details_retain_unselected_facts_and_provenance() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("rating,count", [(8.1, 1234), (0, 0)])
+async def test_details_capture_scores_including_zero(rating: float, count: int) -> None:
+    """A zero-vote TMDB response remains a fetched score fact."""
+    data = payloads()
+    data["movie/1765072"].update(vote_average=rating, vote_count=count)
+    result = await adapter(data).movie_details(MOVIE)
+    assert result.complete and result.failure is None
+    assert (result.items[0].tmdb_rating, result.items[0].tmdb_vote_count) == (
+        rating,
+        count,
+    )
+
+
+@pytest.mark.asyncio
 async def test_people_and_directed_credits_do_not_choose_a_person_or_movie() -> None:
     """Ambiguous people and directed-film credit order survive mapping."""
     data = payloads()
@@ -242,6 +256,12 @@ async def test_failed_later_page_preserves_partial_facts() -> None:
         ("movie/1765072", "runtime", "174"),
         ("movie/1765072", "id", True),
         ("movie/1765072", "release_date", "bad-date"),
+        ("movie/1765072", "vote_average", "8.1"),
+        ("movie/1765072", "vote_average", True),
+        ("movie/1765072", "vote_average", 11),
+        ("movie/1765072", "vote_count", -1),
+        ("movie/1765072", "vote_count", 1.5),
+        ("movie/1765072", "vote_count", True),
         ("movie/1765072/translations", "translations", {}),
         ("movie/1765072/credits", "crew", [None]),
         ("person/2001262", "also_known_as", [17]),
@@ -250,7 +270,7 @@ async def test_failed_later_page_preserves_partial_facts() -> None:
     ],
 )
 async def test_malformed_facts_are_typed_incomplete(
-    endpoint: str, field: str, value: str | bool | int | dict | list
+    endpoint: str, field: str, value: str | bool | int | float | dict | list
 ) -> None:
     """Malformed JSON facts cannot become valid complete metadata."""
     data = payloads()

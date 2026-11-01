@@ -23,6 +23,8 @@ _PATCH_COLUMNS = (
     "poster_url",
     "trailer_url",
     "rating",
+    "tmdb_rating",
+    "tmdb_vote_count",
 )
 
 
