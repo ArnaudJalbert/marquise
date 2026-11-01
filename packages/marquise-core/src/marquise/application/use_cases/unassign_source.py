@@ -49,11 +49,11 @@ class UnassignSourceUseCase:
         """
         self.assignment_repository = assignment_repository
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """Unassign the source from a cinema.
 
         Args:
-            request: The input data containing the cinema ID.
+            input_data: The input data containing the cinema ID.
 
         Returns:
             The output data confirming the unassignment.
@@ -62,12 +62,12 @@ class UnassignSourceUseCase:
             CinemaSourceAssignmentNotFoundError: If no assignment exists
                 for the given cinema.
         """
-        cinema_id = CinemaId(value=request.cinema_id)
+        cinema_id = CinemaId(value=input_data.cinema_id)
         removed = await self.assignment_repository.unassign(cinema_id)
 
         if not removed:
             raise CinemaSourceAssignmentNotFoundError(
-                f"No source assignment found for cinema '{request.cinema_id}'"
+                f"No source assignment found for cinema '{input_data.cinema_id}'"
             )
 
-        return self.OutputData(cinema_id=request.cinema_id)
+        return self.OutputData(cinema_id=input_data.cinema_id)

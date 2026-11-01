@@ -106,26 +106,26 @@ class ListCinemasUseCase:
         """
         self.cinema_repository = cinema_repository
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """List cinemas, optionally filtered by name and paginated.
 
         Args:
-            request: The input data containing optional name filter and
+            input_data: The input data containing optional name filter and
                 pagination parameters.
 
         Returns:
             The output data containing the matching page of cinemas and the
             total count.
         """
-        if request.size is not None:
-            limit = request.size
-            offset = (request.page - 1) * request.size
+        if input_data.size is not None:
+            limit = input_data.size
+            offset = (input_data.page - 1) * input_data.size
         else:
             limit = None
             offset = 0
 
         page = await self.cinema_repository.find_all(
-            name_filter=request.name,
+            name_filter=input_data.name,
             limit=limit,
             offset=offset,
         )
