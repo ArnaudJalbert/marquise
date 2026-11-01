@@ -49,6 +49,8 @@ class Movie:
         original_title: Original title in native language (optional).
         rating: Content rating (e.g. ``"18+"``) (optional).
         origin_countries: Tuple of production country names (optional).
+        tmdb_rating: TMDB user score out of ten (optional).
+        tmdb_vote_count: Number of TMDB user votes (optional).
     """
 
     id: MovieId
@@ -67,6 +69,8 @@ class Movie:
     # Identity confirmation alone does not mean metadata enrichment succeeded.
     tmdb_id: str | None = None
     metadata_enriched_at: datetime | None = None
+    tmdb_rating: float | None = None
+    tmdb_vote_count: int | None = None
 
     def __post_init__(self) -> None:
         """Validate movie data after initialization.

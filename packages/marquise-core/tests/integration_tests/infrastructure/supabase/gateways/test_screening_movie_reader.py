@@ -25,6 +25,10 @@ async def test_distinct_movie_pages_previews_and_end_metadata(
             'INSERT INTO "marquise-test".movies(id,title,directors) VALUES($1,$2,$3)',
             [(f"m{i:02}", f"Film {i}", "Director One,Director Two") for i in range(27)],
         )
+        await conn.execute(
+            """UPDATE "marquise-test".movies SET tmdb_rating = 8.1,
+               tmdb_vote_count = 1234 WHERE id = 'm00' """
+        )
         # All movies tie on their first show. One has more than an old 100-show page.
         start = datetime(2026, 11, 1, 4, tzinfo=UTC)
         shows = [
@@ -67,6 +71,8 @@ async def test_distinct_movie_pages_previews_and_end_metadata(
     assert beyond.items == []
     preview = first.items[0]
     assert preview.directors == ("Director One", "Director Two")
+    assert (preview.tmdb_rating, preview.tmdb_vote_count) == (8.1, 1234)
+    assert second.items[0].tmdb_rating is None
     assert [s.id for s in preview.screenings] == ["s00-000", "s00-001", "s00-002"]
     assert [s.cinema_name for s in preview.screenings] == [
         "Cinema One",

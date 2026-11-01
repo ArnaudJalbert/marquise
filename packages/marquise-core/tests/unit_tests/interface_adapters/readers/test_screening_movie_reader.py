@@ -26,6 +26,8 @@ async def test_movie_projection_maps_metadata_previews_and_empty_pages() -> None
                 "description": None,
                 "poster_url": None,
                 "duration_minutes": None,
+                "tmdb_rating": 8.1,
+                "tmdb_vote_count": 1234,
                 "screenings": [
                     {
                         "id": "s1",
@@ -48,6 +50,7 @@ async def test_movie_projection_maps_metadata_previews_and_empty_pages() -> None
     assert result.total == 25
     movie = result.items[0]
     assert movie.directors is None and movie.poster_url is None
+    assert movie.tmdb_rating == 8.1 and movie.tmdb_vote_count == 1234
     assert movie.screenings[0].showtime == datetime(2026, 11, 1, 5, 30, tzinfo=UTC)
     assert movie.screenings[0].language == "VO"
     assert movie.screenings[0].ticket_url is None
