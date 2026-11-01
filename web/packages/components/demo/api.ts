@@ -30,6 +30,8 @@ export async function loadAllMovies(
     year: item.release_year ?? undefined,
     director: item.directors?.join(", ") ?? undefined,
     runtime: item.duration_minutes ?? undefined,
+    tmdbRating: item.tmdb_rating,
+    tmdbVoteCount: item.tmdb_vote_count,
     synopsis: item.description ?? undefined,
     screenings: [],
   }));
