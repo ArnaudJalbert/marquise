@@ -9,6 +9,7 @@ from unittest.mock import patch
 import pytest
 
 from marquise.infrastructure.sources.cinemapublic.gateways.source import (
+    _extract_cinemapublic_film_detail,
     fetch_showtimes,
 )
 
@@ -100,3 +101,21 @@ async def test_fetch_showtimes_repairs_malformed_ticket_host() -> None:
     assert rows[0]["ticket_url"] == (
         "https://cinemapublic.ca/en/organisation/achat/index.cfm?RepresentationID=1"
     )
+
+
+def test_film_detail_unescapes_director_html_entities() -> None:
+    """An entity-encoded director name is decoded before movie matching."""
+    movie = {
+        "@type": "Movie",
+        "name": "La patrie",
+        "director": {"@type": "Person", "name": "Pawe&#322; Pawlikowski"},
+    }
+    html = (
+        "<html><body>"
+        f'<script type="application/ld+json">{json.dumps({"@graph": [movie]})}</script>'
+        "</body></html>"
+    )
+
+    detail = _extract_cinemapublic_film_detail(html, _MOVIE_URL)
+
+    assert detail["directors"] == ["Paweł Pawlikowski"]

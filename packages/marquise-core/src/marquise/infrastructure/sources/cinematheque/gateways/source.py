@@ -17,6 +17,7 @@ the missing identity evidence when available. Ticketing data remains the fallbac
 
 from __future__ import annotations
 
+import html
 import http.client
 import json
 import re
@@ -142,7 +143,7 @@ def _parse_movie_data(
     """
     rows: list[dict[str, Any]] = []
     for code, film in movie_data.items():
-        raw_title = film.get("title") or ""
+        raw_title = html.unescape(film.get("title") or "")
         if not raw_title.strip():
             continue
         title, language = _split_title_and_language(raw_title)
