@@ -17,6 +17,7 @@ import { formatScore, timeToHour, formatHour, decodePathId } from "./catalogue-f
 import { MovieSchedule } from "./MovieSchedule";
 import { Showtime } from "./Showtime";
 import { InfoMenu, SiteFooter, infoPages } from "./SiteInfo";
+import marquiseMark from "./marquise-mark.svg";
 import "./minimal.css";
 
 function Poster({ movie }: { movie: CatalogueMovie }) {
@@ -530,6 +531,13 @@ export function MinimalCatalogue({
       </a>
       <header className="minimal-nav">
         <a href="/" className="minimal-wordmark">
+          <img
+            className="minimal-wordmark-mark"
+            src={marquiseMark}
+            alt=""
+            width="34"
+            height="15"
+          />
           Marquise
         </a>
         <nav aria-label="Main navigation">

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import tmdbLogo from "./tmdb-logo.svg";
+import marquiseMark from "./marquise-mark-mono.svg";
 
 const API_DOCS_URL = "https://marquise-api.fly.dev/docs";
 // Public contact address approved by Arnaud for #402.
@@ -92,7 +93,16 @@ export function InfoMenu({ path }: { path: string }) {
 export function SiteFooter({ path }: { path: string }) {
   return (
     <footer className="minimal-footer">
-      <span className="minimal-footer-name">Marquise</span>
+      <span className="minimal-footer-name">
+        <img
+          className="minimal-footer-mark"
+          src={marquiseMark}
+          alt=""
+          width="22"
+          height="11"
+        />
+        Marquise
+      </span>
       <nav aria-label="Footer">
         <DestinationLinks path={path} />
       </nav>
