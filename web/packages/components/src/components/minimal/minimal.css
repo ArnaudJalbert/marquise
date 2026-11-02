@@ -873,3 +873,39 @@
     transition: none;
   }
 }
+/* Brand mark (#423): header mark before the wordmark, one-colour mark in the footer. */
+.minimal-nav .minimal-wordmark,
+.minimal-footer-name {
+  display: inline-flex;
+  align-items: center;
+}
+.minimal-nav .minimal-wordmark {
+  gap: 9px;
+  flex-shrink: 0;
+}
+.minimal-wordmark-mark {
+  width: 34px;
+  height: auto;
+}
+.minimal-footer-name {
+  gap: 8px;
+}
+.minimal-footer-mark {
+  width: 22px;
+  height: auto;
+}
+/* Smaller mark and tighter header gaps keep the menu on one row from 400px up. */
+@media (max-width: 639px) {
+  .minimal-nav .minimal-wordmark {
+    gap: 6px;
+  }
+  .minimal-wordmark-mark {
+    width: 24px;
+  }
+}
+@media (min-width: 400px) and (max-width: 439px) {
+  .minimal-nav,
+  .minimal-nav > nav {
+    gap: 10px;
+  }
+}
