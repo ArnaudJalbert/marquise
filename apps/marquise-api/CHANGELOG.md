@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-02
+
+### v0.1.17
+
+- Use the screening write context owned by `WriteScreeningUseCase`. Requires core v0.2.41.
+
 ## 2026-11-01
 
 ### v0.1.15
