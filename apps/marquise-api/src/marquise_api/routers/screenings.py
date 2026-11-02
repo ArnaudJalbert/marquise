@@ -11,11 +11,8 @@ from fastapi_cache.decorator import cache
 from fastapi_pagination import Page, Params
 
 from marquise import (
-    CreateScreeningUseCase,
-    DeleteScreeningUseCase,
     GetScreeningQuery,
     SearchScreeningsQuery,
-    UpdateScreeningUseCase,
     WriteScreeningUseCase,
 )
 from marquise_api.auth import get_screening_write_context, require_editor
@@ -72,7 +69,7 @@ async def create_screening(
     output = await use_case.execute(
         WriteScreeningUseCase.InputData(
             context=context,
-            mutation=CreateScreeningUseCase.InputData(**body.model_dump()),
+            mutation=WriteScreeningUseCase.CreateInput(**body.model_dump()),
         )
     )
     if output.changed:
@@ -107,7 +104,7 @@ async def update_screening(
     output = await use_case.execute(
         WriteScreeningUseCase.InputData(
             context=context,
-            mutation=UpdateScreeningUseCase.InputData(
+            mutation=WriteScreeningUseCase.UpdateInput(
                 screening_id=screening_id, **body.model_dump(exclude_unset=True)
             ),
         )
@@ -143,7 +140,7 @@ async def delete_screening(
     output = await use_case.execute(
         WriteScreeningUseCase.InputData(
             context=context,
-            mutation=DeleteScreeningUseCase.InputData(screening_id=screening_id),
+            mutation=WriteScreeningUseCase.DeleteInput(screening_id=screening_id),
         )
     )
     if output.changed:
