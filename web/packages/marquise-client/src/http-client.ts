@@ -111,11 +111,9 @@ export class HttpMarquiseClient
     query: ScreeningMovieQuery,
     signal?: AbortSignal,
   ): Promise<Page<ScreeningMovieApi>> {
-    const params = new URLSearchParams({
-      start: query.start,
-      end: query.end,
-      page: String(query.page),
-    });
+    const params = new URLSearchParams({ start: query.start });
+    if (query.end) params.set("end", query.end);
+    params.set("page", String(query.page));
     if (query.title?.trim()) params.set("title", query.title.trim());
     query.cinemas?.forEach((id) => params.append("cinema", id));
     query.languages?.forEach((language) =>

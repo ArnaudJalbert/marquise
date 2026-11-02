@@ -5,7 +5,6 @@ import {
   render,
   screen,
   within,
-  waitFor,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -220,24 +219,25 @@ it("keeps date-independent catalogue results separate from screening results", (
   ).not.toBeInTheDocument();
 });
 
-it("moves the schedule one date and requests the new four-day window", async () => {
+it("moves through the loaded screening dates", async () => {
   const loadWeek = vi
     .fn()
     .mockResolvedValue({ screenings: movie.screenings, cinemas });
   render(
     <MinimalCatalogue {...props} href="/movies/film" onLoadWeek={loadWeek} />,
   );
-  expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(4);
-  fireEvent.click(screen.getByRole("button", { name: "Next dates" }));
-  await waitFor(() =>
-    expect(loadWeek).toHaveBeenCalledWith(
-      movie,
-      "2026-10-31",
-      "2026-11-03",
-      expect.any(AbortSignal),
-    ),
+  await screen.findByText("18:00");
+  expect(loadWeek).toHaveBeenCalledExactlyOnceWith(
+    movie,
+    "2026-09-30",
+    "2027-01-28",
+    expect.any(AbortSignal),
   );
-  expect(screen.getByText("Tuesday November 3rd")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Next dates" }));
+  expect(screen.getByText("20:00")).toBeInTheDocument();
+  expect(screen.getByText("21:00")).toBeInTheDocument();
+  expect(screen.queryByText("18:00")).not.toBeInTheDocument();
+  expect(loadWeek).toHaveBeenCalledOnce();
   const options = within(
     screen.getByRole("combobox", { name: "Days to show" }),
   ).getAllByRole("option");
@@ -261,7 +261,7 @@ it("keeps the date columns when grouping the schedule by cinema", async () => {
     target: { value: "cinema" },
   });
   const table = screen.getByRole("table");
-  expect(within(table).getAllByRole("columnheader")).toHaveLength(5);
+  expect(within(table).getAllByRole("columnheader")).toHaveLength(4);
   expect(within(table).getByRole("row", { name: /Cinema A/ })).toBeInTheDocument();
   expect(within(table).getByRole("row", { name: /Cinema B/ })).toBeInTheDocument();
   expect(within(table).queryByText("—")).not.toBeInTheDocument();
@@ -301,13 +301,11 @@ it("ignores a previous movie's response after navigating to another movie", asyn
     <MinimalCatalogue {...common} href="/movies/film" />,
   );
   expect(loadWeek).toHaveBeenCalledOnce();
-  fireEvent.click(screen.getByRole("button", { name: "Next dates" }));
-  expect(pending[0]!.signal.aborted).toBe(true);
   rerender(<MinimalCatalogue {...common} href="/movies/second" />);
-  expect(pending[1]!.signal.aborted).toBe(true);
+  expect(pending[0]!.signal.aborted).toBe(true);
   await act(async () => {
     pending[0]!.finish({ screenings: movie.screenings, cinemas });
-    pending[2]!.finish({ screenings: secondMovie.screenings, cinemas });
+    pending[1]!.finish({ screenings: secondMovie.screenings, cinemas });
   });
   expect(screen.getByText("12:15")).toBeInTheDocument();
   expect(screen.queryByText("18:00")).not.toBeInTheDocument();
