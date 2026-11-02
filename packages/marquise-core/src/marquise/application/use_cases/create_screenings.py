@@ -1,4 +1,4 @@
-"""Command use case: create screenings and shared import response DTOs."""
+"""Command use case: create or update a batch of screenings."""
 
 from __future__ import annotations
 
@@ -21,34 +21,6 @@ from marquise.domain.entities import Cinema, Movie, Screening
 from marquise.domain.value_objects import CinemaId, MovieId, ScreeningId, Showtime
 
 logger = logging.getLogger(__name__)
-
-# ── Shared response DTOs for the import workflow ────────────────────────
-
-
-@dataclass(frozen=True, slots=True)
-class ImportedScreeningData:
-    """Summary of a single imported or already-existing screening.
-
-    Attributes:
-        movie_title: The title of the movie.
-        showtime: The showtime in ISO format.
-        imported: True if newly created.
-        rescheduled: True if an existing screening moved to a new showtime.
-    """
-
-    movie_title: str
-    showtime: str
-    imported: bool
-    rescheduled: bool = False
-
-    def __post_init__(self) -> None:
-        if not self.movie_title.strip():
-            raise ValueError("movie_title must not be empty")
-        if not self.showtime.strip():
-            raise ValueError("showtime must not be empty")
-
-
-# ── Use case ────────────────────────────────────────────────────────────
 
 
 class CreateScreeningsCommand:
@@ -85,12 +57,34 @@ class CreateScreeningsCommand:
                 raise ValueError("showtime must be timezone-aware")
 
     @dataclass(frozen=True, slots=True)
+    class ScreeningData:
+        """Summary of a single created or updated screening.
+
+        Attributes:
+            movie_title: The title of the movie.
+            showtime: The showtime in ISO format.
+            imported: True if newly created.
+            rescheduled: True if an existing screening moved to a new showtime.
+        """
+
+        movie_title: str
+        showtime: str
+        imported: bool
+        rescheduled: bool = False
+
+        def __post_init__(self) -> None:
+            if not self.movie_title.strip():
+                raise ValueError("movie_title must not be empty")
+            if not self.showtime.strip():
+                raise ValueError("showtime must not be empty")
+
+    @dataclass(frozen=True, slots=True)
     class InputData:
         screenings: tuple[CreateScreeningsCommand.ScreeningInput, ...]
 
     @dataclass(frozen=True, slots=True)
     class OutputData:
-        screenings: tuple[ImportedScreeningData, ...]
+        screenings: tuple[CreateScreeningsCommand.ScreeningData, ...]
         total_count: int
         imported_count: int
         updated_count: int
@@ -112,11 +106,11 @@ class CreateScreeningsCommand:
     def __init__(self, screening_repository: ScreeningRepository) -> None:
         self.screening_repository = screening_repository
 
-    async def execute(self, request: InputData) -> OutputData:
-        logger.info("Processing %d screening inputs", len(request.screenings))
+    async def execute(self, input_data: InputData) -> OutputData:
+        logger.info("Processing %d screening inputs", len(input_data.screenings))
 
         owners: dict[tuple[str, str], set[tuple[str, datetime, str | None]]] = {}
-        for row in request.screenings:
+        for row in input_data.screenings:
             if row.external_id:
                 owners.setdefault((row.cinema_id, row.external_id), set()).add(
                     (row.movie_id, row.showtime.astimezone(UTC), row.source_name)
@@ -127,14 +121,14 @@ class CreateScreeningsCommand:
                 self._upsert_screening(
                     row, ambiguous=(row.cinema_id, row.external_id) in ambiguous
                 )
-                for row in request.screenings
+                for row in input_data.screenings
             ],
             return_exceptions=True,
         )
 
-        results: list[ImportedScreeningData] = []
+        results: list[CreateScreeningsCommand.ScreeningData] = []
         skipped_count = 0
-        for row, outcome in zip(request.screenings, raw_results, strict=True):
+        for row, outcome in zip(input_data.screenings, raw_results, strict=True):
             if isinstance(
                 outcome,
                 (ScreeningExternalIdConflictError, ScreeningUpdateNotFoundError),
@@ -176,7 +170,7 @@ class CreateScreeningsCommand:
         row: ScreeningInput,
         *,
         ambiguous: bool = False,
-    ) -> ImportedScreeningData:
+    ) -> ScreeningData:
         if ambiguous:
             raise ScreeningExternalIdConflictError(
                 "Ambiguous external-ID ownership in incoming batch"
@@ -198,7 +192,7 @@ class CreateScreeningsCommand:
                 )
             except ScreeningWriteConflictError:
                 continue
-            return ImportedScreeningData(
+            return self.ScreeningData(
                 movie_title=row.movie_title,
                 showtime=row.showtime.isoformat(),
                 imported=target is None,

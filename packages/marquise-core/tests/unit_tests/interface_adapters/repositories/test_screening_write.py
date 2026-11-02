@@ -62,7 +62,7 @@ async def test_replay_maps_durable_result_without_live_entities(
     screening = (
         None
         if deleted
-        else CreateScreeningUseCase.OutputData(
+        else ScreeningWriteResult.Screening(
             id="scr-1",
             movie_id="mov-1",
             movie_title="Movie One",

@@ -9,16 +9,21 @@ import type {
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { CinemaShowtimeGroups, groupByCinema } from "./CinemaShowtimes";
-import { addIsoDays, DateSelector, formatDateLabel } from "./date-selector";
-import { formatDuration } from "./format";
+import { DateSelector, daysBetween, formatDateLabel } from "./date-selector";
+import { formatDuration, getCurrentMontrealDate } from "./format";
 import { MoviePoster } from "./MoviePoster";
 
 /** Width of one date column, in px. The number of visible columns adapts to the container width. */
 const COLUMN_WIDTH = 288;
+const COLUMN_GAP = 64;
 
 /** Layout effects measure the DOM; on the server `useLayoutEffect` warns, so fall back to `useEffect`. */
 const useIsomorphicLayoutEffect =
   typeof window === "undefined" ? useEffect : useLayoutEffect;
+
+function todayFor(currentTime: string | undefined): string {
+  return getCurrentMontrealDate(currentTime === undefined ? undefined : new Date(currentTime));
+}
 
 function DateColumn({
   date,
@@ -35,7 +40,7 @@ function DateColumn({
 }) {
   const groups = showtimes === undefined ? [] : groupByCinema(showtimes);
   return (
-    <div className="flex h-full flex-col gap-3 border-l border-border pl-4">
+    <div className="flex h-full flex-col gap-3 pl-4">
       <h3 className="text-sm font-semibold">{formatDateLabel(date)}</h3>
       {showtimes === undefined ? (
         isPending ? (
@@ -63,14 +68,20 @@ export interface MovieDetailPageProps {
   movie: MovieCardData;
   /** Data source; showtimes are fetched per date as each column comes into view. */
   client: MovieDetailClient;
-  /** Date shown first, as "YYYY-MM-DD"; defaults to the first available. */
+  /**
+   * Date shown first, as "YYYY-MM-DD"; defaults to the next upcoming
+   * Screening date, else the latest past one.
+   */
   initialDate?: string;
   /** Reports the selected date after user navigation or normalization. */
   onDateChange?: (
     date: string,
     reason: "user" | "normalization",
   ) => void;
-  /** ISO-8601 timestamp treated as "now"; started showtimes are crossed out. */
+  /**
+   * ISO-8601 timestamp treated as "now"; started showtimes are crossed out
+   * and it decides which Screening dates are upcoming.
+   */
   currentTime?: string;
   /** When set, renders a back button. */
   onBack?: () => void;
@@ -115,10 +126,12 @@ export function MovieDetailPage({
   const movieRef = useRef(movie);
   const initialDateRef = useRef(initialDate);
   const onDateChangeRef = useRef(onDateChange);
+  const currentTimeRef = useRef(currentTime);
 
   useEffect(() => {
     clientRef.current = client;
     onDateChangeRef.current = onDateChange;
+    currentTimeRef.current = currentTime;
   });
 
   useIsomorphicLayoutEffect(() => {
@@ -153,10 +166,12 @@ export function MovieDetailPage({
         setDates(sorted);
         setDatesLoading(false);
         const requestedDate = initialDateRef.current;
-        const index = requestedDate !== undefined ? sorted.indexOf(requestedDate) : 0;
-        const initialOffset = Math.max(0, index);
-        setOffset(initialOffset);
-        const resolvedDate = sorted[initialOffset];
+        const today = todayFor(currentTimeRef.current);
+        const resolvedDate =
+          sorted.find((date) => date === requestedDate) ??
+          sorted.find((date) => date >= today) ??
+          sorted.at(-1);
+        setOffset(Math.max(0, sorted.indexOf(resolvedDate ?? "")));
         setSelectedDate(resolvedDate ?? "");
         if (resolvedDate !== undefined && resolvedDate !== requestedDate) {
           onDateChangeRef.current?.(resolvedDate, "normalization");
@@ -196,10 +211,14 @@ export function MovieDetailPage({
 
   const columnWidth =
     viewportWidth === null ? COLUMN_WIDTH : Math.min(COLUMN_WIDTH, viewportWidth);
+  const columnStep = columnWidth + COLUMN_GAP;
   const visibleCount =
     viewportWidth === null
       ? 1
-      : Math.max(1, Math.floor(viewportWidth / columnWidth));
+      : Math.max(
+          1,
+          Math.floor((viewportWidth + COLUMN_GAP) / columnStep),
+        );
   const maxOffset = Math.max(0, dates.length - visibleCount);
   const safeOffset = Math.min(offset, maxOffset);
 
@@ -282,14 +301,7 @@ export function MovieDetailPage({
 
   const selectDate = (date: string) => {
     const index = dates.indexOf(date);
-    if (index === -1) {
-      setDates(
-        Array.from({ length: Math.max(dates.length, 1) }, (_, offset) =>
-          addIsoDays(date, offset),
-        ),
-      );
-      setOffset(0);
-    } else {
+    if (index !== -1) {
       setOffset(Math.min(index, maxOffset));
     }
     setSelectedDate(date);
@@ -326,27 +338,55 @@ export function MovieDetailPage({
         <div
           className="flex"
           style={{
-            transform: `translateX(${-safeOffset * columnWidth}px)`,
+            gap: COLUMN_GAP,
+            transform: `translateX(${-safeOffset * columnStep}px)`,
             transition: "transform 300ms ease",
           }}
         >
-          {dates.map((date, index) => (
-            <div
-              key={date}
-              aria-hidden={index < safeOffset || index >= safeOffset + visibleCount}
-              inert={index < safeOffset || index >= safeOffset + visibleCount}
-              className="shrink-0"
-              style={{ width: columnWidth }}
-            >
-              <DateColumn
-                date={date}
-                showtimes={cache.get(date)}
-                isPending={pending.has(date)}
-                hasError={errorDates.has(date)}
-                currentTime={currentTime}
-              />
-            </div>
-          ))}
+          {dates.map((date, index) => {
+            const gapDays =
+              index > 0 ? daysBetween(dates[index - 1] ?? date, date) : 0;
+            const hidden =
+              index < safeOffset || index >= safeOffset + visibleCount;
+            return (
+              <div
+                key={date}
+                aria-hidden={hidden}
+                inert={hidden}
+                className="relative shrink-0"
+                style={{ width: columnWidth }}
+              >
+                {index > 0 ? (
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-y-0 border-l border-border"
+                    style={{ left: -COLUMN_GAP / 2 }}
+                  />
+                ) : null}
+                {gapDays > 1 ? (
+                  <span
+                    aria-label={`${gapDays} days between screenings`}
+                    className="absolute z-10 flex items-center justify-center whitespace-nowrap rounded bg-background px-1 py-1.5 text-[10px] text-muted-foreground"
+                    style={{
+                      left: -COLUMN_GAP,
+                      top: "50%",
+                      width: COLUMN_GAP,
+                      transform: "translateY(-50%)",
+                    }}
+                  >
+                    +{gapDays} days
+                  </span>
+                ) : null}
+                <DateColumn
+                  date={date}
+                  showtimes={cache.get(date)}
+                  isPending={pending.has(date)}
+                  hasError={errorDates.has(date)}
+                  currentTime={currentTime}
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
       <button
@@ -408,6 +448,7 @@ export function MovieDetailPage({
               dates={dates}
               selectedDate={selectedDate}
               onDateChange={selectDate}
+              restrictToDates
             />
           ) : null}
         </div>
@@ -452,7 +493,14 @@ export function MovieDetailPage({
                 No screenings scheduled.
               </p>
             ) : (
-              showtimesColumns
+              <>
+                {(dates.at(-1) ?? "") < todayFor(currentTime) ? (
+                  <p role="status" className="text-sm text-muted-foreground">
+                    No upcoming screenings.
+                  </p>
+                ) : null}
+                {showtimesColumns}
+              </>
             )}
           </>
         )}

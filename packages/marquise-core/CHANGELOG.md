@@ -2,11 +2,38 @@
 
 Before 2026-07-15 this package was published as `marquise`.
 
-## 2026-11-01
+## 2026-11-02
+
+### v0.2.42
+
+- Move the movie workflow conflict error into application exceptions while preserving existing imports. Closes #390.
 
 ### v0.2.41
 
-- Move the movie workflow conflict error into application exceptions while preserving existing imports. Closes #390.
+- Give screening write transactions dedicated result types and preserve replay outcomes. Closes #388.
+
+### v0.2.40
+
+- Nest per-screening import result types in their owning commands. Closes #387.
+
+### v0.2.39
+
+- Raise `ScreeningNotFoundError` in the delete-screening use case when no screening exists, preserving the API 404 response. Closes #386.
+
+### v0.2.38
+
+- Raise `CinemaNotFoundError` from the update-cinema use case when the cinema does not exist. Closes #385.
+
+### v0.2.37
+
+- Move screening write errors into the application exceptions package while preserving error types and messages. Closes #384.
+
+## 2026-11-01
+
+### v0.2.36
+
+- Rename use case and query execute parameters to `input_data` without changing behavior. Closes #382.
+- Allow the movie-first screening query to search from a Montréal date with no end date, so it can return every movie with a future screening.
 
 ### v0.2.34
 

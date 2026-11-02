@@ -14,7 +14,6 @@ from marquise import (
     CreateScreeningUseCase,
     DeleteScreeningUseCase,
     GetScreeningQuery,
-    ScreeningWriteContext,
     SearchScreeningsQuery,
     UpdateScreeningUseCase,
     WriteScreeningUseCase,
@@ -60,7 +59,7 @@ async def create_screening(
     request: Request,
     response: Response,
     body: CreateScreeningRequest,
-    context: ScreeningWriteContext = Depends(get_screening_write_context),
+    context: WriteScreeningUseCase.Context = Depends(get_screening_write_context),
     use_case: WriteScreeningUseCase = Depends(get_write_screening_use_case),
 ) -> ScreeningResponse:
     """Create a screening as an Editor or Administrator using existing movie/cinema IDs.
@@ -94,7 +93,7 @@ async def update_screening(
     response: Response,
     screening_id: str,
     body: UpdateScreeningRequest,
-    context: ScreeningWriteContext = Depends(get_screening_write_context),
+    context: WriteScreeningUseCase.Context = Depends(get_screening_write_context),
     use_case: WriteScreeningUseCase = Depends(get_write_screening_use_case),
 ) -> ScreeningResponse:
     """Edit supplied fields as an Editor or Administrator, including movie/cinema/time.
@@ -129,7 +128,7 @@ async def delete_screening(
     request: Request,
     response: Response,
     screening_id: str,
-    context: ScreeningWriteContext = Depends(get_screening_write_context),
+    context: WriteScreeningUseCase.Context = Depends(get_screening_write_context),
     use_case: WriteScreeningUseCase = Depends(get_write_screening_use_case),
 ) -> Response:
     """Permanently delete a screening and atomically remove its movie if orphaned.

@@ -90,18 +90,15 @@ class CinemaRepository(ABC):
         ...
 
     @abstractmethod
-    async def update(self, cinema: Cinema) -> Cinema:
+    async def update(self, cinema: Cinema) -> Cinema | None:
         """Update an existing cinema.
 
         Args:
-            cinema: The cinema entity with updated fields. The ID must match
-                an existing cinema.
+            cinema: The cinema entity with updated fields.
 
         Returns:
-            The updated cinema as returned by the data store.
-
-        Raises:
-            CinemaNotFoundError: If no cinema with the given ID exists.
+            The updated cinema as returned by the data store, or None if no
+            cinema with the given ID exists.
         """
         ...
 

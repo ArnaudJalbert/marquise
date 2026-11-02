@@ -257,19 +257,16 @@ class SupabaseScreeningRepository(ScreeningRepository):
             )
         return self._to_entity(data)
 
-    async def delete(self, screening_id: ScreeningId) -> None:
+    async def delete(self, screening_id: ScreeningId) -> bool:
         """Delete a screening and atomically remove its movie if now orphaned.
 
         Args:
             screening_id: The ID of the screening to delete.
 
-        Raises:
-            ScreeningNotFoundError: If no screening with the given ID exists.
+        Returns:
+            True if a screening was deleted, False otherwise.
         """
-        try:
-            await self._gateway.delete(screening_id=str(screening_id))
-        except GatewayError as exc:
-            raise ScreeningNotFoundError(str(exc)) from exc
+        return await self._gateway.delete(screening_id=str(screening_id))
 
     async def find_by_id(self, screening_id: ScreeningId) -> Screening:
         """Retrieve a screening by ID.

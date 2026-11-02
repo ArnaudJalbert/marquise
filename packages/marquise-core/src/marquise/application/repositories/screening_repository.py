@@ -108,14 +108,15 @@ class ScreeningRepository(ABC):
         ...
 
     @abstractmethod
-    async def delete(self, screening_id: ScreeningId) -> None:
+    async def delete(self, screening_id: ScreeningId) -> bool:
         """Delete a screening and atomically remove its movie if now orphaned.
 
         Args:
             screening_id: The ID of the screening to delete.
 
-        Raises:
-            ScreeningNotFoundError: If no screening with the given ID exists.
+        Returns:
+            True if a screening was deleted, False if no screening with that
+            ID exists.
         """
         ...
 

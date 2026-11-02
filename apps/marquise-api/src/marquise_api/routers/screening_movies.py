@@ -41,7 +41,7 @@ async def browse_screening_movies(
     request: Request,
     response: Response,
     start: date,
-    end: date,
+    end: date | None = None,
     page: int = Query(default=1, ge=1),
     title: str | None = Query(default=None, max_length=200),
     cinema: list[str] | None = Query(default=None),
@@ -55,7 +55,7 @@ async def browse_screening_movies(
     This endpoint is uncached so upcoming eligibility uses the current request's
     clock rather than a cached response's clock.
     """
-    if start > end or (
+    if (end is not None and start > end) or (
         start_hour is not None and end_hour is not None and start_hour > end_hour
     ):
         raise HTTPException(status_code=422, detail="Invalid screening filter range")

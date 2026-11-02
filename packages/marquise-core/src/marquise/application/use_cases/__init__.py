@@ -11,10 +11,7 @@ from marquise.application.use_cases.create_missing_movies import (
     CreateMissingMoviesCommand,
 )
 from marquise.application.use_cases.create_screening import CreateScreeningUseCase
-from marquise.application.use_cases.create_screenings import (
-    CreateScreeningsCommand,
-    ImportedScreeningData,
-)
+from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
 from marquise.application.use_cases.delete_screening import DeleteScreeningUseCase
@@ -44,7 +41,6 @@ __all__ = [
     "DeleteSourceUseCase",
     "GetCinemaUseCase",
     "GetCinemaSourceUseCase",
-    "ImportedScreeningData",
     "ImportScreeningsCommand",
     "InviteAccountUseCase",
     "ListCinemasUseCase",

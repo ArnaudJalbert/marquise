@@ -167,14 +167,14 @@ class ScreeningGateway(Protocol):
         """
         ...
 
-    async def delete(self, screening_id: str) -> None:
+    async def delete(self, screening_id: str) -> bool:
         """Delete a screening and atomically remove its movie if now orphaned.
 
         Args:
             screening_id: The unique identifier of the row to delete.
 
-        Raises:
-            GatewayError: If no row has the given ID.
+        Returns:
+            True if a row was deleted, False if no row has the given ID.
         """
         ...
 

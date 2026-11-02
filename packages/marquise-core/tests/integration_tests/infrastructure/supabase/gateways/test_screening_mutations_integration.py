@@ -247,7 +247,7 @@ async def test_delete_cleans_only_its_orphan_movie(
             showtime=SHOWTIME,
         )
     deleted = await screening_gateway.delete("scr-mutation")
-    assert deleted is None
+    assert deleted is True
     assert await screening_gateway.find_by_id("scr-mutation") is None
     assert (await movie_gateway.find_by_id("mov-old") is not None) == keep_other
     assert await movie_gateway.find_by_id("mov-new") is not None

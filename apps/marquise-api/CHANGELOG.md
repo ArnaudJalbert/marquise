@@ -1,6 +1,20 @@
 # Changelog
 
+## 2026-11-02
+
+### v0.1.17
+
+- Use the screening write context owned by `WriteScreeningUseCase`. Requires core v0.2.41.
+
 ## 2026-11-01
+
+### v0.1.15
+
+- Disable duplicate Uvicorn access logging in the production container and clarify independent public API use, third-party content rights, non-affiliation, and policy links in the API reference. Supports #415.
+
+### v0.1.16
+
+- Make `end` optional on `GET /v1/screening-movies` to list movies with screenings at any future date. Requires core v0.2.35.
 
 ### v0.1.14
 
