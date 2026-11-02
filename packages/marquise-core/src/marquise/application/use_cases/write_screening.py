@@ -17,7 +17,14 @@ from marquise.application.transactions.screening_write import (
     ScreeningWriteSession,
     ScreeningWriteTransaction,
 )
-from marquise.application.use_cases._screening_helpers import is_provided
+from marquise.application.use_cases._screening_helpers import (
+    UNSET,
+    _Unset,
+    is_provided,
+    reject_blank_when_provided,
+    require_non_empty,
+    require_timezone_aware_showtime,
+)
 from marquise.application.use_cases.create_screening import CreateScreeningUseCase
 from marquise.application.use_cases.delete_screening import DeleteScreeningUseCase
 from marquise.application.use_cases.update_screening import UpdateScreeningUseCase
@@ -61,15 +68,76 @@ class WriteScreeningUseCase:
                 raise ValueError("Invalid X-Change-Reason")
 
     @dataclass(frozen=True, slots=True)
+    class CreateInput:
+        """Validated screening creation payload owned by this command."""
+
+        movie_id: str
+        cinema_id: str
+        showtime: datetime
+        ticket_url: str | None = None
+        room: str | None = None
+        language: str | None = None
+        external_id: str | None = None
+
+        def __post_init__(self) -> None:
+            """Validate required IDs, showtime, and optional metadata."""
+            require_non_empty(self.movie_id, "movie_id")
+            require_non_empty(self.cinema_id, "cinema_id")
+            require_timezone_aware_showtime(self.showtime)
+            reject_blank_when_provided(self.ticket_url, "ticket_url")
+            reject_blank_when_provided(self.room, "room")
+            reject_blank_when_provided(self.language, "language")
+            reject_blank_when_provided(self.external_id, "external_id")
+
+    @dataclass(frozen=True, slots=True)
+    class UpdateInput:
+        """Validated partial screening update payload owned by this command."""
+
+        screening_id: str
+        movie_id: str | _Unset = UNSET
+        cinema_id: str | _Unset = UNSET
+        showtime: datetime | _Unset = UNSET
+        ticket_url: str | None | _Unset = UNSET
+        room: str | None | _Unset = UNSET
+        language: str | None | _Unset = UNSET
+        external_id: str | None | _Unset = UNSET
+
+        def __post_init__(self) -> None:
+            """Validate the target and each explicitly provided field."""
+            require_non_empty(self.screening_id, "screening_id")
+            if is_provided(self.movie_id):
+                require_non_empty(self.movie_id, "movie_id")
+            if is_provided(self.cinema_id):
+                require_non_empty(self.cinema_id, "cinema_id")
+            if is_provided(self.showtime):
+                require_timezone_aware_showtime(self.showtime)
+            if is_provided(self.ticket_url):
+                reject_blank_when_provided(self.ticket_url, "ticket_url")
+            if is_provided(self.room):
+                reject_blank_when_provided(self.room, "room")
+            if is_provided(self.language):
+                reject_blank_when_provided(self.language, "language")
+            if is_provided(self.external_id):
+                reject_blank_when_provided(self.external_id, "external_id")
+
+    @dataclass(frozen=True, slots=True)
+    class DeleteInput:
+        """Validated screening deletion payload owned by this command."""
+
+        screening_id: str
+
+        def __post_init__(self) -> None:
+            """Validate the screening ID."""
+            require_non_empty(self.screening_id, "screening_id")
+
+    MutationInput = CreateInput | UpdateInput | DeleteInput
+
+    @dataclass(frozen=True, slots=True)
     class InputData:
-        """Validated mutation and attributable retry context."""
+        """Validated command payload and attributable retry context."""
 
         context: WriteScreeningUseCase.Context
-        mutation: (
-            CreateScreeningUseCase.InputData
-            | UpdateScreeningUseCase.InputData
-            | DeleteScreeningUseCase.InputData
-        )
+        mutation: WriteScreeningUseCase.MutationInput
 
     @dataclass(frozen=True, slots=True)
     class OutputData:
@@ -115,9 +183,9 @@ class WriteScreeningUseCase:
         context = input_data.context
         operation = (
             "create"
-            if isinstance(mutation, CreateScreeningUseCase.InputData)
+            if isinstance(mutation, self.CreateInput)
             else "update"
-            if isinstance(mutation, UpdateScreeningUseCase.InputData)
+            if isinstance(mutation, self.UpdateInput)
             else "delete"
         )
         values = {
@@ -147,7 +215,7 @@ class WriteScreeningUseCase:
 
             before = None
             removed_movie = None
-            if not isinstance(mutation, CreateScreeningUseCase.InputData):
+            if not isinstance(mutation, self.CreateInput):
                 await session.lock_target(
                     mutation.screening_id, lock_movie=operation == "delete"
                 )
@@ -156,19 +224,42 @@ class WriteScreeningUseCase:
                 )
                 before = ScreeningSnapshot.from_screening(existing)
 
-            if isinstance(mutation, CreateScreeningUseCase.InputData):
-                created = await session.create.execute(mutation)
+            if isinstance(mutation, self.CreateInput):
+                created = await session.create.execute(
+                    CreateScreeningUseCase.InputData(
+                        movie_id=mutation.movie_id,
+                        cinema_id=mutation.cinema_id,
+                        showtime=mutation.showtime,
+                        ticket_url=mutation.ticket_url,
+                        room=mutation.room,
+                        language=mutation.language,
+                        external_id=mutation.external_id,
+                    )
+                )
                 output = ScreeningWriteResult.Screening(**asdict(created))
                 changed = True
                 target = output.id
-            elif isinstance(mutation, UpdateScreeningUseCase.InputData):
-                updated = await session.update.execute(mutation)
+            elif isinstance(mutation, self.UpdateInput):
+                updated = await session.update.execute(
+                    UpdateScreeningUseCase.InputData(
+                        screening_id=mutation.screening_id,
+                        movie_id=mutation.movie_id,
+                        cinema_id=mutation.cinema_id,
+                        showtime=mutation.showtime,
+                        ticket_url=mutation.ticket_url,
+                        room=mutation.room,
+                        language=mutation.language,
+                        external_id=mutation.external_id,
+                    )
+                )
                 output = ScreeningWriteResult.Screening(**asdict(updated))
                 changed = any(name != "screening_id" for name in values)
                 target = output.id
             else:
                 movie = MovieSnapshot.from_movie(existing.movie)
-                await session.delete.execute(mutation)
+                await session.delete.execute(
+                    DeleteScreeningUseCase.InputData(screening_id=mutation.screening_id)
+                )
                 if await session.movies.find_by_id(existing.movie.id) is None:
                     removed_movie = movie
                 output = None

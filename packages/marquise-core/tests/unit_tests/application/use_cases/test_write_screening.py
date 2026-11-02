@@ -77,7 +77,7 @@ def create_request() -> WriteScreeningUseCase.InputData:
     """A validated intended creation."""
     return WriteScreeningUseCase.InputData(
         context=CONTEXT,
-        mutation=CreateScreeningUseCase.InputData(
+        mutation=WriteScreeningUseCase.CreateInput(
             movie_id="mov-1", cinema_id="cin-1", showtime=NOW
         ),
     )
@@ -105,6 +105,11 @@ async def test_create_records_audit_and_replay_inside_transaction(
     assert isinstance(saved, ScreeningWriteResult)
     assert isinstance(saved.screening, ScreeningWriteResult.Screening)
     assert saved.screening.id == "scr-1"
+    session.create.execute.assert_awaited_once_with(
+        CreateScreeningUseCase.InputData(
+            movie_id="mov-1", cinema_id="cin-1", showtime=NOW
+        )
+    )
     audit = session.save_audit.await_args.args[0]
     assert (audit.account, audit.key, audit.operation, audit.target) == (
         "editor-1",
@@ -155,7 +160,7 @@ async def test_key_reuse_for_different_intent_fails(
         )
     else:
         request = replace(
-            request, mutation=DeleteScreeningUseCase.InputData(screening_id="scr-1")
+            request, mutation=WriteScreeningUseCase.DeleteInput(screening_id="scr-1")
         )
     with pytest.raises(ScreeningIdempotencyConflictError):
         await use_case.execute(request)
@@ -181,13 +186,19 @@ async def test_empty_patch_and_unchanged_nonempty_patch_have_distinct_history(
     use_case: WriteScreeningUseCase, session: MagicMock, empty: bool
 ) -> None:
     """Empty PATCH saves replay only; explicit unchanged values still create history."""
-    mutation = UpdateScreeningUseCase.InputData(
+    mutation = WriteScreeningUseCase.UpdateInput(
         screening_id="scr-1", **({} if empty else {"external_id": "source-1"})
     )
     result = await use_case.execute(
         WriteScreeningUseCase.InputData(context=CONTEXT, mutation=mutation)
     )
     assert result.changed is not empty
+    session.update.execute.assert_awaited_once_with(
+        UpdateScreeningUseCase.InputData(
+            screening_id="scr-1",
+            **({} if empty else {"external_id": "source-1"}),
+        )
+    )
     session.lock_target.assert_awaited_once_with("scr-1", lock_movie=False)
     session.save_replay.assert_awaited_once()
     if empty:
@@ -203,7 +214,8 @@ async def test_omission_and_explicit_null_are_different_requests(
 ) -> None:
     """Reusing an empty PATCH key to clear metadata is a conflicting intent."""
     request = WriteScreeningUseCase.InputData(
-        context=CONTEXT, mutation=UpdateScreeningUseCase.InputData(screening_id="scr-1")
+        context=CONTEXT,
+        mutation=WriteScreeningUseCase.UpdateInput(screening_id="scr-1"),
     )
     await use_case.execute(request)
     session.find_replay.return_value = session.save_replay.await_args.args[0]
@@ -226,11 +238,14 @@ async def test_delete_captures_screening_and_only_removed_movie(
     result = await use_case.execute(
         WriteScreeningUseCase.InputData(
             context=CONTEXT,
-            mutation=DeleteScreeningUseCase.InputData(screening_id="scr-1"),
+            mutation=WriteScreeningUseCase.DeleteInput(screening_id="scr-1"),
         )
     )
     assert result.screening is None
     assert result.screening_id == "scr-1"
+    session.delete.execute.assert_awaited_once_with(
+        DeleteScreeningUseCase.InputData(screening_id="scr-1")
+    )
     session.lock_target.assert_awaited_once_with("scr-1", lock_movie=True)
     audit = session.save_audit.await_args.args[0]
     assert audit.before.id == "scr-1"

@@ -56,12 +56,6 @@ ALLOWLIST = {
     "case module marquise.application.movie_workflows",
     "use_cases/refresh_movies.py: imports _enrich from use case module "
     "marquise.application.use_cases.enrich_movie",
-    "use_cases/write_screening.py: WriteScreeningUseCase contract uses "
-    "CreateScreeningUseCase.InputData",
-    "use_cases/write_screening.py: WriteScreeningUseCase contract uses "
-    "DeleteScreeningUseCase.InputData",
-    "use_cases/write_screening.py: WriteScreeningUseCase contract uses "
-    "UpdateScreeningUseCase.InputData",
 }
 
 

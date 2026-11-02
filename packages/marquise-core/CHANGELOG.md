@@ -4,6 +4,10 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-11-02
 
+### v0.2.43
+
+- Give screening write commands their own create, update, and delete payloads. Closes #389.
+
 ### v0.2.42
 
 - Move the movie workflow conflict error into application exceptions while preserving existing imports. Closes #390.
