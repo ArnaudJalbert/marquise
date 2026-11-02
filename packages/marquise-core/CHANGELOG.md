@@ -4,6 +4,10 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-11-02
 
+### v0.2.40
+
+- Nest per-screening import result types in their owning commands. Closes #387.
+
 ### v0.2.39
 
 - Raise `ScreeningNotFoundError` in the delete-screening use case when no screening exists, preserving the API 404 response. Closes #386.
