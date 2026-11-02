@@ -20,8 +20,6 @@ APPLICATION_DIR = (
 USE_CASE_PACKAGES = ("use_cases", "queries")
 
 ALLOWLIST = {
-    "use_cases/create_screenings.py: CreateScreeningsCommand contract uses "
-    "module-level ImportedScreeningData",
     "use_cases/create_missing_movies.py: imports EnrichMovieInputData from "
     "shared use case module marquise.application.movie_workflows",
     "use_cases/create_missing_movies.py: imports MatchMovieInputData from "
@@ -32,8 +30,6 @@ ALLOWLIST = {
     "case module marquise.application.movie_workflows",
     "use_cases/enrich_movie.py: EnrichMovieUseCase has no nested InputData",
     "use_cases/enrich_movie.py: EnrichMovieUseCase has no nested OutputData",
-    "use_cases/import_screenings.py: imports ImportedScreeningData from "
-    "use case module marquise.application.use_cases.create_screenings",
     "use_cases/match_movie.py: MatchMovieUseCase has no nested InputData",
     "use_cases/match_movie.py: MatchMovieUseCase has no nested OutputData",
     "use_cases/match_movie.py: imports MatchMovieInputData from shared use case "
