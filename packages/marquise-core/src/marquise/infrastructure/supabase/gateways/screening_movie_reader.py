@@ -21,7 +21,7 @@ class SupabaseScreeningMovieReadGateway:
     async def search(
         self,
         start: datetime,
-        end: datetime,
+        end: datetime | None,
         now: datetime,
         page: int,
         title: str | None = None,
@@ -42,7 +42,8 @@ class SupabaseScreeningMovieReadGateway:
                     FROM "{self._schema}".screenings s
                     JOIN "{self._schema}".cinemas c ON c.id = s.cinema_id
                     JOIN "{self._schema}".movies m ON m.id = s.movie_id
-                    WHERE s.showtime >= $1 AND s.showtime <= $2
+                    WHERE s.showtime >= $1
+                      AND ($2::timestamp IS NULL OR s.showtime <= $2)
                       AND s.showtime > $3
                       AND ($4::text IS NULL OR m.title ILIKE '%' || $4 || '%')
                       AND (cardinality($5::text[]) = 0 OR s.cinema_id = ANY($5))
@@ -72,7 +73,7 @@ class SupabaseScreeningMovieReadGateway:
                 ORDER BY p.next_showtime, p.movie_id, q.showtime, q.id
                 ''',
                 _naive_utc(start),
-                _naive_utc(end),
+                None if end is None else _naive_utc(end),
                 _naive_utc(now),
                 None if not title else title.strip(),
                 list(cinemas),

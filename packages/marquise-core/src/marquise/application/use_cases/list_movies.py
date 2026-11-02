@@ -145,36 +145,36 @@ class ListMoviesUseCase:
         """
         self.movie_repository = movie_repository
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """List movies, optionally filtered by title/ids and paginated.
 
         Args:
-            request: The input data containing optional title or ids filter
+            input_data: The input data containing optional title or ids filter
                 and pagination parameters.
 
         Returns:
             The output data containing the matching page of movies and the
             total count.
         """
-        if request.ids is not None:
+        if input_data.ids is not None:
             movies = await self.movie_repository.find_by_ids(
-                [MovieId(value=movie_id) for movie_id in request.ids]
+                [MovieId(value=movie_id) for movie_id in input_data.ids]
             )
-            if request.title is not None:
-                needle = request.title.lower()
+            if input_data.title is not None:
+                needle = input_data.title.lower()
                 movies = [m for m in movies if needle in m.title.lower()]
             movie_data = [self._to_movie_data(m) for m in movies]
             return self.OutputData(movies=movie_data, total=len(movie_data))
 
-        if request.size is not None:
-            limit = request.size
-            offset = (request.page - 1) * request.size
+        if input_data.size is not None:
+            limit = input_data.size
+            offset = (input_data.page - 1) * input_data.size
         else:
             limit = None
             offset = 0
 
         page = await self.movie_repository.find_all(
-            title_filter=request.title,
+            title_filter=input_data.title,
             limit=limit,
             offset=offset,
         )

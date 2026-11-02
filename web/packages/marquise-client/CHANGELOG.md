@@ -2,6 +2,8 @@
 
 ## 2026-11-01
 
+- Allow screening-movie queries without an end date for complete upcoming listings.
+
 - Carry TMDB scores and vote counts for film detail metadata.
 
 

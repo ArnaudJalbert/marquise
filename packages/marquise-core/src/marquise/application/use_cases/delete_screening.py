@@ -44,11 +44,11 @@ class DeleteScreeningUseCase:
         """
         self.screening_repository = screening_repository
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """Permanently delete a screening by its ID.
 
         Args:
-            request: The input data containing the screening ID.
+            input_data: The input data containing the screening ID.
 
         Returns:
             The output data containing the deleted screening ID.
@@ -57,6 +57,6 @@ class DeleteScreeningUseCase:
             ScreeningNotFoundError: If no screening with the given ID exists.
         """
         await self.screening_repository.delete(
-            screening_id=ScreeningId(value=request.screening_id)
+            screening_id=ScreeningId(value=input_data.screening_id)
         )
-        return self.OutputData(screening_id=request.screening_id)
+        return self.OutputData(screening_id=input_data.screening_id)
