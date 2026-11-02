@@ -898,9 +898,8 @@ async def test_replace_raises_on_identity_conflict(
 
 
 @pytest.mark.asyncio
-async def test_delete_missing_raises_gateway_error(
+async def test_delete_missing_returns_false(
     screening_gateway: SupabaseScreeningGateway,
 ) -> None:
-    """Verify delete raises GatewayError when screening ID does not exist."""
-    with pytest.raises(GatewayError, match="scr-delete-missing"):
-        await screening_gateway.delete("scr-delete-missing")
+    """Verify delete returns false when screening ID does not exist."""
+    assert await screening_gateway.delete("scr-delete-missing") is False

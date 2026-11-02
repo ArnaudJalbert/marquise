@@ -67,12 +67,12 @@ class ImportScreeningsCommand:
         self.create_movies_use_case = create_movies_use_case
         self.create_screenings_use_case = create_screenings_use_case
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         fetched = await self.fetch_screenings_use_case.execute(
             FetchScreeningsFromSourceQuery.InputData(
-                cinema_id=request.cinema_id,
-                start_date=request.start_date,
-                end_date=request.end_date,
+                cinema_id=input_data.cinema_id,
+                start_date=input_data.start_date,
+                end_date=input_data.end_date,
             )
         )
         movies = await self.create_movies_use_case.execute(

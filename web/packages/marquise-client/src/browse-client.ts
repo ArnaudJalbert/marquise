@@ -6,7 +6,7 @@ export interface ScreeningMovieApi extends MovieApi {
 }
 export interface ScreeningMovieQuery {
   start: string;
-  end: string;
+  end?: string;
   page: number;
   title?: string;
   cinemas?: readonly string[];

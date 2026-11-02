@@ -77,11 +77,11 @@ class GetMovieUseCase:
         """
         self.movie_repository = movie_repository
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """Retrieve a movie by its ID.
 
         Args:
-            request: The input data containing the movie ID.
+            input_data: The input data containing the movie ID.
 
         Returns:
             The output data describing the movie.
@@ -89,10 +89,12 @@ class GetMovieUseCase:
         Raises:
             MovieNotFoundError: If no movie with the given ID exists.
         """
-        movie = await self.movie_repository.find_by_id(MovieId(value=request.movie_id))
+        movie = await self.movie_repository.find_by_id(
+            MovieId(value=input_data.movie_id)
+        )
         if movie is None:
             raise MovieNotFoundError(
-                f"A movie with ID '{request.movie_id}' was not found"
+                f"A movie with ID '{input_data.movie_id}' was not found"
             )
 
         return self.OutputData(

@@ -3,10 +3,7 @@
 from __future__ import annotations
 
 from marquise.infrastructure.supabase.connection_pool import ConnectionPool
-from marquise.interface_adapters.repositories.protocols.base import (
-    GatewayError,
-    GatewayPage,
-)
+from marquise.interface_adapters.repositories.protocols.base import GatewayPage
 
 DEFAULT_SCHEMA = "marquise"
 
@@ -151,7 +148,7 @@ class SupabaseCinemaGateway:
         address: str | None,
         city: str | None,
         website: str | None = None,
-    ) -> dict:
+    ) -> dict | None:
         """Update an existing cinema row.
 
         Args:
@@ -162,10 +159,8 @@ class SupabaseCinemaGateway:
             website: Updated website URL (optional).
 
         Returns:
-            The updated row as a dict.
-
-        Raises:
-            GatewayError: If no row with the given ``cinema_id`` exists.
+            The updated row as a dict, or None if no row with the given
+            ``cinema_id`` exists.
         """
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
@@ -181,11 +176,7 @@ class SupabaseCinemaGateway:
                 city,
                 website,
             )
-        if row is None:
-            raise GatewayError(
-                f"A cinema with ID '{cinema_id}' was not found"
-            ) from None
-        return dict(row)
+        return dict(row) if row is not None else None
 
     async def find_all(
         self,

@@ -61,4 +61,5 @@ USER appuser
 
 EXPOSE 8000
 
-CMD ["uvicorn", "marquise_api.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
+# Keep the structured application log without a second client-address/query log.
+CMD ["uvicorn", "marquise_api.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]

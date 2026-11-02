@@ -114,11 +114,11 @@ class SearchScreeningsQuery:
         self.cinema_repository = cinema_repository
         self.movie_repository = movie_repository
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """Search screenings by any combination of filters.
 
         Args:
-            request: The input data with optional filters and pagination
+            input_data: The input data with optional filters and pagination
                 parameters.
 
         Returns:
@@ -132,38 +132,38 @@ class SearchScreeningsQuery:
                 that ID exists.
         """
         if (
-            request.movie_id is not None
+            input_data.movie_id is not None
             and not await self.movie_repository.exists_by_id(
-                MovieId(value=request.movie_id)
+                MovieId(value=input_data.movie_id)
             )
         ):
             raise MovieNotFoundError(
-                f"A movie with ID '{request.movie_id}' was not found"
+                f"A movie with ID '{input_data.movie_id}' was not found"
             )
         if (
-            request.cinema_id is not None
+            input_data.cinema_id is not None
             and not await self.cinema_repository.exists_by_id(
-                CinemaId(value=request.cinema_id)
+                CinemaId(value=input_data.cinema_id)
             )
         ):
             raise CinemaNotFoundError(
-                f"A cinema with ID '{request.cinema_id}' was not found"
+                f"A cinema with ID '{input_data.cinema_id}' was not found"
             )
 
-        if request.size is not None:
-            limit = request.size
-            offset = (request.page - 1) * request.size
+        if input_data.size is not None:
+            limit = input_data.size
+            offset = (input_data.page - 1) * input_data.size
         else:
             limit = None
             offset = 0
 
         page = await self.screening_reader.search(
-            movie_id=request.movie_id,
-            movie_title=request.movie,
-            cinema_id=request.cinema_id,
-            start_date=request.start_date,
-            end_date=request.end_date,
-            language=request.language,
+            movie_id=input_data.movie_id,
+            movie_title=input_data.movie,
+            cinema_id=input_data.cinema_id,
+            start_date=input_data.start_date,
+            end_date=input_data.end_date,
+            language=input_data.language,
             limit=limit,
             offset=offset,
         )

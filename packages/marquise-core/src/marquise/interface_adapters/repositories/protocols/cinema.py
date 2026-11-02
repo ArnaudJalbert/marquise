@@ -87,7 +87,7 @@ class CinemaGateway(Protocol):
         address: str | None,
         city: str | None,
         website: str | None = None,
-    ) -> dict:
+    ) -> dict | None:
         """Update an existing cinema row.
 
         Args:
@@ -98,10 +98,8 @@ class CinemaGateway(Protocol):
             website: Updated website URL (optional).
 
         Returns:
-            The updated row as a dict.
-
-        Raises:
-            GatewayError: If no row with the given ``cinema_id`` exists.
+            The updated row as a dict, or None if no row with the given
+            ``cinema_id`` exists.
         """
         ...
 

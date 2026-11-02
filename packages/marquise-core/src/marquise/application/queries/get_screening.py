@@ -41,16 +41,16 @@ class GetScreeningQuery:
         """Initialize with a reader for screening display data."""
         self.screening_reader = screening_reader
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """Return the projection for the requested screening ID.
 
         Raises:
             ScreeningNotFoundError: If no screening with this exact ID exists.
         """
-        screening = await self.screening_reader.find_by_id(request.screening_id)
+        screening = await self.screening_reader.find_by_id(input_data.screening_id)
         if screening is None:
             raise ScreeningNotFoundError(
-                f"A screening with ID '{request.screening_id}' was not found"
+                f"A screening with ID '{input_data.screening_id}' was not found"
             )
         return self.OutputData(
             id=screening.id,

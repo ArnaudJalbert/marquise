@@ -90,12 +90,14 @@ class CreateMissingMoviesCommand:
         self.enricher = enricher
         self.metadata_movies = metadata_movies
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         identities: dict[tuple[str, str | None], ProviderIdentity] = {}
         if self.matcher is None:
-            resolved, unmatched = await self._resolve_identity(request.movies)
+            resolved, unmatched = await self._resolve_identity(input_data.movies)
         else:
-            resolved, unmatched, identities = await self._match_movies(request.movies)
+            resolved, unmatched, identities = await self._match_movies(
+                input_data.movies
+            )
         found_movies = await self.movie_repository.find_by_titles(
             self._search_terms(unmatched)
         )

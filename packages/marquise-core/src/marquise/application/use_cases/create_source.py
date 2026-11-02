@@ -60,11 +60,11 @@ class CreateSourceUseCase:
         """
         self.source_repository = source_repository
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """Create a new source definition.
 
         Args:
-            request: The input data for source creation.
+            input_data: The input data for source creation.
 
         Returns:
             The output data containing the created source details.
@@ -72,18 +72,18 @@ class CreateSourceUseCase:
         Raises:
             SourceAlreadyExistsError: If a source with the same name already exists.
         """
-        source_name = SourceName(value=request.name)
+        source_name = SourceName(value=input_data.name)
 
         existing = await self.source_repository.find_by_name(source_name)
         if existing is not None:
             raise SourceAlreadyExistsError(
-                f"A source with name '{request.name}' already exists"
+                f"A source with name '{input_data.name}' already exists"
             )
 
         source = SourceDefinition(
             name=source_name,
-            display_name=request.display_name,
-            description=request.description,
+            display_name=input_data.display_name,
+            description=input_data.description,
         )
 
         saved = await self.source_repository.save(source)

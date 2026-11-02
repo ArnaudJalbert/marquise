@@ -57,11 +57,11 @@ class GetCinemaUseCase:
         """
         self.cinema_repository = cinema_repository
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """Retrieve a cinema by its ID.
 
         Args:
-            request: The input data containing the cinema ID.
+            input_data: The input data containing the cinema ID.
 
         Returns:
             The output data describing the cinema.
@@ -70,11 +70,11 @@ class GetCinemaUseCase:
             CinemaNotFoundError: If no cinema with the given ID exists.
         """
         cinema = await self.cinema_repository.find_by_id(
-            CinemaId(value=request.cinema_id)
+            CinemaId(value=input_data.cinema_id)
         )
         if cinema is None:
             raise CinemaNotFoundError(
-                f"A cinema with ID '{request.cinema_id}' was not found"
+                f"A cinema with ID '{input_data.cinema_id}' was not found"
             )
 
         return self.OutputData(

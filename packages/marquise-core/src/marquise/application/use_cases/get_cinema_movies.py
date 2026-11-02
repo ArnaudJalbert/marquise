@@ -115,11 +115,11 @@ class GetCinemaMoviesUseCase:
         self.cinema_repository = cinema_repository
         self.screening_repository = screening_repository
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """List a cinema's distinct movies within the requested date range.
 
         Args:
-            request: The input data with cinema ID, date range, and
+            input_data: The input data with cinema ID, date range, and
                 pagination parameters.
 
         Returns:
@@ -129,25 +129,25 @@ class GetCinemaMoviesUseCase:
         Raises:
             CinemaNotFoundError: If no cinema with the given ID exists.
         """
-        cinema_id = CinemaId(value=request.cinema_id)
+        cinema_id = CinemaId(value=input_data.cinema_id)
         if not await self.cinema_repository.exists_by_id(cinema_id):
             raise CinemaNotFoundError(
-                f"A cinema with ID '{request.cinema_id}' was not found"
+                f"A cinema with ID '{input_data.cinema_id}' was not found"
             )
         cinema = await self.cinema_repository.find_by_id(cinema_id)
         assert cinema is not None  # existence already verified above
 
-        if request.size is not None:
-            limit = request.size
-            offset = (request.page - 1) * request.size
+        if input_data.size is not None:
+            limit = input_data.size
+            offset = (input_data.page - 1) * input_data.size
         else:
             limit = None
             offset = 0
 
         page = await self.screening_repository.find_distinct_movies_by_cinema(
             cinema_id=cinema_id,
-            start_date=request.start_date,
-            end_date=request.end_date,
+            start_date=input_data.start_date,
+            end_date=input_data.end_date,
             limit=limit,
             offset=offset,
         )
