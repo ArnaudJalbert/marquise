@@ -2,6 +2,10 @@
 
 ## 2026-11-02
 
+### v0.1.18
+
+- Use screening write payloads owned by the core command. Requires core v0.2.43. Closes #389.
+
 ### v0.1.17
 
 - Use the screening write context owned by `WriteScreeningUseCase`. Requires core v0.2.41.
