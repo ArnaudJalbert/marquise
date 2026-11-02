@@ -8,11 +8,11 @@ from hashlib import sha256
 
 import asyncpg
 
+from marquise.application.exceptions.screening import ScreeningWriteBusyError
 from marquise.application.transactions.screening_write import (
     ScreeningWriteSession,
     ScreeningWriteTransaction,
 )
-from marquise.application.use_cases.write_screening import ScreeningWriteBusyError
 from marquise.infrastructure.supabase.connection_pool import ConnectionPool
 
 

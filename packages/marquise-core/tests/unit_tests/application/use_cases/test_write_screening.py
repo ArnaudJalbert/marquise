@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, create_autospec
 
 import pytest
 
+from marquise.application.exceptions import ScreeningIdempotencyConflictError
 from marquise.application.repositories import MovieRepository, ScreeningRepository
 from marquise.application.transactions.screening_write import (
     ScreeningWriteSession,
@@ -15,7 +16,6 @@ from marquise.application.use_cases.create_screening import CreateScreeningUseCa
 from marquise.application.use_cases.delete_screening import DeleteScreeningUseCase
 from marquise.application.use_cases.update_screening import UpdateScreeningUseCase
 from marquise.application.use_cases.write_screening import (
-    ScreeningIdempotencyConflictError,
     ScreeningWriteContext,
     WriteScreeningUseCase,
 )
