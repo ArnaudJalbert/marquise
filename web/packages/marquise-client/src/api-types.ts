@@ -35,6 +35,8 @@ export interface MovieApi {
   genres: string[] | null;
   original_title: string | null;
   rating: string | null;
+  tmdb_rating?: number | null;
+  tmdb_vote_count?: number | null;
   origin_countries: string[] | null;
 }
 

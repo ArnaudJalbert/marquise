@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-01
+
+### v0.1.15
+
+- Disable duplicate Uvicorn access logging in the production container and clarify independent public API use, third-party content rights, non-affiliation, and policy links in the API reference. Supports #415.
+
+### v0.1.14
+
+- Add nullable TMDB rating and vote count to movie and screening-movie responses. Requires core v0.2.33 and migration `373-add-movies-tmdb-score.sql`. Closes #375.
+
 ## 2026-10-30
 
 ### v0.1.13

@@ -31,6 +31,8 @@ class MovieGateway(Protocol):
         rating: str | None = None,
         origin_countries: str | None = None,
         tmdb_id: str | None = None,
+        tmdb_rating: float | None = None,
+        tmdb_vote_count: int | None = None,
         *,
         update_existing: bool = True,
     ) -> dict:
@@ -53,6 +55,8 @@ class MovieGateway(Protocol):
             rating: Content rating (optional).
             origin_countries: Comma-separated origin countries (optional).
             tmdb_id: Known TMDB identity, if any.
+            tmdb_rating: TMDB user score, if fetched.
+            tmdb_vote_count: TMDB vote count, if fetched.
             update_existing: Update matching titles, or return them unchanged.
 
         Returns:

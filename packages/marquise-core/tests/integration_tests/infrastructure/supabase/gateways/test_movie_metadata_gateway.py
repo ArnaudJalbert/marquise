@@ -64,6 +64,8 @@ async def test_stable_ids_source_screenings_and_lifecycle(
             "poster_url": "poster",
             "trailer_url": "trailer",
             "rating": "13+",
+            "tmdb_rating": 8.1,
+            "tmdb_vote_count": 1234,
         },
         "42",
         STAMP,
@@ -74,6 +76,7 @@ async def test_stable_ids_source_screenings_and_lifecycle(
     assert updated["description"] == "Source synopsis"
     assert updated["directors"] == "Source Director"
     assert updated["metadata_enriched_at"] == STAMP
+    assert (updated["tmdb_rating"], updated["tmdb_vote_count"]) == (8.1, 1234)
     assert await gateway.find_by_tmdb_id("42") == updated
     refreshed = await gateway.update_metadata(
         "movie",
@@ -84,6 +87,7 @@ async def test_stable_ids_source_screenings_and_lifecycle(
     )
     assert refreshed["metadata_enriched_at"] == STAMP + timedelta(days=1)
     assert refreshed["revision"] != updated["revision"]
+    assert (refreshed["tmdb_rating"], refreshed["tmdb_vote_count"]) == (8.1, 1234)
     async with db_pool.acquire() as conn:
         assert (
             dict(await conn.fetchrow(f'SELECT * FROM "{SCHEMA}".screenings'))

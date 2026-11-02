@@ -493,6 +493,8 @@ def test_get_movie(client: TestClient, factory: MagicMock) -> None:
         original_title=None,
         rating=None,
         origin_countries=None,
+        tmdb_rating=8.1,
+        tmdb_vote_count=1234,
     )
 
     response = client.get("/v1/movies/mov-1")
@@ -501,6 +503,8 @@ def test_get_movie(client: TestClient, factory: MagicMock) -> None:
     body = response.json()
     assert body["title"] == "The Odyssey"
     assert body["release_year"] == 2026
+    assert body["tmdb_rating"] == 8.1
+    assert body["tmdb_vote_count"] == 1234
     factory.get_movie_use_case.execute.assert_awaited_once_with(
         GetMovieUseCase.InputData(movie_id="mov-1")
     )
@@ -558,6 +562,8 @@ def test_list_movies(client: TestClient, factory: MagicMock) -> None:
                 original_title=None,
                 rating=None,
                 origin_countries=None,
+                tmdb_rating=None,
+                tmdb_vote_count=None,
             )
         ],
         total=1,
@@ -570,6 +576,8 @@ def test_list_movies(client: TestClient, factory: MagicMock) -> None:
     assert len(body["items"]) == 1
     assert body["items"][0]["id"] == "mov-1"
     assert body["items"][0]["title"] == "The Odyssey"
+    assert body["items"][0]["tmdb_rating"] is None
+    assert body["items"][0]["tmdb_vote_count"] is None
     assert body["total"] == 1
     assert body["page"] == 1
     assert body["size"] == 50
@@ -1585,6 +1593,8 @@ def test_screening_movie_metadata_and_preview_response(
                 duration_minutes=90,
                 description=None,
                 poster_url="https://posters.example/film.jpg",
+                tmdb_rating=8.1,
+                tmdb_vote_count=1234,
                 screenings=[
                     SimpleNamespace(
                         id="show",
@@ -1605,6 +1615,8 @@ def test_screening_movie_metadata_and_preview_response(
     data = client.get("/v1/screening-movies?start=2026-11-01&end=2026-11-01").json()
     assert data["total"] == 1 and data["pages"] == 1
     assert data["items"][0]["directors"] == ["Director"]
+    assert data["items"][0]["tmdb_rating"] == 8.1
+    assert data["items"][0]["tmdb_vote_count"] == 1234
     assert data["items"][0]["screenings"][0]["language"] == "VOSTF"
     assert (
         data["items"][0]["screenings"][0]["ticket_url"]
