@@ -32,7 +32,7 @@ class ScreeningMovieReader(ABC):
     async def search(
         self,
         start: datetime,
-        end: datetime,
+        end: datetime | None,
         now: datetime,
         page: int,
         title: str | None = None,
