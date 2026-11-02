@@ -188,6 +188,22 @@ it("keeps every section available from the cinema directory", () => {
   expect(props.navigate).toHaveBeenCalledWith("/?section=movies");
 });
 
+it("shows the decorative mark inside the home link named Marquise", () => {
+  /** Scenario: a visitor sees the mark before the wordmark; assistive tech still hears "Marquise". */
+  render(<MinimalCatalogue {...props} />);
+  const home = screen.getByRole("link", { name: "Marquise" });
+  expect(home).toHaveAttribute("href", "/");
+  expect(within(home).getByRole("presentation")).toHaveAttribute("alt", "");
+});
+
+it("shows the mark beside the footer name", () => {
+  /** Scenario: the footer closes the page with the one-colour mark next to "Marquise". */
+  render(<MinimalCatalogue {...props} />);
+  const footer = within(screen.getByRole("contentinfo"));
+  const name = footer.getByText("Marquise");
+  expect(within(name).getByRole("presentation")).toHaveAttribute("alt", "");
+});
+
 it("keeps date-independent catalogue results separate from screening results", () => {
   const laterMovie = {
     ...movie,
