@@ -18,9 +18,6 @@ from marquise.application.exceptions import (
     ScreeningWriteBusyError,
 )
 from marquise.application.transactions.screening_write import ScreeningWriteSession
-from marquise.application.use_cases.create_screening import CreateScreeningUseCase
-from marquise.application.use_cases.delete_screening import DeleteScreeningUseCase
-from marquise.application.use_cases.update_screening import UpdateScreeningUseCase
 from marquise.application.use_cases.write_screening import (
     WriteScreeningUseCase,
 )
@@ -55,7 +52,7 @@ def request(
         context=WriteScreeningUseCase.Context(
             account=account, key=key, reason="Publish"
         ),
-        mutation=CreateScreeningUseCase.InputData(
+        mutation=WriteScreeningUseCase.CreateInput(
             movie_id="mov-1", cinema_id="cin-1", showtime=NOW
         ),
     )
@@ -95,14 +92,14 @@ async def test_replay_survives_update_delete_and_orphan_cleanup(
     original = await writer.execute(request())
     update = WriteScreeningUseCase.InputData(
         context=replace(request().context, key="patch-1"),
-        mutation=UpdateScreeningUseCase.InputData(
+        mutation=WriteScreeningUseCase.UpdateInput(
             screening_id=original.screening_id, room="Room 2"
         ),
     )
     updated = await writer.execute(update)
     delete = WriteScreeningUseCase.InputData(
         context=replace(request().context, key="delete-1"),
-        mutation=DeleteScreeningUseCase.InputData(screening_id=original.screening_id),
+        mutation=WriteScreeningUseCase.DeleteInput(screening_id=original.screening_id),
     )
     deleted = await writer.execute(delete)
     assert await writer.execute(request()) == original
@@ -138,11 +135,11 @@ async def test_journal_failure_rolls_back_change_and_leaves_key_reusable(
     if operation != "create":
         created = await writer.execute(request())
         mutation = (
-            UpdateScreeningUseCase.InputData(
+            WriteScreeningUseCase.UpdateInput(
                 screening_id=created.screening_id, room="Room 2"
             )
             if operation == "update"
-            else DeleteScreeningUseCase.InputData(screening_id=created.screening_id)
+            else WriteScreeningUseCase.DeleteInput(screening_id=created.screening_id)
         )
         write = replace(write, mutation=mutation)
     async with db_pool.acquire() as connection:
@@ -209,7 +206,7 @@ async def test_empty_patch_is_replayable_without_history(
     created = await writer.execute(request())
     patch = WriteScreeningUseCase.InputData(
         context=replace(request().context, key="empty-1"),
-        mutation=UpdateScreeningUseCase.InputData(screening_id=created.screening_id),
+        mutation=WriteScreeningUseCase.UpdateInput(screening_id=created.screening_id),
     )
     result = await writer.execute(patch)
     assert not result.changed
@@ -251,7 +248,7 @@ async def test_concurrent_edits_record_the_state_they_change(
     edits = [
         WriteScreeningUseCase.InputData(
             context=replace(request().context, key=f"patch-{room.replace(' ', '-')}"),
-            mutation=UpdateScreeningUseCase.InputData(
+            mutation=WriteScreeningUseCase.UpdateInput(
                 screening_id=created.screening_id, room=room
             ),
         )

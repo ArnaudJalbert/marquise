@@ -20,7 +20,6 @@ from marquise import (
     AuthenticationServiceUnavailableError,
     CinemaNotFoundError,
     CreateScreeningUseCase,
-    DeleteScreeningUseCase,
     GetCinemaMoviesUseCase,
     GetCinemaScreeningsQuery,
     GetCinemaUseCase,
@@ -37,7 +36,6 @@ from marquise import (
     ScreeningNotFoundError,
     ScreeningWriteBusyError,
     SearchScreeningsQuery,
-    UpdateScreeningUseCase,
     VerifyAccessTokenQuery,
     WriteScreeningUseCase,
 )
@@ -135,7 +133,7 @@ def test_editor_creates_persisted_screening(
     assert response.headers["location"] == "/v1/screenings/persisted-id"
     factory.write_screening_use_case.execute.assert_awaited_once()
     assert factory.write_screening_use_case.execute.await_args.args[0].mutation == (
-        CreateScreeningUseCase.InputData(
+        WriteScreeningUseCase.CreateInput(
             movie_id="mov-1",
             cinema_id="cin-1",
             showtime=SHOWTIME,
@@ -181,7 +179,7 @@ def test_editor_patches_only_supplied_fields(
         )
     factory.write_screening_use_case.execute.assert_awaited_once()
     assert factory.write_screening_use_case.execute.await_args.args[0].mutation == (
-        UpdateScreeningUseCase.InputData(screening_id="scr-1", **expected_fields)
+        WriteScreeningUseCase.UpdateInput(screening_id="scr-1", **expected_fields)
     )
 
 
@@ -198,7 +196,7 @@ def test_editor_permanently_deletes_screening(
     assert response.content == b""
     factory.write_screening_use_case.execute.assert_awaited_once()
     assert factory.write_screening_use_case.execute.await_args.args[0].mutation == (
-        DeleteScreeningUseCase.InputData(screening_id="scr-1")
+        WriteScreeningUseCase.DeleteInput(screening_id="scr-1")
     )
 
 
@@ -286,7 +284,7 @@ def test_create_optional_omission_and_null(
     assert response.status_code == 201
     factory.write_screening_use_case.execute.assert_awaited_once()
     assert factory.write_screening_use_case.execute.await_args.args[0].mutation == (
-        CreateScreeningUseCase.InputData(
+        WriteScreeningUseCase.CreateInput(
             movie_id="mov-1", cinema_id="cin-1", showtime=SHOWTIME
         )
     )
