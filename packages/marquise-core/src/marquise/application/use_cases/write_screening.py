@@ -1,5 +1,7 @@
 """Audit policy and retry-safe orchestration for authenticated screening writes."""
 
+from __future__ import annotations
+
 import json
 import re
 import unicodedata
@@ -27,28 +29,6 @@ from marquise.domain.value_objects.screening_audit import (
 )
 
 
-@dataclass(frozen=True, slots=True)
-class ScreeningWriteContext:
-    """Verified account and validated client-supplied write intent."""
-
-    account: str
-    key: str
-    reason: str
-
-    def __post_init__(self) -> None:
-        """Reject missing identity, malformed keys, and invalid reasons."""
-        if not self.account.strip():
-            raise ValueError("account must not be empty")
-        if re.fullmatch(r"[A-Za-z0-9._:-]{1,128}", self.key) is None:
-            raise ValueError("Invalid Idempotency-Key")
-        if (
-            not self.reason.strip()
-            or len(self.reason) > 500
-            or any(unicodedata.category(char).startswith("C") for char in self.reason)
-        ):
-            raise ValueError("Invalid X-Change-Reason")
-
-
 class WriteScreeningUseCase:
     """Commit screening mutation, application-built history, and replay together.
 
@@ -58,10 +38,33 @@ class WriteScreeningUseCase:
     """
 
     @dataclass(frozen=True, slots=True)
+    class Context:
+        """Verified account and validated client-supplied write intent."""
+
+        account: str
+        key: str
+        reason: str
+
+        def __post_init__(self) -> None:
+            """Reject missing identity, malformed keys, and invalid reasons."""
+            if not self.account.strip():
+                raise ValueError("account must not be empty")
+            if re.fullmatch(r"[A-Za-z0-9._:-]{1,128}", self.key) is None:
+                raise ValueError("Invalid Idempotency-Key")
+            if (
+                not self.reason.strip()
+                or len(self.reason) > 500
+                or any(
+                    unicodedata.category(char).startswith("C") for char in self.reason
+                )
+            ):
+                raise ValueError("Invalid X-Change-Reason")
+
+    @dataclass(frozen=True, slots=True)
     class InputData:
         """Validated mutation and attributable retry context."""
 
-        context: ScreeningWriteContext
+        context: WriteScreeningUseCase.Context
         mutation: (
             CreateScreeningUseCase.InputData
             | UpdateScreeningUseCase.InputData

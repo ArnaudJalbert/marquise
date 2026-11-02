@@ -22,7 +22,6 @@ from marquise.application.use_cases.create_screening import CreateScreeningUseCa
 from marquise.application.use_cases.delete_screening import DeleteScreeningUseCase
 from marquise.application.use_cases.update_screening import UpdateScreeningUseCase
 from marquise.application.use_cases.write_screening import (
-    ScreeningWriteContext,
     WriteScreeningUseCase,
 )
 from marquise.infrastructure.di.screening_write import build_write_screening_use_case
@@ -53,7 +52,9 @@ def request(
 ) -> WriteScreeningUseCase.InputData:
     """One intended creation, with a distinct key per new operation."""
     return WriteScreeningUseCase.InputData(
-        context=ScreeningWriteContext(account=account, key=key, reason="Publish"),
+        context=WriteScreeningUseCase.Context(
+            account=account, key=key, reason="Publish"
+        ),
         mutation=CreateScreeningUseCase.InputData(
             movie_id="mov-1", cinema_id="cin-1", showtime=NOW
         ),

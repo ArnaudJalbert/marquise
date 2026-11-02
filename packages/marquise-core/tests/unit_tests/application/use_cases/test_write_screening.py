@@ -16,14 +16,13 @@ from marquise.application.use_cases.create_screening import CreateScreeningUseCa
 from marquise.application.use_cases.delete_screening import DeleteScreeningUseCase
 from marquise.application.use_cases.update_screening import UpdateScreeningUseCase
 from marquise.application.use_cases.write_screening import (
-    ScreeningWriteContext,
     WriteScreeningUseCase,
 )
 from marquise.domain.entities import Cinema, Movie, Screening
 from marquise.domain.value_objects import CinemaId, MovieId, ScreeningId, Showtime
 
 NOW = datetime(2026, 10, 7, 12, tzinfo=UTC)
-CONTEXT = ScreeningWriteContext(
+CONTEXT = WriteScreeningUseCase.Context(
     account="editor-1", key="write-1", reason="Correct listings"
 )
 
