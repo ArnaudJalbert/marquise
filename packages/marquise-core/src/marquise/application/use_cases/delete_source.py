@@ -49,11 +49,11 @@ class DeleteSourceUseCase:
         """
         self.source_repository = source_repository
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """Delete a source by its name.
 
         Args:
-            request: The input data containing the source name.
+            input_data: The input data containing the source name.
 
         Returns:
             The output data containing the deleted source's name.
@@ -61,12 +61,12 @@ class DeleteSourceUseCase:
         Raises:
             SourceNotFoundError: If no source with the given name exists.
         """
-        source_name = SourceName(value=request.source_name)
+        source_name = SourceName(value=input_data.source_name)
         deleted = await self.source_repository.delete(source_name)
 
         if not deleted:
             raise SourceNotFoundError(
-                f"A source with name '{request.source_name}' was not found"
+                f"A source with name '{input_data.source_name}' was not found"
             )
 
-        return self.OutputData(source_name=request.source_name)
+        return self.OutputData(source_name=input_data.source_name)

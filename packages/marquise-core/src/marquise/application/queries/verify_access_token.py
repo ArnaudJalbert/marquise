@@ -36,9 +36,9 @@ class VerifyAccessTokenQuery:
         """Initialize with authenticated identity reader."""
         self._identities = identities
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """Verify token and return trusted caller identity."""
-        identity = await self._identities.read(request.token)
+        identity = await self._identities.read(input_data.token)
         role = MarquiseRole(identity.role)
         return self.OutputData(
             subject=identity.subject,

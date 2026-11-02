@@ -27,6 +27,6 @@ class ListCinemaSourceAssignmentsQuery:
         """Initialize with cinema-source assignment reader."""
         self._reader = reader
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """List cinema-source assignments."""
         return self.OutputData(assignments=await self._reader.list_all())

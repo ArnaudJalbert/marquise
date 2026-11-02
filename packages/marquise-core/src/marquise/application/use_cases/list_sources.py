@@ -60,11 +60,11 @@ class ListSourcesUseCase:
         """
         self.source_repository = source_repository
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """List all registered sources.
 
         Args:
-            request: The input data (no parameters).
+            input_data: The input data (no parameters).
 
         Returns:
             The output data containing all source definitions.

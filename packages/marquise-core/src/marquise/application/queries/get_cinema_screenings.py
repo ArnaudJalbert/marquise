@@ -46,18 +46,22 @@ class GetCinemaScreeningsQuery:
         self.cinema_repository = cinema_repository
         self.screening_reader = screening_reader
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """Return paginated screening summaries for one cinema."""
         if not await self.cinema_repository.exists_by_id(
-            CinemaId(value=request.cinema_id)
+            CinemaId(value=input_data.cinema_id)
         ):
             raise CinemaNotFoundError(
-                f"A cinema with ID '{request.cinema_id}' was not found"
+                f"A cinema with ID '{input_data.cinema_id}' was not found"
             )
-        limit = request.size
-        offset = (request.page - 1) * request.size if request.size is not None else 0
+        limit = input_data.size
+        offset = (
+            (input_data.page - 1) * input_data.size
+            if input_data.size is not None
+            else 0
+        )
         page = await self.screening_reader.search(
-            cinema_id=request.cinema_id,
+            cinema_id=input_data.cinema_id,
             limit=limit,
             offset=offset,
         )

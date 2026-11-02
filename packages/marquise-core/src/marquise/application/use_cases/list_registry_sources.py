@@ -54,11 +54,11 @@ class ListRegistrySourcesUseCase:
         """
         self._registry = registry
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """List all sources available in the code-level registry.
 
         Args:
-            request: The input data (no parameters).
+            input_data: The input data (no parameters).
 
         Returns:
             The output data containing registry source entries.
