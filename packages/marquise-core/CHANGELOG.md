@@ -2,6 +2,12 @@
 
 Before 2026-07-15 this package was published as `marquise`.
 
+## 2026-11-02
+
+### v0.2.37
+
+- Move screening write errors into the application exceptions package while preserving error types and messages. Closes #384.
+
 ## 2026-11-01
 
 ### v0.2.36
