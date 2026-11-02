@@ -73,14 +73,14 @@ class AssignSourceUseCase:
         self.source_definition_repository = source_definition_repository
         self.assignment_repository = assignment_repository
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """Assign a source to a cinema.
 
         Validates that both the cinema and source exist, and that
         no existing assignment conflicts.
 
         Args:
-            request: The input data containing cinema_id and source_name.
+            input_data: The input data containing cinema_id and source_name.
 
         Returns:
             The output data confirming the assignment.
@@ -91,26 +91,26 @@ class AssignSourceUseCase:
             CinemaSourceAssignmentAlreadyExistsError: If the cinema
                 already has a source assigned.
         """
-        cinema_id = CinemaId(value=request.cinema_id)
-        source_name = SourceName(value=request.source_name)
+        cinema_id = CinemaId(value=input_data.cinema_id)
+        source_name = SourceName(value=input_data.source_name)
 
         cinema = await self.cinema_repository.find_by_id(cinema_id)
         if cinema is None:
             raise CinemaNotFoundError(
-                f"A cinema with ID '{request.cinema_id}' was not found"
+                f"A cinema with ID '{input_data.cinema_id}' was not found"
             )
 
         source = await self.source_definition_repository.find_by_name(source_name)
         if source is None:
             raise SourceNotFoundError(
-                f"A source with name '{request.source_name}' was not found"
+                f"A source with name '{input_data.source_name}' was not found"
             )
 
         existing = await self.assignment_repository.find_by_cinema_id(cinema_id)
         if existing is not None:
             raise CinemaSourceAssignmentAlreadyExistsError(
                 f"Source '{existing.source.name}' is already assigned to"
-                f" cinema '{request.cinema_id}'"
+                f" cinema '{input_data.cinema_id}'"
             )
 
         assignment = CinemaSourceAssignment(

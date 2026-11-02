@@ -138,7 +138,7 @@
   position: relative;
 }
 .discovery-hero h1 {
-  font-family: Georgia, serif;
+  font-family: var(--font-sans);
   font-size: clamp(36px, 4.7vw, 64px);
   line-height: 1.12;
   letter-spacing: -1.6px;
@@ -247,7 +247,7 @@
 }
 .poster-link > div {
   background: linear-gradient(145deg, #33414d, #202730);
-  font-family: Georgia, serif;
+  font-family: var(--font-sans);
 }
 .poster-preview-button {
   position: absolute;
@@ -294,7 +294,7 @@
   gap: 12px;
 }
 .preview-heading h3 {
-  font-family: Georgia, serif;
+  font-family: var(--font-sans);
   font-size: 20px;
   line-height: 1.2;
 }
@@ -330,7 +330,7 @@
   border-bottom: 1px solid #35414d;
 }
 .how-it-works p {
-  font-family: Georgia, serif;
+  font-family: var(--font-sans);
   font-size: 19px;
 }
 .how-it-works span {
@@ -357,8 +357,7 @@
 }
 .discovery-callout h2 {
   font:
-    26px/1.3 Georgia,
-    serif;
+    26px/1.3 var(--font-sans);
   margin: 12px 0;
 }
 .discovery-callout p:not(.eyebrow) {
@@ -399,8 +398,7 @@
 }
 .listings-intro h1 {
   font:
-    48px/1.15 Georgia,
-    serif;
+    48px/1.15 var(--font-sans);
   margin: 18px 0 15px;
   letter-spacing: -1px;
 }
@@ -489,8 +487,7 @@
 .request-state h1,
 .request-state h2 {
   font:
-    30px Georgia,
-    serif;
+    30px var(--font-sans);
   color: #f1f3f5;
   margin-bottom: 15px;
 }
@@ -533,8 +530,7 @@
 }
 .film-heading h1 {
   font:
-    clamp(30px, 4vw, 52px) / 1.1 Georgia,
-    serif;
+    clamp(30px, 4vw, 52px) / 1.1 var(--font-sans);
   margin: 18px 0;
 }
 .film-heading p:not(.eyebrow) {
@@ -605,8 +601,7 @@
 }
 .cinema-card h2 {
   font:
-    24px/1.3 Georgia,
-    serif;
+    24px/1.3 var(--font-sans);
 }
 .cinema-card address {
   font-size: 12px;

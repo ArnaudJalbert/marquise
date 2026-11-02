@@ -79,14 +79,16 @@ class UpdateCinemaUseCase:
         """
         self.cinema_repository = cinema_repository
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """Update an existing cinema.
 
-        Constructs a cinema entity from the request and delegates to
-        the repository.
+        Constructs a cinema entity from the input data and delegates to
+        the repository. If no cinema with the given ID exists, the
+        repository raises ``CinemaNotFoundError`` representing an
+        application-layer error.
 
         Args:
-            request: The input data for updating the cinema.
+            input_data: The input data for updating the cinema.
 
         Returns:
             The output data containing the updated cinema details.
@@ -94,19 +96,19 @@ class UpdateCinemaUseCase:
         Raises:
             CinemaNotFoundError: If no cinema with the given ID exists.
         """
-        cinema_id = CinemaId(value=request.cinema_id)
+        cinema_id = CinemaId(value=input_data.cinema_id)
         cinema = Cinema(
             id=cinema_id,
-            name=request.name,
-            address=request.address,
-            city=request.city,
-            website=request.website,
+            name=input_data.name,
+            address=input_data.address,
+            city=input_data.city,
+            website=input_data.website,
         )
         updated = await self.cinema_repository.update(cinema)
 
         if updated is None:
             raise CinemaNotFoundError(
-                f"A cinema with ID '{request.cinema_id}' was not found"
+                f"A cinema with ID '{input_data.cinema_id}' was not found"
             )
 
         return self.OutputData(

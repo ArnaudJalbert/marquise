@@ -93,27 +93,27 @@ class FetchScreeningsFromSourceQuery:
         self.assignment_repository = assignment_repository
         self.source_registry = source_registry
 
-    async def execute(self, request: InputData) -> OutputData:
-        cinema_id = CinemaId(value=request.cinema_id)
+    async def execute(self, input_data: InputData) -> OutputData:
+        cinema_id = CinemaId(value=input_data.cinema_id)
         cinema = await self.cinema_repository.find_by_id(cinema_id)
         if cinema is None:
             raise CinemaNotFoundError(
-                f"A cinema with ID '{request.cinema_id}' was not found"
+                f"A cinema with ID '{input_data.cinema_id}' was not found"
             )
 
         assignment = await self.assignment_repository.find_by_cinema_id(cinema_id)
         if assignment is None:
             raise CinemaSourceAssignmentNotFoundError(
-                f"No source assigned to cinema '{request.cinema_id}'"
+                f"No source assigned to cinema '{input_data.cinema_id}'"
             )
 
         source_name = str(assignment.source.name)
 
         start_dt = datetime.combine(
-            request.start_date, datetime.min.time(), tzinfo=_MONTREAL
+            input_data.start_date, datetime.min.time(), tzinfo=_MONTREAL
         )
         end_dt = datetime.combine(
-            request.end_date, datetime.max.time(), tzinfo=_MONTREAL
+            input_data.end_date, datetime.max.time(), tzinfo=_MONTREAL
         )
 
         raw_rows = await self.source_registry.fetch_showtimes(
@@ -127,7 +127,7 @@ class FetchScreeningsFromSourceQuery:
             "Fetched %d showtime rows for cinema '%s' (%s) from source '%s'",
             len(raw_rows),
             cinema.name,
-            request.cinema_id,
+            input_data.cinema_id,
             source_name,
         )
 
@@ -141,7 +141,7 @@ class FetchScreeningsFromSourceQuery:
                 self.source_registry,
                 source_name,
                 unique_identifiers,
-                request.enrichment_concurrency,
+                input_data.enrichment_concurrency,
             )
             for ident, detail in zip(unique_identifiers, raw_details):
                 if isinstance(detail, MovieEnrichmentData):
@@ -190,7 +190,7 @@ class FetchScreeningsFromSourceQuery:
             "Produced %d unique movies and %d screenings for cinema '%s'",
             len(movie_list),
             len(raw_rows),
-            request.cinema_id,
+            input_data.cinema_id,
         )
 
         return self.OutputData(

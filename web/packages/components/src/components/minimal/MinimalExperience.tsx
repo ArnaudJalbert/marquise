@@ -194,8 +194,11 @@ export function MinimalExperience({
   const catalogue = usePageResource(
     useCallback(
       (page: number, signal: AbortSignal) =>
-        client.fetchMoviePage(page, signal, search.trim() || undefined, 24),
-      [client, search],
+        client.fetchScreeningMoviesPage(
+          { start: today, page, title: search.trim() || undefined },
+          signal,
+        ),
+      [client, search, today],
     ),
     isCatalogue,
   );

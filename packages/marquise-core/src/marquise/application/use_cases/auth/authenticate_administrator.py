@@ -46,7 +46,7 @@ class AuthenticateAdministratorUseCase:
         self._passwords = passwords
         self._identities = identities
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """Authenticate credentials and reject non-Administrators.
 
         Raises:
@@ -55,7 +55,7 @@ class AuthenticateAdministratorUseCase:
             AuthorizationError: If the authenticated account is not an Administrator.
         """
         token = await self._passwords.issue_access_token(
-            normalize_email(request.email), request.password
+            normalize_email(input_data.email), input_data.password
         )
         identity = await self._identities.read(token)
         if identity.role != MarquiseRole.ADMINISTRATOR.value:
