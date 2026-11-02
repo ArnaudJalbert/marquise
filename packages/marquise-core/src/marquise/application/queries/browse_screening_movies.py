@@ -15,10 +15,10 @@ class BrowseScreeningMoviesQuery:
 
     @dataclass(frozen=True, slots=True)
     class InputData:
-        """Inclusive Montreal dates and a one-based page of 24 movies."""
+        """Inclusive Montreal dates, open-ended without end, and a page of 24."""
 
         start: date
-        end: date
+        end: date | None
         page: int = 1
         title: str | None = None
         cinemas: tuple[str, ...] = ()
@@ -28,7 +28,7 @@ class BrowseScreeningMoviesQuery:
 
         def __post_init__(self) -> None:
             """Reject inverted dates and invalid pages."""
-            if self.start > self.end:
+            if self.end is not None and self.start > self.end:
                 raise ValueError("start must not be after end")
             if self.end == date.max:
                 raise ValueError("end is outside the supported date range")
@@ -58,12 +58,17 @@ class BrowseScreeningMoviesQuery:
         self._clock = clock
 
     async def execute(self, request: InputData) -> OutputData:
-        """Convert local date bounds and read one bounded movie page."""
+        """Convert local date bounds and read one movie page."""
         zone = ZoneInfo("America/Montreal")
         start = datetime.combine(request.start, time.min, zone).astimezone(UTC)
-        end = datetime.combine(
-            request.end + timedelta(days=1), time.min, zone
-        ).astimezone(UTC) - timedelta(microseconds=1)
+        end = (
+            datetime.combine(
+                request.end + timedelta(days=1), time.min, zone
+            ).astimezone(UTC)
+            - timedelta(microseconds=1)
+            if request.end is not None
+            else None
+        )
         now = self._clock()
         page = await self._reader.search(
             start,

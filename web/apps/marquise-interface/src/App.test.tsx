@@ -134,16 +134,25 @@ it("appends catalogue pages at the end and stops at the reported last page", asy
   const pages = Array.from({ length: 3 }, (_, pageIndex) =>
     Array.from({ length: pageIndex === 2 ? 5 : 24 }, (_, itemIndex) => {
       const number = pageIndex * 24 + itemIndex + 1;
-      return { ...movie, id: `movie-${number}`, title: `Movie ${number}` };
+      const id = `movie-${number}`;
+      const title = `Movie ${number}`;
+      return {
+        ...movie,
+        id,
+        title,
+        screenings: [{ ...show, movie_id: id, movie_title: title }],
+      };
     }),
   );
-  client.fetchMoviePage.mockImplementation(async (requestedPage) => ({
-    items: pages[requestedPage - 1] ?? [],
-    total: 53,
-    page: requestedPage,
-    size: 24,
-    pages: 3,
-  }));
+  client.fetchScreeningMoviesPage.mockImplementation(
+    async ({ page: requestedPage }) => ({
+      items: pages[requestedPage - 1] ?? [],
+      total: 53,
+      page: requestedPage,
+      size: 24,
+      pages: 3,
+    }),
+  );
   render(<App client={client} />);
 
   await screen.findByRole("link", { name: "View Movie 24" });
@@ -153,19 +162,17 @@ it("appends catalogue pages at the end and stops at the reported last page", asy
     endObservers.at(-1)?.reachEnd();
   });
   await screen.findByRole("link", { name: "View Movie 25" });
-  expect(client.fetchMoviePage).toHaveBeenNthCalledWith(
+  expect(client.fetchScreeningMoviesPage).toHaveBeenNthCalledWith(
     2,
-    2,
+    { start: "2026-11-01", page: 2, title: undefined },
     expect.any(AbortSignal),
-    undefined,
-    24,
   );
   await act(async () => endObservers.at(-1)?.reachEnd());
   await screen.findByRole("link", { name: "View Movie 53" });
   expect(screen.getAllByRole("article")).toHaveLength(53);
-  expect(client.fetchMoviePage).toHaveBeenCalledTimes(3);
+  expect(client.fetchScreeningMoviesPage).toHaveBeenCalledTimes(3);
   await act(async () => endObservers.at(-1)?.reachEnd());
-  expect(client.fetchMoviePage).toHaveBeenCalledTimes(3);
+  expect(client.fetchScreeningMoviesPage).toHaveBeenCalledTimes(3);
 });
 
 it("appends distinct screening movies when their end enters view", async () => {
@@ -214,25 +221,32 @@ it("appends distinct screening movies when their end enters view", async () => {
 it("keeps loaded catalogue movies after a page failure and retries that page", async () => {
   history.replaceState(null, "", "/?section=movies");
   const client = clients();
-  const movies = Array.from({ length: 25 }, (_, index) => ({
-    ...movie,
-    id: `movie-${index + 1}`,
-    title: `Movie ${index + 1}`,
-  }));
-  let failNext = true;
-  client.fetchMoviePage.mockImplementation(async (requestedPage) => {
-    if (requestedPage === 2 && failNext) {
-      failNext = false;
-      throw new Error("offline");
-    }
+  const movies = Array.from({ length: 25 }, (_, index) => {
+    const id = `movie-${index + 1}`;
+    const title = `Movie ${index + 1}`;
     return {
-      items: requestedPage === 1 ? movies.slice(0, 24) : movies.slice(24),
-      total: 25,
-      page: requestedPage,
-      size: 24,
-      pages: 2,
+      ...movie,
+      id,
+      title,
+      screenings: [{ ...show, movie_id: id, movie_title: title }],
     };
   });
+  let failNext = true;
+  client.fetchScreeningMoviesPage.mockImplementation(
+    async ({ page: requestedPage }) => {
+      if (requestedPage === 2 && failNext) {
+        failNext = false;
+        throw new Error("offline");
+      }
+      return {
+        items: requestedPage === 1 ? movies.slice(0, 24) : movies.slice(24),
+        total: 25,
+        page: requestedPage,
+        size: 24,
+        pages: 2,
+      };
+    },
+  );
   render(<App client={client} />);
 
   await screen.findByRole("link", { name: "View Movie 24" });
@@ -242,7 +256,7 @@ it("keeps loaded catalogue movies after a page failure and retries that page", a
   expect(screen.queryByRole("link", { name: "View Movie 25" })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Retry" }));
   await screen.findByRole("link", { name: "View Movie 25" });
-  expect(client.fetchMoviePage).toHaveBeenCalledTimes(3);
+  expect(client.fetchScreeningMoviesPage).toHaveBeenCalledTimes(3);
 });
 
 it.each(["/", "/cinemas/c1"])("restores filtered pages from %s after visiting a movie", async (route) => {
@@ -417,24 +431,38 @@ it("does not show results from a superseded screening query", async () => {
   expect(client.fetchScreeningMoviesPage.mock.calls[0]?.[1]?.aborted).toBe(true);
 });
 
-it("uses separate date-independent endpoint search and keeps navigation active", async () => {
+it("searches only movies with upcoming screenings and keeps navigation active", async () => {
   const client = clients();
+  client.fetchScreeningMoviesPage.mockImplementation(async ({ end, title }) =>
+    title
+      ? page<ScreeningMovieApi>([])
+      : page<ScreeningMovieApi>([
+          {
+            ...movie,
+            id: end ? movie.id : "upcoming",
+            title: end ? movie.title : "Upcoming film",
+            screenings: [show],
+          },
+        ]),
+  );
   render(<App client={client} />);
   await screen.findByRole("link", { name: "View Wanted film" });
   fireEvent.click(screen.getByRole("link", { name: "Movies" }));
-  await screen.findByRole("link", { name: "View Catalogue only" });
+  await screen.findByRole("link", { name: "View Upcoming film" });
   fireEvent.change(screen.getByRole("searchbox", { name: "Search movies" }), {
     target: { value: "never screened" },
   });
   await waitFor(() =>
-    expect(client.fetchMoviePage).toHaveBeenLastCalledWith(
-      1,
+    expect(client.fetchScreeningMoviesPage).toHaveBeenLastCalledWith(
+      {
+        start: "2026-11-01",
+        page: 1,
+        title: "never screened",
+      },
       expect.any(AbortSignal),
-      "never screened",
-      24,
     ),
   );
-  expect(client.fetchScreeningMoviesPage).toHaveBeenCalledTimes(1);
+  expect(client.fetchScreeningMoviesPage).toHaveBeenCalledTimes(3);
   expect(screen.queryByRole("link", { name: "View Wanted film" })).toBeNull();
   expect(
     screen.getByRole("link", { name: "Movies" }).getAttribute("aria-current"),
