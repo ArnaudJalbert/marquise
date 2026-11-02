@@ -2,7 +2,7 @@
 
 Research date: 2026-11-01. This is a research record for [policy proposal #415](https://github.com/ArnaudJalbert/marquise/issues/415), not approved policy text or a legal determination. It combines three parallel investigations of privacy, content licensing, and website obligations.
 
-Code reviewed during research: `origin/main` at `f80ba0edff2790546668dd65cc1ef1a6d9784e8d`. Research began in the older footer worktree at `bc5d20bd5d97325d70dda090a1654e2dca6ea709`. Findings below use the reviewed main revision. No production logs, credentials, provider accounts, or private agreements were inspected. The research phase made no website or deployment changes. A subsequent branch based on the reviewed main revision implements the policy review drafts and includes this note; those pages remain labelled drafts.
+Code reviewed during research: `origin/main` at `f80ba0edff2790546668dd65cc1ef1a6d9784e8d`. Research began in the older footer worktree at `bc5d20bd5d97325d70dda090a1654e2dca6ea709`. Findings below use the reviewed main revision. No production logs, credentials, provider accounts, or private agreements were inspected. The research phase made no website or deployment changes. A subsequent branch implements the information pages and includes this note; final copy approval is recorded in the implementation update below.
 
 ## What needs attention first
 
@@ -28,7 +28,7 @@ Arnaud also explained that the contact alias uses a Squarespace-managed domain a
 
 ## Implementation update
 
-Arnaud subsequently requested implementation of the remaining measures. The policy branch now disables routine Nginx/Uvicorn access logging, sets a no-referrer policy, adds reuse/non-affiliation guidance and policy links to the API reference, and includes the [privacy operating procedure and Québec scope assessment](../privacy-operations.md). These configuration changes have not been deployed. Public pages remain review drafts.
+Arnaud subsequently requested implementation of the remaining measures. The policy branch now disables routine Nginx/Uvicorn access logging, sets a no-referrer policy, adds reuse/non-affiliation guidance and policy links to the API reference, and includes the [privacy operating procedure and Québec scope assessment](../privacy-operations.md). Arnaud approved the final information-page copy on 2026-11-01; its draft labels are removed and PR #416 is to be marked ready for review. These configuration changes have not been deployed. Copy approval is not merge/deployment authority or legal clearance.
 
 Read-only Fly inspection confirmed `yyz` Machines and no custom command overrides; it did not read visitor logs or prove container-level settings. Fly's current questionnaire corrects the earlier platform-IP assumption: application output has seven-day retention, while its own proxy log store does not retain inbound client IPs. Application/error output must be considered separately. [Fly questionnaire, COMPLIANCE-12](https://fly.io/legal/security-questionnaire/).
 

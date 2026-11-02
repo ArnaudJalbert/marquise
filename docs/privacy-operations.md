@@ -84,6 +84,6 @@ This inquiry has not been sent. Do not contact a regulator or lawyer on the owne
 
 - Verify effective access-log flags, Nginx configuration, and the no-referrer header after a separately authorized deployment. Do not print visitor log contents to prove logging behavior.
 - Confirm the forwarding service, processor arrangements, and relevant account/audit retention. Apply the adopted support-email procedure manually; no mailbox timer or cleanup automation is installed by this PR.
-- Make sure public copy matches the deployed configuration and adopted practices. Do not remove draft labels by treating this procedure as final copy approval or legal clearance.
+- Arnaud approved the information-page copy on 2026-11-01 and authorized removing its draft labels and marking PR #416 ready for review. This is not merge or deployment authority, or legal clearance. Make sure public copy matches the deployed configuration and adopted practices before publication; future material wording changes require review.
 - Keep the separately accepted Cineplex and Cinémathèque risks settled. An affiliation disclaimer and source credit do not create downstream content rights.
 - Keep [#410](https://github.com/ArnaudJalbert/marquise/issues/410) separate. The current metadata patch contract preserves `None` values and lacks per-field provenance; expiry must not erase cinema-supplied values or pretend failed refreshes made old values fresh.

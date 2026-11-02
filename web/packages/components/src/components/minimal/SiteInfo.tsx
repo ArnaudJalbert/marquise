@@ -100,19 +100,10 @@ export function SiteFooter({ path }: { path: string }) {
   );
 }
 
-function Draft({ children }: { children: ReactNode }) {
-  return (
-    <p className="minimal-draft" role="note">
-      {children}
-    </p>
-  );
-}
-
 function About() {
   return (
     <>
       <h1>About Marquise</h1>
-      <Draft>Draft copy for review. Wording is not approved for publication.</Draft>
       <p>
         Marquise is a free, non-commercial personal project that brings
         Montréal showtimes together. Browse films, screenings, and cinemas,
@@ -203,9 +194,6 @@ function Terms() {
   return (
     <>
       <h1>Terms of use</h1>
-      <Draft>
-        Draft for review. These terms have not been approved for publication.
-      </Draft>
       <h2>Using Marquise</h2>
       <p>
         Marquise is a free, non-commercial personal guide to Montréal showtimes.
@@ -255,7 +243,7 @@ function Terms() {
         Questions: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
         These terms may change.
       </p>
-      <p>Draft prepared November 1, 2026.</p>
+      <p>Last updated November 1, 2026.</p>
     </>
   );
 }
@@ -264,9 +252,6 @@ function Privacy() {
   return (
     <>
       <h1>Privacy</h1>
-      <Draft>
-        Draft for review. This policy has not been approved for publication.
-      </Draft>
       <h2>Browsing Marquise</h2>
       <p>
         Public browsing does not require an account. The Marquise application
@@ -336,7 +321,7 @@ function Privacy() {
         Requests are handled subject to applicable rights and retention
         obligations.
       </p>
-      <p>Draft prepared November 1, 2026.</p>
+      <p>Last updated November 1, 2026.</p>
     </>
   );
 }

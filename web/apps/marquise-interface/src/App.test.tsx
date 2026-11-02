@@ -811,7 +811,7 @@ it.each([
   for (const read of Object.values(client)) expect(read).not.toHaveBeenCalled();
 });
 
-it("shows the approved contact address and keeps policy drafts clearly labelled", () => {
+it("shows the approved contact and information pages without draft labels", () => {
   history.replaceState(null, "", "/contact");
   const { unmount } = render(<App client={clients()} />);
   expect(
@@ -823,7 +823,7 @@ it("shows the approved contact address and keeps policy drafts clearly labelled"
 
   history.replaceState(null, "", "/about");
   const about = render(<App client={clients()} />);
-  expect(screen.getByRole("note").textContent).toMatch(/Draft copy for review/);
+  expect(screen.queryByRole("note")).toBeNull();
   expect(screen.getByText(/not officially affiliated with Cineplex, TMDB/)).toBeTruthy();
   expect(screen.getByRole("main").textContent).not.toMatch(/public website|ticketing pages|API key/);
   expect(screen.getByText(/not endorsed, certified, or otherwise approved by TMDB/)).toBeTruthy();
@@ -836,9 +836,8 @@ it("shows the approved contact address and keeps policy drafts clearly labelled"
   for (const path of ["/terms", "/privacy"]) {
     history.replaceState(null, "", path);
     const policy = render(<App client={clients()} />);
-    expect(screen.getByRole("note").textContent).toMatch(
-      /^Draft for review\..*not been approved for publication/,
-    );
+    expect(screen.queryByRole("note")).toBeNull();
+    expect(screen.getByText("Last updated November 1, 2026.")).toBeTruthy();
     expect(screen.queryByText(/Placeholder paragraph/)).toBeNull();
     policy.unmount();
   }
