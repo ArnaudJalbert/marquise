@@ -1,6 +1,6 @@
 .minimal-site {
   --line: #ddd;
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 13px;
   line-height: 1.5;
   color: #000;
@@ -71,7 +71,8 @@
 }
 .minimal-nav .minimal-wordmark {
   font-size: 20px;
-  letter-spacing: -0.6px;
+  font-weight: 600;
+  letter-spacing: -0.7px;
 }
 .minimal-nav > nav {
   display: flex;
