@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from marquise.application.exceptions import CinemaNotFoundError
 from marquise.application.repositories import CinemaRepository
 from marquise.domain.entities import Cinema
 from marquise.domain.value_objects import CinemaId
@@ -12,8 +13,8 @@ from marquise.domain.value_objects import CinemaId
 class UpdateCinemaUseCase:
     """Use case for updating an existing cinema.
 
-    Replaces all fields of an existing cinema identified by its ID.
-    The repository layer handles the not-found case.
+    Replaces all fields of an existing cinema identified by its ID and
+    raises an error if no cinema with the given ID exists.
     """
 
     @dataclass(frozen=True, slots=True)
@@ -78,33 +79,38 @@ class UpdateCinemaUseCase:
         """
         self.cinema_repository = cinema_repository
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """Update an existing cinema.
 
-        Constructs a cinema entity from the request and delegates to
+        Constructs a cinema entity from the input data and delegates to
         the repository. If no cinema with the given ID exists, the
         repository raises ``CinemaNotFoundError`` representing an
         application-layer error.
 
         Args:
-            request: The input data for updating the cinema.
+            input_data: The input data for updating the cinema.
 
         Returns:
             The output data containing the updated cinema details.
 
         Raises:
-            CinemaNotFoundError: If no cinema with the given ID exists in
-                the database.
+            CinemaNotFoundError: If no cinema with the given ID exists.
         """
-        cinema_id = CinemaId(value=request.cinema_id)
+        cinema_id = CinemaId(value=input_data.cinema_id)
         cinema = Cinema(
             id=cinema_id,
-            name=request.name,
-            address=request.address,
-            city=request.city,
-            website=request.website,
+            name=input_data.name,
+            address=input_data.address,
+            city=input_data.city,
+            website=input_data.website,
         )
         updated = await self.cinema_repository.update(cinema)
+
+        if updated is None:
+            raise CinemaNotFoundError(
+                f"A cinema with ID '{input_data.cinema_id}' was not found"
+            )
+
         return self.OutputData(
             id=str(updated.id),
             name=updated.name,

@@ -32,6 +32,8 @@ async def test_deletes_screening(
     screening_repository: ScreeningRepository,
 ) -> None:
     """Successful delete removes only the requested screening."""
+    screening_repository.delete.return_value = True
+
     result = await use_case.execute(
         DeleteScreeningUseCase.InputData(screening_id="scr-1")
     )
@@ -43,16 +45,16 @@ async def test_deletes_screening(
 
 
 @pytest.mark.asyncio
-async def test_missing_screening_error_propagates(
+async def test_missing_screening_raises_not_found(
     use_case: DeleteScreeningUseCase,
     screening_repository: ScreeningRepository,
 ) -> None:
-    """Missing screening errors propagate from delete."""
-    screening_repository.delete.side_effect = ScreeningNotFoundError(
-        "A screening with ID 'scr-missing' was not found"
-    )
+    """The use case raises not-found when the repository deletes nothing."""
+    screening_repository.delete.return_value = False
 
-    with pytest.raises(ScreeningNotFoundError, match="scr-missing"):
+    with pytest.raises(
+        ScreeningNotFoundError, match="A screening with ID 'scr-missing' was not found"
+    ):
         await use_case.execute(
             DeleteScreeningUseCase.InputData(screening_id="scr-missing")
         )

@@ -17,6 +17,7 @@ import { formatScore, timeToHour, formatHour, decodePathId } from "./catalogue-f
 import { MovieSchedule } from "./MovieSchedule";
 import { Showtime } from "./Showtime";
 import { InfoMenu, SiteFooter, infoPages } from "./SiteInfo";
+import marquiseMark from "./marquise-mark.svg";
 import "./minimal.css";
 
 function Poster({ movie }: { movie: CatalogueMovie }) {
@@ -530,6 +531,13 @@ export function MinimalCatalogue({
       </a>
       <header className="minimal-nav">
         <a href="/" className="minimal-wordmark">
+          <img
+            className="minimal-wordmark-mark"
+            src={marquiseMark}
+            alt=""
+            width="34"
+            height="15"
+          />
           Marquise
         </a>
         <nav aria-label="Main navigation">
@@ -710,7 +718,7 @@ export function MinimalCatalogue({
                           <p>
                             No upcoming screenings today.{" "}
                             <a href="/?section=movies">Browse movies</a> to
-                            search the catalogue.
+                            see what screens later.
                           </p>
                         )}
                       </div>
@@ -759,7 +767,7 @@ export function MinimalCatalogue({
             )}
             {!cinemaId && activeSection === "movies" && (
               <section className="minimal-all-movies" aria-label="Movies">
-                <SectionDescription text="Search the full movie catalogue, including films with no showtimes on your selected dates. For example, look up a movie you want to see and check whether it will screen soon." />
+                <SectionDescription text="Every movie with an upcoming screening in Montréal, soonest first. Search by title to check whether a film you want to see is coming up." />
                 {catalogueNotice && <p role="status">{catalogueNotice}</p>}
                 <label className="minimal-all-movies-search">
                   <span className="minimal-visually-hidden">Search movies</span>

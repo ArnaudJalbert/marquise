@@ -5,7 +5,6 @@ import {
   render,
   screen,
   within,
-  waitFor,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -189,6 +188,22 @@ it("keeps every section available from the cinema directory", () => {
   expect(props.navigate).toHaveBeenCalledWith("/?section=movies");
 });
 
+it("shows the decorative mark inside the home link named Marquise", () => {
+  /** Scenario: a visitor sees the mark before the wordmark; assistive tech still hears "Marquise". */
+  render(<MinimalCatalogue {...props} />);
+  const home = screen.getByRole("link", { name: "Marquise" });
+  expect(home).toHaveAttribute("href", "/");
+  expect(within(home).getByRole("presentation")).toHaveAttribute("alt", "");
+});
+
+it("shows the mark beside the footer name", () => {
+  /** Scenario: the footer closes the page with the one-colour mark next to "Marquise". */
+  render(<MinimalCatalogue {...props} />);
+  const footer = within(screen.getByRole("contentinfo"));
+  const name = footer.getByText("Marquise");
+  expect(within(name).getByRole("presentation")).toHaveAttribute("alt", "");
+});
+
 it("keeps date-independent catalogue results separate from screening results", () => {
   const laterMovie = {
     ...movie,
@@ -220,24 +235,25 @@ it("keeps date-independent catalogue results separate from screening results", (
   ).not.toBeInTheDocument();
 });
 
-it("moves the schedule one date and requests the new four-day window", async () => {
+it("moves through the loaded screening dates", async () => {
   const loadWeek = vi
     .fn()
     .mockResolvedValue({ screenings: movie.screenings, cinemas });
   render(
     <MinimalCatalogue {...props} href="/movies/film" onLoadWeek={loadWeek} />,
   );
-  expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(4);
-  fireEvent.click(screen.getByRole("button", { name: "Next dates" }));
-  await waitFor(() =>
-    expect(loadWeek).toHaveBeenCalledWith(
-      movie,
-      "2026-10-31",
-      "2026-11-03",
-      expect.any(AbortSignal),
-    ),
+  await screen.findByText("18:00");
+  expect(loadWeek).toHaveBeenCalledExactlyOnceWith(
+    movie,
+    "2026-09-30",
+    "2027-01-28",
+    expect.any(AbortSignal),
   );
-  expect(screen.getByText("Tuesday November 3rd")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Next dates" }));
+  expect(screen.getByText("20:00")).toBeInTheDocument();
+  expect(screen.getByText("21:00")).toBeInTheDocument();
+  expect(screen.queryByText("18:00")).not.toBeInTheDocument();
+  expect(loadWeek).toHaveBeenCalledOnce();
   const options = within(
     screen.getByRole("combobox", { name: "Days to show" }),
   ).getAllByRole("option");
@@ -261,7 +277,7 @@ it("keeps the date columns when grouping the schedule by cinema", async () => {
     target: { value: "cinema" },
   });
   const table = screen.getByRole("table");
-  expect(within(table).getAllByRole("columnheader")).toHaveLength(5);
+  expect(within(table).getAllByRole("columnheader")).toHaveLength(4);
   expect(within(table).getByRole("row", { name: /Cinema A/ })).toBeInTheDocument();
   expect(within(table).getByRole("row", { name: /Cinema B/ })).toBeInTheDocument();
   expect(within(table).queryByText("—")).not.toBeInTheDocument();
@@ -301,13 +317,11 @@ it("ignores a previous movie's response after navigating to another movie", asyn
     <MinimalCatalogue {...common} href="/movies/film" />,
   );
   expect(loadWeek).toHaveBeenCalledOnce();
-  fireEvent.click(screen.getByRole("button", { name: "Next dates" }));
-  expect(pending[0]!.signal.aborted).toBe(true);
   rerender(<MinimalCatalogue {...common} href="/movies/second" />);
-  expect(pending[1]!.signal.aborted).toBe(true);
+  expect(pending[0]!.signal.aborted).toBe(true);
   await act(async () => {
     pending[0]!.finish({ screenings: movie.screenings, cinemas });
-    pending[2]!.finish({ screenings: secondMovie.screenings, cinemas });
+    pending[1]!.finish({ screenings: secondMovie.screenings, cinemas });
   });
   expect(screen.getByText("12:15")).toBeInTheDocument();
   expect(screen.queryByText("18:00")).not.toBeInTheDocument();
@@ -455,4 +469,24 @@ it.each([8.1, null])("renders detail score only when present: %s", (score) => {
   render(<MinimalCatalogue {...props} movies={[{...movie, tmdbRating: score}]} catalogueMovies={[{...movie, tmdbRating: score}]} href="/movies/film" />);
   if (score === null) expect(screen.queryByText(/8.1\/10/)).not.toBeInTheDocument();
   else expect(screen.getByText(/8.1\/10/)).toBeInTheDocument();
+});
+
+it("marks only the current section and the pressed date shortcut", () => {
+  /** Scenario: on screenings for today, assistive tech hears only Screenings as current and only Today as pressed. */
+  render(
+    <MinimalCatalogue
+      {...props}
+      selection={{ ...props.selection, end: "2026-10-30" }}
+    />,
+  );
+  const navigation = within(screen.getByRole("navigation", { name: "Main navigation" }));
+  expect(navigation.getByRole("link", { name: "Screenings" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  for (const name of ["Movies", "Cinemas"])
+    expect(navigation.getByRole("link", { name })).not.toHaveAttribute("aria-current");
+  expect(screen.getByRole("button", { name: "Today" })).toHaveAttribute("aria-pressed", "true");
+  for (const name of ["Tomorrow", "This weekend"])
+    expect(screen.getByRole("button", { name })).toHaveAttribute("aria-pressed", "false");
 });

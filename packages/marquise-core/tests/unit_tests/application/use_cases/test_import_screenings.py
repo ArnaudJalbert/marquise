@@ -100,3 +100,55 @@ async def test_source_identifiers_keep_same_title_screenings_distinct() -> None:
     assert [
         item.movie_id for item in screenings.execute.await_args.args[0].screenings
     ] == ["movie-1", "movie-2"]
+
+
+@pytest.mark.asyncio
+async def test_import_maps_create_results_into_its_own_screening_data() -> None:
+    """Import returns its own per-screening type with the same values and counts."""
+    fetch = create_autospec(FetchScreeningsFromSourceQuery, instance=True)
+    fetch.execute.return_value = FetchScreeningsFromSourceQuery.OutputData(
+        cinema_id="cin-1",
+        cinema_name="Cinema",
+        source_name="source",
+        movies=(),
+        screenings=(),
+    )
+    movies = create_autospec(CreateMissingMoviesCommand, instance=True)
+    movies.execute.return_value = CreateMissingMoviesCommand.OutputData(movies=())
+    screenings = create_autospec(CreateScreeningsCommand, instance=True)
+    screenings.execute.return_value = CreateScreeningsCommand.OutputData(
+        screenings=(
+            CreateScreeningsCommand.ScreeningData("Dune", "2026-08-25T19:00", True),
+            CreateScreeningsCommand.ScreeningData(
+                "Alien", "2026-08-26T19:00", False, rescheduled=True
+            ),
+        ),
+        total_count=2,
+        imported_count=1,
+        updated_count=0,
+        skipped_count=3,
+        rescheduled_count=1,
+    )
+    command = ImportScreeningsCommand(fetch, movies, screenings)
+
+    result = await command.execute(
+        command.InputData(
+            cinema_id="cin-1",
+            start_date=date(2026, 8, 25),
+            end_date=date(2026, 8, 26),
+        )
+    )
+
+    assert result.screenings == (
+        ImportScreeningsCommand.ScreeningData("Dune", "2026-08-25T19:00", True),
+        ImportScreeningsCommand.ScreeningData(
+            "Alien", "2026-08-26T19:00", False, rescheduled=True
+        ),
+    )
+    assert (
+        result.total_count,
+        result.imported_count,
+        result.updated_count,
+        result.skipped_count,
+        result.rescheduled_count,
+    ) == (2, 1, 0, 3, 1)

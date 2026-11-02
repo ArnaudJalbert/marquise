@@ -103,13 +103,14 @@ function lastResizeObserver(): ControllableResizeObserver {
 }
 
 const defaultResizeObserver = globalThis.ResizeObserver;
+const testCurrentTime = "2026-08-01T12:00:00-04:00";
 
 describe("MovieDetailPage", () => {
   it("mounts under Strict Mode without a composed-ref update loop", async () => {
     const client = createClient();
     render(
       <StrictMode>
-        <MovieDetailPage movie={movie} client={client} />
+        <MovieDetailPage currentTime={testCurrentTime} movie={movie} client={client} />
       </StrictMode>,
     );
 
@@ -120,7 +121,7 @@ describe("MovieDetailPage", () => {
 
   it("renders the movie header and the first date's showtimes", async () => {
     const client = createClient();
-    render(<MovieDetailPage movie={movie} client={client} />);
+    render(<MovieDetailPage currentTime={testCurrentTime} movie={movie} client={client} />);
 
     expect(
       await screen.findByRole("heading", { name: "Dune: Part Two" }),
@@ -141,7 +142,7 @@ describe("MovieDetailPage", () => {
 
   it("loads the next date and slides it in with the Later dates arrow", async () => {
     const client = createClient();
-    render(<MovieDetailPage movie={movie} client={client} />);
+    render(<MovieDetailPage currentTime={testCurrentTime} movie={movie} client={client} />);
 
     await screen.findByRole("heading", { name: "Dune: Part Two" });
 
@@ -166,12 +167,12 @@ describe("MovieDetailPage", () => {
     ).toBeDisabled();
   });
 
-  it("selects any future calendar date and shows an empty result", async () => {
+it("selects a screening date with no showtimes", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-01T12:00:00Z"));
     try {
       const client = createClient();
-      render(<MovieDetailPage movie={movie} client={client} />);
+      render(<MovieDetailPage currentTime={testCurrentTime} movie={movie} client={client} />);
 
       await act(async () => {
         await Promise.resolve();
@@ -182,13 +183,13 @@ describe("MovieDetailPage", () => {
           name: `Open calendar, selected ${formatDateLabel("2026-08-03")}`,
         }),
       );
-      fireEvent.click(screen.getByRole("button", { name: formatDateLabel("2026-08-10") }));
+      fireEvent.click(screen.getByRole("button", { name: formatDateLabel("2026-08-05") }));
 
       await act(async () => {
         await Promise.resolve();
         await Promise.resolve();
       });
-      expect(client.fetchShowtimes).toHaveBeenCalledWith(movie, "2026-08-10");
+      expect(client.fetchShowtimes).toHaveBeenCalledWith(movie, "2026-08-05");
       expect(screen.getAllByText("No screenings.")).not.toHaveLength(0);
     } finally {
       vi.useRealTimers();
@@ -200,6 +201,7 @@ describe("MovieDetailPage", () => {
     const onDateChange = vi.fn();
     render(
       <MovieDetailPage
+        currentTime={testCurrentTime}
         movie={movie}
         client={client}
         initialDate="2026-08-04"
@@ -227,7 +229,7 @@ describe("MovieDetailPage", () => {
         return pending.promise;
       }),
     });
-    render(<MovieDetailPage movie={movie} client={client} />);
+    render(<MovieDetailPage currentTime={testCurrentTime} movie={movie} client={client} />);
 
     await waitFor(() => expect(pendings.has("2026-08-03")).toBe(true));
 
@@ -241,7 +243,7 @@ describe("MovieDetailPage", () => {
 
   it("shows an empty state when the movie has no screening dates", async () => {
     const client = createClient({ listDates: vi.fn(async () => []) });
-    render(<MovieDetailPage movie={movie} client={client} />);
+    render(<MovieDetailPage currentTime={testCurrentTime} movie={movie} client={client} />);
 
     expect(
       await screen.findByText("No screenings scheduled."),
@@ -251,7 +253,7 @@ describe("MovieDetailPage", () => {
   it("renders a back button that calls onBack", async () => {
     const client = createClient();
     const onBack = vi.fn();
-    render(<MovieDetailPage movie={movie} client={client} onBack={onBack} />);
+    render(<MovieDetailPage currentTime={testCurrentTime} movie={movie} client={client} onBack={onBack} />);
 
     await screen.findByRole("heading", { name: "Dune: Part Two" });
 
@@ -264,13 +266,13 @@ describe("MovieDetailPage", () => {
     vi.stubGlobal("ResizeObserver", ControllableResizeObserver);
     ControllableResizeObserver.instances = [];
     const client = createClient();
-    render(<MovieDetailPage movie={movie} client={client} />);
+    render(<MovieDetailPage currentTime={testCurrentTime} movie={movie} client={client} />);
 
     await waitFor(() =>
       expect(client.fetchShowtimes).toHaveBeenCalledTimes(2),
     );
 
-    act(() => lastResizeObserver().emit(900));
+    act(() => lastResizeObserver().emit(1100));
 
     await waitFor(() =>
       expect(client.fetchShowtimes).toHaveBeenCalledTimes(3),
@@ -290,7 +292,7 @@ describe("MovieDetailPage", () => {
 
   it("keeps offscreen date columns out of the accessibility tree", async () => {
     const client = createClient();
-    render(<MovieDetailPage movie={movie} client={client} />);
+    render(<MovieDetailPage currentTime={testCurrentTime} movie={movie} client={client} />);
 
     await screen.findByText("Cinéma Moderne");
 
@@ -318,7 +320,7 @@ describe("MovieDetailPage", () => {
     vi.stubGlobal("ResizeObserver", ControllableResizeObserver);
     ControllableResizeObserver.instances = [];
     const client = createClient();
-    render(<MovieDetailPage movie={movie} client={client} />);
+    render(<MovieDetailPage currentTime={testCurrentTime} movie={movie} client={client} />);
 
     await screen.findByText("Cinéma Moderne");
     act(() => lastResizeObserver().emit(900));
@@ -350,6 +352,7 @@ describe("MovieDetailPage", () => {
     const onDateChange = vi.fn();
     render(
       <MovieDetailPage
+        currentTime={testCurrentTime}
         movie={movie}
         client={client}
         onDateChange={onDateChange}
@@ -391,7 +394,7 @@ describe("MovieDetailPage", () => {
         return dates;
       }),
     });
-    render(<MovieDetailPage movie={movie} client={client} />);
+    render(<MovieDetailPage currentTime={testCurrentTime} movie={movie} client={client} />);
 
     expect(
       await screen.findByText("Could not load the movie's screening dates."),
@@ -413,7 +416,7 @@ describe("MovieDetailPage", () => {
         return byDate[date] ?? [];
       }),
     });
-    render(<MovieDetailPage movie={movie} client={client} />);
+    render(<MovieDetailPage currentTime={testCurrentTime} movie={movie} client={client} />);
 
     expect(
       await screen.findByText(/Could not load showtimes for/),
@@ -439,13 +442,13 @@ describe("MovieDetailPage", () => {
       genres: ["Comedy", "Drama"],
     };
     const { rerender } = render(
-      <MovieDetailPage movie={movie} client={client} />,
+      <MovieDetailPage currentTime={testCurrentTime} movie={movie} client={client} />,
     );
 
     await screen.findByRole("heading", { name: "Dune: Part Two" });
     await screen.findByText("Cinéma Moderne");
 
-    rerender(<MovieDetailPage movie={otherMovie} client={client} />);
+    rerender(<MovieDetailPage currentTime={testCurrentTime} movie={otherMovie} client={client} />);
 
     expect(
       await screen.findByRole("heading", { name: "Anora" }),
@@ -479,14 +482,14 @@ describe("MovieDetailPage", () => {
       }),
     });
     const { rerender } = render(
-      <MovieDetailPage movie={movie} client={client} />,
+      <MovieDetailPage currentTime={testCurrentTime} movie={movie} client={client} />,
     );
 
     await waitFor(() =>
       expect(pendings.has("Dune: Part Two::2026-08-03")).toBe(true),
     );
 
-    rerender(<MovieDetailPage movie={otherMovie} client={client} />);
+    rerender(<MovieDetailPage currentTime={testCurrentTime} movie={otherMovie} client={client} />);
 
     await waitFor(() =>
       expect(pendings.has("Anora::2026-08-03")).toBe(true),
@@ -522,7 +525,7 @@ describe("MovieDetailPage", () => {
         return byDate[date] ?? [];
       }),
     });
-    render(<MovieDetailPage movie={movie} client={client} />);
+    render(<MovieDetailPage currentTime={testCurrentTime} movie={movie} client={client} />);
 
     expect(
       await screen.findByText(/Could not load showtimes for/),
@@ -550,7 +553,7 @@ describe("MovieDetailPage", () => {
         return byDate[date] ?? [];
       }),
     });
-    render(<MovieDetailPage movie={movie} client={client} />);
+    render(<MovieDetailPage currentTime={testCurrentTime} movie={movie} client={client} />);
 
     expect(
       await screen.findByText(/Could not load showtimes for/),

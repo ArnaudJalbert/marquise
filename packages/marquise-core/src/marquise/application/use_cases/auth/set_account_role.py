@@ -54,7 +54,7 @@ class SetAccountRoleUseCase:
         self._accounts = accounts
         self._authenticate_administrator = authenticate_administrator
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """Authorize the actor, resolve the target, and update role metadata.
 
         Administrator authentication is the authorization gate. If it fails,
@@ -68,22 +68,22 @@ class SetAccountRoleUseCase:
             SelfDemotionError: If the actor attempts to remove their own role.
             AuthAdministrationError: If the role update fails.
         """
-        administrator_email = normalize_email(request.administrator_email)
-        email = normalize_email(request.email)
+        administrator_email = normalize_email(input_data.administrator_email)
+        email = normalize_email(input_data.email)
 
         # This call fails before any privileged account operation when the actor
         # cannot be authenticated and authorized as an Administrator.
         actor = await self._authenticate_administrator.execute(
             self._authenticate_administrator.InputData(
                 email=administrator_email,
-                password=request.administrator_password,
+                password=input_data.administrator_password,
             )
         )
         account = await self._accounts.find_by_email(email)
         if account is None:
             raise AccountNotFoundError(f'No account found with email "{email}"')
 
-        role = MarquiseRole(request.role)
+        role = MarquiseRole(input_data.role)
         if account.id == actor.subject and role is not MarquiseRole.ADMINISTRATOR:
             raise SelfDemotionError(
                 "Administrators cannot remove their own Administrator role"

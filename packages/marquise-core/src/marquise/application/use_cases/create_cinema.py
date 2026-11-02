@@ -76,14 +76,14 @@ class CreateCinemaUseCase:
         """
         self.cinema_repository = cinema_repository
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """Create a new cinema.
 
         Generates a unique ID, validates no duplicate name+address,
         saves the cinema, and returns the response.
 
         Args:
-            request: The input data for cinema creation.
+            input_data: The input data for cinema creation.
 
         Returns:
             The output data containing the created cinema details.
@@ -93,22 +93,22 @@ class CreateCinemaUseCase:
                 and address already exists.
         """
         existing = await self.cinema_repository.find_by_name_and_address(
-            name=request.name,
-            address=request.address,
+            name=input_data.name,
+            address=input_data.address,
         )
         if existing is not None:
             raise CinemaAlreadyExistsError(
-                f"A cinema with name '{request.name} already exists."
+                f"A cinema with name '{input_data.name} already exists."
             )
 
         cinema_id = CinemaId(value=str(uuid4()))
 
         cinema = Cinema(
             id=cinema_id,
-            name=request.name,
-            address=request.address,
-            city=request.city,
-            website=request.website,
+            name=input_data.name,
+            address=input_data.address,
+            city=input_data.city,
+            website=input_data.website,
         )
 
         saved = await self.cinema_repository.save(cinema)

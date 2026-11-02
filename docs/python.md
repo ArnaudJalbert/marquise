@@ -21,7 +21,7 @@ Validate in `__post_init__`.
 
 ## Use cases
 
-- `execute(input: InputData) -> OutputData` is the only public method.
+- `execute(input_data: InputData) -> OutputData` is the only public method.
 - Catch domain exceptions; re-raise as `ApplicationError` subclasses — domain
   exceptions must not escape the application layer.
 

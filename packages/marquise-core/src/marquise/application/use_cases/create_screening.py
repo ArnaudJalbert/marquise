@@ -99,11 +99,11 @@ class CreateScreeningUseCase:
         self.cinema_repository = cinema_repository
         self.id_factory = id_factory
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """Create a new screening.
 
         Args:
-            request: The input data for screening creation.
+            input_data: The input data for screening creation.
 
         Returns:
             The output data containing the created screening details.
@@ -114,29 +114,31 @@ class CreateScreeningUseCase:
             ScreeningAlreadyExistsError: If a screening with the same
                 cinema, movie, and showtime already exists.
         """
-        movie = await self.movie_repository.find_by_id(MovieId(value=request.movie_id))
+        movie = await self.movie_repository.find_by_id(
+            MovieId(value=input_data.movie_id)
+        )
         if movie is None:
             raise MovieNotFoundError(
-                f"A movie with ID '{request.movie_id}' was not found"
+                f"A movie with ID '{input_data.movie_id}' was not found"
             )
 
         cinema = await self.cinema_repository.find_by_id(
-            CinemaId(value=request.cinema_id)
+            CinemaId(value=input_data.cinema_id)
         )
         if cinema is None:
             raise CinemaNotFoundError(
-                f"A cinema with ID '{request.cinema_id}' was not found"
+                f"A cinema with ID '{input_data.cinema_id}' was not found"
             )
 
         screening = Screening(
             id=ScreeningId(value=self.id_factory()),
             movie=movie,
             cinema=cinema,
-            showtime=Showtime(value=request.showtime),
-            external_id=request.external_id,
-            ticket_url=request.ticket_url,
-            room=request.room,
-            language=request.language,
+            showtime=Showtime(value=input_data.showtime),
+            external_id=input_data.external_id,
+            ticket_url=input_data.ticket_url,
+            room=input_data.room,
+            language=input_data.language,
         )
         saved = await self.screening_repository.save(screening)
 

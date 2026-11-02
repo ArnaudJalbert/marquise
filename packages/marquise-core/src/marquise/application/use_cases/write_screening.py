@@ -8,7 +8,7 @@ from dataclasses import asdict, dataclass, fields, replace
 from datetime import UTC, datetime
 from hashlib import sha256
 
-from marquise.application.exceptions.base import ApplicationError
+from marquise.application.exceptions import ScreeningIdempotencyConflictError
 from marquise.application.transactions.screening_write import (
     ScreeningReplay,
     ScreeningWriteResult,
@@ -25,14 +25,6 @@ from marquise.domain.value_objects.screening_audit import (
     ScreeningAuditRecord,
     ScreeningSnapshot,
 )
-
-
-class ScreeningIdempotencyConflictError(ApplicationError):
-    """A successful key was reused for a different intended request."""
-
-
-class ScreeningWriteBusyError(ApplicationError):
-    """A duplicate could not obtain its committed result within the wait limit."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,10 +106,10 @@ class WriteScreeningUseCase:
         self._transaction = transaction
         self._clock = clock
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """Perform one intended change or replay its original committed success."""
-        mutation = request.mutation
-        context = request.context
+        mutation = input_data.mutation
+        context = input_data.context
         operation = (
             "create"
             if isinstance(mutation, CreateScreeningUseCase.InputData)

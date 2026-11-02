@@ -15,10 +15,10 @@ class BrowseScreeningMoviesQuery:
 
     @dataclass(frozen=True, slots=True)
     class InputData:
-        """Inclusive Montreal dates and a one-based page of 24 movies."""
+        """Inclusive Montreal dates, open-ended without end, and a page of 24."""
 
         start: date
-        end: date
+        end: date | None
         page: int = 1
         title: str | None = None
         cinemas: tuple[str, ...] = ()
@@ -28,7 +28,7 @@ class BrowseScreeningMoviesQuery:
 
         def __post_init__(self) -> None:
             """Reject inverted dates and invalid pages."""
-            if self.start > self.end:
+            if self.end is not None and self.start > self.end:
                 raise ValueError("start must not be after end")
             if self.end == date.max:
                 raise ValueError("end is outside the supported date range")
@@ -57,25 +57,32 @@ class BrowseScreeningMoviesQuery:
         self._reader = reader
         self._clock = clock
 
-    async def execute(self, request: InputData) -> OutputData:
-        """Convert local date bounds and read one bounded movie page."""
+    async def execute(self, input_data: InputData) -> OutputData:
+        """Convert local date bounds and read one movie page."""
         zone = ZoneInfo("America/Montreal")
-        start = datetime.combine(request.start, time.min, zone).astimezone(UTC)
-        end = datetime.combine(
-            request.end + timedelta(days=1), time.min, zone
-        ).astimezone(UTC) - timedelta(microseconds=1)
+        start = datetime.combine(input_data.start, time.min, zone).astimezone(UTC)
+        end = (
+            datetime.combine(
+                input_data.end + timedelta(days=1), time.min, zone
+            ).astimezone(UTC)
+            - timedelta(microseconds=1)
+            if input_data.end is not None
+            else None
+        )
         now = self._clock()
         page = await self._reader.search(
             start,
             end,
             now,
-            request.page,
-            request.title,
-            request.cinemas,
-            request.languages,
-            time(request.start_hour) if request.start_hour not in (None, 0) else None,
-            time(request.end_hour)
-            if request.end_hour is not None and request.end_hour < 24
+            input_data.page,
+            input_data.title,
+            input_data.cinemas,
+            input_data.languages,
+            time(input_data.start_hour)
+            if input_data.start_hour not in (None, 0)
+            else None,
+            time(input_data.end_hour)
+            if input_data.end_hour is not None and input_data.end_hour < 24
             else None,
         )
         return self.OutputData(movies=tuple(page.items), total=page.total)
