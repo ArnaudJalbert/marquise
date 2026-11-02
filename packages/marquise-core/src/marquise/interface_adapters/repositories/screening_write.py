@@ -7,18 +7,18 @@ from marquise.application.repositories import MovieRepository, ScreeningReposito
 from marquise.application.transactions.screening_write import (
     ScreeningReplay,
     ScreeningWriteResult,
-    ScreeningWriteSession,
 )
 from marquise.application.use_cases.create_screening import CreateScreeningUseCase
 from marquise.application.use_cases.delete_screening import DeleteScreeningUseCase
 from marquise.application.use_cases.update_screening import UpdateScreeningUseCase
+from marquise.application.use_cases.write_screening import WriteScreeningUseCase
 from marquise.domain.value_objects.screening_audit import ScreeningAuditRecord
 from marquise.interface_adapters.repositories.protocols.screening_write import (
     ScreeningWriteGateway,
 )
 
 
-class ScreeningWriteSessionAdapter(ScreeningWriteSession):
+class ScreeningWriteSessionAdapter(WriteScreeningUseCase.Session):
     """Injected transaction-scoped collaborators, with DTO persistence mapping."""
 
     def __init__(
@@ -53,7 +53,7 @@ class ScreeningWriteSessionAdapter(ScreeningWriteSession):
         if screening is not None:
             screening = dict(screening)
             screening["showtime"] = datetime.fromisoformat(screening["showtime"])
-            result["screening"] = CreateScreeningUseCase.OutputData(**screening)
+            result["screening"] = ScreeningWriteResult.Screening(**screening)
         return ScreeningReplay(
             fingerprint=data["fingerprint"], result=ScreeningWriteResult(**result)
         )

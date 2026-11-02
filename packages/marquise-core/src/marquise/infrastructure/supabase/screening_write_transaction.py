@@ -16,24 +16,22 @@ from marquise.application.transactions.screening_write import (
 from marquise.infrastructure.supabase.connection_pool import ConnectionPool
 
 
-class SupabaseScreeningWriteTransaction(ScreeningWriteTransaction):
+class SupabaseScreeningWriteTransaction[SessionT: ScreeningWriteSession](
+    ScreeningWriteTransaction[SessionT]
+):
     """Infrastructure transaction mechanics with an injected session factory."""
 
     def __init__(
         self,
         pool: ConnectionPool,
-        session_factory: Callable[
-            [asyncpg.Connection, str, str], ScreeningWriteSession
-        ],
+        session_factory: Callable[[asyncpg.Connection, str, str], SessionT],
     ) -> None:
         """Inject acquisition and composition without hidden repositories."""
         self._pool = pool
         self._session_factory = session_factory
 
     @asynccontextmanager
-    async def open(
-        self, account: str, key: str
-    ) -> AsyncIterator[ScreeningWriteSession]:
+    async def open(self, account: str, key: str) -> AsyncIterator[SessionT]:
         """Serialize equivalent keys, then commit or roll back the entire session."""
         # Stable, unambiguous account/key hashing; advisory collisions only cause
         # extra waiting, never shared replay data (which uses exact account/key).

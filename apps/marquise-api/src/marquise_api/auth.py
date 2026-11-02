@@ -8,8 +8,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from marquise import (
     AuthenticationError,
     AuthenticationServiceUnavailableError,
-    ScreeningWriteContext,
     VerifyAccessTokenQuery,
+    WriteScreeningUseCase,
 )
 from marquise_api.dependencies import get_verify_access_token_query
 
@@ -82,9 +82,9 @@ async def get_screening_write_context(
         max_length=500,
         description="Nonblank, credential-free reason with no control characters.",
     ),
-) -> ScreeningWriteContext:
+) -> WriteScreeningUseCase.Context:
     """Map mandatory intent headers and verified identity into core input data."""
-    return ScreeningWriteContext(account=caller.subject, key=key, reason=reason)
+    return WriteScreeningUseCase.Context(account=caller.subject, key=key, reason=reason)
 
 
 async def require_administrator(
