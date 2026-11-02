@@ -2,11 +2,16 @@
 
 Before 2026-07-15 this package was published as `marquise`.
 
+## 2026-11-02
+
+### v0.2.37
+
+- Move screening write errors into the application exceptions package while preserving error types and messages. Closes #384.
+
 ## 2026-11-01
 
 ### v0.2.36
 
-- Move screening write errors into the application exceptions package while preserving error types and messages. Closes #384.
 - Rename use case and query execute parameters to `input_data` without changing behavior. Closes #382.
 - Allow the movie-first screening query to search from a Montréal date with no end date, so it can return every movie with a future screening.
 
