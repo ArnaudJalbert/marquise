@@ -299,11 +299,11 @@ it.each(["/", "/cinemas/c1"])("restores filtered pages from %s after visiting a 
   );
 
   fireEvent.click(screen.getByRole("link", { name: "Movies" }));
-  await screen.findByRole("link", { name: "View Catalogue only" });
+  await screen.findByRole("link", { name: "View Wanted 1" });
   history.replaceState(null, "", listing);
   fireEvent.popState(window);
   await screen.findByRole("link", { name: "View Wanted 2" });
-  expect(client.fetchScreeningMoviesPage).toHaveBeenCalledTimes(2);
+  expect(client.fetchScreeningMoviesPage).toHaveBeenCalledTimes(3);
 });
 
 it("opens today's movie-first page without catalogue reads or poster fan-out", async () => {
@@ -680,26 +680,26 @@ it("shows an initial screening error with Retry, then an honest empty state", as
   await screen.findByRole("heading", { name: "No matching screenings" });
   expect(screen.queryByRole("button", { name: "Reset selection" })).not.toBeNull();
   fireEvent.click(screen.getByRole("link", { name: "Movies" }));
-  await screen.findByRole("link", { name: "View Catalogue only" });
-  expect(client.fetchScreeningMoviesPage).toHaveBeenCalledTimes(2);
+  await screen.findByRole("link", { name: "View Wanted film" });
+  expect(client.fetchScreeningMoviesPage).toHaveBeenCalledTimes(3);
 });
 
 it("distinguishes catalogue loading, failure and Retry from screening state", async () => {
   history.replaceState(null, "", "/?section=movies");
   const client = clients();
-  client.fetchMoviePage.mockRejectedValueOnce(new Error("offline"));
+  client.fetchScreeningMoviesPage.mockRejectedValueOnce(new Error("offline"));
   render(<App client={client} />);
   await screen.findByText("Could not load movies.");
   fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-  await screen.findByRole("link", { name: "View Catalogue only" });
-  expect(client.fetchScreeningMoviesPage).not.toHaveBeenCalled();
+  await screen.findByRole("link", { name: "View Wanted film" });
+  expect(client.fetchScreeningMoviesPage).toHaveBeenCalledTimes(2);
 });
 
 it("ignores old catalogue search responses even if the client ignores cancellation", async () => {
   history.replaceState(null, "", "/?section=movies");
   const client = clients();
-  let resolveOld!: (value: Page<MovieApi>) => void;
-  client.fetchMoviePage.mockImplementationOnce(
+  let resolveOld!: (value: Page<ScreeningMovieApi>) => void;
+  client.fetchScreeningMoviesPage.mockImplementationOnce(
     () =>
       new Promise((resolve) => {
         resolveOld = resolve;
@@ -707,10 +707,16 @@ it("ignores old catalogue search responses even if the client ignores cancellati
   );
   render(<App client={client} />);
   fireEvent.change(screen.getByRole("searchbox"), { target: { value: "new" } });
-  await screen.findByRole("link", { name: "View Catalogue only" });
-  await act(async () => resolveOld(page([{ ...movie, title: "Stale title" }])));
+  await screen.findByRole("link", { name: "View Wanted film" });
+  await act(async () =>
+    resolveOld(
+      page<ScreeningMovieApi>([
+        { ...movie, title: "Stale title", screenings: [show] },
+      ]),
+    ),
+  );
   expect(screen.queryByRole("link", { name: "View Stale title" })).toBeNull();
-  expect(client.fetchMoviePage.mock.calls[0]?.[1]?.aborted).toBe(true);
+  expect(client.fetchScreeningMoviesPage.mock.calls[0]?.[1]?.aborted).toBe(true);
 });
 
 it("handles unknown movies and browser navigation between independent sections", async () => {
@@ -729,7 +735,7 @@ it("handles unknown movies and browser navigation between independent sections",
     history.replaceState(null, "", "/?section=movies");
     window.dispatchEvent(new PopStateEvent("popstate"));
   });
-  await screen.findByRole("link", { name: "View Catalogue only" });
+  await screen.findByRole("link", { name: "View Wanted film" });
 });
 
 it("handles malformed movie URL escapes without crashing navigation", async () => {
@@ -900,13 +906,22 @@ it("discloses server logs, editor records, forwarded email, and the privacy cont
 it("moves between information pages and listings with Back and Forward", async () => {
   history.replaceState(null, "", "/?section=movies");
   const client = clients();
-  client.fetchMoviePage.mockImplementation(async (requestedPage) => ({
-    items: [{ ...movie, id: `movie-${requestedPage}`, title: `Movie ${requestedPage}` }],
-    total: 2,
-    page: requestedPage,
-    pages: 2,
-    size: 24,
-  }));
+  client.fetchScreeningMoviesPage.mockImplementation(
+    async ({ page: requestedPage }) => ({
+      items: [
+        {
+          ...movie,
+          id: `movie-${requestedPage}`,
+          title: `Movie ${requestedPage}`,
+          screenings: [show],
+        },
+      ],
+      total: 2,
+      page: requestedPage,
+      pages: 2,
+      size: 24,
+    }),
+  );
   render(<App client={client} />);
   await screen.findByRole("link", { name: "View Movie 1" });
   const footer = () => within(screen.getByRole("navigation", { name: "Footer" }));
