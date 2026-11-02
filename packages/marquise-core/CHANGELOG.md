@@ -4,7 +4,7 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-11-01
 
-### v0.2.35
+### v0.2.36
 
 - Rename use case and query execute parameters to `input_data` without changing behavior. Closes #382.
 - Allow the movie-first screening query to search from a Montréal date with no end date, so it can return every movie with a future screening.
