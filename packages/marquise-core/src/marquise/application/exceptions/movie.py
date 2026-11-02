@@ -5,6 +5,10 @@ from __future__ import annotations
 from marquise.application.exceptions.base import ApplicationError
 
 
+class MovieWorkflowConflictError(ApplicationError):
+    """Stale state, identity conflict or unsafe references prevented a write."""
+
+
 class MovieIdentityConflictError(ApplicationError):
     """A title is already assigned to a different known movie."""
 

@@ -4,6 +4,10 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-11-02
 
+### v0.2.42
+
+- Move the movie workflow conflict error into application exceptions while preserving existing imports. Closes #390.
+
 ### v0.2.41
 
 - Give screening write transactions dedicated result types and preserve replay outcomes. Closes #388.
