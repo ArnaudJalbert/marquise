@@ -121,6 +121,20 @@ def create_app(factory: MarquiseFactory | None = None) -> FastAPI:
 Public read access and authenticated screening mutations for Montreal showtimes across
 multiple cinema chains and independent theatres.
 
+## Public reuse and source rights
+
+The public API is intended for independent applications as well as Marquise.
+Access does not grant a license to third-party film data, descriptions, or images.
+Check the applicable source terms and attribution requirements before reusing
+content. Marquise does not grant a blanket open-data license to API responses.
+Code licensing and third-party content rights are separate.
+
+See [Terms of use](https://marquise.mov/terms),
+[source credits](https://marquise.mov/about), and
+[Privacy](https://marquise.mov/privacy).
+Marquise is an independent personal project, not officially affiliated with
+Cineplex, TMDB, or the referenced cinemas, ticket providers, or source websites.
+
 ## Authentication
 
 The current read endpoints under ``/v1``, plus ``/health`` and ``/ready``,

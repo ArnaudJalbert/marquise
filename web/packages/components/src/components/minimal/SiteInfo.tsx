@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import tmdbLogo from "./tmdb-logo.svg";
 
 const API_DOCS_URL = "https://marquise-api.fly.dev/docs";
 // Public contact address approved by Arnaud for #402.
@@ -99,22 +100,14 @@ export function SiteFooter({ path }: { path: string }) {
   );
 }
 
-function Draft({ children }: { children: ReactNode }) {
-  return (
-    <p className="minimal-draft" role="note">
-      {children}
-    </p>
-  );
-}
-
 function About() {
   return (
     <>
       <h1>About Marquise</h1>
-      <Draft>Draft copy for review. Wording is not approved.</Draft>
       <p>
-        Marquise gathers upcoming showtimes from Montréal cinemas in one place,
-        so you can see what is playing without visiting each cinema's site.
+        Marquise is a free, non-commercial personal project that brings
+        Montréal showtimes together. Browse films, screenings, and cinemas,
+        then book directly with the cinema or ticket provider.
       </p>
       <h2>Coverage</h2>
       <p>
@@ -124,19 +117,33 @@ function About() {
       </p>
       <h2>Where the information comes from</h2>
       <p>
-        Showtimes are read from each cinema's public website or ticketing pages.
-        Film details such as synopses, runtimes, and posters come from film
-        databases and cinema listings.
+        Showtimes come from Cineplex and the other cinemas listed on the{" "}
+        <a href="/cinemas">Cinemas page</a>. Film details, posters, and scores
+        come from The Movie Database (TMDB) and cinema sources.
+      </p>
+      <h2>Independent project</h2>
+      <p>
+        Marquise is not officially affiliated with Cineplex, TMDB, or any
+        cinema, ticket provider, or other source website referenced here.
+        Names and links identify sources and booking destinations, not
+        partnerships or endorsements.
       </p>
       <h2>Credits</h2>
       <p>
-        Film metadata and images are provided by The Movie Database (TMDB).
-        Marquise uses the TMDB API but is not endorsed or certified by TMDB.
+        This website uses TMDB and the TMDB APIs but is not endorsed,
+        certified, or otherwise approved by TMDB.
       </p>
-      <Draft>
-        Unconfirmed attribution. Source credits and logos must be checked
-        against each source's usage terms before publication.
-      </Draft>
+      <p>
+        <a className="minimal-tmdb-credit" href="https://www.themoviedb.org">
+          <img
+            className="minimal-tmdb-logo"
+            src={tmdbLogo}
+            alt="The Movie Database (TMDB)"
+            width="100"
+            height="13"
+          />
+        </a>
+      </p>
       <h2>Schedule limitations</h2>
       <p>
         Cinemas change schedules, add screenings, and cancel shows. A listing
@@ -157,7 +164,6 @@ function Contact() {
   return (
     <>
       <h1>Contact</h1>
-      <Draft>Draft copy for review. Wording is not approved.</Draft>
       <p>Write to Marquise by email:</p>
       <p className="minimal-email">
         <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
@@ -184,24 +190,138 @@ function Contact() {
   );
 }
 
-function Placeholder({ title, topics }: { title: string; topics: string[] }) {
+function Terms() {
   return (
     <>
-      <h1>{title}</h1>
-      <Draft>
-        <strong>Draft placeholder.</strong> This is not a published policy and
-        does not describe Marquise's current practices. Final text needs
-        separate drafting and review.
-      </Draft>
-      {topics.map((topic) => (
-        <section key={topic}>
-          <h2>{topic}</h2>
-          <p className="minimal-placeholder-text">
-            Placeholder paragraph showing a readable text width for this
-            section. Real content will replace it.
-          </p>
-        </section>
-      ))}
+      <h1>Terms of use</h1>
+      <h2>Using Marquise</h2>
+      <p>
+        Marquise is a free, non-commercial personal guide to Montréal showtimes.
+        Listings may be incomplete, incorrect, or out of date. Confirm details
+        with the cinema before booking or travelling.
+      </p>
+      <h2>Bookings and payments</h2>
+      <p>
+        Marquise does not sell tickets or handle payments. Bookings,
+        cancellations, refunds, and admission conditions are handled by the
+        cinema or ticket provider. Contact them directly about those matters.
+      </p>
+      <h2>Independent project and third-party content</h2>
+      <p>
+        Marquise is not officially affiliated with Cineplex, TMDB, or any
+        cinema, ticket provider, or other source website referenced here.
+        Names and links do not imply partnerships or endorsements.
+      </p>
+      <p>
+        Film data and images remain subject to the rights of their respective
+        owners. Display on Marquise does not grant permission to reuse
+        third-party material.
+      </p>
+      <h2>Public API</h2>
+      <p>
+        The public API is intended for independent applications as well as
+        Marquise. API availability does not grant additional rights to
+        third-party data, descriptions, or images. Check the applicable
+        source terms and attribution requirements before reusing content.
+        See the <a href="/about">source credits</a>.
+      </p>
+      <p>
+        A license for Marquise&apos;s source code applies to the code, not
+        automatically to API content. Reusing showtime facts is different
+        from reusing descriptions and images. Nothing here restricts reuse
+        rights you already have under applicable law.
+      </p>
+      <h2>Availability and your rights</h2>
+      <p>
+        The website and API are provided as available, without a guarantee of
+        accuracy or uninterrupted service. The API may change or be
+        rate-limited. Nothing in these terms excludes rights or remedies that
+        applicable law does not allow us to exclude.
+      </p>
+      <h2>Contact and changes</h2>
+      <p>
+        Questions: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+        These terms may change.
+      </p>
+      <p>Last updated November 1, 2026.</p>
+    </>
+  );
+}
+
+function Privacy() {
+  return (
+    <>
+      <h1>Privacy</h1>
+      <h2>Browsing Marquise</h2>
+      <p>
+        Public browsing does not require an account. The Marquise application
+        has no advertising or analytics and does not set cookies or save
+        preferences in browser storage.
+      </p>
+      <h2>Requests and hosting</h2>
+      <p>
+        Web servers and our hosting provider, Fly.io, process connection and
+        request information to deliver, protect, and troubleshoot the service.
+        Routine web-server access logs are disabled. Operational and error
+        logs may still contain client addresses, requested paths, timestamps,
+        and error details.
+      </p>
+      <p>
+        The API also records request identifiers and response times. Its
+        separate request-completion log does not include explicit IP-address
+        or query-string fields. In-memory counters use the client address
+        available to the API to limit excessive requests.
+      </p>
+      <p>
+        Fly.io retains application output logs for seven days under its{" "}
+        <a href="https://fly.io/legal/security-questionnaire/">published logging policy</a>.
+        Hosting and email providers may process information outside Québec. See{" "}
+        <a href="https://fly.io/legal/privacy-policy/">Fly.io&apos;s privacy statement</a>.
+      </p>
+      <h2>External images and links</h2>
+      <p>
+        Posters load from TMDB and some cinemas&apos; image servers. Those
+        services receive your IP address and technical request information
+        when your browser loads their images. Their privacy practices apply
+        to those requests. Booking links take you to cinema or ticket-provider
+        websites, where their privacy policies apply.
+      </p>
+      <h2>Authorized editors</h2>
+      <p>
+        Authorized editing uses authenticated accounts separately from public
+        browsing. Account identifiers and a history of changes support access
+        control, traceability, and reliable handling of editing requests.
+      </p>
+      <h2>Email</h2>
+      <p>
+        If you email <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>,
+        your address and message are used to respond to your request and
+        address reported problems. The contact address forwards to Arnaud
+        Jalbert&apos;s personal Gmail inbox. The services forwarding, delivering,
+        and storing the message also process it. Please do not send sensitive
+        information that is unnecessary for your request.
+      </p>
+      <p>
+        Gmail is provided by Google. See{" "}
+        <a href="https://policies.google.com/privacy">Google&apos;s privacy policy</a>.
+      </p>
+      <p>
+        We delete support messages from the mailbox when they are no longer
+        needed to handle your request, an ongoing dispute, or a legal
+        obligation. There is no fixed retention period. Provider deletion
+        and backup practices also apply.
+      </p>
+      <h2>Privacy questions and requests</h2>
+      <p>
+        Arnaud Jalbert is responsible for the protection of personal
+        information for Marquise. Contact him at{" "}
+        <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> for privacy
+        questions, complaints, or requests to access, correct, or delete
+        personal information, or to withdraw consent where applicable.
+        Requests are handled subject to applicable rights and retention
+        obligations.
+      </p>
+      <p>Last updated November 1, 2026.</p>
     </>
   );
 }
@@ -212,20 +332,10 @@ export const infoPages: Record<string, { title: string; body: () => ReactNode }>
   "/contact": { title: "Contact", body: Contact },
   "/terms": {
     title: "Terms",
-    body: () => (
-      <Placeholder
-        title="Terms of use"
-        topics={["Using Marquise", "Listing accuracy", "External links", "Changes to these terms"]}
-      />
-    ),
+    body: Terms,
   },
   "/privacy": {
     title: "Privacy",
-    body: () => (
-      <Placeholder
-        title="Privacy"
-        topics={["Information collected", "How it is used", "Third-party services", "Contact"]}
-      />
-    ),
+    body: Privacy,
   },
 };
