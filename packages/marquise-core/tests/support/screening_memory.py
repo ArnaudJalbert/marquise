@@ -90,9 +90,9 @@ class MemoryScreeningRepository(ScreeningRepository):
         """Unused by import tests."""
         raise NotImplementedError
 
-    async def delete(self, screening_id: ScreeningId) -> None:
+    async def delete(self, screening_id: ScreeningId) -> bool:
         """Unused by import tests."""
-        self.rows.pop(screening_id)
+        return self.rows.pop(screening_id, None) is not None
 
     async def find_by_id(self, screening_id: ScreeningId) -> Screening:
         """Return a detached stored entity."""

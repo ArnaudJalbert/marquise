@@ -467,14 +467,14 @@ class SupabaseScreeningGateway:
                 ) from exc
         return dict(row) if row is not None else None
 
-    async def delete(self, screening_id: str) -> None:
+    async def delete(self, screening_id: str) -> bool:
         """Delete a screening and atomically remove its movie if now orphaned.
 
         Args:
             screening_id: The unique identifier of the row to delete.
 
-        Raises:
-            GatewayError: If no row has the given ID.
+        Returns:
+            True if a row was deleted, False if no row has the given ID.
         """
         async with self._pool.acquire() as conn:
             async with conn.transaction(isolation="read_committed"):
@@ -483,9 +483,7 @@ class SupabaseScreeningGateway:
                     screening_id,
                 )
                 if row is None:
-                    raise GatewayError(
-                        f"A screening with ID '{screening_id}' was not found"
-                    )
+                    return False
                 movie_id = row["movie_id"]
                 # DELETE locks the screening first, so concurrent reparenting
                 # cannot change which movie is cleaned up. The parent lock
@@ -504,6 +502,7 @@ class SupabaseScreeningGateway:
                     """,
                     movie_id,
                 )
+        return True
 
     async def find_by_id(self, screening_id: str) -> dict | None:
         """Find a screening by its ID.
