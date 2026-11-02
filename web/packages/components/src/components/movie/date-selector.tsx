@@ -53,6 +53,13 @@ export function addIsoDays(isoDay: string, days: number): string {
   return isoDayKey(date);
 }
 
+/** Whole days from one "YYYY-MM-DD" day to another (10th to 14th is 4). */
+export function daysBetween(fromIsoDay: string, toIsoDay: string): number {
+  return Math.round(
+    (dateFromIsoDay(toIsoDay).getTime() - dateFromIsoDay(fromIsoDay).getTime()) / 86_400_000,
+  );
+}
+
 export function formatDateLabel(isoDay: string): string {
   const date = dateFromIsoDay(isoDay);
   if (Number.isNaN(date.getTime())) {
@@ -65,10 +72,13 @@ export function Calendar({
   selectedDate,
   initialMonth,
   onSelect,
+  availableDates,
 }: {
   selectedDate: string;
   initialMonth: string;
   onSelect: (date: string) => void;
+  /** When set, only these days are selectable; otherwise any day from today on. */
+  availableDates?: readonly string[];
 }) {
   const [visible, setVisible] = useState(() => monthStart(initialMonth));
   const [focusedDate, setFocusedDate] = useState<string | null>(
@@ -76,6 +86,8 @@ export function Calendar({
   );
   const focusableRef = useRef<HTMLButtonElement | null>(null);
   const today = getCurrentMontrealDate();
+  const isSelectable = (iso: string) =>
+    availableDates === undefined ? iso >= today : availableDates.includes(iso);
   const year = visible.getUTCFullYear();
   const month = visible.getUTCMonth();
   const firstWeekday = visible.getUTCDay();
@@ -116,7 +128,7 @@ export function Calendar({
       index += delta
     ) {
       const target = cells[index];
-      if (typeof target === "string" && target >= today) {
+      if (typeof target === "string" && isSelectable(target)) {
         setFocusedDate(target);
         return;
       }
@@ -138,11 +150,11 @@ export function Calendar({
       moveFocus(7);
     } else if (event.key === "Home") {
       event.preventDefault();
-      setFocusedDate(cells.find((iso): iso is string => iso !== null && iso >= today) ?? null);
+      setFocusedDate(cells.find((iso): iso is string => iso !== null && isSelectable(iso)) ?? null);
     } else if (event.key === "End") {
       event.preventDefault();
       setFocusedDate(
-        [...cells].reverse().find((iso): iso is string => iso !== null && iso >= today) ?? null,
+        [...cells].reverse().find((iso): iso is string => iso !== null && isSelectable(iso)) ?? null,
       );
     }
   };
@@ -201,11 +213,11 @@ export function Calendar({
                       tabIndex={focusableDate === iso ? 0 : -1}
                       aria-label={formatDateLabel(iso)}
                       aria-pressed={iso === selectedDate}
-                      disabled={iso < today}
+                      disabled={!isSelectable(iso)}
                       onClick={() => onSelect(iso)}
                       className={cn(
                         "size-8 cursor-pointer rounded-md text-sm tabular-nums transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                        iso < today
+                        !isSelectable(iso)
                           ? "cursor-default text-muted-foreground/40 hover:bg-transparent"
                           : iso === selectedDate && "bg-primary font-semibold text-primary-foreground",
                       )}
@@ -228,28 +240,32 @@ export function DateSelector({
   dates,
   selectedDate,
   onDateChange,
+  restrictToDates = false,
 }: {
   dates: readonly string[];
   selectedDate: string;
   onDateChange: (date: string) => void;
+  /** Step and pick only among `dates` (sorted); otherwise any day from today on. */
+  restrictToDates?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const today = getCurrentMontrealDate();
-  const canStepBack = selectedDate > today;
-  const canStepForward = selectedDate !== "";
+  const index = dates.indexOf(selectedDate);
+  const previousDate = restrictToDates
+    ? (index > 0 ? dates[index - 1] : undefined)
+    : (selectedDate > today ? addIsoDays(selectedDate, -1) : undefined);
+  const nextDate = restrictToDates
+    ? (index !== -1 ? dates[index + 1] : undefined)
+    : (selectedDate !== "" ? addIsoDays(selectedDate, 1) : undefined);
   const anchorDate = selectedDate || dates[0] || today;
-
-  const step = (delta: -1 | 1) => {
-    if (selectedDate !== "") onDateChange(addIsoDays(selectedDate, delta));
-  };
 
   return (
     <div className="flex items-center gap-1">
       <button
         type="button"
         aria-label="Previous date"
-        disabled={!canStepBack}
-        onClick={() => step(-1)}
+        disabled={previousDate === undefined}
+        onClick={() => previousDate !== undefined && onDateChange(previousDate)}
         className="flex cursor-pointer items-center justify-center p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
       >
         <ChevronLeft aria-hidden className="size-4" />
@@ -277,6 +293,7 @@ export function DateSelector({
           <Calendar
             selectedDate={selectedDate}
             initialMonth={anchorDate}
+            availableDates={restrictToDates ? dates : undefined}
             onSelect={(date) => {
               onDateChange(date);
               setOpen(false);
@@ -287,8 +304,8 @@ export function DateSelector({
       <button
         type="button"
         aria-label="Next date"
-        disabled={!canStepForward}
-        onClick={() => step(1)}
+        disabled={nextDate === undefined}
+        onClick={() => nextDate !== undefined && onDateChange(nextDate)}
         className="flex cursor-pointer items-center justify-center p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
       >
         <ChevronRight aria-hidden className="size-4" />
