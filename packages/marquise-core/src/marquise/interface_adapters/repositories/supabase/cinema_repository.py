@@ -6,10 +6,7 @@ interface (application).  No SQL, no asyncpg — pure entity mapping.
 
 from __future__ import annotations
 
-from marquise.application.exceptions import (
-    CinemaIdAlreadyExistsError,
-    CinemaNotFoundError,
-)
+from marquise.application.exceptions import CinemaIdAlreadyExistsError
 from marquise.application.repositories import CinemaRepository, Page
 from marquise.domain.entities import Cinema
 from marquise.domain.value_objects import CinemaId
@@ -126,30 +123,24 @@ class SupabaseCinemaRepository(CinemaRepository):
             total=gateway_page.total,
         )
 
-    async def update(self, cinema: Cinema) -> Cinema:
+    async def update(self, cinema: Cinema) -> Cinema | None:
         """Update an existing cinema via the gateway.
 
         Args:
             cinema: The cinema entity with updated fields.
 
         Returns:
-            The updated cinema entity.
-
-        Raises:
-            CinemaNotFoundError: If no cinema with the given ID exists in
-                the database.
+            The updated cinema entity, or None if no cinema with the given
+            ID exists.
         """
-        try:
-            data = await self._gateway.update(
-                cinema_id=str(cinema.id),
-                name=cinema.name,
-                address=cinema.address,
-                city=cinema.city,
-                website=cinema.website,
-            )
-        except GatewayError as exc:
-            raise CinemaNotFoundError(str(exc)) from exc
-        return self._to_entity(data)
+        data = await self._gateway.update(
+            cinema_id=str(cinema.id),
+            name=cinema.name,
+            address=cinema.address,
+            city=cinema.city,
+            website=cinema.website,
+        )
+        return self._to_entity(data) if data is not None else None
 
     async def delete(self, cinema_id: CinemaId) -> bool:
         """Delete a cinema by its unique identifier.
