@@ -106,7 +106,6 @@ from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.application.use_cases.update_screening import UpdateScreeningUseCase
 from marquise.application.use_cases.write_screening import (
-    ScreeningWriteContext,
     WriteScreeningUseCase,
 )
 from marquise.bootstrap import (
@@ -200,6 +199,5 @@ __all__ = [
     "VerifyAccessTokenQuery",
     "ScreeningIdempotencyConflictError",
     "ScreeningWriteBusyError",
-    "ScreeningWriteContext",
     "WriteScreeningUseCase",
 ]

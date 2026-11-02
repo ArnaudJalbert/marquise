@@ -4,6 +4,10 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-11-02
 
+### v0.2.41
+
+- Give screening write transactions dedicated result types and preserve replay outcomes. Closes #388.
+
 ### v0.2.40
 
 - Nest per-screening import result types in their owning commands. Closes #387.

@@ -94,7 +94,6 @@ EXPECTED_PUBLIC_SURFACE: set[str] = {
     "VerifyAccessTokenQuery",
     "ScreeningIdempotencyConflictError",
     "ScreeningWriteBusyError",
-    "ScreeningWriteContext",
     "WriteScreeningUseCase",
 }
 

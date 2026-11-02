@@ -62,9 +62,6 @@ ALLOWLIST = {
     "DeleteScreeningUseCase.InputData",
     "use_cases/write_screening.py: WriteScreeningUseCase contract uses "
     "UpdateScreeningUseCase.InputData",
-    "use_cases/write_screening.py: WriteScreeningUseCase contract uses "
-    "module-level ScreeningWriteContext",
-    "use_cases/write_screening.py: WriteScreeningUseCase has no nested OutputData",
 }
 
 

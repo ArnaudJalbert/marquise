@@ -6,7 +6,6 @@ from uuid import uuid4
 
 import asyncpg
 
-from marquise.application.transactions.screening_write import ScreeningWriteSession
 from marquise.application.use_cases.create_screening import CreateScreeningUseCase
 from marquise.application.use_cases.delete_screening import DeleteScreeningUseCase
 from marquise.application.use_cases.update_screening import UpdateScreeningUseCase
@@ -52,7 +51,7 @@ def build_write_screening_use_case(
 
     def build_session(
         connection: asyncpg.Connection, account: str, key: str
-    ) -> ScreeningWriteSession:
+    ) -> WriteScreeningUseCase.Session:
         bound_pool = _TransactionPool(connection)
         screenings = SupabaseScreeningRepository(
             SupabaseScreeningGateway(bound_pool, schema)
