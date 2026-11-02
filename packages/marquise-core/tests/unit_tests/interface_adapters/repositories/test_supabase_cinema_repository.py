@@ -6,10 +6,7 @@ from unittest.mock import AsyncMock, create_autospec
 
 import pytest
 
-from marquise.application.exceptions import (
-    CinemaIdAlreadyExistsError,
-    CinemaNotFoundError,
-)
+from marquise.application.exceptions import CinemaIdAlreadyExistsError
 from marquise.domain.entities import Cinema
 from marquise.domain.value_objects import CinemaId
 from marquise.interface_adapters.repositories.protocols.base import GatewayPage
@@ -234,8 +231,8 @@ async def test_update(repo: SupabaseCinemaRepository, mock_gateway: AsyncMock) -
 async def test_update_not_found(
     repo: SupabaseCinemaRepository, mock_gateway: AsyncMock
 ) -> None:
-    """Verify update raises CinemaNotFoundError when gateway raises GatewayError."""
-    mock_gateway.update.side_effect = GatewayError("not found")
+    """Verify update returns None when the gateway finds no row to update."""
+    mock_gateway.update.return_value = None
 
     cinema = Cinema(
         id=CinemaId(value="cin-missing"),
@@ -245,8 +242,9 @@ async def test_update_not_found(
         website=None,
     )
 
-    with pytest.raises(CinemaNotFoundError, match="not found"):
-        await repo.update(cinema)
+    result = await repo.update(cinema)
+
+    assert result is None
 
 
 @pytest.mark.asyncio

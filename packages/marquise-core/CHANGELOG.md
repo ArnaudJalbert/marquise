@@ -4,6 +4,10 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ## 2026-11-02
 
+### v0.2.38
+
+- Raise `CinemaNotFoundError` from the update-cinema use case when the cinema does not exist. Closes #385.
+
 ### v0.2.37
 
 - Move screening write errors into the application exceptions package while preserving error types and messages. Closes #384.
