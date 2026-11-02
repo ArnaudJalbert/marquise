@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-01
+
+- Show the Marquise favicon (yellow strip in dark browser themes), a 180×180 apple-touch icon, and the tab title "Marquise". The production build check now fails without the title or either icon link. Supports #422.
+
 ## 2026-10-31
 
 - Load real cinema directory and venue data in the approved interface. Keep screening queries fixed to the selected cinema.
