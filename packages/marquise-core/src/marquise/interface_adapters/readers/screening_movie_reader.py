@@ -17,7 +17,7 @@ class ScreeningMovieReadGateway(Protocol):
     async def search(
         self,
         start: datetime,
-        end: datetime,
+        end: datetime | None,
         now: datetime,
         page: int,
         title: str | None = None,
@@ -40,7 +40,7 @@ class SupabaseScreeningMovieReader(ScreeningMovieReader):
     async def search(
         self,
         start: datetime,
-        end: datetime,
+        end: datetime | None,
         now: datetime,
         page: int,
         title: str | None = None,
