@@ -114,11 +114,11 @@ class UpdateScreeningUseCase:
         self.movie_repository = movie_repository
         self.cinema_repository = cinema_repository
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """Update an existing screening.
 
         Args:
-            request: The input data for the update.
+            input_data: The input data for the update.
 
         Returns:
             The output data containing the updated screening details.
@@ -131,14 +131,14 @@ class UpdateScreeningUseCase:
                 another screening.
         """
         existing = await self.screening_repository.find_by_id(
-            ScreeningId(value=request.screening_id)
+            ScreeningId(value=input_data.screening_id)
         )
-        movie = await self._resolve_movie(request.movie_id, existing.movie)
-        cinema = await self._resolve_cinema(request.cinema_id, existing.cinema)
+        movie = await self._resolve_movie(input_data.movie_id, existing.movie)
+        cinema = await self._resolve_cinema(input_data.cinema_id, existing.cinema)
         showtime = (
             existing.showtime
-            if not is_provided(request.showtime)
-            else Showtime(value=request.showtime)
+            if not is_provided(input_data.showtime)
+            else Showtime(value=input_data.showtime)
         )
 
         updated = await self.screening_repository.replace(
@@ -147,21 +147,21 @@ class UpdateScreeningUseCase:
                 movie=movie,
                 cinema=cinema,
                 showtime=showtime,
-                external_id=keep(existing.external_id, request.external_id),
-                ticket_url=keep(existing.ticket_url, request.ticket_url),
-                room=keep(existing.room, request.room),
-                language=keep(existing.language, request.language),
+                external_id=keep(existing.external_id, input_data.external_id),
+                ticket_url=keep(existing.ticket_url, input_data.ticket_url),
+                room=keep(existing.room, input_data.room),
+                language=keep(existing.language, input_data.language),
             ),
             fields=frozenset(
                 name
                 for name, value in (
-                    ("movie_id", request.movie_id),
-                    ("cinema_id", request.cinema_id),
-                    ("showtime", request.showtime),
-                    ("external_id", request.external_id),
-                    ("ticket_url", request.ticket_url),
-                    ("room", request.room),
-                    ("language", request.language),
+                    ("movie_id", input_data.movie_id),
+                    ("cinema_id", input_data.cinema_id),
+                    ("showtime", input_data.showtime),
+                    ("external_id", input_data.external_id),
+                    ("ticket_url", input_data.ticket_url),
+                    ("room", input_data.room),
+                    ("language", input_data.language),
                 )
                 if is_provided(value)
             ),

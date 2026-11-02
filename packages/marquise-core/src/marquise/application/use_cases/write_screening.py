@@ -84,10 +84,10 @@ class WriteScreeningUseCase:
         self._transaction = transaction
         self._clock = clock
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """Perform one intended change or replay its original committed success."""
-        mutation = request.mutation
-        context = request.context
+        mutation = input_data.mutation
+        context = input_data.context
         operation = (
             "create"
             if isinstance(mutation, CreateScreeningUseCase.InputData)

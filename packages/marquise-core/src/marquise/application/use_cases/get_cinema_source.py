@@ -58,11 +58,11 @@ class GetCinemaSourceUseCase:
         """
         self.assignment_repository = assignment_repository
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """Retrieve the source assigned to a cinema.
 
         Args:
-            request: The input data containing the cinema ID.
+            input_data: The input data containing the cinema ID.
 
         Returns:
             The output data with the assigned source details.
@@ -71,16 +71,16 @@ class GetCinemaSourceUseCase:
             CinemaSourceAssignmentNotFoundError: If no assignment exists
                 for the given cinema.
         """
-        cinema_id = CinemaId(value=request.cinema_id)
+        cinema_id = CinemaId(value=input_data.cinema_id)
 
         assignment = await self.assignment_repository.find_by_cinema_id(cinema_id)
         if assignment is None:
             raise CinemaSourceAssignmentNotFoundError(
-                f"No source assignment found for cinema '{request.cinema_id}'"
+                f"No source assignment found for cinema '{input_data.cinema_id}'"
             )
 
         return self.OutputData(
-            cinema_id=request.cinema_id,
+            cinema_id=input_data.cinema_id,
             source_name=str(assignment.source.name),
             source_display_name=assignment.source.display_name,
         )

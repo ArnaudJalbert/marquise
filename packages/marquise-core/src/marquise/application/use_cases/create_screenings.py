@@ -112,11 +112,11 @@ class CreateScreeningsCommand:
     def __init__(self, screening_repository: ScreeningRepository) -> None:
         self.screening_repository = screening_repository
 
-    async def execute(self, request: InputData) -> OutputData:
-        logger.info("Processing %d screening inputs", len(request.screenings))
+    async def execute(self, input_data: InputData) -> OutputData:
+        logger.info("Processing %d screening inputs", len(input_data.screenings))
 
         owners: dict[tuple[str, str], set[tuple[str, datetime, str | None]]] = {}
-        for row in request.screenings:
+        for row in input_data.screenings:
             if row.external_id:
                 owners.setdefault((row.cinema_id, row.external_id), set()).add(
                     (row.movie_id, row.showtime.astimezone(UTC), row.source_name)
@@ -127,14 +127,14 @@ class CreateScreeningsCommand:
                 self._upsert_screening(
                     row, ambiguous=(row.cinema_id, row.external_id) in ambiguous
                 )
-                for row in request.screenings
+                for row in input_data.screenings
             ],
             return_exceptions=True,
         )
 
         results: list[ImportedScreeningData] = []
         skipped_count = 0
-        for row, outcome in zip(request.screenings, raw_results, strict=True):
+        for row, outcome in zip(input_data.screenings, raw_results, strict=True):
             if isinstance(
                 outcome,
                 (ScreeningExternalIdConflictError, ScreeningUpdateNotFoundError),

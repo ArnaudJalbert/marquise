@@ -57,16 +57,16 @@ class BrowseScreeningMoviesQuery:
         self._reader = reader
         self._clock = clock
 
-    async def execute(self, request: InputData) -> OutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
         """Convert local date bounds and read one movie page."""
         zone = ZoneInfo("America/Montreal")
-        start = datetime.combine(request.start, time.min, zone).astimezone(UTC)
+        start = datetime.combine(input_data.start, time.min, zone).astimezone(UTC)
         end = (
             datetime.combine(
-                request.end + timedelta(days=1), time.min, zone
+                input_data.end + timedelta(days=1), time.min, zone
             ).astimezone(UTC)
             - timedelta(microseconds=1)
-            if request.end is not None
+            if input_data.end is not None
             else None
         )
         now = self._clock()
@@ -74,13 +74,15 @@ class BrowseScreeningMoviesQuery:
             start,
             end,
             now,
-            request.page,
-            request.title,
-            request.cinemas,
-            request.languages,
-            time(request.start_hour) if request.start_hour not in (None, 0) else None,
-            time(request.end_hour)
-            if request.end_hour is not None and request.end_hour < 24
+            input_data.page,
+            input_data.title,
+            input_data.cinemas,
+            input_data.languages,
+            time(input_data.start_hour)
+            if input_data.start_hour not in (None, 0)
+            else None,
+            time(input_data.end_hour)
+            if input_data.end_hour is not None and input_data.end_hour < 24
             else None,
         )
         return self.OutputData(movies=tuple(page.items), total=page.total)
