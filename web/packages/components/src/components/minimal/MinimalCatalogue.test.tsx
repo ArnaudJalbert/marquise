@@ -454,3 +454,23 @@ it.each([8.1, null])("renders detail score only when present: %s", (score) => {
   if (score === null) expect(screen.queryByText(/8.1\/10/)).not.toBeInTheDocument();
   else expect(screen.getByText(/8.1\/10/)).toBeInTheDocument();
 });
+
+it("marks only the current section and the pressed date shortcut", () => {
+  /** Scenario: on screenings for today, assistive tech hears only Screenings as current and only Today as pressed. */
+  render(
+    <MinimalCatalogue
+      {...props}
+      selection={{ ...props.selection, end: "2026-10-30" }}
+    />,
+  );
+  const navigation = within(screen.getByRole("navigation", { name: "Main navigation" }));
+  expect(navigation.getByRole("link", { name: "Screenings" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  for (const name of ["Movies", "Cinemas"])
+    expect(navigation.getByRole("link", { name })).not.toHaveAttribute("aria-current");
+  expect(screen.getByRole("button", { name: "Today" })).toHaveAttribute("aria-pressed", "true");
+  for (const name of ["Tomorrow", "This weekend"])
+    expect(screen.getByRole("button", { name })).toHaveAttribute("aria-pressed", "false");
+});
