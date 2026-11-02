@@ -581,8 +581,8 @@ it("loads exact metadata and a schedule on catalogue direct entry with no cached
   await waitFor(() =>
     expect(client.fetchScreeningRangePage).toHaveBeenCalledExactlyOnceWith(
       "catalogue/id",
-      "2026-11-01",
-      "2026-11-04",
+      "2026-10-02",
+      "2027-01-30",
       1,
       expect.any(AbortSignal),
     ),
@@ -622,16 +622,16 @@ it("loads every page in the movie's requested Montréal date window", async () =
   expect(client.fetchScreeningRangePage).toHaveBeenNthCalledWith(
     1,
     "movie-1",
-    "2026-11-01",
-    "2026-11-04",
+    "2026-10-02",
+    "2027-01-30",
     1,
     expect.any(AbortSignal),
   );
   expect(client.fetchScreeningRangePage).toHaveBeenNthCalledWith(
     2,
     "movie-1",
-    "2026-11-01",
-    "2026-11-04",
+    "2026-10-02",
+    "2027-01-30",
     2,
     expect.any(AbortSignal),
   );
