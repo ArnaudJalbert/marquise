@@ -231,7 +231,7 @@ Web tests are colocated with their source as `*.test.ts` / `*.test.tsx`.
 
 Pull requests to `main` run the repository workflows:
 
-- `quality`: `ruff format --check`, `ruff check`, `ty check packages/marquise-core/src`, core unit tests with the 70% coverage gate, API and CLI tests, and the deterministic integration suite against a disposable PostgreSQL 17 service. The core unit tests include the architecture tests (`test_import_boundary.py`, `test_public_api.py`, `test_use_case_architecture.py`). The import-linter contract in root `pyproject.toml` is not run by CI.
+- `quality`: `ruff format --check`, `ruff check`, `ty check packages/marquise-core/src`, core unit tests with the 70% coverage gate, API and CLI tests, and the deterministic integration suite against a disposable PostgreSQL 17 service. The core unit tests include the architecture tests (`test_import_boundary.py`, `test_public_api.py`, `test_use_case_architecture.py`).
 - `release-validation`: when a package's `src/**` or `pyproject.toml` changes, its version must increase, its `CHANGELOG.md` must contain a `### vX.Y.Z` heading for the new version, and its distributions must build.
 - `web-quality`: for web changes, install the frozen pnpm workspace and run web lint, TypeScript checks, unit tests, and production builds on Node.js 24.
 
