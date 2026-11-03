@@ -179,6 +179,49 @@ it("picks a single day from the keyboard and moves focus with arrows", () => {
   expect(title()).toBe("Tomorrow");
 });
 
+it("extends a period with Shift and arrow keys", () => {
+  /** Scenario: keyboard users select a multi-day period without a pointer. */
+  const onChange = setup();
+  const todayCell = screen.getByRole("button", { name: "Today, Tuesday November 3rd" });
+  todayCell.focus();
+  fireEvent.keyDown(todayCell, { key: "ArrowRight", shiftKey: true });
+  const tomorrow = screen.getByRole("button", { name: "Wednesday November 4th" });
+  expect(tomorrow).toHaveFocus();
+  expect(onChange).toHaveBeenLastCalledWith("2026-11-03", "2026-11-04");
+  fireEvent.keyDown(tomorrow, { key: "ArrowRight", shiftKey: true });
+  expect(screen.getByRole("button", { name: "Thursday November 5th" })).toHaveFocus();
+  expect(onChange).toHaveBeenLastCalledWith("2026-11-03", "2026-11-05");
+  expect(title()).toBe("Nov 3 → Nov 5");
+});
+
+it("resets the keyboard anchor when stepping changes the period", () => {
+  /** Scenario: a new range starts from the newly focused day after stepping. */
+  const onChange = setup();
+  const todayCell = screen.getByRole("button", { name: "Today, Tuesday November 3rd" });
+  todayCell.focus();
+  fireEvent.keyDown(todayCell, { key: "ArrowRight", shiftKey: true });
+  fireEvent.click(screen.getByRole("button", { name: "Next period" }));
+  const nov5 = screen.getByRole("button", { name: "Thursday November 5th" });
+  nov5.focus();
+  fireEvent.keyDown(nov5, { key: "ArrowRight", shiftKey: true });
+  expect(onChange).toHaveBeenLastCalledWith("2026-11-05", "2026-11-06");
+  expect(title()).toBe("Nov 5 → Nov 6");
+});
+
+it("resets the keyboard anchor after focus leaves the strip", () => {
+  /** Scenario: a fresh keyboard range starts after using an external control. */
+  const onChange = setup();
+  const todayCell = screen.getByRole("button", { name: "Today, Tuesday November 3rd" });
+  todayCell.focus();
+  fireEvent.keyDown(todayCell, { key: "ArrowRight", shiftKey: true });
+  const zoom = screen.getByRole("button", { name: "6 weeks" });
+  zoom.focus();
+  const nov5 = screen.getByRole("button", { name: "Thursday November 5th" });
+  nov5.focus();
+  fireEvent.keyDown(nov5, { key: "ArrowRight", shiftKey: true });
+  expect(onChange).toHaveBeenLastCalledWith("2026-11-05", "2026-11-06");
+});
+
 it("steps the period by its own length and disables stepping before today", () => {
   /** Scenario: ‹ › move a day by a day and a weekend to the next weekend. */
   const onChange = setup();

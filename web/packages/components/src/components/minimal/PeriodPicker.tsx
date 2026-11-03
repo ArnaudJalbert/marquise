@@ -55,6 +55,12 @@ function DayStrip({
   onChange: (start: number, end: number) => void;
 }) {
   const drag = useRef<Drag | null>(null);
+  const keyboardAnchor = useRef<number | null>(null);
+  const keyboardRange = useRef<string | null>(null);
+  if (keyboardRange.current && keyboardRange.current !== range.join("/")) {
+    keyboardAnchor.current = null;
+    keyboardRange.current = null;
+  }
   const [draft, setDraft] = useState<[number, number] | null>(null);
   const [start, end] = draft ?? range;
   const days = Array.from({ length: view.days }, (_, i) => view.first + i);
@@ -79,8 +85,16 @@ function DayStrip({
       aria-label="Choose dates"
       data-days={view.days}
       style={{ "--strip-days": view.days } as CSSProperties}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          keyboardAnchor.current = null;
+          keyboardRange.current = null;
+        }
+      }}
       onPointerDown={(event) => {
         if (event.button !== 0) return;
+        keyboardAnchor.current = null;
+        keyboardRange.current = null;
         event.preventDefault();
         const day = dayAt(event);
         const handle = (event.target as Element)
@@ -158,7 +172,11 @@ function DayStrip({
             tabIndex={day === focusDay ? 0 : -1}
             // Pointer taps commit on pointer up; this handles keyboard activation.
             onClick={(event) => {
-              if (event.detail === 0) onChange(day, day);
+              if (event.detail === 0) {
+                keyboardAnchor.current = null;
+                keyboardRange.current = null;
+                onChange(day, day);
+              }
             }}
             onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => {
               const sibling =
@@ -169,6 +187,20 @@ function DayStrip({
                     : null;
               if (sibling instanceof HTMLButtonElement) {
                 event.preventDefault();
+                if (event.shiftKey) {
+                  const anchor = keyboardAnchor.current ?? day;
+                  keyboardAnchor.current = anchor;
+                  const nextDay = day + (event.key === "ArrowRight" ? 1 : -1);
+                  const nextRange: [number, number] = [
+                    Math.min(anchor, nextDay),
+                    Math.max(anchor, nextDay),
+                  ];
+                  keyboardRange.current = nextRange.join("/");
+                  onChange(...nextRange);
+                } else {
+                  keyboardAnchor.current = null;
+                  keyboardRange.current = null;
+                }
                 sibling.focus();
               }
             }}
