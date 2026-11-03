@@ -956,3 +956,22 @@ it.each(["/", "/?section=movies", "/cinemas", "/about"])(
     await act(async () => {});
   },
 );
+
+it("preserves API instants through the repeated Montréal hour", async () => {
+  /** Scenario: an earlier 01:45 is hidden while the second 01:45 remains bookable today. */
+  vi.setSystemTime(new Date("2026-11-01T06:15:00Z"));
+  const client = clients();
+  client.fetchScreeningMoviesPage.mockResolvedValue(page([{
+    ...movie,
+    screenings: [
+      { ...show, showtime: "2026-11-01T05:45:00Z", ticket_url: "https://tickets.example/started" },
+      { ...show, id: "upcoming", showtime: "2026-11-01T06:45:00Z", ticket_url: "https://tickets.example/upcoming" },
+    ],
+  }]));
+  render(<App client={client} />);
+  fireEvent.click(await screen.findByRole("button", { name: `Preview ${movie.title}` }));
+  const preview = within(screen.getByRole("region", { name: `${movie.title} screenings` }));
+  expect(preview.getAllByRole("link", { name: "01:45" })).toHaveLength(1);
+  expect(preview.getByRole("link", { name: "01:45" }).getAttribute("href")).toBe("https://tickets.example/upcoming");
+  expect(preview.queryByText(/Tomorrow|In \d+ days/)).toBeNull();
+});

@@ -6,6 +6,7 @@ export interface CatalogueCinema {
   website?: string;
 }
 export interface CatalogueScreening {
+  showtime: string;
   cinemaId: string;
   date: string;
   time: string;

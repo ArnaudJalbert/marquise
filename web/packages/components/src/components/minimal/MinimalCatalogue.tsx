@@ -92,12 +92,8 @@ export function MinimalMovieCard({
   const arrow = useRef<HTMLButtonElement>(null);
   const now = new Date(currentTime);
   const today = toMontrealIsoDate(now);
-  const time = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "America/Toronto", hour: "2-digit", minute: "2-digit", second: "2-digit",
-    hourCycle: "h23",
-  }).format(now);
   const upcoming = movie.screenings
-    .filter((s) => `${s.date}T${s.time}:00` > `${today}T${time}`)
+    .filter((s) => new Date(s.showtime).getTime() > now.getTime())
     .slice().sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
   const day = upcoming[0]?.date;
   const nextDay = upcoming.find((s) => s.date !== day)?.date;
