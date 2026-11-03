@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-03
+
+- Share one Movie Card across the Screenings and Movies sections, and replace the arrow and close text glyphs with line icons so iPhones no longer render emoji. Supports #429.
+
 ## 2026-11-01
 
 - Replace Terms and Privacy layout placeholders with approved copy; clarify source non-affiliation, TMDB credits, public API reuse, server logging, and the privacy contact. Remove approved information-page draft labels.

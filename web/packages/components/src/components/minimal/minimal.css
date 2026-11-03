@@ -317,18 +317,26 @@
   margin: 4px 0 0;
   color: #595959;
 }
-.minimal-library-card {
-  min-width: 0;
+.minimal-library-grid .minimal-caption {
+  height: auto;
+  min-height: 0;
+  padding-top: 0;
 }
-.minimal-library-card a {
-  display: grid;
-  gap: 4px;
-}
-.minimal-library-card strong {
-  font-size: 12px;
+.minimal-library-grid .minimal-caption > a {
+  display: block;
+  min-height: 0;
+  padding-top: 4px;
+  font-weight: 700;
   line-height: 1.3;
+  overflow: visible;
 }
-.minimal-library-card small {
+.minimal-library-grid .minimal-card:hover .minimal-caption > a,
+.minimal-library-grid .minimal-card:hover .minimal-card-year {
+  text-decoration: underline;
+}
+.minimal-card-year {
+  display: block;
+  margin-top: 4px;
   color: #595959;
 }
 .minimal-card {
@@ -378,7 +386,9 @@
   min-height: 36px;
   padding: 0;
   border: 0;
-  font-size: 17px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .minimal-preview {
   position: absolute;
@@ -402,7 +412,9 @@
   padding: 0;
   min-width: 24px;
   min-height: 24px;
-  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .minimal-preview .minimal-cinema-showtimes h3 {
   margin-top: 0;
