@@ -767,7 +767,7 @@ it("offers the same five destinations in the footer and the header Info menu", a
   const footer = destinationLinks("Footer");
   expect(footer).toEqual([
     ["About", "/about"],
-    ["API docs (external site: marquise-api.fly.dev)", "https://marquise-api.fly.dev/docs"],
+    ["API docs (external site: api.marquise.mov)", "https://api.marquise.mov/docs"],
     ["Contact", "/contact"],
     ["Terms", "/terms"],
     ["Privacy", "/privacy"],
@@ -776,7 +776,7 @@ it("offers the same five destinations in the footer and the header Info menu", a
   expect(within(screen.getByRole("contentinfo")).getByText("Marquise")).toBeTruthy();
 
   const apiDocs = within(screen.getByRole("navigation", { name: "Footer" })).getByRole("link", {
-    name: "API docs (external site: marquise-api.fly.dev)",
+    name: "API docs (external site: api.marquise.mov)",
   });
   expect(apiDocs.hasAttribute("target")).toBe(false);
   expect(apiDocs.textContent).toBe("API docs↗");

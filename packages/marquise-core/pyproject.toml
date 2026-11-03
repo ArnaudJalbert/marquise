@@ -1,6 +1,6 @@
 [project]
 name = "marquise-core"
-version = "0.2.43"
+version = "0.2.44"
 description = "Montreal cinema showtimes aggregator — core domain, application, and infrastructure layers"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://marquise.ca"
+Homepage = "https://marquise.mov"
 Repository = "https://github.com/ArnaudJalbert/marquise"
 Changelog = "https://github.com/ArnaudJalbert/marquise/blob/main/packages/marquise-core/CHANGELOG.md"
 

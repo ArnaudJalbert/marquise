@@ -1,6 +1,6 @@
 [project]
 name = "marquise-cli"
-version = "0.1.16"
+version = "0.1.17"
 description = "Marquise administration CLI"
 requires-python = ">=3.13"
 dependencies = [
@@ -10,7 +10,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://marquise.ca"
+Homepage = "https://marquise.mov"
 Repository = "https://github.com/ArnaudJalbert/marquise"
 Changelog = "https://github.com/ArnaudJalbert/marquise/blob/main/apps/marquise-cli/CHANGELOG.md"
 

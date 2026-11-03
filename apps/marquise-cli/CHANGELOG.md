@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-03
+
+### v0.1.17
+
+- Point the package homepage metadata to `marquise.mov`.
+
 ## 2026-10-30
 
 ### v0.1.16

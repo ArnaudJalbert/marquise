@@ -13,9 +13,7 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-ARG VITE_MARQUISE_DATA_SOURCE=api
 ARG VITE_MARQUISE_API_BASE_URL=https://api.marquise.mov
-ENV VITE_MARQUISE_DATA_SOURCE=$VITE_MARQUISE_DATA_SOURCE
 ENV VITE_MARQUISE_API_BASE_URL=$VITE_MARQUISE_API_BASE_URL
 
 RUN pnpm --filter marquise-client build \

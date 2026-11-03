@@ -55,7 +55,7 @@ Marquise is a `uv` workspace (`[tool.uv.workspace] members = ["packages/*", "app
 
 Root `pyproject.toml` is **virtual** — no `[project]`/`[build-system]` table. It
 holds workspace config, the shared `dev` dependency group, shared `ruff`/`ty`
-config, and import-linter contracts. Each member owns its own `pyproject.toml`,
+config. Each member owns its own `pyproject.toml`,
 runtime dependencies, and pytest config.
 
 Apps reach core only through the `marquise` facade; see the
