@@ -1,5 +1,6 @@
 """Bounded movie-first listing of upcoming screenings."""
 
+import re
 from datetime import date
 from math import ceil
 
@@ -13,6 +14,8 @@ from marquise_api.rate_limit import current_rate_limit, limiter
 from marquise_api.schemas import MovieResponse, ScreeningResponse
 
 router = APIRouter(tags=["movies"])
+
+_HOUR_RANGE = re.compile(r"(\d{1,2})-(\d{1,2})")
 
 
 class ScreeningMovieResponse(MovieResponse):
@@ -46,8 +49,12 @@ async def browse_screening_movies(
     title: str | None = Query(default=None, max_length=200),
     cinema: list[str] | None = Query(default=None),
     language: list[str] | None = Query(default=None),
-    start_hour: int | None = Query(default=None, ge=0, le=23),
-    end_hour: int | None = Query(default=None, ge=0, le=24),
+    hours: list[str] | None = Query(
+        default=None,
+        description="Repeatable whole-hour Montreal range START-END, matched with OR.",
+        examples=["0-17"],
+    ),
+    exclude_cinema: list[str] | None = Query(default=None),
     query: BrowseScreeningMoviesQuery = Depends(get_browse_screening_movies_query),
 ) -> ScreeningMoviePage:
     """List 24 distinct movies in inclusive Montreal dates, excluding started shows.
@@ -55,9 +62,8 @@ async def browse_screening_movies(
     This endpoint is uncached so upcoming eligibility uses the current request's
     clock rather than a cached response's clock.
     """
-    if (end is not None and start > end) or (
-        start_hour is not None and end_hour is not None and start_hour > end_hour
-    ):
+    hour_ranges = [_HOUR_RANGE.fullmatch(value) for value in hours or ()]
+    if (end is not None and start > end) or not all(hour_ranges):
         raise HTTPException(status_code=422, detail="Invalid screening filter range")
     result = await query.execute(
         BrowseScreeningMoviesQuery.InputData(
@@ -67,8 +73,10 @@ async def browse_screening_movies(
             title=title,
             cinemas=tuple(cinema or ()),
             languages=tuple(language or ()),
-            start_hour=start_hour,
-            end_hour=end_hour,
+            hours=tuple(
+                (int(match[1]), int(match[2])) for match in hour_ranges if match
+            ),
+            excluded_cinemas=tuple(exclude_cinema or ()),
         )
     )
     return ScreeningMoviePage(

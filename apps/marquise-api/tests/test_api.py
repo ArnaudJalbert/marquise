@@ -1541,10 +1541,10 @@ def test_screening_movies_page_and_validation(
     query.execute.assert_not_awaited()
 
 
-def test_screening_movies_filters_reach_the_query_and_reject_inverted_hours(
+def test_screening_movies_filters_reach_the_query(
     client: TestClient, factory: MagicMock
 ) -> None:
-    """Repeated filters and daily hours reach one movie-first query."""
+    """Repeated filters, one hour range and exclusions reach one movie-first query."""
     query = create_autospec(BrowseScreeningMoviesQuery, instance=True)
     factory.browse_screening_movies_query = query
     query.execute.return_value = BrowseScreeningMoviesQuery.OutputData(
@@ -1553,7 +1553,7 @@ def test_screening_movies_filters_reach_the_query_and_reject_inverted_hours(
     response = client.get(
         "/v1/screening-movies?start=2026-11-01&end=2026-11-05&page=1"
         "&title=Dune&cinema=c1&cinema=c2&language=VO&language=VOSTF"
-        "&start_hour=18&end_hour=21"
+        "&hours=17-21&exclude_cinema=c3&exclude_cinema=c4"
     )
     assert response.status_code == 200
     query.execute.assert_awaited_once_with(
@@ -1564,17 +1564,47 @@ def test_screening_movies_filters_reach_the_query_and_reject_inverted_hours(
             title="Dune",
             cinemas=("c1", "c2"),
             languages=("VO", "VOSTF"),
-            start_hour=18,
-            end_hour=21,
+            hours=((17, 21),),
+            excluded_cinemas=("c3", "c4"),
         )
     )
-    assert (
-        client.get(
-            "/v1/screening-movies?start=2026-11-01&end=2026-11-05"
-            "&start_hour=21&end_hour=18"
-        ).status_code
-        == 422
+
+
+def test_screening_movies_accepts_several_non_adjacent_hour_ranges(
+    client: TestClient, factory: MagicMock
+) -> None:
+    """Non-adjacent ranges reach the query in request order for OR matching."""
+    query = create_autospec(BrowseScreeningMoviesQuery, instance=True)
+    factory.browse_screening_movies_query = query
+    query.execute.return_value = BrowseScreeningMoviesQuery.OutputData(
+        movies=(), total=0
     )
+    response = client.get(
+        "/v1/screening-movies?start=2026-11-01&hours=0-17&hours=21-24"
+    )
+    assert response.status_code == 200
+    query.execute.assert_awaited_once_with(
+        BrowseScreeningMoviesQuery.InputData(
+            start=date(2026, 11, 1), end=None, hours=((0, 17), (21, 24))
+        )
+    )
+
+
+@pytest.mark.parametrize(
+    "hours", ["21-17", "17-17", "0-25", "-1-5", "5", "a-b", "5-9h", "001-5", " 5-9"]
+)
+def test_screening_movies_rejects_invalid_hour_ranges(
+    client: TestClient, factory: MagicMock, hours: str
+) -> None:
+    """Malformed, empty, inverted or out-of-day hour ranges fail before querying."""
+    query = create_autospec(BrowseScreeningMoviesQuery, instance=True)
+    factory.browse_screening_movies_query = query
+    response = client.get(
+        "/v1/screening-movies",
+        params={"start": "2026-11-01", "hours": ["0-12", hours]},
+    )
+    assert response.status_code == 422
+    query.execute.assert_not_awaited()
 
 
 def test_screening_movie_metadata_and_preview_response(

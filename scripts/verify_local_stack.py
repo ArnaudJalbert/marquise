@@ -55,8 +55,7 @@ def verify() -> None:
             "title": "Dune",
             "cinema": ["local-cinema-1"],
             "language": ["VOSTF"],
-            "start_hour": 15,
-            "end_hour": 17,
+            "hours": ["15-17"],
         },
     )
     assert [item["id"] for item in filtered["items"]] == ["local-dune"]
@@ -67,7 +66,7 @@ def verify() -> None:
         <= datetime.fromisoformat(item["showtime"])
         .astimezone(ZoneInfo("America/Montreal"))
         .strftime("%H:%M")
-        <= "17:00"
+        < "17:00"
         for item in filtered["items"][0]["screenings"]
     )
     # Calendar bounds include the DST transition when it falls in the next fortnight.
