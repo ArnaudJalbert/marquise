@@ -1,3 +1,4 @@
+import { ArrowUpRight, X } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type {
   CatalogueCinema,
@@ -72,14 +73,18 @@ export function MinimalMovieCard({
   cinemas,
   expanded,
   onExpanded,
+  showYear = false,
+  previewable = true,
 }: {
   expanded?: boolean;
+  showYear?: boolean;
+  previewable?: boolean;
   onExpanded?: (open: boolean) => void;
   movie: CatalogueMovie;
   cinemas: readonly CatalogueCinema[];
 }) {
   const [localOpen, setLocalOpen] = useState(false);
-  const open = expanded ?? localOpen;
+  const open = previewable && (expanded ?? localOpen);
   const setOpen = onExpanded ?? setLocalOpen;
   const arrow = useRef<HTMLButtonElement>(null);
   const preview = movie.screenings.slice(0, 3);
@@ -117,17 +122,22 @@ export function MinimalMovieCard({
         <a href={`/movies/${encodeURIComponent(movie.id)}`} title={movie.title}>
           {movie.title}
         </a>
-        <button
-          ref={arrow}
-          type="button"
-          aria-label={`Preview ${movie.title}`}
-          aria-expanded={open}
-          aria-controls={id}
-          onClick={() => setOpen(!open)}
-        >
-          ↗
-        </button>
+        {previewable && (
+          <button
+            ref={arrow}
+            type="button"
+            aria-label={`Preview ${movie.title}`}
+            aria-expanded={open}
+            aria-controls={id}
+            onClick={() => setOpen(!open)}
+          >
+            <ArrowUpRight aria-hidden size={17} />
+          </button>
+        )}
       </div>
+      {showYear && movie.year && (
+        <small className="minimal-card-year">{movie.year}</small>
+      )}
       {open && (
         <section
           className="minimal-preview"
@@ -142,7 +152,7 @@ export function MinimalMovieCard({
               arrow.current?.focus();
             }}
           >
-            ×
+            <X aria-hidden size={16} />
           </button>
           {preview.length ? (
             [...new Set(preview.map((s) => s.cinemaId))].map((cinema) => (
@@ -794,16 +804,13 @@ export function MinimalCatalogue({
                   <>
                     <div className="minimal-library-grid">
                       {allMovieMatches.map((item) => (
-                        <article className="minimal-library-card" key={item.id}>
-                          <a
-                            href={`/movies/${encodeURIComponent(item.id)}`}
-                            aria-label={`View ${item.title}`}
-                          >
-                            <Poster movie={item} />
-                            <strong>{item.title}</strong>
-                            {item.year && <small>{item.year}</small>}
-                          </a>
-                        </article>
+                        <MinimalMovieCard
+                          key={item.id}
+                          movie={item}
+                          cinemas={cinemas}
+                          showYear
+                          previewable={false}
+                        />
                       ))}
                     </div>
                     <EndSentinel
