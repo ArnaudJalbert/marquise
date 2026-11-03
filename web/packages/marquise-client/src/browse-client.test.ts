@@ -59,8 +59,8 @@ it("serializes combined movie-first filters with repeated alternatives", async (
     title: "Dune",
     cinemas: ["c1", "c2"],
     languages: ["VO", "VOSTF"],
-    startHour: 18,
-    endHour: 21,
+    hours: [[17, 21]],
+    excludedCinemas: ["c3", "c4"],
   });
   const url = new URL(String(fetch.mock.calls[0]?.[0]), "https://api.example");
   expect([...url.searchParams]).toEqual([
@@ -72,9 +72,50 @@ it("serializes combined movie-first filters with repeated alternatives", async (
     ["cinema", "c2"],
     ["language", "VO"],
     ["language", "VOSTF"],
-    ["start_hour", "18"],
-    ["end_hour", "21"],
+    ["hours", "17-21"],
+    ["exclude_cinema", "c3"],
+    ["exclude_cinema", "c4"],
   ]);
+});
+
+it("repeats non-adjacent hour ranges so the API matches them with OR", async () => {
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockResolvedValue(
+      new Response(
+        JSON.stringify({ items: [], total: 0, page: 1, pages: 0, size: 24 }),
+      ),
+    );
+  const client = new HttpMarquiseClient({ baseUrl: "", fetch });
+  await client.fetchScreeningMoviesPage({
+    start: "2026-11-01",
+    page: 1,
+    hours: [
+      [0, 17],
+      [21, 24],
+    ],
+  });
+  const url = new URL(String(fetch.mock.calls[0]?.[0]), "https://api.example");
+  expect(url.searchParams.getAll("hours")).toEqual(["0-17", "21-24"]);
+  expect(url.searchParams.has("exclude_cinema")).toBe(false);
+});
+
+it("surfaces an invalid hour range rejected by the API", async () => {
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockResolvedValue(
+      new Response(JSON.stringify({ detail: "Invalid" }), { status: 422 }),
+    );
+  const client = new HttpMarquiseClient({ baseUrl: "", fetch });
+  await expect(
+    client.fetchScreeningMoviesPage({
+      start: "2026-11-01",
+      page: 1,
+      hours: [[21, 17]],
+    }),
+  ).rejects.toBeInstanceOf(HttpMarquiseClientError);
+  const url = new URL(String(fetch.mock.calls[0]?.[0]), "https://api.example");
+  expect(url.searchParams.getAll("hours")).toEqual(["21-17"]);
 });
 
 it("propagates API failure and cancellation without a sample-data fallback", async () => {

@@ -18,6 +18,7 @@ export { toMontrealIsoDate, montrealDateTime } from "./montreal-date";
 
 export type {
   BrowseClient,
+  HourRange,
   ScreeningMovieApi,
   ScreeningMovieQuery,
 } from "./browse-client";

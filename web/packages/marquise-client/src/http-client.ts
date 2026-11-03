@@ -119,10 +119,10 @@ export class HttpMarquiseClient
     query.languages?.forEach((language) =>
       params.append("language", language),
     );
-    if (query.startHour !== undefined && query.startHour > 0)
-      params.set("start_hour", String(query.startHour));
-    if (query.endHour !== undefined && query.endHour < 24)
-      params.set("end_hour", String(query.endHour));
+    query.hours?.forEach(([start, end]) =>
+      params.append("hours", `${start}-${end}`),
+    );
+    query.excludedCinemas?.forEach((id) => params.append("exclude_cinema", id));
     return this.fetchJson(`/v1/screening-movies?${params}`, signal);
   }
   async fetchMovieMetadata(

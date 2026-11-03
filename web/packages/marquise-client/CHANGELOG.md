@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-03
+
+- Replace `startHour` and `endHour` on screening-movie queries with repeatable half-open `hours` ranges, and add `excludedCinemas`. Supports #441.
+
 ## 2026-11-01
 
 - Allow screening-movie queries without an end date for complete upcoming listings.

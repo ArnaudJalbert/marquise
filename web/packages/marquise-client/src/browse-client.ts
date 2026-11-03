@@ -4,6 +4,8 @@ export interface ScreeningMovieApi extends MovieApi {
   /** At most three qualifying screenings, in start-time and ID order. */
   screenings: ScreeningApi[];
 }
+/** Half-open whole Montréal hours, `[start, end)` with `0 <= start < end <= 24`. */
+export type HourRange = readonly [start: number, end: number];
 export interface ScreeningMovieQuery {
   start: string;
   end?: string;
@@ -11,8 +13,9 @@ export interface ScreeningMovieQuery {
   title?: string;
   cinemas?: readonly string[];
   languages?: readonly string[];
-  startHour?: number;
-  endHour?: number;
+  /** Matched with OR. Empty or absent means any hour. */
+  hours?: readonly HourRange[];
+  excludedCinemas?: readonly string[];
 }
 /** Production browsing reads. Every listing call requests exactly one page. */
 export interface BrowseClient {
