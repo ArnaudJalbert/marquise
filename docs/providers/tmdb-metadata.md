@@ -1,12 +1,12 @@
 # TMDB metadata retrieval
 
 Issue #350 consumes the application-owned contracts from #358. Parent #349 owns
-policy. This implementation is additive, leaving the old MovieIdentitySearch
-path in place until #355 wires the new workflow.
+policy. Imports, refresh and merge use this path; the older TmdbSearchAdapter and
+TmdbSource are unreferenced (#457).
 
 Construct TmdbMetadataHttpSource with a key and inject it into TmdbMetadataAdapter.
 The adapter implements MetadataRepository; neither class selects a match or
-replaces persisted movie fields. No factory property or CLI command is added.
+replaces persisted movie fields. `infrastructure/di/import_use_cases.py` builds both.
 
 ## Retrieval and completeness
 

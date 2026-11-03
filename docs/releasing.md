@@ -8,7 +8,7 @@ Workspace packages release automatically after their version bump merges to `mai
    - `packages/marquise-core/`
    - `apps/marquise-api/`
    - `apps/marquise-cli/`
-2. Add entry under current date in affected package's `CHANGELOG.md` (see [package changelog index](../CHANGELOG.md)).
+2. Add a `### vX.Y.Z` heading for the new version under the current date in the affected package's `CHANGELOG.md` (see [package changelog index](../CHANGELOG.md)). CI greps for that heading.
 3. Merge pull request.
 
 Release workflow validates every changed package version, builds only that package,
@@ -22,7 +22,9 @@ Versions must be numeric `X.Y.Z` bumps. Release assets contain selected package'
 wheel and source distribution. Repository access controls keep them private. No
 packages are published to PyPI.
 
-Pull-request CI runs same version and build checks without creating tags, releases,
-or uploading assets.
+Pull-request CI runs the same version and build checks, without creating tags,
+releases or assets, for each package whose `src/**` or `pyproject.toml` changed.
+Other changes (docs, tests, README) need no bump. The release workflow also runs
+on pushed `marquise-*` tags.
 
 Root `pyproject.toml` is virtual: it has no version of its own.

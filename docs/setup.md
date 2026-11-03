@@ -1,6 +1,6 @@
 # Database setup
 
-Bootstrap Supabase (PostgreSQL) for local development and integration tests.
+Bootstrap the PostgreSQL schema (Supabase or a disposable database), apply migrations, and configure Supabase Auth.
 
 Private Fly catalog preparation is documented in
 [Fly PostgreSQL setup and recovery](fly-postgres.md). Supabase Auth and the
@@ -99,6 +99,59 @@ the index can block writes. Check that `tmdb_id` exists and that
 roll back its transaction and retry after investigating the lock or data issue.
 The additive column can remain if the application is rolled back.
 
+### Existing databases: movie metadata enrichment state (#359)
+
+Apply [the additive lifecycle migration](../scripts/migrations/359-movie-enrichment-state.sql)
+before deploying metadata persistence. The prerequisite #321 migration must already
+provide `movies.tmdb_id` and its unique index. The new nullable
+`metadata_enriched_at TIMESTAMPTZ` records only a successful atomic metadata write.
+The internal `movie_reference_revisions` table and screening trigger invalidate
+snapshots on reference changes, including insert/delete cycles. Each transaction
+that changes a movie's screenings appends one marker. Markers remain after deletion
+to prevent old revisions becoming valid again. The table has row-level security
+and no client policies and requires a trusted backend role. Snapshot reads count
+that movie's markers through the primary-key index; storage grows with committed
+reference-writing transactions. Do not prune markers while snapshots may be in
+use. Movie writes also change snapshots.
+An existing TMDB ID with a NULL stamp remains pending first enrichment. No rows
+are matched, enriched, merged, deleted or backfilled by this migration.
+
+The script targets `marquise.movies`. For a disposable test or custom schema,
+replace every `marquise.` schema qualifier before running it. Use an approved quiet window.
+The transaction has a 5-second lock timeout and 60-second statement timeout;
+adding the column and trigger takes locks on movies and screenings. On failure,
+issue `ROLLBACK` in the same session and inspect the cause before retrying. Rerunning preserves both
+pending rows and existing completion stamps. Bootstrap scripts create the column
+for fresh databases but do not upgrade existing tables.
+
+Verify the timestamp column, marker table, screening trigger and unchanged
+legacy metadata before enabling metadata persistence. Application rollback can
+leave the additive column, table and trigger in place. Dropping the timestamp
+would discard successful-enrichment history and is unnecessary. This change
+supplies no live rollout and no composition-root wiring. #355 owns wiring and
+assembled end-to-end verification; #356 owns guarded merge transactions.
+
+### Existing databases: TMDB movie scores (#373)
+
+Apply [the additive score migration](../scripts/migrations/373-add-movies-tmdb-score.sql)
+before deploying code that reads or writes `movies.tmdb_rating` or
+`movies.tmdb_vote_count`. It adds nullable `DOUBLE PRECISION` and `INTEGER`
+columns. Existing rows and metadata remain unchanged, with both scores NULL
+until enrichment fetches them. The script targets `marquise.movies`; replace
+the schema qualifier for a disposable test or custom schema.
+
+Run it during a quiet window. The transaction has a 5-second lock timeout and
+60-second statement timeout. On failure, issue `ROLLBACK` in the same session
+before retrying. `ADD COLUMN IF NOT EXISTS` makes reruns safe. Verify both
+column types and existing row counts before enabling score reads and writes.
+
+For application rollback, deploy the earlier code and leave the nullable
+columns in place. To remove the columns later, first stop score readers and
+writers and back up their data; `ALTER TABLE marquise.movies DROP COLUMN
+tmdb_rating, DROP COLUMN tmdb_vote_count` permanently deletes stored scores.
+The bootstrap scripts create both columns for fresh databases but do not alter
+existing tables.
+
 ## Auth
 
 [`supabase/config.toml`](../supabase/config.toml) is source of truth. Why Marquise
@@ -159,9 +212,9 @@ key in secret manager. URL and publishable key can reach public clients;
 database and service-role credentials stay server-side. Never commit values or
 put service-role key in `.env.example`.
 
-GitHub Actions integration tests need `DATABASE_URL`, `SUPABASE_URL`, and
-`SUPABASE_PUBLISHABLE_KEY`. Scheduled imports keep existing database
-credentials and do not use Supabase Auth.
+GitHub Actions integration tests run against a disposable `postgres:17` service
+and need no secrets. Whether scheduled imports need the Supabase Auth secrets the
+workflow passes is tracked in #458.
 
 ## Screening audit and replay storage
 
@@ -208,56 +261,3 @@ uv run pytest packages/marquise-core/tests/integration_tests/ -q
 ```
 
 Requires `DATABASE_URL` in `.env`.
-
-### Existing databases: movie metadata enrichment state (#359)
-
-Apply [the additive lifecycle migration](../scripts/migrations/359-movie-enrichment-state.sql)
-before deploying metadata persistence. The prerequisite #321 migration must already
-provide `movies.tmdb_id` and its unique index. The new nullable
-`metadata_enriched_at TIMESTAMPTZ` records only a successful atomic metadata write.
-The internal `movie_reference_revisions` table and screening trigger invalidate
-snapshots on reference changes, including insert/delete cycles. Each transaction
-that changes a movie's screenings appends one marker. Markers remain after deletion
-to prevent old revisions becoming valid again. The table has row-level security
-and no client policies and requires a trusted backend role. Snapshot reads count
-that movie's markers through the primary-key index; storage grows with committed
-reference-writing transactions. Do not prune markers while snapshots may be in
-use. Movie writes also change snapshots.
-An existing TMDB ID with a NULL stamp remains pending first enrichment. No rows
-are matched, enriched, merged, deleted or backfilled by this migration.
-
-The script targets `marquise.movies`. For a disposable test or custom schema,
-replace every `marquise.` schema qualifier before running it. Use an approved quiet window.
-The transaction has a 5-second lock timeout and 60-second statement timeout;
-adding the column and trigger takes locks on movies and screenings. On failure,
-issue `ROLLBACK` in the same session and inspect the cause before retrying. Rerunning preserves both
-pending rows and existing completion stamps. Bootstrap scripts create the column
-for fresh databases but do not upgrade existing tables.
-
-Verify the timestamp column, marker table, screening trigger and unchanged
-legacy metadata before enabling metadata persistence. Application rollback can
-leave the additive column, table and trigger in place. Dropping the timestamp
-would discard successful-enrichment history and is unnecessary. This change
-supplies no live rollout and no composition-root wiring. #355 owns wiring and
-assembled end-to-end verification; #356 owns guarded merge transactions.
-
-### Existing databases: TMDB movie scores (#373)
-
-Apply [the additive score migration](../scripts/migrations/373-add-movies-tmdb-score.sql)
-before deploying code that reads or writes `movies.tmdb_rating` or
-`movies.tmdb_vote_count`. It adds nullable `DOUBLE PRECISION` and `INTEGER`
-columns. Existing rows and metadata remain unchanged, with both scores NULL
-until enrichment fetches them. The script targets `marquise.movies`; replace
-the schema qualifier for a disposable test or custom schema.
-
-Run it during a quiet window. The transaction has a 5-second lock timeout and
-60-second statement timeout. On failure, issue `ROLLBACK` in the same session
-before retrying. `ADD COLUMN IF NOT EXISTS` makes reruns safe. Verify both
-column types and existing row counts before enabling score reads and writes.
-
-For application rollback, deploy the earlier code and leave the nullable
-columns in place. To remove the columns later, first stop score readers and
-writers and back up their data; `ALTER TABLE marquise.movies DROP COLUMN
-tmdb_rating, DROP COLUMN tmdb_vote_count` permanently deletes stored scores.
-The bootstrap scripts create both columns for fresh databases but do not alter
-existing tables.

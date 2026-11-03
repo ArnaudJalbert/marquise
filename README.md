@@ -2,13 +2,14 @@
 
 Marquise aggregates Montreal cinema showtimes, normalizes them into PostgreSQL, and serves them through an admin CLI, public-read and authenticated-screening REST API, and React web interface.
 
-- Live API: [marquise-api.fly.dev/docs](https://marquise-api.fly.dev/docs)
+- Live site: [marquise.mov](https://marquise.mov)
+- Live API: [api.marquise.mov/docs](https://api.marquise.mov/docs)
 
 ## Workspaces
 
 | Workspace | Location | Tooling | Purpose |
 |---|---|---|---|
-| Python backend | repository root | [uv](https://docs.astral.sh/uv/) | Core library, FastAPI API, Typer CLI |
+| Python backend | repository root | [uv](https://docs.astral.sh/uv/) | Core library, FastAPI API, argparse CLI |
 | Web frontend | `web/` | [pnpm](https://pnpm.io/) + [Turborepo](https://turbo.build/repo/docs) | React interface and shared packages |
 
 The workspaces are independent. See [AGENTS.md](AGENTS.md#rules) for design rules and [CONTRIBUTING.md](CONTRIBUTING.md) for commands and CI.
@@ -28,7 +29,7 @@ cp .env.example .env   # set DATABASE_URL
 
 ### Web frontend
 
-Requires Node.js ≥ 20 and pnpm 11.x.
+Requires Node.js 24 or newer and pnpm 11 (pinned in `web/package.json`).
 
 ```bash
 cd web
@@ -37,7 +38,7 @@ pnpm install
 pnpm dev
 ```
 
-The web app defaults to mock data. For live data, run the backend and use `VITE_MARQUISE_DATA_SOURCE=api pnpm --filter marquise-interface dev`.
+`pnpm dev` starts the interface, which always calls the real API: in development it proxies `/v1` to a local API on port 8000 (`make api`). `make web-live` starts both. `pnpm prototype` serves the sample-data demo.
 
 ## Checks
 

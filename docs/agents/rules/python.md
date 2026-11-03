@@ -22,7 +22,12 @@ OutputData skips re-validating fields copied from already-validated entities or 
 
 - `execute(input_data: InputData) -> OutputData` is the only public method.
 - Each use case and query declares its own nested `InputData` and `OutputData` classes and uses them in `execute`. It may inject another use case as a collaborator but never reuses another use case's DTOs. **Enforced:** `packages/marquise-core/tests/unit_tests/application/test_use_case_architecture.py` (its allowlist only shrinks).
-- Catch domain exceptions and re-raise them as `ApplicationError` subclasses, so domain exceptions stay inside the application layer.
+
+## Errors
+
+- Entities, value objects and InputData raise `ValueError` from `__post_init__` on invalid values. The API maps it to 422.
+- Application errors subclass `ApplicationError`, one module per aggregate in `application/exceptions/`.
+- Gateway errors live beside their protocols in `interface_adapters/repositories/protocols/`; adapters translate them into application errors.
 
 ## Modules and packages
 
