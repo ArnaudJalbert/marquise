@@ -2,6 +2,7 @@
 
 ## 2026-11-03
 
+- Point the interface API documentation link at `api.marquise.mov`.
 - Share one Movie Card across the Screenings and Movies sections, and replace the arrow and close text glyphs with line icons so iPhones no longer render emoji. Supports #429.
 
 ## 2026-11-01
