@@ -226,6 +226,7 @@
   height: 26px;
   border-radius: 3px;
   background: var(--indigo-deep);
+  pointer-events: none;
   transform: translateX(-50%);
 }
 .minimal-strip-window [data-handle="start"] {

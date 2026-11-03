@@ -86,8 +86,18 @@ function DayStrip({
         const handle = (event.target as Element)
           .closest("[data-handle]")
           ?.getAttribute("data-handle");
+        const windowRect = event.currentTarget
+          .querySelector(".minimal-strip-window")
+          ?.getBoundingClientRect();
+        const inMoveArea =
+          windowRect &&
+          windowRect.width > 0 &&
+          event.clientX > windowRect.left + windowRect.width * 0.25 &&
+          event.clientX < windowRect.right - windowRect.width * 0.25;
         const mode: DragMode =
-          handle === "start" || handle === "end"
+          inMoveArea && day >= range[0] && day <= range[1]
+            ? "move"
+            : handle === "start" || handle === "end"
             ? handle
             : day >= range[0] && day <= range[1]
               ? "move"

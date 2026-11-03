@@ -125,11 +125,15 @@ it("moves the selected window by dragging inside it", () => {
 });
 
 it("moves a one-day selection in a narrow six-week view", () => {
-  /** Scenario: the day strip keeps a move area between its narrow resize handles. */
+  /** Scenario: narrow resize grips leave the selected range's center interactive. */
   const onChange = setup();
   fireEvent.click(screen.getByRole("button", { name: "6 weeks" }));
   const element = strip(8);
-  fireEvent.pointerDown(element, at(0, 8));
+  const window = element.querySelector(".minimal-strip-window") as HTMLElement;
+  window.getBoundingClientRect = () =>
+    ({ left: 0, right: 8, width: 8, top: 0, bottom: 60, height: 60 }) as DOMRect;
+  const startHandle = element.querySelector('[data-handle="start"]') as Element;
+  fireEvent.pointerDown(startHandle, at(0, 8));
   fireEvent.pointerMove(element, at(1, 8));
   fireEvent.pointerUp(element, at(1, 8));
   expect(onChange).toHaveBeenCalledExactlyOnceWith("2026-11-04", "2026-11-04");
