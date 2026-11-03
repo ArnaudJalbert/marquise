@@ -28,7 +28,7 @@ production bundle. Run `pnpm prototype` for it. See
 - **Apps compose** library exports, configure clients, and pass them via props
 - Each package builds, lints, typechecks, and tests on its own; client tests inject `fetch`
 
-Full rules → [Atlas Clean Architecture](../atlas/50-processes/Clean%20Architecture.md) (modular web packages) and [AGENTS.md](../AGENTS.md).
+Full rules → [web rules](../docs/agents/rules/web.md).
 
 ## Layout
 

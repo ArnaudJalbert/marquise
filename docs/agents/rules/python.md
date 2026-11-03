@@ -1,0 +1,33 @@
+# Python rules
+
+Read when writing or reviewing Python in `packages/marquise-core` or `apps/*`.
+
+## Types
+
+- Complete type hints everywhere. Write `str | None`, not `Optional[str]`.
+- Use precise types instead of `object` or `TypedDict`. At delivery formatting boundaries, plain `dict` is fine.
+- `Any` needs a comment explaining why.
+
+## Dataclasses
+
+| Kind | Decorator | Validation |
+|---|---|---|
+| Entity | `@dataclass(kw_only=True, slots=True)` | `__post_init__` |
+| Value object, use-case InputData | `@dataclass(frozen=True, slots=True)` | `__post_init__` |
+| Use-case OutputData | `@dataclass(frozen=True, slots=True)` | Computed or derived fields only |
+
+OutputData skips re-validating fields copied from already-validated entities or InputData.
+
+## Use cases
+
+- `execute(input_data: InputData) -> OutputData` is the only public method.
+- Catch domain exceptions and re-raise them as `ApplicationError` subclasses, so domain exceptions stay inside the application layer.
+
+## Modules and packages
+
+- `__init__.py` files only re-export. Definitions live in modules.
+- Google docstrings on every public module, class, method and function.
+
+## Quality gate
+
+Run `uv run ruff format .` and `uv run ruff check .` before committing. Commands: [CONTRIBUTING.md](../../../CONTRIBUTING.md#commands).
