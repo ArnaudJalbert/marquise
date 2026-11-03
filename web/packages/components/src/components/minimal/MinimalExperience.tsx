@@ -287,6 +287,7 @@ export function MinimalExperience({
 
   return (
     <MinimalCatalogue
+      currentTime={currentTime}
       movies={decodedId ? [] : movies}
       catalogueMovies={catalogueMovies}
       serverResults
