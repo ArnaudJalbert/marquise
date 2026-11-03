@@ -213,7 +213,7 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 24px;
+  width: min(24px, 25%);
   cursor: ew-resize;
   pointer-events: auto;
 }
@@ -221,17 +221,20 @@
   content: "";
   position: absolute;
   top: calc(50% - 13px);
-  left: 9px;
+  left: 50%;
   width: 6px;
   height: 26px;
   border-radius: 3px;
   background: var(--indigo-deep);
+  transform: translateX(-50%);
 }
 .minimal-strip-window [data-handle="start"] {
-  left: -12px;
+  left: 0;
+  transform: translateX(-50%);
 }
 .minimal-strip-window [data-handle="end"] {
-  right: -12px;
+  right: 0;
+  transform: translateX(50%);
 }
 .minimal-filter-row {
   position: relative;

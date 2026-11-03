@@ -39,15 +39,19 @@ function setup(start?: string, end?: string) {
 }
 
 /** Lays the strip out as equal cells of CELL pixels so pointer math is real. */
-function strip() {
+function strip(cellWidth = CELL) {
   const element = screen.getByRole("group", { name: "Choose dates" });
   const days = element.querySelectorAll(".minimal-strip-day").length;
   element.getBoundingClientRect = () =>
-    ({ left: 0, width: days * CELL, top: 0, height: 60 }) as DOMRect;
+    ({ left: 0, width: days * cellWidth, top: 0, height: 60 }) as DOMRect;
   return element;
 }
 
-const at = (cell: number) => ({ clientX: cell * CELL + CELL / 2, button: 0, pointerId: 1 });
+const at = (cell: number, cellWidth = CELL) => ({
+  clientX: cell * cellWidth + cellWidth / 2,
+  button: 0,
+  pointerId: 1,
+});
 
 function dragOn(target: Element, from: number, to: number) {
   const element = strip();
@@ -118,6 +122,17 @@ it("moves the selected window by dragging inside it", () => {
   const onChange = setup("2026-11-04", "2026-11-05");
   dragOn(screen.getByRole("button", { name: "Wednesday November 4th" }), 1, 4);
   expect(onChange).toHaveBeenCalledExactlyOnceWith("2026-11-07", "2026-11-08");
+});
+
+it("moves a one-day selection in a narrow six-week view", () => {
+  /** Scenario: the day strip keeps a move area between its narrow resize handles. */
+  const onChange = setup();
+  fireEvent.click(screen.getByRole("button", { name: "6 weeks" }));
+  const element = strip(8);
+  fireEvent.pointerDown(element, at(0, 8));
+  fireEvent.pointerMove(element, at(1, 8));
+  fireEvent.pointerUp(element, at(1, 8));
+  expect(onChange).toHaveBeenCalledExactlyOnceWith("2026-11-04", "2026-11-04");
 });
 
 it("resizes the window from either edge", () => {
