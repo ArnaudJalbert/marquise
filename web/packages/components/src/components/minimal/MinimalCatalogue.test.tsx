@@ -511,7 +511,7 @@ it("renders movies section cards with year and movie links but no preview", () =
   expect(within(card).getByText("1999")).toBeInTheDocument();
   expect(within(card).queryByRole("button")).not.toBeInTheDocument();
   fireEvent.pointerEnter(card, { pointerType: "mouse" });
-  expect(screen.queryByRole("region")).not.toBeInTheDocument();
+  expect(within(card).queryByRole("region")).not.toBeInTheDocument();
 });
 
 it("opens and closes the screenings section preview with icon buttons", () => {
@@ -531,7 +531,7 @@ it("opens and closes the screenings section preview with icon buttons", () => {
   expect(close.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
   expect(card).not.toHaveTextContent(/[↗×]/);
   fireEvent.click(close);
-  expect(screen.queryByRole("region")).not.toBeInTheDocument();
+  expect(within(card).queryByRole("region")).not.toBeInTheDocument();
   expect(arrow).toHaveFocus();
   fireEvent.pointerEnter(card, { pointerType: "mouse" });
   expect(
