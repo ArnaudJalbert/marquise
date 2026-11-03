@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from datetime import datetime, time
+from datetime import datetime
 
 from marquise.application.readers.screening_reader import ScreeningReader
 from marquise.application.repositories.page import Page
@@ -38,8 +38,8 @@ class ScreeningMovieReader(ABC):
         title: str | None = None,
         cinemas: tuple[str, ...] = (),
         languages: tuple[str, ...] = (),
-        start_time: time | None = None,
-        end_time: time | None = None,
+        hours: tuple[tuple[int, int], ...] = (),
+        excluded_cinemas: tuple[str, ...] = (),
     ) -> Page[MovieData]:
         """Return a 24-movie page within inclusive bounds, strictly after now."""
         ...

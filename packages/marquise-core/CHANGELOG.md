@@ -2,6 +2,12 @@
 
 Before 2026-07-15 this package was published as `marquise`.
 
+## 2026-11-03
+
+### v0.2.44
+
+- Filter screening movies by several half-open Montréal hour ranges matched with OR, replacing the single start and end hour. Exclude cinemas by ID. Closes #441.
+
 ## 2026-11-02
 
 ### v0.2.43

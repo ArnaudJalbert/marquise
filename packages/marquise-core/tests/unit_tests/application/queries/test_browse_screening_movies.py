@@ -1,7 +1,6 @@
 """Movie-first query bounds and clock tests."""
 
 from datetime import UTC, date, datetime
-from datetime import time as clock_time
 from unittest.mock import Mock, create_autospec
 
 import pytest
@@ -31,8 +30,8 @@ async def test_montreal_dst_window_and_single_clock() -> None:
         None,
         (),
         (),
-        None,
-        None,
+        (),
+        (),
     )
     clock.assert_called_once_with()
     assert result.movies == ()
@@ -53,9 +52,18 @@ def test_invalid_request(start: date, end: date, page: int) -> None:
         BrowseScreeningMoviesQuery.InputData(start, end, page)
 
 
+@pytest.mark.parametrize("hours", [(21, 17), (17, 17), (-1, 5), (0, 25)])
+def test_invalid_hour_range(hours: tuple[int, int]) -> None:
+    """An empty, inverted or out-of-day range is rejected even beside a valid one."""
+    with pytest.raises(ValueError, match="hours"):
+        BrowseScreeningMoviesQuery.InputData(
+            date(2026, 11, 1), None, hours=((0, 24), hours)
+        )
+
+
 @pytest.mark.asyncio
 async def test_filter_values_are_passed_to_the_reader() -> None:
-    """One movie query receives every selected filter and hourly bounds."""
+    """One movie query receives every selected filter, hour range and exclusion."""
     reader = create_autospec(ScreeningMovieReader, instance=True)
     reader.search.return_value = Page(items=[], total=0)
     now = datetime(2026, 11, 3, 18, tzinfo=UTC)
@@ -65,8 +73,8 @@ async def test_filter_values_are_passed_to_the_reader() -> None:
         title=" Dune ",
         cinemas=("c1", "c2"),
         languages=("VO", "VOSTF"),
-        start_hour=18,
-        end_hour=21,
+        hours=((0, 17), (21, 24)),
+        excluded_cinemas=("c3",),
     )
 
     await BrowseScreeningMoviesQuery(reader, Mock(return_value=now)).execute(request)
@@ -76,6 +84,6 @@ async def test_filter_values_are_passed_to_the_reader() -> None:
         " Dune ",
         ("c1", "c2"),
         ("VO", "VOSTF"),
-        clock_time(18),
-        clock_time(21),
+        ((0, 17), (21, 24)),
+        ("c3",),
     )

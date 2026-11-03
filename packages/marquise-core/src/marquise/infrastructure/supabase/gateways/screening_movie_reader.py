@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, time
+from datetime import datetime
 
 import asyncpg
 
@@ -27,8 +27,8 @@ class SupabaseScreeningMovieReadGateway:
         title: str | None = None,
         cinemas: tuple[str, ...] = (),
         languages: tuple[str, ...] = (),
-        start_time: time | None = None,
-        end_time: time | None = None,
+        hours: tuple[tuple[int, int], ...] = (),
+        excluded_cinemas: tuple[str, ...] = (),
     ) -> GatewayPage:
         """Use one SQL snapshot for eligibility, totals, ordering and previews."""
         async with self._pool.acquire() as connection:
@@ -48,18 +48,18 @@ class SupabaseScreeningMovieReadGateway:
                       AND ($4::text IS NULL OR m.title ILIKE '%' || $4 || '%')
                       AND (cardinality($5::text[]) = 0 OR s.cinema_id = ANY($5))
                       AND (cardinality($6::text[]) = 0 OR s.language = ANY($6))
-                      AND ($7::time IS NULL OR
-                           ((s.showtime AT TIME ZONE 'UTC')
-                               AT TIME ZONE 'America/Montreal')::time >= $7)
-                      AND ($8::time IS NULL OR
-                           ((s.showtime AT TIME ZONE 'UTC')
-                               AT TIME ZONE 'America/Montreal')::time <= $8)
+                      AND (cardinality($7::int[]) = 0 OR EXISTS (
+                           SELECT 1 FROM unnest($7::int[], $8::int[]) h(lo, hi)
+                           WHERE int4range(h.lo, h.hi) @> extract(hour FROM
+                               (s.showtime AT TIME ZONE 'UTC')
+                                   AT TIME ZONE 'America/Montreal')::int))
+                      AND NOT s.cinema_id = ANY($9::text[])
                 ), eligible AS (
                     SELECT movie_id, showtime AS next_showtime
                     FROM qualifying WHERE rank = 1
                 ), selected AS (
                     SELECT * FROM eligible
-                    ORDER BY next_showtime, movie_id LIMIT 24 OFFSET $9
+                    ORDER BY next_showtime, movie_id LIMIT 24 OFFSET $10
                 )
                 SELECT totals.total, m.id, m.title, m.release_year, m.directors,
                        m.duration_minutes, m.description, m.poster_url,
@@ -78,8 +78,9 @@ class SupabaseScreeningMovieReadGateway:
                 None if not title else title.strip(),
                 list(cinemas),
                 list(languages),
-                start_time,
-                end_time,
+                [start for start, _ in hours],
+                [end for _, end in hours],
+                list(excluded_cinemas),
                 (page - 1) * 24,
             )
         movies: dict[str, dict] = {}

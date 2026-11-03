@@ -15,7 +15,11 @@ class BrowseScreeningMoviesQuery:
 
     @dataclass(frozen=True, slots=True)
     class InputData:
-        """Inclusive Montreal dates, open-ended without end, and a page of 24."""
+        """Inclusive Montreal dates, open-ended without end, and a page of 24.
+
+        ``hours`` holds half-open ``(start, end)`` Montreal hour ranges matched
+        with OR; empty means any hour.
+        """
 
         start: date
         end: date | None
@@ -23,25 +27,19 @@ class BrowseScreeningMoviesQuery:
         title: str | None = None
         cinemas: tuple[str, ...] = ()
         languages: tuple[str, ...] = ()
-        start_hour: int | None = None
-        end_hour: int | None = None
+        hours: tuple[tuple[int, int], ...] = ()
+        excluded_cinemas: tuple[str, ...] = ()
 
         def __post_init__(self) -> None:
-            """Reject inverted dates and invalid pages."""
+            """Reject inverted dates, invalid pages, and empty or out-of-day hours."""
             if self.end is not None and self.start > self.end:
                 raise ValueError("start must not be after end")
             if self.end == date.max:
                 raise ValueError("end is outside the supported date range")
             if self.page < 1:
                 raise ValueError("page must be at least 1")
-            if self.start_hour is not None and not 0 <= self.start_hour <= 23:
-                raise ValueError("start_hour must be between 0 and 23")
-            if self.end_hour is not None and not 0 <= self.end_hour <= 24:
-                raise ValueError("end_hour must be between 0 and 24")
-            start_hour = self.start_hour or 0
-            end_hour = self.end_hour or 24
-            if start_hour > end_hour:
-                raise ValueError("start_hour must not be after end_hour")
+            if not all(0 <= start < end <= 24 for start, end in self.hours):
+                raise ValueError("hours must be ranges with 0 <= start < end <= 24")
 
     @dataclass(frozen=True, slots=True)
     class OutputData:
@@ -78,11 +76,7 @@ class BrowseScreeningMoviesQuery:
             input_data.title,
             input_data.cinemas,
             input_data.languages,
-            time(input_data.start_hour)
-            if input_data.start_hour not in (None, 0)
-            else None,
-            time(input_data.end_hour)
-            if input_data.end_hour is not None and input_data.end_hour < 24
-            else None,
+            input_data.hours,
+            input_data.excluded_cinemas,
         )
         return self.OutputData(movies=tuple(page.items), total=page.total)

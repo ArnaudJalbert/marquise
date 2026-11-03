@@ -46,7 +46,7 @@ async def test_movie_projection_maps_metadata_previews_and_empty_pages() -> None
     now = datetime(2026, 11, 1, 4, tzinfo=UTC)
     reader = SupabaseScreeningMovieReader(gateway)
     result = await reader.search(now, now, now, 2)
-    gateway.search.assert_awaited_once_with(now, now, now, 2, None, (), (), None, None)
+    gateway.search.assert_awaited_once_with(now, now, now, 2, None, (), (), (), ())
     assert result.total == 25
     movie = result.items[0]
     assert movie.directors is None and movie.poster_url is None

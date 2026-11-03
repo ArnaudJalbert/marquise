@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, time
+from datetime import datetime
 from typing import Protocol
 
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
@@ -23,8 +23,8 @@ class ScreeningMovieReadGateway(Protocol):
         title: str | None = None,
         cinemas: tuple[str, ...] = (),
         languages: tuple[str, ...] = (),
-        start_time: time | None = None,
-        end_time: time | None = None,
+        hours: tuple[tuple[int, int], ...] = (),
+        excluded_cinemas: tuple[str, ...] = (),
     ) -> GatewayPage:
         """Return 24 distinct movies with ordered previews and a true total."""
         ...
@@ -46,12 +46,12 @@ class SupabaseScreeningMovieReader(ScreeningMovieReader):
         title: str | None = None,
         cinemas: tuple[str, ...] = (),
         languages: tuple[str, ...] = (),
-        start_time: time | None = None,
-        end_time: time | None = None,
+        hours: tuple[tuple[int, int], ...] = (),
+        excluded_cinemas: tuple[str, ...] = (),
     ) -> Page[ScreeningMovieReader.MovieData]:
         """Map movie metadata and screening projections."""
         result = await self._gateway.search(
-            start, end, now, page, title, cinemas, languages, start_time, end_time
+            start, end, now, page, title, cinemas, languages, hours, excluded_cinemas
         )
         return Page(
             items=[

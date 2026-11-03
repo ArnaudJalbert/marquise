@@ -1,6 +1,6 @@
 """Movie-first pagination against a disposable PostgreSQL database."""
 
-from datetime import UTC, datetime, time, timedelta
+from datetime import UTC, datetime, timedelta
 
 import asyncpg
 import pytest
@@ -157,11 +157,55 @@ async def test_filters_apply_to_qualifying_screenings_before_preview_selection(
         "Dune",
         ("c2",),
         ("VOSTF",),
-        time(18),
-        time(20),
+        ((18, 20),),
     )
     assert result.total == 1
     assert [movie["id"] for movie in result.rows] == ["match"]
     assert [screening["id"] for screening in result.rows[0]["screenings"]] == [
         "correct"
     ]
+
+
+@pytest.mark.asyncio
+async def test_hour_ranges_match_with_or_in_montreal_time_and_cinemas_are_excluded(
+    db_pool: asyncpg.Pool,
+) -> None:
+    """Non-adjacent half-open local hour ranges match; excluded cinemas never do."""
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            """INSERT INTO "marquise-test".cinemas(id,name)
+               VALUES ('c1','Cinema One'),('c2','Cinema Two')"""
+        )
+        await conn.execute(
+            """INSERT INTO "marquise-test".movies(id,title)
+               VALUES ('morning','M'),('boundary','B'),('evening','E'),
+                      ('late','L'),('excluded','X')"""
+        )
+        # 2026-11-05 is UTC-5 in Montreal: 15:00 UTC is 10:00 local.
+        await conn.executemany(
+            """INSERT INTO "marquise-test".screenings
+               (id,movie_id,cinema_id,showtime) VALUES($1,$2,$3,$4)""",
+            [
+                ("10h", "morning", "c1", datetime(2026, 11, 5, 15)),
+                ("17h", "boundary", "c1", datetime(2026, 11, 5, 22)),
+                ("18h", "evening", "c1", datetime(2026, 11, 5, 23)),
+                ("23h59", "late", "c1", datetime(2026, 11, 6, 4, 59)),
+                ("11h-c2", "excluded", "c2", datetime(2026, 11, 5, 16)),
+            ],
+        )
+    gateway = SupabaseScreeningMovieReadGateway(db_pool, "marquise-test")
+    now = datetime(2026, 11, 5, 5, tzinfo=UTC)
+    result = await gateway.search(
+        now,
+        datetime(2026, 11, 6, 4, 59, 59, tzinfo=UTC),
+        now,
+        1,
+        hours=((0, 17), (21, 24)),
+        excluded_cinemas=("c2",),
+    )
+    assert [movie["id"] for movie in result.rows] == ["morning", "late"]
+    assert result.total == 2
+    unfiltered = await gateway.search(
+        now, datetime(2026, 11, 6, 4, 59, 59, tzinfo=UTC), now, 1
+    )
+    assert unfiltered.total == 5
