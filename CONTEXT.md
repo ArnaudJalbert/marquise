@@ -2,6 +2,14 @@
 
 Montreal cinema showtime aggregation and management.
 
+## Product thesis
+
+Marquise makes relevant films and screenings in Montreal easy to discover while keeping showtime information trustworthy.
+
+- Montreal web product first; expand only on evidence.
+- Data trust is a product concern: freshness, duplicate entities, stale showtimes, timezone errors and broken links are user-facing defects.
+- Prefer focused, reversible experiments over premature complexity.
+
 ## Language
 
 **Editor**:

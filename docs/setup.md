@@ -101,10 +101,40 @@ The additive column can remain if the application is rolled back.
 
 ## Auth
 
-[`supabase/config.toml`](../supabase/config.toml) is source of truth. Use
-[Supabase Auth configuration](../atlas/50-processes/Supabase%20Auth%20configuration.md)
-to push it safely. `supabase config push` applies defaults for omitted keys, so
-do not remove existing settings from the file.
+[`supabase/config.toml`](../supabase/config.toml) is source of truth. Why Marquise
+authorizes with JWT claims: [ADR 0001](adr/0001-supabase-jwt-claims-for-authorization.md).
+
+### Push the Auth configuration
+
+`supabase config push` does not patch only the keys in `supabase/config.toml`.
+Missing keys take Supabase CLI defaults and can overwrite remote settings, so the
+file keeps every remote value that must not change: project URL, redirect URLs,
+email confirmation and OTP policy, TOTP MFA, and `storage.vector.enabled = false`
+(vector buckets need a paid plan).
+
+1. Inspect `supabase/config.toml`. Expected Auth policy: public sign-up disabled,
+   anonymous sign-ins disabled, JWT expiry `900` seconds.
+2. Run `supabase projects list` and confirm the intended project name and ref.
+3. Push with an explicit ref: `supabase config push --project-ref <project-ref>`.
+   A bare `supabase config push` is safe only when the local project is linked to
+   the intended project.
+4. Read every diff and approve only expected changes. A normal push updates Auth
+   and leaves API, database and Storage up to date.
+5. In the Auth dashboard, confirm public sign-up off, anonymous sign-ins off and
+   JWT expiry 900 seconds.
+
+On an unexpected diff, stop before approving. Copy the current remote values for
+every setting that must stay unchanged into `supabase/config.toml`, then push
+again with the explicit ref. If an incomplete file was already pushed, restore
+these values in the file and push: `auth.site_url = "http://localhost:3000"`,
+empty `auth.additional_redirect_urls`, email confirmations with one-minute
+frequency and eight-character OTPs, TOTP enrollment and verification, and
+`storage.vector.enabled = false`. Repeat the dashboard check.
+
+Project credentials, database URLs and service-role keys stay out of
+`supabase/config.toml`; see the secrets section below.
+
+### Accounts and roles
 
 Invited humans receive Supabase's account-setup email and choose a password.
 Their `app_metadata.marquise_role` is `member`, `editor`, or `administrator`.
