@@ -13,7 +13,7 @@ Documentation lives in the repository (not all pages are published here):
 | Document | Purpose |
 |----------|---------|
 | [Rules](https://github.com/ArnaudJalbert/marquise/tree/main/docs/agents/rules) | Architecture, Python, testing, web and review rules |
-| [Development rules](https://github.com/ArnaudJalbert/marquise/blob/main/AGENTS.md) | Enforced rules for developers and AI assistants |
+| [Agent guide](https://github.com/ArnaudJalbert/marquise/blob/main/AGENTS.md) | Priorities, rule index and guide index |
 | [Contributing](https://github.com/ArnaudJalbert/marquise/blob/main/CONTRIBUTING.md) | Setup, commands, paths, CI |
 
 Additional guides (`docs/setup.md`, `docs/sources.md`, etc.) — see [AGENTS.md](https://github.com/ArnaudJalbert/marquise/blob/main/AGENTS.md#guides).

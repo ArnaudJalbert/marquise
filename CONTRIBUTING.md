@@ -58,9 +58,6 @@ holds workspace config, the shared `dev` dependency group, shared `ruff`/`ty`
 config, and import-linter contracts. Each member owns its own `pyproject.toml`,
 runtime dependencies, and pytest config.
 
-**One lockfile rule**: only run `uv sync` / `uv lock` from the repo root, never
-from inside a member directory.
-
 Apps reach core only through the `marquise` facade; see the
 [architecture rules](docs/agents/rules/architecture.md#public-facade).
 
@@ -81,8 +78,7 @@ web/
     └── components/         # marquise-components UI library
 ```
 
-Run `pnpm install` only from `web/`, never from a package subdirectory. Package
-roles and dependency rules: [web rules](docs/agents/rules/web.md).
+Package roles and dependency rules: [web rules](docs/agents/rules/web.md).
 
 ---
 
@@ -165,8 +161,6 @@ uv add --dev <package>
 uv sync   # always from repo root
 ```
 
-Never use `pip` directly — all Python dependencies go through `uv`.
-
 ### Web (from `web/`)
 
 ```bash
@@ -187,8 +181,6 @@ Add a dependency to one package:
 ```bash
 pnpm --filter marquise-components add <package>
 ```
-
-Never use `npm` or `yarn` in `web/` — pnpm only.
 
 ---
 
@@ -231,14 +223,7 @@ Coverage gate and targets: [testing rules](docs/agents/rules/testing.md#coverage
 
 ---
 
-## Branch naming
-
-- `feature/` or `feat/`, `fix/`, `refactor/`, `docs/`, `chore/`
-
-## Commit messages
-
-Format: `type(scope): concise description`  
-Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
+Branch and commit conventions: [review and delivery rules](docs/agents/rules/review-and-delivery.md#branches-and-commits).
 
 ## PR checklist
 

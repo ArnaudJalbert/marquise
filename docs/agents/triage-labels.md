@@ -18,8 +18,9 @@ Category labels sit beside the state labels above.
 
 | Label | Use |
 | --- | --- |
-| `type:feat`, `type:refactor`, `type:idea`, `type:research`, `type:proposal` | Exactly one per issue: what kind of work it is |
+| `type:feat`, `type:refactor`, `type:idea`, `type:research`, `type:proposal` | One per non-bug issue: what kind of work it is |
 | `area:core`, `area:api`, `area:cli`, `area:web`, `area:ci`, `area:infra`, `area:docs` | One or more: which part of the repo it touches |
+| `architecture`, `testing`, `technical-debt` | Optional topic tags |
 | `blocked` | Waiting on a dependency; link the blocker |
 | `agent:in-progress` | An agent is working on the issue |
 | `agent:pr-open` | A PR is open and waiting for review |

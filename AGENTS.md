@@ -5,7 +5,7 @@ Montreal cinema showtimes: a Python backend (uv workspace: `packages/marquise-co
 ## Priorities
 
 1. **Clean Architecture wins.** Layer boundaries, inward dependencies, injectable collaborators and single responsibility hold on every change.
-2. **Then ponytail.** The smallest change that fully solves the task: reuse first, stdlib before dependencies, deletion over addition, abstractions only with a concrete payoff.
+2. **Then ponytail.** The smallest change that fully solves the task: reuse first, stdlib before dependencies, deletion over addition, abstractions only with a concrete payoff. Ponytail never trades away safety, correctness, data integrity, acceptance criteria or required tests; a shorter diff is not automatically better.
 
 When they pull apart, keep the architecture and find a smaller change inside it. When unsure, ship the simple version and say what was skipped.
 
@@ -15,11 +15,11 @@ Read the matching file before the work it names. How rules are written and added
 
 | Rules | Read when |
 |---|---|
-| [architecture](docs/agents/rules/architecture.md) | Adding or moving Python code across layers, wiring dependencies, changing what apps import |
+| [architecture](docs/agents/rules/architecture.md) | Adding a use case, repository, gateway, adapter or endpoint; moving code across layers; wiring dependencies; changing what apps import |
 | [python](docs/agents/rules/python.md) | Writing or reviewing Python |
 | [testing](docs/agents/rules/testing.md) | Writing, moving or reviewing tests |
 | [web](docs/agents/rules/web.md) | Working under `web/` |
-| [review-and-delivery](docs/agents/rules/review-and-delivery.md) | Opening, reviewing or merging a PR |
+| [review-and-delivery](docs/agents/rules/review-and-delivery.md) | Filing an issue; opening, reviewing or merging a PR |
 
 ## Guides
 

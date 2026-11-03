@@ -28,7 +28,7 @@ Paths are under `packages/marquise-core/tests/` unless stated. Adapter tests are
 
 ## Coverage
 
-70% minimum for core, enforced by `fail_under` in `packages/marquise-core/pyproject.toml` and the `quality` workflow. Target 100% for `domain/` and `application/`.
+70% minimum for core. Target 100% for `domain/` and `application/`. **Enforced:** `fail_under` in `packages/marquise-core/pyproject.toml` and `--cov-fail-under` in `.github/workflows/quality.yml`.
 
 ## Web
 

@@ -1,6 +1,6 @@
 # Architecture rules
 
-Read when adding or moving Python code across layers, wiring dependencies, or changing what delivery apps import.
+Read when adding a use case, repository, gateway, adapter or endpoint, moving code across layers, wiring dependencies, or changing what delivery apps import.
 
 ## Dependency rule
 
@@ -37,7 +37,7 @@ delivery → infrastructure → interface_adapters → application → domain
 - Controllers receive use cases through the constructor.
 - Concrete dependencies are built only at the composition root (`infrastructure/di/`).
 - State lives in injected objects. Module-level mutable containers, caches and lazy singletons are out.
-- Use cases read configuration through injected collaborators, never from environment variables, DB drivers or HTTP clients.
+- Use cases import no DB driver or HTTP client and read no environment variables. Configuration arrives through injected collaborators.
 
 ## Public facade
 
@@ -54,6 +54,6 @@ async with create_factory_session() as factory:
 - Apps import only `marquise`, never `marquise.domain`, `marquise.application`, `marquise.interface_adapters` or `marquise.infrastructure`. **Enforced:** `packages/marquise-core/tests/unit_tests/test_import_boundary.py`.
 - Changing the facade means updating its snapshot. **Enforced:** `packages/marquise-core/tests/unit_tests/test_public_api.py`.
 
-## Lean inside the architecture
+## Review gate
 
-Ponytail applies after these rules hold. When the smallest change would skip a layer, merge boundaries, hard-code a dependency or expose domain types at the edge, find a smaller change that keeps the architecture. Add an abstraction or dependency only with a concrete payoff.
+Before approving, the reviewer confirms: dependencies still point inward; business logic, SQL and HTTP sit in their layers; collaborators stay injectable; delivery uses the facade and DTOs; tests prove the changed boundary without live services; every new abstraction or dependency has a concrete payoff. A violation blocks the PR. For uncertainty, name the affected dependency and settle it with a test, trace or ADR.

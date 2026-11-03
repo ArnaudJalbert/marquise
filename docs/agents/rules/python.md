@@ -5,7 +5,7 @@ Read when writing or reviewing Python in `packages/marquise-core` or `apps/*`.
 ## Types
 
 - Complete type hints everywhere. Write `str | None`, not `Optional[str]`.
-- Use precise types instead of `object` or `TypedDict`. At delivery formatting boundaries, plain `dict` is fine.
+- Use precise types instead of `object` or `TypedDict`. At delivery formatting boundaries, use plain `dict`.
 - `Any` needs a comment explaining why.
 
 ## Dataclasses
@@ -21,12 +21,17 @@ OutputData skips re-validating fields copied from already-validated entities or 
 ## Use cases
 
 - `execute(input_data: InputData) -> OutputData` is the only public method.
+- Each use case and query declares its own nested `InputData` and `OutputData` classes and uses them in `execute`. It may inject another use case as a collaborator but never reuses another use case's DTOs. **Enforced:** `packages/marquise-core/tests/unit_tests/application/test_use_case_architecture.py` (its allowlist only shrinks).
 - Catch domain exceptions and re-raise them as `ApplicationError` subclasses, so domain exceptions stay inside the application layer.
 
 ## Modules and packages
 
 - `__init__.py` files only re-export. Definitions live in modules.
 - Google docstrings on every public module, class, method and function.
+
+## Tooling
+
+- Python dependencies go through `uv`, never `pip`. Run `uv sync` and `uv lock` only from the repo root: one lockfile.
 
 ## Quality gate
 
