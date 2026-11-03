@@ -74,7 +74,7 @@ function parseSelection(url: URL, today: string): CatalogueSelection {
   return {
     start,
     end,
-    title: params.get("title") ?? "",
+    title: params.get("q") ?? "",
     cinemas: params.getAll("cinema"),
     languages: params.getAll("language"),
     from: fromHour > 0 ? `${String(fromHour).padStart(2, "0")}:00` : "",
@@ -85,11 +85,11 @@ function parseSelection(url: URL, today: string): CatalogueSelection {
 function listingHref(href: string, selection: CatalogueSelection): string {
   const url = new URL(href, "http://marquise.invalid");
   const params = url.searchParams;
-  for (const key of ["start", "end", "title", "cinema", "language", "from", "to", "page"])
+  for (const key of ["start", "end", "q", "title", "cinema", "language", "from", "to", "page"])
     params.delete(key);
   params.set("start", selection.start);
   params.set("end", selection.end);
-  if (selection.title.trim()) params.set("title", selection.title.trim());
+  if (selection.title.trim()) params.set("q", selection.title.trim());
   selection.cinemas.forEach((id) => params.append("cinema", id));
   selection.languages.forEach((language) => params.append("language", language));
   if (selection.from) params.set("from", selection.from);

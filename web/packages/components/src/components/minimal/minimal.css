@@ -92,9 +92,34 @@
 .minimal-filters {
   margin-bottom: 24px;
 }
+.minimal-screenings-top {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+.minimal-movie-search {
+  position: relative;
+  flex: 0 1 320px;
+}
+.minimal-movie-search input {
+  width: 100%;
+  padding-right: 32px;
+}
+.minimal-movie-search-key {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font: 11px var(--font-mono, monospace);
+  color: #666;
+  pointer-events: none;
+}
 .minimal-search-dates {
   display: grid;
-  grid-template-columns: 1fr 180px 180px;
+  grid-template-columns: repeat(2, 180px);
   gap: 12px;
 }
 .minimal-search-dates label {
@@ -831,12 +856,12 @@
   .minimal-info {
     padding-left: 16px;
   }
+  .minimal-screenings-top {
+    display: block;
+  }
   .minimal-search-dates {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
-  }
-  .minimal-search-dates label:first-child {
-    grid-column: 1/-1;
   }
   .minimal-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

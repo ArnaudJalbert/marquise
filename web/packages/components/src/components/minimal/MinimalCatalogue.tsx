@@ -16,6 +16,7 @@ export type {
 } from "./catalogue-types";
 import { formatScore, timeToHour, formatHour, decodePathId } from "./catalogue-format";
 import { MovieSchedule } from "./MovieSchedule";
+import { MovieSearch } from "./MovieSearch";
 import { Showtime } from "./Showtime";
 import { InfoMenu, SiteFooter, infoPages } from "./SiteInfo";
 import marquiseMark from "./marquise-mark.svg";
@@ -199,16 +200,6 @@ function Filters({
   | "tomorrow"
   | "weekend"
 > & { fixed?: string }) {
-  const [titleValue, setTitleValue] = useState(s.title);
-  useEffect(() => setTitleValue(s.title), [s.title]);
-  useEffect(() => {
-    if (titleValue === s.title) return;
-    const timer = window.setTimeout(
-      () => onSelection({ ...s, title: titleValue }),
-      250,
-    );
-    return () => window.clearTimeout(timer);
-  }, [onSelection, s, titleValue]);
   const change = (patch: Partial<CatalogueSelection>) =>
     onSelection({ ...s, ...patch });
   const fromHour = timeToHour(s.from, 0);
@@ -222,15 +213,6 @@ function Filters({
   return (
     <section className="minimal-filters" aria-label="Movie filters">
       <div className="minimal-search-dates">
-        <label>
-          Movie title
-          <input
-            type="search"
-            value={titleValue}
-            placeholder="Search movies"
-            onChange={(e) => setTitleValue(e.target.value)}
-          />
-        </label>
         <label>
           Start date
           <input
@@ -395,7 +377,6 @@ function Filters({
               <button
                 onClick={() =>
                   change({
-                    title: "",
                     cinemas: [],
                     languages: [],
                     from: "",
@@ -665,7 +646,14 @@ export function MinimalCatalogue({
                   </header>
                 )}
                 {showScreeningFilters ? (
-                  <Filters
+                  <>
+                    <div className="minimal-screenings-top">
+                      <MovieSearch
+                        value={selection.title}
+                        onSearch={(title) => onSelection({ ...selection, title })}
+                      />
+                    </div>
+                    <Filters
                     selection={selection}
                     onSelection={onSelection}
                     screeningLanguages={screeningLanguages}
@@ -674,7 +662,8 @@ export function MinimalCatalogue({
                     today={today}
                     tomorrow={tomorrow}
                     weekend={weekend}
-                  />
+                    />
+                  </>
                 ) : (
                   <p>{today} · Montréal local time</p>
                 )}

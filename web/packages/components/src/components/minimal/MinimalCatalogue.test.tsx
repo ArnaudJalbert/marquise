@@ -4,8 +4,10 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from "@testing-library/react";
+import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   MinimalCatalogue,
@@ -537,4 +539,54 @@ it("opens and closes the screenings section preview with icon buttons", () => {
   expect(
     screen.getByRole("region", { name: `${movie.title} screenings` }),
   ).toBeInTheDocument();
+});
+
+function SearchHarness({ movies }: { movies: CatalogueMovie[] }) {
+  const [selection, setSelection] = useState(props.selection);
+  return (
+    <MinimalCatalogue
+      {...props}
+      movies={movies}
+      selection={selection}
+      onSelection={setSelection}
+    />
+  );
+}
+
+it("filters screening results as the visitor types in the movie search field", async () => {
+  /** Scenario: typing part of a title in the always-visible search field narrows the screening results to matching movies. */
+  const other = { ...movie, id: "other", title: "Dune" };
+  render(<SearchHarness movies={[movie, other]} />);
+  fireEvent.change(screen.getByRole("searchbox", { name: "Search movies" }), {
+    target: { value: "dun" },
+  });
+  expect(
+    await screen.findByRole("link", { name: "View Dune" }, { timeout: 1000 }),
+  ).toBeInTheDocument();
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("link", { name: `View ${movie.title}` }),
+    ).not.toBeInTheDocument(),
+  );
+});
+
+it("keeps movie search out of the filters panel", () => {
+  /** Scenario: the Filters panel holds only filters; the search field sits outside it. */
+  render(<MinimalCatalogue {...props} />);
+  const filters = screen.getByRole("region", { name: "Movie filters" });
+  expect(within(filters).queryByRole("searchbox")).not.toBeInTheDocument();
+  expect(screen.getByRole("searchbox", { name: "Search movies" })).toBeInTheDocument();
+});
+
+it("focuses the movie search field when the visitor presses slash", () => {
+  /** Scenario: pressing / anywhere on the page jumps to search, but typing / inside another field stays in that field. */
+  render(<MinimalCatalogue {...props} />);
+  const search = screen.getByRole("searchbox", { name: "Search movies" });
+  const start = screen.getByLabelText("Start date");
+  start.focus();
+  expect(fireEvent.keyDown(start, { key: "/" })).toBe(true);
+  expect(start).toHaveFocus();
+  start.blur();
+  expect(fireEvent.keyDown(document.body, { key: "/" })).toBe(false);
+  expect(search).toHaveFocus();
 });
