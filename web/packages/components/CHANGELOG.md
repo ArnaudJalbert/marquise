@@ -2,6 +2,7 @@
 
 ## 2026-11-03
 
+- Replace the Screenings start and end date inputs and the Today, Tomorrow and This weekend buttons with a period header and a draggable day strip. The header names the period (Today, This weekend, Week of Nov 9, or the range) and steps it by its own length. The strip shows two or six weeks of equal day cells, zooms automatically, and supports drawing, moving, resizing and tapping for one day. An empty Today offers "See tomorrow". Supports #442.
 - Share one Movie Card across the Screenings and Movies sections, and replace the arrow and close text glyphs with line icons so iPhones no longer render emoji. Supports #429.
 
 ## 2026-11-01

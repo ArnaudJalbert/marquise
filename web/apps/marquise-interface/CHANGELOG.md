@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-03
+
+- Open fresh visits to Screenings on Today. The period stays in the URL for in-session history, but a newly loaded URL drops `start` and `end` and keeps its other filters. Version 0.2.0. Supports #442.
+
 ## 2026-11-01
 
 - Show the Marquise favicon (yellow strip in dark browser themes), a 180×180 apple-touch icon, and the tab title "Marquise". The production build check now fails without the title or either icon link. Supports #422.

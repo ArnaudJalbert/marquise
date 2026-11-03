@@ -6,7 +6,7 @@ import {
   type CatalogueState,
   type CatalogueMovie,
 } from "marquise-components";
-import { cinemas, movies, today, tomorrow, weekend } from "./fixtures";
+import { cinemas, movies, today } from "./fixtures";
 import { HttpMarquiseClient } from "marquise-client";
 import { loadAllMovies, loadMovieWeek } from "./api";
 
@@ -107,8 +107,6 @@ function Preview({ client }: { client: HttpMarquiseClient }) {
         selection={selection}
         onSelection={update}
         today={today}
-        tomorrow={tomorrow}
-        weekend={weekend}
         state={state}
         onRetry={() => setState("ready")}
         onLoadWeek={loadWeek}

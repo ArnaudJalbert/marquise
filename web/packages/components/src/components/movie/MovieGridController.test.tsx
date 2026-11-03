@@ -228,8 +228,10 @@ describe("MovieGridController", () => {
     const client = createClient();
     render(<MovieGridController client={client} />);
 
-    await waitFor(() => expect(client.fetchForDate).toHaveBeenCalledTimes(1));
-
+    expect(
+      await screen.findByRole("button", { name: "Cinéma B" }),
+    ).toBeInTheDocument();
+    expect(client.fetchForDate).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", { name: "Cinéma B" }));
     expect(client.fetchForDate).toHaveBeenCalledTimes(1);
 

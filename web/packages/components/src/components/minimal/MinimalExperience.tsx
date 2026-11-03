@@ -10,7 +10,7 @@ import {
 import { useResource } from "../discovery/use-resource";
 import { usePageResource } from "../discovery/use-page-resource";
 import { MinimalCatalogue } from "./MinimalCatalogue";
-import { addDays, decodePathId, timeToHour } from "./catalogue-format";
+import { decodePathId, timeToHour } from "./catalogue-format";
 import type {
   CatalogueMovie,
   CatalogueScreening,
@@ -95,12 +95,6 @@ function listingHref(href: string, selection: CatalogueSelection): string {
   if (selection.from) params.set("from", selection.from);
   if (selection.to) params.set("to", selection.to);
   return `${url.pathname}${url.search}${url.hash}`;
-}
-
-function weekendDates(today: string): [string, string] {
-  const weekday = new Date(`${today}T12:00:00Z`).getUTCDay();
-  const saturday = addDays(today, weekday === 0 ? -1 : (6 - weekday) % 7);
-  return [saturday, addDays(saturday, 1)];
 }
 
 /** Production composition of the approved UI with injected, bounded API reads. */
@@ -303,8 +297,6 @@ export function MinimalExperience({
       href={href}
       navigate={navigate}
       today={today}
-      tomorrow={addDays(today, 1)}
-      weekend={weekendDates(today)}
       state={resourceState(screenings)}
       onRetry={screenings.retry}
       hasMore={screenings.hasMore}

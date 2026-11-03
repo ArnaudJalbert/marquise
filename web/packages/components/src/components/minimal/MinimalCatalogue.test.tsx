@@ -53,38 +53,79 @@ const props: MinimalCatalogueProps = {
   },
   href: "/",
   today: "2026-10-30",
-  tomorrow: "2026-10-31",
-  weekend: ["2026-10-31", "2026-11-01"],
   onSelection: vi.fn(),
   navigate: vi.fn(),
   onRetry: vi.fn(),
 };
 
 describe("minimalist prototype", () => {
-  it("keeps inclusive date shortcuts selected from URL-backed dates", () => {
+  it("titles the page with the period and replaces the date inputs and presets", () => {
+    /** Scenario: the period header and day strip are the only date controls. */
     const onSelection = vi.fn();
-    const { rerender } = render(
-      <MinimalCatalogue {...props} onSelection={onSelection} />,
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Today" }));
-    expect(onSelection).toHaveBeenLastCalledWith(
-      expect.objectContaining({ start: "2026-10-30", end: "2026-10-30" }),
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Tomorrow" }));
-    expect(onSelection).toHaveBeenLastCalledWith(
-      expect.objectContaining({ start: "2026-10-31", end: "2026-10-31" }),
-    );
-    rerender(
+    render(
       <MinimalCatalogue
         {...props}
+        selection={{ ...props.selection, cinemas: ["a"] }}
         onSelection={onSelection}
-        selection={{ ...props.selection, start: "2026-10-31", end: "2026-11-01" }}
       />,
     );
-    expect(screen.getByRole("button", { name: "This weekend" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
+    expect(
+      screen.getByRole("heading", { level: 1, name: "This weekend" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Start date")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("End date")).not.toBeInTheDocument();
+    for (const name of ["Today", "Tomorrow", "This weekend"])
+      expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Next period" }));
+    expect(onSelection).toHaveBeenLastCalledWith({
+      ...props.selection,
+      cinemas: ["a"],
+      start: "2026-11-06",
+      end: "2026-11-08",
+    });
+  });
+
+  it("titles a cinema page with its name and the period as a subheading", () => {
+    /** Scenario: a venue page keeps one h1 and shows the period below it. */
+    render(<MinimalCatalogue {...props} href="/cinemas/a" />);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Cinema A");
+    expect(
+      screen.getByRole("heading", { level: 2, name: "This weekend" }),
+    ).toBeInTheDocument();
+  });
+
+  it("offers tomorrow when nothing is left today", () => {
+    /** Scenario: an empty Today shows "See tomorrow" instead of advancing on its own. */
+    const onSelection = vi.fn();
+    const today = { ...props.selection, start: "2026-10-30", end: "2026-10-30" };
+    render(
+      <MinimalCatalogue
+        {...props}
+        movies={[]}
+        selection={{ ...today, languages: ["VO"] }}
+        onSelection={onSelection}
+      />,
     );
+    expect(screen.getByRole("heading", { name: "Today" })).toBeInTheDocument();
+    expect(screen.getByText("No screenings left today")).toBeInTheDocument();
+    expect(screen.queryByText("No matching screenings")).not.toBeInTheDocument();
+    expect(onSelection).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "See tomorrow" }));
+    expect(onSelection).toHaveBeenCalledExactlyOnceWith({
+      ...today,
+      languages: ["VO"],
+      start: "2026-10-31",
+      end: "2026-10-31",
+    });
+  });
+
+  it("keeps the generic empty state for other periods", () => {
+    /** Scenario: only an empty Today offers tomorrow; other periods offer a reset. */
+    render(<MinimalCatalogue {...props} movies={[]} />);
+    expect(screen.getByText("No matching screenings")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "See tomorrow" }),
+    ).not.toBeInTheDocument();
   });
 
   it("opens only three screenings with the arrow, separate from movie navigation", () => {
@@ -471,8 +512,8 @@ it.each([8.1, null])("renders detail score only when present: %s", (score) => {
   else expect(screen.getByText(/8.1\/10/)).toBeInTheDocument();
 });
 
-it("marks only the current section and the pressed date shortcut", () => {
-  /** Scenario: on screenings for today, assistive tech hears only Screenings as current and only Today as pressed. */
+it("marks only the current section and today's day as selected", () => {
+  /** Scenario: on screenings for today, assistive tech hears only Screenings as current and only today as pressed. */
   render(
     <MinimalCatalogue
       {...props}
@@ -486,9 +527,12 @@ it("marks only the current section and the pressed date shortcut", () => {
   );
   for (const name of ["Movies", "Cinemas"])
     expect(navigation.getByRole("link", { name })).not.toHaveAttribute("aria-current");
-  expect(screen.getByRole("button", { name: "Today" })).toHaveAttribute("aria-pressed", "true");
-  for (const name of ["Tomorrow", "This weekend"])
-    expect(screen.getByRole("button", { name })).toHaveAttribute("aria-pressed", "false");
+  expect(
+    screen.getByRole("button", { name: "Today, Friday October 30th" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  expect(
+    screen.getByRole("button", { name: "Saturday October 31st" }),
+  ).toHaveAttribute("aria-pressed", "false");
 });
 
 it("renders movies section cards with year and movie links but no preview", () => {

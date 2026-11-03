@@ -62,8 +62,6 @@ export interface MinimalCatalogueProps {
   href: string;
   navigate: (href: string) => void;
   today: string;
-  tomorrow: string;
-  weekend: readonly [string, string];
   state?: CatalogueState;
   hasMore?: boolean;
   onLoadMore?: () => void;
