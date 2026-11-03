@@ -490,3 +490,51 @@ it("marks only the current section and the pressed date shortcut", () => {
   for (const name of ["Tomorrow", "This weekend"])
     expect(screen.getByRole("button", { name })).toHaveAttribute("aria-pressed", "false");
 });
+
+it("renders movies section cards with year and movie links but no preview", () => {
+  /** Scenario: a visitor browsing the movies section sees poster, title and year linking to the movie page, with nothing to preview yet. */
+  const later = { ...movie, id: "later", title: "A future film", year: 1999 };
+  render(
+    <MinimalCatalogue
+      {...props}
+      catalogueMovies={[later]}
+      href="/?section=movies"
+    />,
+  );
+  const card = screen.getByRole("article");
+  expect(
+    within(card).getByRole("link", { name: "View A future film" }),
+  ).toHaveAttribute("href", "/movies/later");
+  expect(
+    within(card).getByRole("link", { name: "A future film" }),
+  ).toHaveAttribute("href", "/movies/later");
+  expect(within(card).getByText("1999")).toBeInTheDocument();
+  expect(within(card).queryByRole("button")).not.toBeInTheDocument();
+  fireEvent.pointerEnter(card, { pointerType: "mouse" });
+  expect(within(card).queryByRole("region")).not.toBeInTheDocument();
+});
+
+it("opens and closes the screenings section preview with icon buttons", () => {
+  /** Scenario: a visitor on iPhone sees line icons, not emoji glyphs; assistive tech still hears the button names. */
+  render(<MinimalCatalogue {...props} movies={[{ ...movie, year: 1999 }]} />);
+  const card = screen.getByRole("article");
+  expect(
+    within(card).getByRole("link", { name: movie.title }),
+  ).toHaveAttribute("href", "/movies/film");
+  expect(within(card).queryByText("1999")).not.toBeInTheDocument();
+  const arrow = within(card).getByRole("button", {
+    name: `Preview ${movie.title}`,
+  });
+  expect(arrow.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+  fireEvent.click(arrow);
+  const close = screen.getByRole("button", { name: "Close preview" });
+  expect(close.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+  expect(card).not.toHaveTextContent(/[↗×]/);
+  fireEvent.click(close);
+  expect(within(card).queryByRole("region")).not.toBeInTheDocument();
+  expect(arrow).toHaveFocus();
+  fireEvent.pointerEnter(card, { pointerType: "mouse" });
+  expect(
+    screen.getByRole("region", { name: `${movie.title} screenings` }),
+  ).toBeInTheDocument();
+});

@@ -198,21 +198,22 @@ def verify() -> None:
         page.go_back()
         expect(page.get_by_role("searchbox", name="Movie title")).to_have_value("")
         page.get_by_role("link", name="Movies", exact=True).click()
-        expect(page.locator(".minimal-library-card")).to_have_count(24)
+        expect(page.locator(".minimal-library-grid .minimal-card")).to_have_count(24)
         for loaded in range(24, catalogue["total"], 24):
             page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-            expect(page.locator(".minimal-library-card")).to_have_count(
+            expect(page.locator(".minimal-library-grid .minimal-card")).to_have_count(
                 min(loaded + 24, catalogue["total"])
             )
         page.screenshot(path=str(output / "movies-all-pages.png"), full_page=True)
         page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
         saved_scroll = page.evaluate("window.scrollY")
-        last_movie = page.locator(".minimal-library-card").last
-        last_title = last_movie.locator("strong").inner_text()
-        last_movie.get_by_role("link").click()
+        last_movie = page.locator(".minimal-library-grid .minimal-card").last
+        last_title_link = last_movie.locator(".minimal-caption > a")
+        last_title = last_title_link.inner_text()
+        last_title_link.click()
         expect(page.get_by_role("heading", name=last_title, exact=True)).to_be_visible()
         page.go_back()
-        expect(page.locator(".minimal-library-card")).to_have_count(53)
+        expect(page.locator(".minimal-library-grid .minimal-card")).to_have_count(53)
         page.wait_for_function(
             "expected => Math.abs(window.scrollY - expected) < 3", arg=saved_scroll
         )

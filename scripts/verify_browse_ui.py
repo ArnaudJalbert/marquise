@@ -93,10 +93,10 @@ def verify(origin: str, output: Path) -> None:
         page.get_by_role("link", name="Screenings", exact=True).click()
         check_grid(page, 4)
         page.get_by_role("link", name="Movies", exact=True).click()
-        expect(page.locator(".minimal-library-card")).to_have_count(24)
+        expect(page.locator(".minimal-library-grid .minimal-card")).to_have_count(24)
         page.get_by_role("searchbox", name="Search movies").fill("Controlled film 27")
         expect(page.get_by_role("link", name="View Controlled film 27")).to_be_visible()
-        expect(page.locator(".minimal-library-card")).to_have_count(1)
+        expect(page.locator(".minimal-library-grid .minimal-card")).to_have_count(1)
         catalogue_requests = [
             url for url in requests if "/v1/movies?" in url and "ids=" not in url
         ]
