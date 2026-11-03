@@ -14,7 +14,7 @@ Repository setup, commands, paths, and CI. Rules for code, tests, and PRs live i
 
 **Web frontend** (only if working in `web/`)
 
-- [Node.js](https://nodejs.org/) 24 or newer (CI uses 24)
+- [Node.js](https://nodejs.org/) 22 or newer (CI uses 24, the production image 22)
 - [pnpm](https://pnpm.io/) 11 via Corepack (`corepack enable pnpm`); the exact version is pinned in `web/package.json`
 
 ## Setup
@@ -183,7 +183,7 @@ pnpm lint        # oxlint across workspace
 pnpm typecheck   # tsc --noEmit across workspace
 pnpm test        # vitest across workspace
 
-pnpm prototype   # sample-data component demo → http://localhost:5173
+pnpm prototype   # sample-data component demo → http://localhost:4174
 
 # Single package
 pnpm --filter marquise-components test
@@ -237,10 +237,10 @@ Pull requests to `main` run the repository workflows:
 
 The nightly `integration` workflow runs the same deterministic suite against its own PostgreSQL 17 service. It needs no production secrets or live provider access. The separate `provider-connectivity` workflow checks the real Cineplex and CinemaCinema endpoints daily and by manual dispatch. Its failures are visible but do not fail the deterministic suite; a connectivity check does not validate every showtime or movie-detail response.
 
-On `main`:
+After merge and on schedule:
 
-- `release`: tags and releases each bumped package ([docs/releasing.md](docs/releasing.md)).
-- `fly-deploy`: deploys the API and interface to Fly and smoke-tests them ([docs/deployment.md](docs/deployment.md)).
+- `release`: on push to `main`, tags and releases each bumped package ([docs/releasing.md](docs/releasing.md)).
+- `fly-deploy`: on push to `main` touching deployable paths, deploys the API and interface to Fly and smoke-tests them ([docs/deployment.md](docs/deployment.md)).
 - `scheduled-import`: daily import into Supabase; manual dispatch imports into Fly `marquise-db` ([docs/fly-postgres.md](docs/fly-postgres.md)).
 
 Triggers, commands and environment wiring are defined in [`.github/workflows/`](.github/workflows/). `ty` is a blocking quality step.

@@ -127,9 +127,9 @@ for fresh databases but do not upgrade existing tables.
 Verify the timestamp column, marker table, screening trigger and unchanged
 legacy metadata before enabling metadata persistence. Application rollback can
 leave the additive column, table and trigger in place. Dropping the timestamp
-would discard successful-enrichment history and is unnecessary. This change
-supplies no live rollout and no composition-root wiring. #355 owns wiring and
-assembled end-to-end verification; #356 owns guarded merge transactions.
+would discard successful-enrichment history and is unnecessary. The migration
+itself performs no live rollout. Composition-root wiring and end-to-end
+verification landed in #355; guarded merge transactions in #356.
 
 ### Existing databases: TMDB movie scores (#373)
 

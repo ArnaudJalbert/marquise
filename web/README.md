@@ -43,8 +43,8 @@ web/
 
 | Tool | Version |
 |---|---|
-| [Node.js](https://nodejs.org/) | ≥ 20 (developed on 26) |
-| [pnpm](https://pnpm.io/) | 11.x — provisioned via Corepack |
+| [Node.js](https://nodejs.org/) | 22 or newer (CI uses 24) |
+| [pnpm](https://pnpm.io/) | 11, pinned in `package.json`, via Corepack |
 
 ```bash
 corepack enable pnpm

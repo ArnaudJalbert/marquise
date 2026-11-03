@@ -27,7 +27,7 @@ OutputData skips re-validating fields copied from already-validated entities or 
 
 - Entities, value objects and InputData raise `ValueError` from `__post_init__` on invalid values. The API maps it to 422.
 - Application errors subclass `ApplicationError`, one module per aggregate in `application/exceptions/`.
-- Gateway errors live beside their protocols in `interface_adapters/repositories/protocols/`; adapters translate them into application errors.
+- Gateway errors live beside their protocols in `interface_adapters/repositories/protocols/` (auth gateway errors in `interface_adapters/exceptions/auth.py`). Adapters translate them into application errors.
 
 ## Modules and packages
 

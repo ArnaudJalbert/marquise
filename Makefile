@@ -35,7 +35,7 @@ deploy-api:
 deploy-interface:
 	cd web && flyctl deploy . --config apps/marquise-interface/fly.toml --remote-only
 
-# Start the marquise-components sample-data demo (dev-only) → http://localhost:5173
+# Start the marquise-components sample-data demo (dev-only) → http://localhost:4174
 web-demo:
 	cd web && pnpm prototype
 
