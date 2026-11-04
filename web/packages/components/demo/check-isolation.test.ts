@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -9,11 +9,15 @@ const script = path.resolve(import.meta.dirname, "check-isolation.mjs");
 
 function checkIsolation(files: Record<string, string>) {
   const dist = mkdtempSync(path.join(tmpdir(), "isolation-"));
-  for (const [name, source] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(dist, name)), { recursive: true });
-    writeFileSync(path.join(dist, name), source);
+  try {
+    for (const [name, source] of Object.entries(files)) {
+      mkdirSync(path.dirname(path.join(dist, name)), { recursive: true });
+      writeFileSync(path.join(dist, name), source);
+    }
+    return spawnSync(process.execPath, [script, dist], { encoding: "utf8" });
+  } finally {
+    rmSync(dist, { recursive: true, force: true });
   }
-  return spawnSync(process.execPath, [script, dist], { encoding: "utf8" });
 }
 
 describe("check-isolation", () => {
