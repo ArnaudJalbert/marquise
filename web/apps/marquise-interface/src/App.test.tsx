@@ -52,6 +52,7 @@ class TestIntersectionObserver implements IntersectionObserver {
   readonly scrollMargin = "0px";
   readonly thresholds = [0];
   private target?: Element;
+  connected = false;
 
   constructor(private readonly callback: IntersectionObserverCallback) {
     endObservers.push(this);
@@ -59,26 +60,30 @@ class TestIntersectionObserver implements IntersectionObserver {
 
   observe(target: Element) {
     this.target = target;
+    this.connected = true;
   }
 
   unobserve() {}
-  disconnect() {}
+  disconnect() {
+    this.connected = false;
+  }
   takeRecords(): IntersectionObserverEntry[] {
     return [];
   }
 
   reachEnd() {
-    if (!this.target) throw new Error("No end sentinel observed");
+    if (!this.target || !this.connected) throw new Error("No connected end sentinel");
     this.callback(
       [{ isIntersecting: true, target: this.target } as IntersectionObserverEntry],
       this,
     );
   }
 }
-// findBy* can resolve on the DOM commit before the sentinel effect subscribes.
+// findBy* can resolve on the DOM commit before the sentinel effect subscribes, and
+// earlier observers are disconnected when a page starts loading, so wait for a connected one.
 async function reachEnd(times = 1) {
   const observer = await waitFor(() => {
-    const latest = endObservers.at(-1);
+    const latest = endObservers.filter((candidate) => candidate.connected).at(-1);
     if (!latest) throw new Error("End sentinel not subscribed yet");
     return latest;
   });
@@ -179,7 +184,7 @@ it("appends catalogue pages at the end and stops at the reported last page", asy
   await screen.findByRole("link", { name: "View Movie 5" });
   expect(screen.getAllByRole("article")).toHaveLength(5);
   expect(client.fetchScreeningMoviesPage).toHaveBeenCalledTimes(3);
-  await reachEnd();
+  expect(endObservers.some((candidate) => candidate.connected)).toBe(false);
   expect(client.fetchScreeningMoviesPage).toHaveBeenCalledTimes(3);
 });
 
