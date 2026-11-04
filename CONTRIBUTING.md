@@ -1,6 +1,7 @@
 # Contributing to Marquise
 
-Repository setup, commands, paths, and CI. See [Atlas Documentation and Delivery Workflow](atlas/50-processes/Documentation%20and%20Delivery%20Workflow.md) for delivery process, [Atlas Clean Architecture](atlas/50-processes/Clean%20Architecture.md) for design rules, and [AGENTS.md](AGENTS.md) for enforced rules.
+Repository setup, commands, paths, and CI. Rules for code, tests, and PRs live in
+[docs/agents/rules/](docs/agents/rules/), indexed from [AGENTS.md](AGENTS.md#rules).
 
 ---
 
@@ -53,51 +54,12 @@ Marquise is a `uv` workspace (`[tool.uv.workspace] members = ["packages/*", "app
 | `apps/marquise-cli` | Typer administration CLI | `marquise` |
 
 Root `pyproject.toml` is **virtual** — no `[project]`/`[build-system]` table. It
-holds workspace config, the shared `dev` dependency group, shared `ruff`/`ty`
-config, and import-linter contracts. Each member owns its own `pyproject.toml`,
+holds workspace config, the shared `dev` dependency group, and shared `ruff`/`ty`
+config. Each member owns its own `pyproject.toml`,
 runtime dependencies, and pytest config.
 
-**One lockfile rule**: only run `uv sync` / `uv lock` from the repo root, never
-from inside a member directory.
-
-**One version bump per package per PR**: combine all changes to an affected
-package into one version increment and one changelog section.
-
-### Bootstrap API
-
-Apps in `apps/` access core through the public bootstrap API in
-`packages/marquise-core/src/marquise/bootstrap.py`:
-
-```python
-from marquise import create_factory, create_factory_session
-
-factory = await create_factory()
-use_case = factory.list_cinemas_use_case
-cinemas = await use_case.execute(use_case.InputData())
-
-async with create_factory_session() as factory:
-    use_case = factory.get_cinema_use_case
-    result = await use_case.execute(use_case.InputData(cinema_id="..."))
-```
-
-### Public facade
-
-Defined in `packages/marquise-core/src/marquise/__init__.py` via `__all__`:
-
-- `MarquiseFactory`, `create_factory()`, `create_factory_session()`
-- `ApplicationError` and concrete application exception subclasses
-- Authentication token query and account-administration use cases through `MarquiseFactory`
-- Configured cinema, movie, screening, source, and import use cases required by delivery apps, including nested DTOs
-
-Apps may import only from `marquise` (top-level) — never from
-`marquise.domain`, `marquise.application`, `marquise.interface_adapters`, or
-`marquise.infrastructure`.
-
-**Enforcement:**
-
-- AST scanner: `packages/marquise-core/tests/unit_tests/test_import_boundary.py`
-- import-linter contract in root `pyproject.toml`
-- Snapshot test: `packages/marquise-core/tests/unit_tests/test_public_api.py`
+Apps reach core only through the `marquise` facade; see the
+[architecture rules](docs/agents/rules/architecture.md#public-facade).
 
 ### Web (pnpm + Turborepo)
 
@@ -116,29 +78,7 @@ web/
     └── components/         # marquise-components UI library
 ```
 
-| Member | Role |
-|--------|------|
-| `packages/marquise-client` | Client protocols, API types, injected HTTP and mock implementations |
-| `packages/components` | Publishable UI library (`marquise-components`); ships `dist/` + CSS bundle |
-| `apps/marquise-interface` | Routes, client configuration, and UI composition |
-
-**Install rule**: run `pnpm install` only from `web/`, never from a package subdirectory.
-
-**Dependency rule**: apps → packages only. Packages must not import from apps.
-
-**Public API**: consumers import via package `exports` (e.g. `marquise-components`, `marquise-components/index.css`). No deep imports into `src/` paths from outside the package.
-
-**Dev-only code**: e.g. `packages/components/demo/` — local Vite demo, excluded from library build; never deploy.
-
-### Web package roles
-
-Design rules → [Atlas Clean Architecture](atlas/50-processes/Clean%20Architecture.md) and [web/README.md](web/README.md).
-
-| Package | Role |
-|---------|------|
-| `packages/marquise-client` | Client protocols, API types, HTTP and mock implementations |
-| `packages/components` | Publishable UI library (`marquise-components`); components and filter logic |
-| `apps/marquise-interface` | Routes, client configuration, compose library exports |
+Package roles and dependency rules: [web rules](docs/agents/rules/web.md).
 
 ---
 
@@ -221,8 +161,6 @@ uv add --dev <package>
 uv sync   # always from repo root
 ```
 
-Never use `pip` directly — all Python dependencies go through `uv`.
-
 ### Web (from `web/`)
 
 ```bash
@@ -244,15 +182,12 @@ Add a dependency to one package:
 pnpm --filter marquise-components add <package>
 ```
 
-Never use `npm` or `yarn` in `web/` — pnpm only.
-
 ---
 
-## Testability in this repo
+## Test layout
 
-Maps [Atlas Clean Architecture](atlas/50-processes/Clean%20Architecture.md) testability rules to concrete paths.
+What to mock in each layer: [testing rules](docs/agents/rules/testing.md).
 
-### Test layout
 
 ```
 packages/marquise-core/tests/
@@ -268,28 +203,7 @@ apps/marquise-api/tests/   # mock MarquiseFactory
 apps/marquise-cli/tests/   # mock MarquiseFactory
 ```
 
-No `integration_tests/interface_adapters/` — adapter tests are unit tests that
-mock gateway protocols.
-
-### What to mock where
-
-| Code location | Test location | Mock |
-|---------------|---------------|------|
-| `domain/` | `unit_tests/domain/` | Nothing |
-| `application/` | `unit_tests/application/` | Repository ABCs via `create_autospec` |
-| `interface_adapters/` | `unit_tests/interface_adapters/` | Gateway `Protocol`s via `create_autospec` |
-| `infrastructure/.../gateways/` | `integration_tests/infrastructure/` | Real database |
-| `apps/marquise-api/` | `apps/marquise-api/tests/` | `MarquiseFactory` |
-| `apps/marquise-cli/` | `apps/marquise-cli/tests/` | `MarquiseFactory` |
-
-### Web
-
-| Code location | Test location | Mock |
-|---------------|---------------|------|
-| `packages/components/src/**/*.tsx` | Colocated `*.test.tsx` | Mock `MovieGridClient` / `MovieDetailClient` or props; Testing Library |
-| App routes/pages (when added) | Colocated or `apps/*/tests/` | Mock library client or API module |
-
-Component tests use **Vitest** + **Testing Library**. No live HTTP in unit tests — implement a mock client protocol or pass data via props.
+Web tests are colocated with their source as `*.test.ts` / `*.test.tsx`.
 
 ---
 
@@ -305,19 +219,11 @@ The nightly `integration` workflow runs the same deterministic suite against its
 
 The exact trigger, command, blocking behavior, and environment wiring are defined by the workflow files in [`.github/workflows/`](.github/workflows/). In particular, `ty` is currently a blocking quality step; do not describe it as advisory here.
 
-**CI gate**: 70% minimum. **Target**: 80%+ overall, 100% for `domain/` and
-`application/`.
+Coverage gate and targets: [testing rules](docs/agents/rules/testing.md#coverage).
 
 ---
 
-## Branch naming
-
-- `feature/` or `feat/`, `fix/`, `refactor/`, `docs/`, `chore/`
-
-## Commit messages
-
-Format: `type(scope): concise description`  
-Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
+Branch and commit conventions: [review and delivery rules](docs/agents/rules/review-and-delivery.md#branches-and-commits).
 
 ## PR checklist
 
@@ -327,22 +233,16 @@ Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
 - [ ] Unit tests pass (`pytest packages/marquise-core/tests/unit_tests/`)
 - [ ] App tests pass if an app was touched
 - [ ] Coverage did not drop below 70%
-- [ ] Import boundary not violated
 - [ ] Entry under current date in the affected package's `CHANGELOG.md` ([index](CHANGELOG.md)); version bump in affected package's `pyproject.toml`
 
 ### Web changes
 
 - [ ] `pnpm lint`, `pnpm typecheck`, and `pnpm test` pass (from `web/`)
 - [ ] Entry under current date in the affected package's `CHANGELOG.md` if user-facing ([index](CHANGELOG.md))
-- [ ] No deep imports across package boundaries
-- [ ] Dev-only demo code not included in library build output
 
 ### All changes
 
-- [ ] Issue linked (`Closes #N`), or the PR body records the acceptance criteria for a trivial documentation/metadata change
-- [ ] Independently reviewed under the [Code Review and Constructive Challenge](atlas/50-processes/Code%20Review%20and%20Constructive%20Challenge.md) process
-- [ ] Clean Architecture check passes: inward dependencies, correct layer ownership, injectable collaborators, public facades/DTOs, and no unjustified abstraction or dependency
-- [ ] Current-head CI is green and no blocking review thread remains unresolved
+- [ ] The change follows the matching [rules](AGENTS.md#rules), including [review and delivery](docs/agents/rules/review-and-delivery.md)
 
 ## Reporting issues
 
@@ -352,20 +252,8 @@ Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
 
 ## Further reading
 
-### Delivery process
-
-- [Atlas Documentation and Delivery Workflow](atlas/50-processes/Documentation%20and%20Delivery%20Workflow.md): issue planning, PRs, review, and verification gates
+- [AGENTS.md](AGENTS.md): rule index and guide index
 - [Pull request template](.github/PULL_REQUEST_TEMPLATE.md)
-
-### Documentation
-
-- [Atlas Clean Architecture](atlas/50-processes/Clean%20Architecture.md) — layer diagram, DI, testability boundary
-- [AGENTS.md](AGENTS.md) — enforced rules and agent context
-- [docs/python.md](docs/python.md) — Python entity and use-case conventions
-- [docs/setup.md](docs/setup.md) — database schema bootstrap
-- [docs/sources.md](docs/sources.md) — showtime source scrapers
-- [docs/releasing.md](docs/releasing.md) — version bumps and releases
-- [web/README.md](web/README.md) — web workspace quick start
 
 ### Authentication transport
 
