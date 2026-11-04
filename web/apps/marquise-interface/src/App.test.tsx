@@ -143,8 +143,8 @@ it("appends catalogue pages at the end and stops at the reported last page", asy
   history.replaceState(null, "", "/?section=movies");
   const client = clients();
   const pages = Array.from({ length: 3 }, (_, pageIndex) =>
-    Array.from({ length: pageIndex === 2 ? 5 : 24 }, (_, itemIndex) => {
-      const number = pageIndex * 24 + itemIndex + 1;
+    Array.from({ length: pageIndex === 2 ? 1 : 2 }, (_, itemIndex) => {
+      const number = pageIndex * 2 + itemIndex + 1;
       const id = `movie-${number}`;
       const title = `Movie ${number}`;
       return {
@@ -158,26 +158,26 @@ it("appends catalogue pages at the end and stops at the reported last page", asy
   client.fetchScreeningMoviesPage.mockImplementation(
     async ({ page: requestedPage }) => ({
       items: pages[requestedPage - 1] ?? [],
-      total: 53,
+      total: 5,
       page: requestedPage,
-      size: 24,
+      size: 2,
       pages: 3,
     }),
   );
   render(<App client={client} />);
 
-  await screen.findByRole("link", { name: "View Movie 24" });
-  expect(screen.queryByRole("link", { name: "View Movie 25" })).toBeNull();
+  await screen.findByRole("link", { name: "View Movie 2" });
+  expect(screen.queryByRole("link", { name: "View Movie 3" })).toBeNull();
   await reachEnd(2);
-  await screen.findByRole("link", { name: "View Movie 25" });
+  await screen.findByRole("link", { name: "View Movie 3" });
   expect(client.fetchScreeningMoviesPage).toHaveBeenNthCalledWith(
     2,
     { start: "2026-11-01", page: 2, title: undefined },
     expect.any(AbortSignal),
   );
   await reachEnd();
-  await screen.findByRole("link", { name: "View Movie 53" });
-  expect(screen.getAllByRole("article")).toHaveLength(53);
+  await screen.findByRole("link", { name: "View Movie 5" });
+  expect(screen.getAllByRole("article")).toHaveLength(5);
   expect(client.fetchScreeningMoviesPage).toHaveBeenCalledTimes(3);
   await reachEnd();
   expect(client.fetchScreeningMoviesPage).toHaveBeenCalledTimes(3);
