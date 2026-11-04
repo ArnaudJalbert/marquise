@@ -14,7 +14,7 @@ Repository setup, commands, paths, and CI. Rules for code, tests, and PRs live i
 
 **Web frontend** (only if working in `web/`)
 
-- [Node.js](https://nodejs.org/) 22 or newer (CI uses 24, the production image 22)
+- [Node.js](https://nodejs.org/) `^22.13.0 || >=24.0.0`, the range pnpm 11, Vite and jsdom all support (CI uses 24, the production image 22)
 - [pnpm](https://pnpm.io/) 11 via Corepack (`corepack enable pnpm`); the exact version is pinned in `web/package.json`
 
 ## Setup

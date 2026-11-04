@@ -43,7 +43,7 @@ web/
 
 | Tool | Version |
 |---|---|
-| [Node.js](https://nodejs.org/) | 22 or newer (CI uses 24) |
+| [Node.js](https://nodejs.org/) | `^22.13.0 \|\| >=24.0.0` (CI uses 24, the production image 22) |
 | [pnpm](https://pnpm.io/) | 11, pinned in `package.json`, via Corepack |
 
 ```bash

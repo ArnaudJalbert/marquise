@@ -29,7 +29,7 @@ cp .env.example .env   # set DATABASE_URL
 
 ### Web frontend
 
-Requires Node.js 22 or newer and pnpm 11 (pinned in `web/package.json`).
+Requires Node.js `^22.13.0 || >=24.0.0` and pnpm 11 (pinned in `web/package.json`).
 
 ```bash
 cd web
