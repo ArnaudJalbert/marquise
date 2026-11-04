@@ -54,7 +54,7 @@ Marquise is a `uv` workspace (`[tool.uv.workspace] members = ["packages/*", "app
 | `apps/marquise-cli` | argparse administration CLI (`cinema`, `source`, `import`, `movie`, `auth`) | `marquise` |
 
 Root `pyproject.toml` is **virtual** — no `[project]`/`[build-system]` table. It
-holds workspace config, the shared `dev` dependency group, shared `ruff`/`ty`
+holds workspace config, the shared `dev` dependency group, and shared `ruff`/`ty`
 config. Each member owns its own `pyproject.toml`,
 runtime dependencies, and pytest config.
 

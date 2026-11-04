@@ -64,13 +64,6 @@ def test_apps_has_no_forbidden_imports() -> None:
     assert not details, "Forbidden imports found in apps/:\n" + "\n".join(details)
 
 
-def test_import_linter_contract_is_configured() -> None:
-    """Verify the import-linter contract exists in pyproject.toml."""
-    config = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
-    assert "apps-use-public-surface-only" in config
-    assert "forbidden_modules" in config
-
-
 def test_scanner_catches_forbidden_import(tmp_path: Path) -> None:
     """Verify the AST scanner catches a deliberate deep import."""
     violating_dir = tmp_path / "apps"

@@ -6,7 +6,7 @@
 
 ## Context
 
-Marquise needs authenticated API writes for humans and Bots while keeping public reads open. Clients must not receive privileged Supabase credentials.
+Marquise needs authenticated API writes while keeping public reads open. Clients must not receive privileged Supabase credentials.
 
 ## Decision
 

@@ -14,7 +14,7 @@ from pathlib import Path
 REPO = "ArnaudJalbert/marquise"
 WORKFLOW = "scheduled-import.yml"
 API_BASE = "https://api.marquise.mov"
-TRACE_PATH = Path("/opt/data/profiles/mara/state/latest-import-review.json")
+TRACE_PATH = Path.home() / ".local/state/marquise/latest-import-review.json"
 GH = "/opt/data/bin/gh"
 
 
