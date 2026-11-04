@@ -77,7 +77,8 @@ def title(self, value: str) -> None: ...
 ## Name functions with verbs
 
 - Name action functions with a verb or verb phrase, such as `delete_screening()` or `clear_filters()`.
-- Name functions that answer a yes-or-no question with a predicate such as `is_`, `has_`, or `can_`.
+- In Python, name functions that answer a yes-or-no question with a predicate prefix such as `is_`, `has_`, or `can_`.
+- In TypeScript, use the same predicate words in `camelCase`, such as `isPostable()`, `hasItems()`, or `canEdit()`.
 - Keep action names when a command returns `bool` to report success, such as `delete_screening()`.
 
 | Don't | Do |
@@ -119,7 +120,8 @@ class SupabaseScreeningRepository(ScreeningRepository):
 - Name React components as nouns in `PascalCase`, such as `MovieSchedule`.
 - Name React hooks in `camelCase` with the `use` prefix, such as `useMovieSchedule`.
 - Name React callback props with the `on` prefix and the event or action, such as `onSelection` or `onLoadWeek`.
-- Name conversion functions with the established `from_<source>` or `to_<target>` form, such as `from_screening()` or `to_datetime()`.
+- In Python, use the established `from_<source>` or `to_<target>` form for conversions, such as `from_screening()` or `to_datetime()`.
+- In TypeScript, use `camelCase` for conversion functions, such as `fromScreening()` or `toMovie()`.
 
 ## Leave language mechanics to the language
 
