@@ -26,6 +26,7 @@ OutputData skips re-validating fields copied from already-validated entities or 
 ## Errors
 
 - Entities, value objects and InputData raise `ValueError` from `__post_init__` on invalid values. The API maps it to 422.
+- An InputData that enforces an application limit, not value validity, raises a use-case-specific `ApplicationError` from `application/exceptions/` instead (e.g. `TooManyMovieIdsError` for the 100-id cap in `ListMoviesUseCase`). The API maps each one in `apps/marquise-api/src/marquise_api/exception_handlers.py`.
 - Application errors subclass `ApplicationError`, one module per aggregate in `application/exceptions/`.
 - Gateway errors live beside their protocols in `interface_adapters/repositories/protocols/` (auth gateway errors in `interface_adapters/exceptions/auth.py`). Adapters translate them into application errors.
 

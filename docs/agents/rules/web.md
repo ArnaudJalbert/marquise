@@ -21,7 +21,7 @@ Read when working under `web/`.
 - Library components receive data and callbacks through props or an injected client. They never fetch on their own.
 - Prefer props and injected dependencies over module-level singletons.
 - Apps stay thin: routing, the real client, props into library components. Compose library exports instead of duplicating library UI.
-- Dev-only demo code (`packages/components/demo/`) stays out of the library build. **Enforced:** `packages/components/demo/check-isolation.mjs`, run by the `marquise-components` build.
+- Dev-only demo code (`packages/components/demo/`) stays out of the library build: production entry points never import demo modules. After each build, `packages/components/demo/check-isolation.mjs` fails if `dist/` holds a file that is not `.js`, `.css`, `.map` or `.d.ts`, a path containing `fixtures` or `/demo/`, or a known demo-fixture marker string. It does not detect other demo logic bundled into allowed JS, so review import paths. **Enforced:** `packages/components/demo/check-isolation.mjs`, run by the `marquise-components` build.
 
 ## TypeScript
 
