@@ -3,7 +3,6 @@
 Marquise aggregates Montreal cinema showtimes, normalizes them into PostgreSQL, and serves them through an admin CLI, public-read and authenticated-screening REST API, and React web interface.
 
 - Live API: [marquise-api.fly.dev/docs](https://marquise-api.fly.dev/docs)
-- Company knowledge and operating processes: [Marquise Atlas](atlas/README.md)
 
 ## Workspaces
 
@@ -12,7 +11,7 @@ Marquise aggregates Montreal cinema showtimes, normalizes them into PostgreSQL, 
 | Python backend | repository root | [uv](https://docs.astral.sh/uv/) | Core library, FastAPI API, Typer CLI |
 | Web frontend | `web/` | [pnpm](https://pnpm.io/) + [Turborepo](https://turbo.build/repo/docs) | React interface and shared packages |
 
-The workspaces are independent. See [Atlas Clean Architecture](atlas/50-processes/Clean%20Architecture.md) for design rules and [CONTRIBUTING.md](CONTRIBUTING.md) for commands and CI.
+The workspaces are independent. See [AGENTS.md](AGENTS.md#rules) for design rules and [CONTRIBUTING.md](CONTRIBUTING.md) for commands and CI.
 
 ## Setup
 
@@ -49,6 +48,6 @@ From `web/`: `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
 ## Documentation
 
 - [CONTRIBUTING.md](CONTRIBUTING.md): setup, commands, and CI
-- [AGENTS.md](AGENTS.md): developer and AI-assistant rules
-- [Atlas Documentation and Delivery Workflow](atlas/50-processes/Documentation%20and%20Delivery%20Workflow.md): issue planning, PRs, review, and verification
+- [AGENTS.md](AGENTS.md): agent guide and rule index
+- [docs/agents/rules/](docs/agents/rules/): architecture, Python, testing, web, and review rules
 - [docs/](docs/): detailed setup, sources, release, and deployment notes

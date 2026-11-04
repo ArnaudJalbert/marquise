@@ -3,7 +3,7 @@
 How scrapers, adapters, and the registry fit together. Per-source detail lives
 in module docstrings under `infrastructure/sources/<name>/`.
 
-See also [Atlas Clean Architecture](../atlas/50-processes/Clean%20Architecture.md).
+See also the [architecture rules](agents/rules/architecture.md).
 
 ---
 

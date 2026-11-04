@@ -1,7 +1,6 @@
 ---
 type: research
 status: complete
-owner: Aster
 date: 2026-08-29
 reviewed_revision: f0ff451d3ea9f3ed4f4e5d4243bdc04129ab8f53
 ---
