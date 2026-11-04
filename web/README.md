@@ -6,7 +6,7 @@ orchestrated by [Turborepo](https://turbo.build/repo/docs), living alongside the
 backend in the same repository.
 
 > You do not need Python, `uv`, or a database to work here. This subtree is self-contained —
-> the only prerequisites are Node.js and pnpm. See [AGENTS.md](../AGENTS.md) for enforced
+> the only prerequisites are Node.js and pnpm. See [web rules](../docs/agents/rules/web.md) for
 > rules and [CONTRIBUTING.md](../CONTRIBUTING.md) for paths and commands.
 
 ## Minimalist browsing
@@ -23,12 +23,7 @@ production bundle. Run `pnpm prototype` for it. See
 
 ## Design
 
-- **`marquise-components`** owns presentational UI and pure filter logic; it receives clients via props
-- **`marquise-client`** owns client protocols, API types, and injected HTTP and mock implementations
-- **Apps compose** library exports, configure clients, and pass them via props
-- Each package builds, lints, typechecks, and tests on its own; client tests inject `fetch`
-
-Full rules → [Atlas Clean Architecture](../atlas/50-processes/Clean%20Architecture.md) (modular web packages) and [AGENTS.md](../AGENTS.md).
+Package roles and design rules: [web rules](../docs/agents/rules/web.md).
 
 ## Layout
 

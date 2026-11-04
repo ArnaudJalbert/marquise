@@ -183,4 +183,4 @@ Arnaud confirmed that independent public use is intended. This makes downstream 
 
 This review checked public primary sources and repository evidence. It did not determine contract formation, enforceability, ownership of particular images, enterprise status, actual production data flows, or every foreign jurisdiction. Some official pages returned 403/502 or were unavailable. The language analysis distinguishes current legislation from dated OQLF interpretive material; no inaccessible statutory exception is treated as settled.
 
-Keep this as a dated engineering research record. Approved public copy belongs in the implementation linked to #415; durable settled decisions can later enter Atlas through its review process. Recheck sources and production facts when those changes are reviewed.
+Keep this as a dated engineering research record. Approved public copy belongs in the implementation linked to #415; durable settled decisions can later become ADRs under `docs/adr/`. Recheck sources and production facts when those changes are reviewed.
