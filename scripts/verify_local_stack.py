@@ -124,7 +124,7 @@ def verify() -> None:
         page.evaluate("window.scrollTo(0, 0)")
         before = page.evaluate(
             """() => Object.fromEntries(
-                ['.minimal-shortcuts', '.minimal-grid'].map(selector => {
+                ['.minimal-filter-row', '.minimal-grid'].map(selector => {
                     const element = document.querySelector(selector);
                     const rect = element.getBoundingClientRect();
                     const {x, y, width, height} = rect;
@@ -143,7 +143,7 @@ def verify() -> None:
         )
         after = page.evaluate(
             """() => Object.fromEntries(
-                ['.minimal-shortcuts', '.minimal-grid'].map(selector => {
+                ['.minimal-filter-row', '.minimal-grid'].map(selector => {
                     const element = document.querySelector(selector);
                     const rect = element.getBoundingClientRect();
                     const {x, y, width, height} = rect;

@@ -1,5 +1,5 @@
 import { toMontrealIsoDate } from "marquise-client";
-import { ArrowUpRight, X } from "lucide-react";
+import { ArrowRight, ArrowUpRight, X } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type {
   CatalogueCinema,
@@ -15,8 +15,16 @@ export type {
   CatalogueState,
   MinimalCatalogueProps,
 } from "./catalogue-types";
-import { relativeDay, formatScore, timeToHour, formatHour, decodePathId } from "./catalogue-format";
+import {
+  addDays,
+  relativeDay,
+  formatScore,
+  timeToHour,
+  formatHour,
+  decodePathId,
+} from "./catalogue-format";
 import { MovieSchedule } from "./MovieSchedule";
+import { PeriodPicker } from "./PeriodPicker";
 import { MovieSearch } from "./MovieSearch";
 import { Showtime } from "./Showtime";
 import { InfoMenu, SiteFooter, infoPages } from "./SiteInfo";
@@ -192,18 +200,9 @@ function Filters({
   cinemas,
   screeningLanguages,
   fixed,
-  today,
-  tomorrow,
-  weekend,
 }: Pick<
   MinimalCatalogueProps,
-  | "selection"
-  | "onSelection"
-  | "cinemas"
-  | "screeningLanguages"
-  | "today"
-  | "tomorrow"
-  | "weekend"
+  "selection" | "onSelection" | "cinemas" | "screeningLanguages"
 > & { fixed?: string }) {
   const change = (patch: Partial<CatalogueSelection>) =>
     onSelection({ ...s, ...patch });
@@ -217,58 +216,7 @@ function Filters({
     });
   return (
     <section className="minimal-filters" aria-label="Movie filters">
-      <div className="minimal-search-dates">
-        <label>
-          Start date
-          <input
-            type="date"
-            value={s.start}
-            onChange={(e) => change({ start: e.target.value })}
-          />
-        </label>
-        <label>
-          End date
-          <input
-            type="date"
-            value={s.end}
-            onChange={(e) => change({ end: e.target.value })}
-          />
-        </label>
-      </div>
-      <div className="minimal-shortcuts">
-        <button
-          aria-pressed={s.start === today && s.end === today}
-          className={
-            s.start === today && s.end === today
-              ? "minimal-shortcut-active"
-              : undefined
-          }
-          onClick={() => change({ start: today, end: today })}
-        >
-          Today
-        </button>
-        <button
-          aria-pressed={s.start === tomorrow && s.end === tomorrow}
-          className={
-            s.start === tomorrow && s.end === tomorrow
-              ? "minimal-shortcut-active"
-              : undefined
-          }
-          onClick={() => change({ start: tomorrow, end: tomorrow })}
-        >
-          Tomorrow
-        </button>
-        <button
-          aria-pressed={s.start === weekend[0] && s.end === weekend[1]}
-          className={
-            s.start === weekend[0] && s.end === weekend[1]
-              ? "minimal-shortcut-active"
-              : undefined
-          }
-          onClick={() => change({ start: weekend[0], end: weekend[1] })}
-        >
-          This weekend
-        </button>
+      <div className="minimal-filter-row">
         <details
           className="minimal-other-filters"
           onKeyDown={(event) => {
@@ -420,8 +368,6 @@ export function MinimalCatalogue({
   href,
   navigate,
   today,
-  tomorrow,
-  weekend,
   state = "ready",
   hasMore = false,
   onLoadMore,
@@ -653,6 +599,15 @@ export function MinimalCatalogue({
                 )}
                 {showScreeningFilters ? (
                   <>
+                    <PeriodPicker
+                      start={selection.start}
+                      end={selection.end}
+                      today={today}
+                      heading={cinema ? "h2" : "h1"}
+                      onChange={(start, end) =>
+                        onSelection({ ...selection, start, end })
+                      }
+                    />
                     <div className="minimal-screenings-top">
                       <MovieSearch
                         value={selection.title}
@@ -660,14 +615,11 @@ export function MinimalCatalogue({
                       />
                     </div>
                     <Filters
-                    selection={selection}
-                    onSelection={onSelection}
-                    screeningLanguages={screeningLanguages}
-                    cinemas={cinemas}
-                    fixed={cinemaId}
-                    today={today}
-                    tomorrow={tomorrow}
-                    weekend={weekend}
+                      selection={selection}
+                      onSelection={onSelection}
+                      screeningLanguages={screeningLanguages}
+                      cinemas={cinemas}
+                      fixed={cinemaId}
                     />
                   </>
                 ) : (
@@ -697,7 +649,27 @@ export function MinimalCatalogue({
                   </div>
                 ) : (
                   <>
-                    {state === "empty" || !matching.length ? (
+                    {(state === "empty" || !matching.length) &&
+                    showScreeningFilters &&
+                    selection.start === today &&
+                    selection.end === today ? (
+                      <div className="minimal-state" role="status">
+                        <h2>No screenings left today</h2>
+                        <button
+                          onClick={() => {
+                            const tomorrow = addDays(today, 1);
+                            onSelection({
+                              ...selection,
+                              start: tomorrow,
+                              end: tomorrow,
+                            });
+                          }}
+                        >
+                          See tomorrow
+                          <ArrowRight aria-hidden size={16} />
+                        </button>
+                      </div>
+                    ) : state === "empty" || !matching.length ? (
                       <div className="minimal-state" role="status">
                         <h2>No matching screenings</h2>
                         {showScreeningFilters ? (

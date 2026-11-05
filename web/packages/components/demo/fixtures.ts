@@ -19,8 +19,6 @@ export const cinemas: CatalogueCinema[] = [
   { id: "dollar", name: "Dollar Cinema" },
 ];
 export const today = "2026-10-30";
-export const tomorrow = "2026-10-31";
-export const weekend = ["2026-10-31", "2026-11-01"] as const;
 
 const dates = Array.from({ length: 14 }, (_, index) => {
   const date = new Date(`${today}T12:00:00Z`);

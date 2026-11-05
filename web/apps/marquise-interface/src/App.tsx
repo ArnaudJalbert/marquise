@@ -6,10 +6,25 @@ import { createMarquiseClient } from "./api-client";
 export interface AppProps {
   client?: BrowseClient;
 }
+
+function freshVisitHref(href: string): string {
+  const url = new URL(href);
+  if (!url.searchParams.has("start") && !url.searchParams.has("end")) return href;
+  url.searchParams.delete("start");
+  url.searchParams.delete("end");
+  return url.href;
+}
+
 /** Composition root only. The shared package owns the interface. */
 export function App({ client }: AppProps) {
   const [defaultClient] = useState(() => createMarquiseClient());
-  const [href, setHref] = useState(window.location.href);
+  const [href, setHref] = useState(() => {
+    const fresh = freshVisitHref(window.location.href);
+    // Idempotent, so StrictMode's second initializer call is harmless.
+    if (fresh !== window.location.href)
+      history.replaceState(history.state, "", fresh);
+    return fresh;
+  });
   const [now, setNow] = useState(() => new Date().toISOString());
   useEffect(() => {
     const onPopState = () => {
