@@ -26,7 +26,7 @@ function readSelection(): CatalogueSelection {
   return {
     start: p.get("start") ?? today,
     end: p.get("end") ?? today,
-    title: p.get("title") ?? "",
+    title: p.get("q") ?? "",
     cinemas: p.getAll("cinema"),
     languages: p.getAll("language"),
     from: p.get("from") ?? "",
@@ -79,8 +79,9 @@ function Preview({ client }: { client: HttpMarquiseClient }) {
     setState("ready");
     setSelection(next);
     const p = new URLSearchParams();
-    for (const key of ["start", "end", "title", "from", "to"] as const)
+    for (const key of ["start", "end", "from", "to"] as const)
       if (next[key]) p.set(key, next[key]);
+    if (next.title) p.set("q", next.title);
     next.cinemas.forEach((c) => p.append("cinema", c));
     next.languages.forEach((l) => p.append("language", l));
     history.replaceState(null, "", `${location.pathname}?${p}`);
