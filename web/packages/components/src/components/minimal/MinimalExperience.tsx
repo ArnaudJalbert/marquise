@@ -11,7 +11,7 @@ import {
 import { useResource } from "../discovery/use-resource";
 import { usePageResource } from "../discovery/use-page-resource";
 import { MinimalCatalogue } from "./MinimalCatalogue";
-import { addDays, decodePathId, timeToHour } from "./catalogue-format";
+import { decodePathId, timeToHour } from "./catalogue-format";
 import type {
   CatalogueMovie,
   CatalogueScreening,
@@ -29,6 +29,7 @@ const timeFormatter = new Intl.DateTimeFormat("en-GB", {
 
 function screeningData(item: ScreeningApi): CatalogueScreening {
   return {
+    showtime: item.showtime,
     cinemaId: item.cinema_id,
     cinemaName: item.cinema_name,
     date: toMontrealIsoDate(new Date(item.showtime)),
@@ -75,7 +76,7 @@ function parseSelection(url: URL, today: string): CatalogueSelection {
   return {
     start,
     end,
-    title: params.get("title") ?? "",
+    title: params.get("q") ?? "",
     cinemas: params.getAll("cinema"),
     languages: params.getAll("language"),
     from: fromHour > 0 ? `${String(fromHour).padStart(2, "0")}:00` : "",
@@ -86,11 +87,11 @@ function parseSelection(url: URL, today: string): CatalogueSelection {
 function listingHref(href: string, selection: CatalogueSelection): string {
   const url = new URL(href, "http://marquise.invalid");
   const params = url.searchParams;
-  for (const key of ["start", "end", "title", "cinema", "language", "from", "to", "page"])
+  for (const key of ["start", "end", "q", "title", "cinema", "language", "from", "to", "page"])
     params.delete(key);
   params.set("start", selection.start);
   params.set("end", selection.end);
-  if (selection.title.trim()) params.set("title", selection.title.trim());
+  if (selection.title.trim()) params.set("q", selection.title.trim());
   selection.cinemas.forEach((id) => params.append("cinema", id));
   selection.languages.forEach((language) => params.append("language", language));
   if (selection.from) params.set("from", selection.from);
@@ -108,12 +109,6 @@ function sliderHours(from: string, to: string): HourFilter | undefined {
         operator: "is",
         ranges: [{ start, end: Math.max(end, start + 1) }],
       };
-}
-
-function weekendDates(today: string): [string, string] {
-  const weekday = new Date(`${today}T12:00:00Z`).getUTCDay();
-  const saturday = addDays(today, weekday === 0 ? -1 : (6 - weekday) % 7);
-  return [saturday, addDays(saturday, 1)];
 }
 
 /** Production composition of the approved UI with injected, bounded API reads. */
@@ -299,6 +294,7 @@ export function MinimalExperience({
 
   return (
     <MinimalCatalogue
+      currentTime={currentTime}
       movies={decodedId ? [] : movies}
       catalogueMovies={catalogueMovies}
       serverResults
@@ -315,8 +311,6 @@ export function MinimalExperience({
       href={href}
       navigate={navigate}
       today={today}
-      tomorrow={addDays(today, 1)}
-      weekend={weekendDates(today)}
       state={resourceState(screenings)}
       onRetry={screenings.retry}
       hasMore={screenings.hasMore}

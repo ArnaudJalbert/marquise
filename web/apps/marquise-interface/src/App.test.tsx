@@ -259,9 +259,33 @@ it("keeps loaded catalogue movies after a page failure and retries that page", a
   expect(client.fetchScreeningMoviesPage).toHaveBeenCalledTimes(3);
 });
 
+it("resets a fresh visit to Today and keeps the other filters", async () => {
+  /** Scenario: a loaded URL drops its period; only in-session history keeps one. */
+  history.replaceState(
+    null,
+    "",
+    "/?start=2026-11-03&end=2026-11-05&cinema=c1&q=Wanted",
+  );
+  const client = clients();
+  render(<App client={client} />);
+  await screen.findByRole("link", { name: "View Wanted film" });
+  expect(location.search).toBe("?cinema=c1&q=Wanted");
+  expect(screen.getByRole("heading", { level: 1, name: "Today" })).toBeTruthy();
+  expect(client.fetchScreeningMoviesPage).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({
+      start: "2026-11-01",
+      end: "2026-11-01",
+      cinemas: ["c1"],
+      title: "Wanted",
+    }),
+    expect.any(AbortSignal),
+  );
+});
+
 it.each(["/", "/cinemas/c1"])("restores filtered pages from %s after visiting a movie", async (route) => {
+  // Fresh visits open on Today, so the restored listing carries today's period.
   const listing =
-    `${route}?start=2026-11-03&end=2026-11-05&cinema=c1&language=VO&title=Wanted&from=18:00&to=22:00`;
+    `${route}?start=2026-11-01&end=2026-11-01&cinema=c1&language=VO&q=Wanted&from=18:00&to=22:00`;
   history.replaceState(null, "", listing);
   const client = clients();
   client.fetchScreeningMoviesPage.mockImplementation(
@@ -353,7 +377,8 @@ it("opens today's movie-first page without catalogue reads or poster fan-out", a
       .getAttribute("aria-current"),
   ).toBe("page");
   expect(screen.queryByRole("heading", { name: "Screenings" })).toBeNull();
-  expect(screen.getByText("Today")).not.toBeNull();
+  expect(screen.getByRole("heading", { level: 1, name: "Today" })).toBeTruthy();
+  expect(screen.queryByLabelText("Start date")).toBeNull();
   expect(screen.getByText("Filters")).not.toBeNull();
   expect(screen.getByText("About this section").closest("details")?.open).toBe(
     false,
@@ -367,17 +392,12 @@ it("shows Screenings filters, shares their URL state, and restores browser histo
   fireEvent.click(screen.getByText("Filters"));
   fireEvent.click(screen.getByLabelText("Cinema One"));
   fireEvent.click(screen.getByLabelText("VOSTF"));
-  fireEvent.change(screen.getByLabelText("Start date"), {
-    target: { value: "2026-11-03" },
-  });
-  fireEvent.change(screen.getByLabelText("End date"), {
-    target: { value: "2026-11-05" },
-  });
+  fireEvent.click(screen.getByRole("button", { name: "Next period" }));
   await waitFor(() => {
     expect(client.fetchScreeningMoviesPage).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        start: "2026-11-03",
-        end: "2026-11-05",
+        start: "2026-11-02",
+        end: "2026-11-02",
         cinemas: ["c1"],
         languages: ["VOSTF"],
       }),
@@ -390,27 +410,27 @@ it("shows Screenings filters, shares their URL state, and restores browser histo
   expect(new URL(window.location.href).searchParams.getAll("language")).toEqual([
     "VOSTF",
   ]);
+  expect(screen.getByRole("heading", { level: 1, name: "Tomorrow" })).toBeTruthy();
+  expect(new URL(window.location.href).searchParams.get("start")).toBe(
+    "2026-11-02",
+  );
   history.replaceState(
     null,
     "",
     "/?section=screenings&start=2026-11-01&end=2026-11-01",
   );
   fireEvent.popState(window);
-  await waitFor(() =>
-    expect(
-      (screen.getByLabelText("Start date") as HTMLInputElement).value,
-    ).toBe("2026-11-01"),
-  );
+  await screen.findByRole("heading", { level: 1, name: "Today" });
 });
 
-it("keeps the title filter focused while its URL and results update", async () => {
+it("keeps the movie search focused while its URL and results update", async () => {
+  /** Scenario: typing in the screenings search field queries by title, writes `q` to the URL and keeps focus. */
   const client = clients();
   render(<App client={client} />);
   await screen.findByRole("link", { name: "View Wanted film" });
-  fireEvent.click(screen.getByText("Filters"));
-  const title = screen.getByRole("searchbox", { name: "Movie title" });
-  title.focus();
-  fireEvent.change(title, { target: { value: "Dune" } });
+  const search = screen.getByRole("searchbox", { name: "Search movies" });
+  search.focus();
+  fireEvent.change(search, { target: { value: "Dune" } });
 
   await waitFor(() => {
     expect(client.fetchScreeningMoviesPage).toHaveBeenLastCalledWith(
@@ -418,7 +438,39 @@ it("keeps the title filter focused while its URL and results update", async () =
       expect.any(AbortSignal),
     );
   });
-  expect(document.activeElement).toBe(title);
+  const params = new URL(window.location.href).searchParams;
+  expect(params.get("q")).toBe("Dune");
+  expect(params.has("title")).toBe(false);
+  expect(document.activeElement).toBe(search);
+});
+
+it("restores movie search from `q` and ignores the old `title` param", async () => {
+  /** Scenario: a shared link with `q` opens with that search; an old `title` link opens unsearched. */
+  history.replaceState(null, "", "/?start=2026-11-01&end=2026-11-01&q=Wanted");
+  const client = clients();
+  render(<App client={client} />);
+  await screen.findByRole("link", { name: "View Wanted film" });
+  expect(
+    (screen.getByRole("searchbox", { name: "Search movies" }) as HTMLInputElement)
+      .value,
+  ).toBe("Wanted");
+  expect(client.fetchScreeningMoviesPage).toHaveBeenLastCalledWith(
+    expect.objectContaining({ title: "Wanted" }),
+    expect.any(AbortSignal),
+  );
+
+  history.replaceState(null, "", "/?start=2026-11-01&end=2026-11-01&title=Wanted");
+  fireEvent.popState(window);
+  await waitFor(() =>
+    expect(
+      (screen.getByRole("searchbox", { name: "Search movies" }) as HTMLInputElement)
+        .value,
+    ).toBe(""),
+  );
+  expect(client.fetchScreeningMoviesPage).toHaveBeenLastCalledWith(
+    expect.objectContaining({ title: "" }),
+    expect.any(AbortSignal),
+  );
 });
 
 it("does not show results from a superseded screening query", async () => {
@@ -696,11 +748,11 @@ it("shows an initial screening error with Retry, then an honest empty state", as
     "Could not load screenings.Retry",
   );
   expect(
-    screen.queryByRole("heading", { name: "No matching screenings" }),
+    screen.queryByRole("heading", { name: "No screenings left today" }),
   ).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-  await screen.findByRole("heading", { name: "No matching screenings" });
-  expect(screen.queryByRole("button", { name: "Reset selection" })).not.toBeNull();
+  await screen.findByRole("heading", { name: "No screenings left today" });
+  expect(screen.queryByRole("button", { name: "See tomorrow" })).not.toBeNull();
   fireEvent.click(screen.getByRole("link", { name: "Movies" }));
   await screen.findByRole("link", { name: "View Wanted film" });
   expect(client.fetchScreeningMoviesPage).toHaveBeenCalledTimes(3);
@@ -978,3 +1030,22 @@ it.each(["/", "/?section=movies", "/cinemas", "/about"])(
     await act(async () => {});
   },
 );
+
+it("preserves API instants through the repeated Montréal hour", async () => {
+  /** Scenario: an earlier 01:45 is hidden while the second 01:45 remains bookable today. */
+  vi.setSystemTime(new Date("2026-11-01T06:15:00Z"));
+  const client = clients();
+  client.fetchScreeningMoviesPage.mockResolvedValue(page([{
+    ...movie,
+    screenings: [
+      { ...show, showtime: "2026-11-01T05:45:00Z", ticket_url: "https://tickets.example/started" },
+      { ...show, id: "upcoming", showtime: "2026-11-01T06:45:00Z", ticket_url: "https://tickets.example/upcoming" },
+    ],
+  }]));
+  render(<App client={client} />);
+  fireEvent.click(await screen.findByRole("button", { name: `Preview ${movie.title}` }));
+  const preview = within(screen.getByRole("region", { name: `${movie.title} screenings` }));
+  expect(preview.getAllByRole("link", { name: "01:45" })).toHaveLength(1);
+  expect(preview.getByRole("link", { name: "01:45" }).getAttribute("href")).toBe("https://tickets.example/upcoming");
+  expect(preview.queryByText(/Tomorrow|In \d+ days/)).toBeNull();
+});

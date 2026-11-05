@@ -19,8 +19,6 @@ export const cinemas: CatalogueCinema[] = [
   { id: "dollar", name: "Dollar Cinema" },
 ];
 export const today = "2026-10-30";
-export const tomorrow = "2026-10-31";
-export const weekend = ["2026-10-31", "2026-11-01"] as const;
 
 const dates = Array.from({ length: 14 }, (_, index) => {
   const date = new Date(`${today}T12:00:00Z`);
@@ -39,6 +37,7 @@ function sampleScreenings(movieIndex: number, count: number) {
         ? 10 + Math.floor(slot / 2)
         : 17 + (index % 5);
     return {
+      showtime: `${dates[dateIndex]}T${String(hour).padStart(2, "0")}:${slot % 2 ? "30" : "00"}:00-${dates[dateIndex]! < "2026-11-01" ? "04" : "05"}:00`,
       cinemaId: cinema.id,
       date: dates[dateIndex]!,
       time: `${String(hour).padStart(2, "0")}:${slot % 2 ? "30" : "00"}`,
