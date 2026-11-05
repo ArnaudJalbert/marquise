@@ -264,12 +264,12 @@ it("resets a fresh visit to Today and keeps the other filters", async () => {
   history.replaceState(
     null,
     "",
-    "/?start=2026-11-03&end=2026-11-05&cinema=c1&title=Wanted",
+    "/?start=2026-11-03&end=2026-11-05&cinema=c1&q=Wanted",
   );
   const client = clients();
   render(<App client={client} />);
   await screen.findByRole("link", { name: "View Wanted film" });
-  expect(location.search).toBe("?cinema=c1&title=Wanted");
+  expect(location.search).toBe("?cinema=c1&q=Wanted");
   expect(screen.getByRole("heading", { level: 1, name: "Today" })).toBeTruthy();
   expect(client.fetchScreeningMoviesPage).toHaveBeenCalledExactlyOnceWith(
     expect.objectContaining({
@@ -285,7 +285,7 @@ it("resets a fresh visit to Today and keeps the other filters", async () => {
 it.each(["/", "/cinemas/c1"])("restores filtered pages from %s after visiting a movie", async (route) => {
   // Fresh visits open on Today, so the restored listing carries today's period.
   const listing =
-    `${route}?start=2026-11-01&end=2026-11-01&cinema=c1&language=VO&title=Wanted&from=18:00&to=22:00`;
+    `${route}?start=2026-11-01&end=2026-11-01&cinema=c1&language=VO&q=Wanted&from=18:00&to=22:00`;
   history.replaceState(null, "", listing);
   const client = clients();
   client.fetchScreeningMoviesPage.mockImplementation(
@@ -401,14 +401,14 @@ it("shows Screenings filters, shares their URL state, and restores browser histo
   await screen.findByRole("heading", { level: 1, name: "Today" });
 });
 
-it("keeps the title filter focused while its URL and results update", async () => {
+it("keeps the movie search focused while its URL and results update", async () => {
+  /** Scenario: typing in the screenings search field queries by title, writes `q` to the URL and keeps focus. */
   const client = clients();
   render(<App client={client} />);
   await screen.findByRole("link", { name: "View Wanted film" });
-  fireEvent.click(screen.getByText("Filters"));
-  const title = screen.getByRole("searchbox", { name: "Movie title" });
-  title.focus();
-  fireEvent.change(title, { target: { value: "Dune" } });
+  const search = screen.getByRole("searchbox", { name: "Search movies" });
+  search.focus();
+  fireEvent.change(search, { target: { value: "Dune" } });
 
   await waitFor(() => {
     expect(client.fetchScreeningMoviesPage).toHaveBeenLastCalledWith(
@@ -416,7 +416,39 @@ it("keeps the title filter focused while its URL and results update", async () =
       expect.any(AbortSignal),
     );
   });
-  expect(document.activeElement).toBe(title);
+  const params = new URL(window.location.href).searchParams;
+  expect(params.get("q")).toBe("Dune");
+  expect(params.has("title")).toBe(false);
+  expect(document.activeElement).toBe(search);
+});
+
+it("restores movie search from `q` and ignores the old `title` param", async () => {
+  /** Scenario: a shared link with `q` opens with that search; an old `title` link opens unsearched. */
+  history.replaceState(null, "", "/?start=2026-11-01&end=2026-11-01&q=Wanted");
+  const client = clients();
+  render(<App client={client} />);
+  await screen.findByRole("link", { name: "View Wanted film" });
+  expect(
+    (screen.getByRole("searchbox", { name: "Search movies" }) as HTMLInputElement)
+      .value,
+  ).toBe("Wanted");
+  expect(client.fetchScreeningMoviesPage).toHaveBeenLastCalledWith(
+    expect.objectContaining({ title: "Wanted" }),
+    expect.any(AbortSignal),
+  );
+
+  history.replaceState(null, "", "/?start=2026-11-01&end=2026-11-01&title=Wanted");
+  fireEvent.popState(window);
+  await waitFor(() =>
+    expect(
+      (screen.getByRole("searchbox", { name: "Search movies" }) as HTMLInputElement)
+        .value,
+    ).toBe(""),
+  );
+  expect(client.fetchScreeningMoviesPage).toHaveBeenLastCalledWith(
+    expect.objectContaining({ title: "" }),
+    expect.any(AbortSignal),
+  );
 });
 
 it("does not show results from a superseded screening query", async () => {

@@ -25,6 +25,7 @@ import {
 } from "./catalogue-format";
 import { MovieSchedule } from "./MovieSchedule";
 import { PeriodPicker } from "./PeriodPicker";
+import { MovieSearch } from "./MovieSearch";
 import { Showtime } from "./Showtime";
 import { InfoMenu, SiteFooter, infoPages } from "./SiteInfo";
 import marquiseMark from "./marquise-mark.svg";
@@ -203,16 +204,6 @@ function Filters({
   MinimalCatalogueProps,
   "selection" | "onSelection" | "cinemas" | "screeningLanguages"
 > & { fixed?: string }) {
-  const [titleValue, setTitleValue] = useState(s.title);
-  useEffect(() => setTitleValue(s.title), [s.title]);
-  useEffect(() => {
-    if (titleValue === s.title) return;
-    const timer = window.setTimeout(
-      () => onSelection({ ...s, title: titleValue }),
-      250,
-    );
-    return () => window.clearTimeout(timer);
-  }, [onSelection, s, titleValue]);
   const change = (patch: Partial<CatalogueSelection>) =>
     onSelection({ ...s, ...patch });
   const fromHour = timeToHour(s.from, 0);
@@ -226,15 +217,6 @@ function Filters({
   return (
     <section className="minimal-filters" aria-label="Movie filters">
       <div className="minimal-filter-row">
-        <label className="minimal-title-search">
-          Movie title
-          <input
-            type="search"
-            value={titleValue}
-            placeholder="Search movies"
-            onChange={(e) => setTitleValue(e.target.value)}
-          />
-        </label>
         <details
           className="minimal-other-filters"
           onKeyDown={(event) => {
@@ -348,7 +330,6 @@ function Filters({
               <button
                 onClick={() =>
                   change({
-                    title: "",
                     cinemas: [],
                     languages: [],
                     from: "",
@@ -627,6 +608,12 @@ export function MinimalCatalogue({
                         onSelection({ ...selection, start, end })
                       }
                     />
+                    <div className="minimal-screenings-top">
+                      <MovieSearch
+                        value={selection.title}
+                        onSearch={(title) => onSelection({ ...selection, title })}
+                      />
+                    </div>
                     <Filters
                       selection={selection}
                       onSelection={onSelection}
