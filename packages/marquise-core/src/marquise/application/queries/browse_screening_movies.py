@@ -18,7 +18,8 @@ class BrowseScreeningMoviesQuery:
         """Inclusive Montreal dates, open-ended without end, and a page of 24.
 
         ``hours`` holds half-open ``(start, end)`` Montreal hour ranges matched
-        with OR; empty means any hour.
+        with OR. ``exclude_hours`` negates their combined match. Empty ranges
+        mean any hour.
         """
 
         start: date
@@ -28,6 +29,7 @@ class BrowseScreeningMoviesQuery:
         cinemas: tuple[str, ...] = ()
         languages: tuple[str, ...] = ()
         hours: tuple[tuple[int, int], ...] = ()
+        exclude_hours: bool = False
         excluded_cinemas: tuple[str, ...] = ()
 
         def __post_init__(self) -> None:
@@ -77,6 +79,7 @@ class BrowseScreeningMoviesQuery:
             input_data.cinemas,
             input_data.languages,
             input_data.hours,
+            input_data.exclude_hours,
             input_data.excluded_cinemas,
         )
         return self.OutputData(movies=tuple(page.items), total=page.total)

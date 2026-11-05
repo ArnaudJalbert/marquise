@@ -39,6 +39,7 @@ class ScreeningMovieReader(ABC):
         cinemas: tuple[str, ...] = (),
         languages: tuple[str, ...] = (),
         hours: tuple[tuple[int, int], ...] = (),
+        exclude_hours: bool = False,
         excluded_cinemas: tuple[str, ...] = (),
     ) -> Page[MovieData]:
         """Return a 24-movie page within inclusive bounds, strictly after now."""

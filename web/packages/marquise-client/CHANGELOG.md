@@ -2,7 +2,7 @@
 
 ## 2026-11-03
 
-- Replace `startHour` and `endHour` on screening-movie queries with repeatable half-open `hours` ranges, and add `excludedCinemas`. Supports #441.
+- Replace `startHour` and `endHour` with a structured hour filter containing an `is` or `is_not` operator and half-open ranges. Send it as JSON to the screening-movie search endpoint. Add `excludedCinemas`. Supports #441.
 
 ## 2026-11-01
 

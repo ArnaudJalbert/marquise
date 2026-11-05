@@ -1,11 +1,11 @@
 """Bounded movie-first listing of upcoming screenings."""
 
-import re
 from datetime import date
 from math import ceil
+from typing import Literal, Self
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from marquise import BrowseScreeningMoviesQuery
 from marquise_api.dependencies import get_browse_screening_movies_query
@@ -15,7 +15,37 @@ from marquise_api.schemas import MovieResponse, ScreeningResponse
 
 router = APIRouter(tags=["movies"])
 
-_HOUR_RANGE = re.compile(r"(\d{1,2})-(\d{1,2})")
+
+class HourRangeRequest(BaseModel):
+    """One half-open whole-hour Montréal range."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    start: int = Field(ge=0, le=23)
+    end: int = Field(ge=1, le=24)
+
+    @model_validator(mode="after")
+    def _validate_order(self) -> Self:
+        if self.start >= self.end:
+            raise ValueError("start must be before end")
+        return self
+
+
+class HourFilterRequest(BaseModel):
+    """Ranges matched together before applying a comparison operator."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    operator: Literal["is", "is_not"]
+    ranges: list[HourRangeRequest] = Field(min_length=1)
+
+
+class ScreeningMovieFilters(BaseModel):
+    """Structured filters for a screening-movie search."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    hours: HourFilterRequest | None = None
 
 
 class ScreeningMovieResponse(MovieResponse):
@@ -34,8 +64,8 @@ class ScreeningMoviePage(BaseModel):
     pages: int
 
 
-@router.get(
-    "/screening-movies",
+@router.post(
+    "/screening-movies/search",
     response_model=ScreeningMoviePage,
     responses=error_responses(422, 429),
 )
@@ -44,17 +74,13 @@ async def browse_screening_movies(
     request: Request,
     response: Response,
     start: date,
+    filters: ScreeningMovieFilters,
     end: date | None = None,
     page: int = Query(default=1, ge=1),
     title: str | None = Query(default=None, max_length=200),
     cinema: list[str] | None = Query(default=None),
     exclude_cinema: list[str] | None = Query(default=None),
     language: list[str] | None = Query(default=None),
-    hours: list[str] | None = Query(
-        default=None,
-        description="Repeatable whole-hour Montreal range START-END, matched with OR.",
-        examples=["0-17"],
-    ),
     query: BrowseScreeningMoviesQuery = Depends(get_browse_screening_movies_query),
 ) -> ScreeningMoviePage:
     """List 24 distinct movies in inclusive Montreal dates, excluding started shows.
@@ -62,9 +88,9 @@ async def browse_screening_movies(
     This endpoint is uncached so upcoming eligibility uses the current request's
     clock rather than a cached response's clock.
     """
-    hour_ranges = [_HOUR_RANGE.fullmatch(value) for value in hours or ()]
-    if (end is not None and start > end) or not all(hour_ranges):
+    if end is not None and start > end:
         raise HTTPException(status_code=422, detail="Invalid screening filter range")
+    hour_filter = filters.hours
     result = await query.execute(
         BrowseScreeningMoviesQuery.InputData(
             start=start,
@@ -73,9 +99,10 @@ async def browse_screening_movies(
             title=title,
             cinemas=tuple(cinema or ()),
             languages=tuple(language or ()),
-            hours=tuple(
-                (int(match[1]), int(match[2])) for match in hour_ranges if match
-            ),
+            hours=tuple((item.start, item.end) for item in hour_filter.ranges)
+            if hour_filter
+            else (),
+            exclude_hours=hour_filter is not None and hour_filter.operator == "is_not",
             excluded_cinemas=tuple(exclude_cinema or ()),
         )
     )

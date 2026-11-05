@@ -316,7 +316,15 @@ it.each([
   render(<App client={client} />);
   await screen.findByRole("link", { name: "View Wanted film" });
   expect(client.fetchScreeningMoviesPage).toHaveBeenCalledWith(
-    expect.objectContaining({ hours: expected }),
+    expect.objectContaining({
+      hours:
+        expected.length === 0
+          ? undefined
+          : {
+              operator: "is",
+              ranges: expected.map(([start, end]) => ({ start, end })),
+            },
+    }),
     expect.any(AbortSignal),
   );
 });
@@ -333,7 +341,7 @@ it("opens today's movie-first page without catalogue reads or poster fan-out", a
       title: "",
       cinemas: [],
       languages: [],
-      hours: [],
+      hours: undefined,
     },
     expect.any(AbortSignal),
   );

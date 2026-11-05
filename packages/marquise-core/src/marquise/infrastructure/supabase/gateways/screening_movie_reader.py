@@ -28,6 +28,7 @@ class SupabaseScreeningMovieReadGateway:
         cinemas: tuple[str, ...] = (),
         languages: tuple[str, ...] = (),
         hours: tuple[tuple[int, int], ...] = (),
+        exclude_hours: bool = False,
         excluded_cinemas: tuple[str, ...] = (),
     ) -> GatewayPage:
         """Use one SQL snapshot for eligibility, totals, ordering and previews."""
@@ -50,16 +51,18 @@ class SupabaseScreeningMovieReadGateway:
                       AND (cardinality($6::text[]) = 0 OR s.language = ANY($6))
                       AND (cardinality($7::int[]) = 0 OR EXISTS (
                            SELECT 1 FROM unnest($7::int[], $8::int[]) h(lo, hi)
-                           WHERE int4range(h.lo, h.hi) @> extract(hour FROM
-                               (s.showtime AT TIME ZONE 'UTC')
-                                   AT TIME ZONE 'America/Montreal')::int))
-                      AND NOT s.cinema_id = ANY($9::text[])
+                           WHERE int4range(h.lo, h.hi) @> extract(
+                               hour FROM (s.showtime AT TIME ZONE 'UTC')
+                                   AT TIME ZONE 'America/Montreal'
+                           )::int
+                           ) <> $9::boolean)
+                      AND NOT s.cinema_id = ANY($10::text[])
                 ), eligible AS (
                     SELECT movie_id, showtime AS next_showtime
                     FROM qualifying WHERE rank = 1
                 ), selected AS (
                     SELECT * FROM eligible
-                    ORDER BY next_showtime, movie_id LIMIT 24 OFFSET $10
+                    ORDER BY next_showtime, movie_id LIMIT 24 OFFSET $11
                 )
                 SELECT totals.total, m.id, m.title, m.release_year, m.directors,
                        m.duration_minutes, m.description, m.poster_url,
@@ -80,6 +83,7 @@ class SupabaseScreeningMovieReadGateway:
                 list(languages),
                 [start for start, _ in hours],
                 [end for _, end in hours],
+                exclude_hours,
                 list(excluded_cinemas),
                 (page - 1) * 24,
             )

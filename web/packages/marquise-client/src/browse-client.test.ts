@@ -18,8 +18,13 @@ it("requests one movie-first page with inclusive local dates and no metadata fan
     ),
   ).toEqual(result);
   expect(fetch).toHaveBeenCalledExactlyOnceWith(
-    "https://api.example/v1/screening-movies?start=2026-11-01&end=2026-11-02&page=2",
-    { signal: controller.signal },
+    "https://api.example/v1/screening-movies/search?start=2026-11-01&end=2026-11-02&page=2",
+    {
+      body: "{}",
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+      signal: controller.signal,
+    },
   );
 });
 
@@ -59,7 +64,10 @@ it("serializes combined movie-first filters with repeated alternatives", async (
     title: "Dune",
     cinemas: ["c1", "c2"],
     languages: ["VO", "VOSTF"],
-    hours: [[17, 21]],
+    hours: {
+      operator: "is",
+      ranges: [{ start: 17, end: 21 }],
+    },
     excludedCinemas: ["c3", "c4"],
   });
   const url = new URL(String(fetch.mock.calls[0]?.[0]), "https://api.example");
@@ -70,12 +78,16 @@ it("serializes combined movie-first filters with repeated alternatives", async (
     ["title", "Dune"],
     ["cinema", "c1"],
     ["cinema", "c2"],
-    ["language", "VO"],
-    ["language", "VOSTF"],
-    ["hours", "17-21"],
     ["exclude_cinema", "c3"],
     ["exclude_cinema", "c4"],
+    ["language", "VO"],
+    ["language", "VOSTF"],
   ]);
+  expect(fetch.mock.calls[0]?.[1]).toMatchObject({
+    body: JSON.stringify({
+      hours: { operator: "is", ranges: [{ start: 17, end: 21 }] },
+    }),
+  });
 });
 
 it("repeats non-adjacent hour ranges so the API matches them with OR", async () => {
@@ -90,14 +102,29 @@ it("repeats non-adjacent hour ranges so the API matches them with OR", async () 
   await client.fetchScreeningMoviesPage({
     start: "2026-11-01",
     page: 1,
-    hours: [
-      [0, 17],
-      [21, 24],
-    ],
+    hours: {
+      operator: "is",
+      ranges: [
+        { start: 0, end: 17 },
+        { start: 21, end: 24 },
+      ],
+    },
   });
   const url = new URL(String(fetch.mock.calls[0]?.[0]), "https://api.example");
-  expect(url.searchParams.getAll("hours")).toEqual(["0-17", "21-24"]);
+  expect(url.pathname).toBe("/v1/screening-movies/search");
+  expect(url.searchParams.has("hours")).toBe(false);
   expect(url.searchParams.has("exclude_cinema")).toBe(false);
+  expect(fetch.mock.calls[0]?.[1]).toMatchObject({
+    body: JSON.stringify({
+      hours: {
+        operator: "is",
+        ranges: [
+          { start: 0, end: 17 },
+          { start: 21, end: 24 },
+        ],
+      },
+    }),
+  });
 });
 
 it("surfaces an invalid hour range rejected by the API", async () => {
@@ -111,11 +138,20 @@ it("surfaces an invalid hour range rejected by the API", async () => {
     client.fetchScreeningMoviesPage({
       start: "2026-11-01",
       page: 1,
-      hours: [[21, 17]],
+      hours: {
+        operator: "is_not",
+        ranges: [{ start: 21, end: 17 }],
+      },
     }),
   ).rejects.toBeInstanceOf(HttpMarquiseClientError);
-  const url = new URL(String(fetch.mock.calls[0]?.[0]), "https://api.example");
-  expect(url.searchParams.getAll("hours")).toEqual(["21-17"]);
+  expect(fetch.mock.calls[0]?.[1]).toMatchObject({
+    body: JSON.stringify({
+      hours: {
+        operator: "is_not",
+        ranges: [{ start: 21, end: 17 }],
+      },
+    }),
+  });
 });
 
 it("propagates API failure and cancellation without a sample-data fallback", async () => {

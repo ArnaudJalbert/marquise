@@ -10,7 +10,7 @@ import json
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, urlencode, urlparse
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
 
 from playwright.sync_api import expect, sync_playwright
@@ -26,12 +26,24 @@ def read_page(path: str, params: dict) -> dict:
         return json.load(response)
 
 
+def search_screening_movies(params: dict, filters: dict | None = None) -> dict:
+    """Search screening movies with structured filters through the real API."""
+    request = Request(
+        f"{ORIGIN}/v1/screening-movies/search?{urlencode(params, doseq=True)}",
+        data=json.dumps(filters or {}).encode(),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urlopen(request, timeout=10) as response:
+        return json.load(response)
+
+
 def verify() -> None:
     """Check distinct-movie pages, full dense windows and browser navigation."""
     today = datetime.now(ZoneInfo("America/Montreal")).date()
     selection = {"start": today.isoformat(), "end": today.isoformat()}
-    first = read_page("screening-movies", selection)
-    second = read_page("screening-movies", {**selection, "page": 2})
+    first = search_screening_movies(selection)
+    second = search_screening_movies({**selection, "page": 2})
     assert len(first["items"]) == 24 and first["pages"] == 2
     all_ids = [item["id"] for item in first["items"] + second["items"]]
     assert len(all_ids) == len(set(all_ids)) == first["total"] >= 26
@@ -48,15 +60,14 @@ def verify() -> None:
     )
     title = read_page("movies", {"title": "Arrival", "size": 24})
     assert [item["id"] for item in title["items"]] == ["local/catalogue-only"]
-    filtered = read_page(
-        "screening-movies",
+    filtered = search_screening_movies(
         {
             **selection,
             "title": "Dune",
             "cinema": ["local-cinema-1"],
             "language": ["VOSTF"],
-            "hours": ["15-17"],
         },
+        {"hours": {"operator": "is", "ranges": [{"start": 15, "end": 17}]}},
     )
     assert [item["id"] for item in filtered["items"]] == ["local-dune"]
     assert all(
@@ -269,7 +280,7 @@ def verify() -> None:
         venue_queries = [
             parse_qs(urlparse(url).query)
             for url in api_urls
-            if urlparse(url).path == "/v1/screening-movies"
+            if urlparse(url).path == "/v1/screening-movies/search"
             and parse_qs(urlparse(url).query).get("cinema")
         ]
         assert venue_queries
@@ -285,7 +296,7 @@ def verify() -> None:
         screening_request_pages = {
             parse_qs(urlparse(url).query).get("page", [""])[0]
             for url in api_urls
-            if urlparse(url).path == "/v1/screening-movies"
+            if urlparse(url).path == "/v1/screening-movies/search"
         }
         assert screening_request_pages == {"1", "2"}
         mobile = browser.new_page(

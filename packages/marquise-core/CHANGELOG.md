@@ -6,7 +6,7 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ### v0.2.44
 
-- Filter screening movies by several half-open Montréal hour ranges matched with OR, replacing the single start and end hour. Exclude cinemas by ID. Closes #441.
+- Filter screening movies with structured `is` and `is_not` operators over half-open Montréal hour ranges. Exclude cinemas by ID. Closes #441.
 
 ## 2026-11-02
 

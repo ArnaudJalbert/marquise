@@ -31,6 +31,7 @@ async def test_montreal_dst_window_and_single_clock() -> None:
         (),
         (),
         (),
+        False,
         (),
     )
     clock.assert_called_once_with()
@@ -73,7 +74,8 @@ async def test_filter_values_are_passed_to_the_reader() -> None:
         title=" Dune ",
         cinemas=("c1", "c2"),
         languages=("VO", "VOSTF"),
-        hours=((0, 17), (21, 24)),
+        hours=((17, 21),),
+        exclude_hours=True,
         excluded_cinemas=("c3",),
     )
 
@@ -84,6 +86,7 @@ async def test_filter_values_are_passed_to_the_reader() -> None:
         " Dune ",
         ("c1", "c2"),
         ("VO", "VOSTF"),
-        ((0, 17), (21, 24)),
+        ((17, 21),),
+        True,
         ("c3",),
     )

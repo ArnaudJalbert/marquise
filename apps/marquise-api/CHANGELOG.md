@@ -4,7 +4,7 @@
 
 ### v0.1.19
 
-- **Breaking:** `/v1/screening-movies` takes repeatable `hours=START-END` (whole Montréal hours, `0-24`, end exclusive) matched with OR, replacing `start_hour` and `end_hour`. Malformed, empty, or out-of-day ranges return 422. Add repeatable `exclude_cinema`. Requires core v0.2.44. Closes #441.
+- **Breaking:** replace `GET /v1/screening-movies` with `POST /v1/screening-movies/search`. Its Pydantic JSON body accepts a structured `hours` filter with `is` or `is_not` and half-open whole-hour ranges. Invalid operators, empty ranges, and bounds outside `0 <= start < end <= 24` return 422. Add repeatable `exclude_cinema` query parameters. Requires core v0.2.44. Closes #441.
 
 ## 2026-11-02
 

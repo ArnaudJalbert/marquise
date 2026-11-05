@@ -4,7 +4,7 @@ import {
   posterRenditionUrl,
   toMontrealIsoDate,
   type BrowseClient,
-  type HourRange,
+  type HourFilter,
   type MovieApi,
   type ScreeningApi,
 } from "marquise-client";
@@ -99,10 +99,15 @@ function listingHref(href: string, selection: CatalogueSelection): string {
 }
 
 // shortcut: maps the inclusive hour slider to one half-open range; drop with the slider (#433).
-function sliderHours(from: string, to: string): HourRange[] {
+function sliderHours(from: string, to: string): HourFilter | undefined {
   const start = Math.min(from ? timeToHour(from, 0) : 0, 23);
   const end = to ? timeToHour(to, 24) : 24;
-  return start === 0 && end === 24 ? [] : [[start, Math.max(end, start + 1)]];
+  return start === 0 && end === 24
+    ? undefined
+    : {
+        operator: "is",
+        ranges: [{ start, end: Math.max(end, start + 1) }],
+      };
 }
 
 function weekendDates(today: string): [string, string] {

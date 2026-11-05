@@ -5,7 +5,15 @@ export interface ScreeningMovieApi extends MovieApi {
   screenings: ScreeningApi[];
 }
 /** Half-open whole Montréal hours, `[start, end)` with `0 <= start < end <= 24`. */
-export type HourRange = readonly [start: number, end: number];
+export interface HourRange {
+  readonly start: number;
+  readonly end: number;
+}
+export interface HourFilter {
+  readonly operator: "is" | "is_not";
+  /** Matched with OR before the operator is applied. */
+  readonly ranges: readonly HourRange[];
+}
 export interface ScreeningMovieQuery {
   start: string;
   end?: string;
@@ -13,8 +21,7 @@ export interface ScreeningMovieQuery {
   title?: string;
   cinemas?: readonly string[];
   languages?: readonly string[];
-  /** Matched with OR. Empty or absent means any hour. */
-  hours?: readonly HourRange[];
+  hours?: HourFilter;
   excludedCinemas?: readonly string[];
 }
 /** Production browsing reads. Every listing call requests exactly one page. */

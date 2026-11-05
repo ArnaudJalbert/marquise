@@ -167,10 +167,10 @@ async def test_filters_apply_to_qualifying_screenings_before_preview_selection(
 
 
 @pytest.mark.asyncio
-async def test_hour_ranges_match_with_or_in_montreal_time_and_cinemas_are_excluded(
+async def test_hour_ranges_support_negation_in_montreal_time_and_cinema_exclusion(
     db_pool: asyncpg.Pool,
 ) -> None:
-    """Non-adjacent half-open local hour ranges match; excluded cinemas never do."""
+    """A negated local hour range and excluded cinemas never qualify."""
     async with db_pool.acquire() as conn:
         await conn.execute(
             """INSERT INTO "marquise-test".cinemas(id,name)
@@ -200,7 +200,8 @@ async def test_hour_ranges_match_with_or_in_montreal_time_and_cinemas_are_exclud
         datetime(2026, 11, 6, 4, 59, 59, tzinfo=UTC),
         now,
         1,
-        hours=((0, 17), (21, 24)),
+        hours=((17, 21),),
+        exclude_hours=True,
         excluded_cinemas=("c2",),
     )
     assert [movie["id"] for movie in result.rows] == ["morning", "late"]

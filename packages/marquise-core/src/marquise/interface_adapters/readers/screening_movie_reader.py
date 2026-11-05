@@ -24,6 +24,7 @@ class ScreeningMovieReadGateway(Protocol):
         cinemas: tuple[str, ...] = (),
         languages: tuple[str, ...] = (),
         hours: tuple[tuple[int, int], ...] = (),
+        exclude_hours: bool = False,
         excluded_cinemas: tuple[str, ...] = (),
     ) -> GatewayPage:
         """Return 24 distinct movies with ordered previews and a true total."""
@@ -47,11 +48,21 @@ class SupabaseScreeningMovieReader(ScreeningMovieReader):
         cinemas: tuple[str, ...] = (),
         languages: tuple[str, ...] = (),
         hours: tuple[tuple[int, int], ...] = (),
+        exclude_hours: bool = False,
         excluded_cinemas: tuple[str, ...] = (),
     ) -> Page[ScreeningMovieReader.MovieData]:
         """Map movie metadata and screening projections."""
         result = await self._gateway.search(
-            start, end, now, page, title, cinemas, languages, hours, excluded_cinemas
+            start,
+            end,
+            now,
+            page,
+            title,
+            cinemas,
+            languages,
+            hours,
+            exclude_hours,
+            excluded_cinemas,
         )
         return Page(
             items=[
