@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-03
+
+- Search Screenings from the always-visible movie search field (press `/` to focus). Shared links use `q`; old `title` links open unsearched. Supports #443.
+
 ## 2026-11-01
 
 - Show the Marquise favicon (yellow strip in dark browser themes), a 180×180 apple-touch icon, and the tab title "Marquise". The production build check now fails without the title or either icon link. Supports #422.

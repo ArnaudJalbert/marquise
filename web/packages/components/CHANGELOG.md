@@ -2,6 +2,7 @@
 
 ## 2026-11-03
 
+- Give Screenings movie search its own always-visible field outside the Filters panel, focused with `/`. The listing URL now uses `q`; the old `title` param is ignored. Supports #443.
 - Show only the next matching Montréal day in Screenings previews, hide started screenings using absolute showtimes through the repeated DST hour, cap times at four, and add relative day labels and a compact schedule footer in a flat indigo-accented box. Supports #430.
 
 - Share one Movie Card across the Screenings and Movies sections, and replace the arrow and close text glyphs with line icons so iPhones no longer render emoji. Supports #429.
