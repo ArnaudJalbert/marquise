@@ -124,6 +124,7 @@ class SupabaseScreeningRepository(ScreeningRepository):
 
 ## Follow language casing
 
+- Preserve externally defined field names at API and serialization boundaries, such as `movie_id` and `ticket_url`, even when they differ from the language's casing convention.
 - In Python, use `snake_case` for variables, parameters, properties, and functions. **Enforced:** `pyproject.toml`.
 - In Python, use `PascalCase` for classes. **Enforced:** `pyproject.toml`.
 - In Python, use `UPPER_SNAKE_CASE` for constants.
