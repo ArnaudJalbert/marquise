@@ -48,13 +48,13 @@ async def browse_screening_movies(
     page: int = Query(default=1, ge=1),
     title: str | None = Query(default=None, max_length=200),
     cinema: list[str] | None = Query(default=None),
+    exclude_cinema: list[str] | None = Query(default=None),
     language: list[str] | None = Query(default=None),
     hours: list[str] | None = Query(
         default=None,
         description="Repeatable whole-hour Montreal range START-END, matched with OR.",
         examples=["0-17"],
     ),
-    exclude_cinema: list[str] | None = Query(default=None),
     query: BrowseScreeningMoviesQuery = Depends(get_browse_screening_movies_query),
 ) -> ScreeningMoviePage:
     """List 24 distinct movies in inclusive Montreal dates, excluding started shows.
