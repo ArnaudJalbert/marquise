@@ -37,6 +37,7 @@ function sampleScreenings(movieIndex: number, count: number) {
         ? 10 + Math.floor(slot / 2)
         : 17 + (index % 5);
     return {
+      showtime: `${dates[dateIndex]}T${String(hour).padStart(2, "0")}:${slot % 2 ? "30" : "00"}:00-${dates[dateIndex]! < "2026-11-01" ? "04" : "05"}:00`,
       cinemaId: cinema.id,
       date: dates[dateIndex]!,
       time: `${String(hour).padStart(2, "0")}:${slot % 2 ? "30" : "00"}`,

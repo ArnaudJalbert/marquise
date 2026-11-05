@@ -52,3 +52,12 @@ export function decodePathId(value: string): string {
 export function formatScore(score: number | null | undefined): string {
   return score == null ? "" : `${score.toFixed(1)}/10`;
 }
+
+/** Dates are Montréal calendar dates, so DST does not change the day count. */
+export function relativeDay(date: string, today: string): string {
+  const days = Math.round((Date.parse(date) - Date.parse(today)) / 86400000);
+  if (days === 0) return "";
+  if (days === 1) return "Tomorrow";
+  if (days < 7) return `In ${days} days`;
+  return `In ${Math.floor(days / 7)} weeks`;
+}

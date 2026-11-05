@@ -1,3 +1,4 @@
+import { toMontrealIsoDate } from "marquise-client";
 import { ArrowRight, ArrowUpRight, X } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type {
@@ -16,6 +17,7 @@ export type {
 } from "./catalogue-types";
 import {
   addDays,
+  relativeDay,
   formatScore,
   timeToHour,
   formatHour,
@@ -82,7 +84,9 @@ export function MinimalMovieCard({
   onExpanded,
   showYear = false,
   previewable = true,
+  currentTime = new Date().toISOString(),
 }: {
+  currentTime?: string;
   expanded?: boolean;
   showYear?: boolean;
   previewable?: boolean;
@@ -94,7 +98,16 @@ export function MinimalMovieCard({
   const open = previewable && (expanded ?? localOpen);
   const setOpen = onExpanded ?? setLocalOpen;
   const arrow = useRef<HTMLButtonElement>(null);
-  const preview = movie.screenings.slice(0, 3);
+  const now = new Date(currentTime);
+  const today = toMontrealIsoDate(now);
+  const upcoming = movie.screenings
+    .filter((s) => new Date(s.showtime).getTime() > now.getTime())
+    .slice().sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  const day = upcoming[0]?.date;
+  const nextDay = upcoming.find((s) => s.date !== day)?.date;
+  const dayScreenings = upcoming.filter((s) => s.date === day);
+  const preview = dayScreenings.slice(0, 4);
+  const movieHref = `/movies/${encodeURIComponent(movie.id)}`;
   const id = `preview-${movie.id}`;
   return (
     <article
@@ -151,37 +164,30 @@ export function MinimalMovieCard({
           id={id}
           aria-label={`${movie.title} screenings`}
         >
-          <button
-            className="minimal-preview-close"
-            aria-label="Close preview"
-            onClick={() => {
-              setOpen(false);
-              arrow.current?.focus();
-            }}
-          >
-            <X aria-hidden size={16} />
-          </button>
-          {preview.length ? (
-            [...new Set(preview.map((s) => s.cinemaId))].map((cinema) => (
-              <div className="minimal-cinema-showtimes" key={cinema}>
-                <h3>
-                  {cinemas.find((c) => c.id === cinema)?.name ??
-                    preview.find((s) => s.cinemaId === cinema)?.cinemaName ??
-                    "Cinema unavailable"}
-                </h3>
-                {preview
-                  .filter((s) => s.cinemaId === cinema)
-                  .map((s, i) => (
-                    <p key={i}>
-                      {s.date} <Showtime screening={s} />
-                    </p>
-                  ))}
-              </div>
-            ))
-          ) : (
-            <p>No matching upcoming screenings.</p>
-          )}
-          <a href={`/movies/${encodeURIComponent(movie.id)}`}>Full schedule</a>
+          <header className="minimal-preview-header">
+            <strong>{day && relativeDay(day, today)}</strong>
+            <button
+              className="minimal-preview-close"
+              aria-label="Close preview"
+              onClick={() => {
+                setOpen(false);
+                arrow.current?.focus();
+              }}
+            >
+              <X aria-hidden size={16} />
+            </button>
+          </header>
+          {preview.length ? preview.map((s, i) => (
+            <p key={i}>
+              <Showtime screening={s} />
+              {cinemas.find((c) => c.id === s.cinemaId)?.name ?? s.cinemaName ?? "Cinema unavailable"}
+            </p>
+          )) : <p>No matching upcoming screenings.</p>}
+          <footer className="minimal-preview-footer">
+            {dayScreenings.length > 4 && <><a href={movieHref}>+{dayScreenings.length - 4} more</a>{" · "}</>}
+            {nextDay && <>Then {relativeDay(nextDay, today)}{" · "}</>}
+            <a href={movieHref}>Schedule</a>
+          </footer>
         </section>
       )}
     </article>
@@ -362,6 +368,7 @@ function Filters({
 export function MinimalCatalogue({
   movies,
   catalogueMovies = movies,
+  currentTime,
   catalogueNotice,
   serverResults = false,
   showScreeningFilters = true,
@@ -712,6 +719,7 @@ export function MinimalCatalogue({
                             <MinimalMovieCard
                               key={m.id}
                               movie={m}
+                              currentTime={currentTime}
                               cinemas={cinemas}
                               expanded={previewId === m.id}
                               onExpanded={(open) =>

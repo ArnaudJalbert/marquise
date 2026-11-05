@@ -29,16 +29,17 @@ const movie: CatalogueMovie = {
     {
       cinemaId: "a",
       date: "2026-10-30",
-      time: "18:00",
+      time: "18:00", showtime: "2026-10-30T18:00:00-04:00",
       language: "VO",
       bookingUrl: "https://example.com",
     },
-    { cinemaId: "b", date: "2026-10-30", time: "19:00", language: "VOSTF" },
-    { cinemaId: "a", date: "2026-10-31", time: "20:00", language: "VO" },
-    { cinemaId: "b", date: "2026-11-01", time: "21:00", language: "VOSTF" },
+    { cinemaId: "b", date: "2026-10-30", time: "19:00", showtime: "2026-10-30T19:00:00-04:00", language: "VOSTF" },
+    { cinemaId: "a", date: "2026-10-31", time: "20:00", showtime: "2026-10-31T20:00:00-04:00", language: "VO" },
+    { cinemaId: "b", date: "2026-11-01", time: "21:00", showtime: "2026-11-01T21:00:00-05:00", language: "VOSTF" },
   ],
 };
 const props: MinimalCatalogueProps = {
+  currentTime: "2026-10-30T16:00:00Z",
   movies: [movie],
   screeningLanguages: ["VO", "VOSTF"],
   cinemas,
@@ -128,8 +129,8 @@ describe("minimalist prototype", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("opens only three screenings with the arrow, separate from movie navigation", () => {
-    render(<MinimalMovieCard movie={movie} cinemas={cinemas} />);
+  it("opens only the next day with the arrow, separate from movie navigation", () => {
+    render(<MinimalMovieCard movie={movie} cinemas={cinemas} currentTime={props.currentTime} />);
     expect(screen.queryByRole("region")).not.toBeInTheDocument();
     const arrow = screen.getByRole("button", {
       name: `Preview ${movie.title}`,
@@ -139,7 +140,7 @@ describe("minimalist prototype", () => {
       name: `${movie.title} screenings`,
     });
     expect(within(preview).getAllByText(/Cinema [AB]/)).toHaveLength(2);
-    expect(within(preview).getByText("2026-10-31")).toBeInTheDocument();
+    expect(within(preview).getByText(/Then Tomorrow/)).toBeInTheDocument();
     expect(within(preview).queryByText("21:00")).not.toBeInTheDocument();
     expect(
       within(preview).getByRole("link", { name: "18:00" }),
@@ -347,7 +348,7 @@ it("ignores a previous movie's response after navigating to another movie", asyn
     ...movie,
     id: "second",
     title: "Second film",
-    screenings: [{ cinemaId: "b", date: "2026-10-30", time: "12:15" }],
+    screenings: [{ cinemaId: "b", date: "2026-10-30", time: "12:15", showtime: "2026-10-30T12:15:00-04:00", }],
   };
   const common = {
     ...props,
@@ -421,8 +422,8 @@ it("applies the same floored hours that are shown by the sliders", () => {
   const fractionalMovie = {
     ...movie,
     screenings: [
-      { cinemaId: "a", date: "2026-10-30", time: "18:00" },
-      { cinemaId: "a", date: "2026-10-30", time: "22:30" },
+      { cinemaId: "a", date: "2026-10-30", time: "18:00", showtime: "2026-10-30T18:00:00-04:00", },
+      { cinemaId: "a", date: "2026-10-30", time: "22:30", showtime: "2026-10-30T22:30:00-04:00", },
     ],
   };
   render(
@@ -480,7 +481,7 @@ it("loads the complete schedule when the movie has cached preview screenings", a
   const loadWeek = vi
     .fn()
     .mockResolvedValue({
-      screenings: [{ cinemaId: "a", date: "2026-10-30", time: "15:45" }],
+      screenings: [{ cinemaId: "a", date: "2026-10-30", time: "15:45", showtime: "2026-10-30T15:45:00-04:00", }],
       cinemas,
     });
   const { rerender } = render(
@@ -581,4 +582,67 @@ it("opens and closes the screenings section preview with icon buttons", () => {
   expect(
     screen.getByRole("region", { name: `${movie.title} screenings` }),
   ).toBeInTheDocument();
+});
+
+it.each([
+  ["2026-10-30", ""], ["2026-10-31", "Tomorrow"],
+  ["2026-11-01", "In 2 days"], ["2026-11-05", "In 6 days"],
+  ["2026-11-06", "In 1 weeks"], ["2026-11-12", "In 1 weeks"],
+  ["2026-11-19", "In 2 weeks"],
+])("labels the next Montréal day %s as %s", (date, label) => {
+  /** Scenario: relative labels use calendar days, including across DST. */
+  render(<MinimalMovieCard movie={{ ...movie, screenings: [{ cinemaId: "a", date, time: "23:00", showtime: `${date}T23:00:00-${date < "2026-11-01" ? "04" : "05"}:00` }] }} cinemas={cinemas} currentTime="2026-10-31T01:00:00Z" expanded />);
+  const preview = screen.getByRole("region", { name: `${movie.title} screenings` });
+  if (label) expect(within(preview).getByText(label)).toBeVisible();
+  else expect(within(preview).queryByText(/^(Tomorrow|In \d+ (days|weeks))$/)).not.toBeInTheDocument();
+  expect(within(preview).queryByText(/Then/)).not.toBeInTheDocument();
+  expect(within(preview).getByRole("link", { name: "Schedule" })).toHaveAttribute("href", "/movies/film");
+});
+
+it("sorts and caps the next day, counts only its extra times, and updates after showtime", () => {
+  /** Scenario: past and already-started shows disappear, and later days supply only a hint. */
+  const screenings = ["22:00", "17:00", "21:00", "18:00", "20:00", "19:00", "16:00"].map((time) => ({ cinemaId: "a", date: "2026-10-30", time, showtime: `2026-10-30T${time}:00-04:00`, language: "VO" }));
+  const card = { ...movie, screenings: [...screenings, { cinemaId: "b", date: "2026-11-06", time: "23:00", showtime: "2026-11-06T23:00:00-05:00", }] };
+  const { rerender } = render(<MinimalMovieCard movie={card} cinemas={cinemas} currentTime="2026-10-30T21:00:00Z" expanded />);
+  const preview = screen.getByRole("region", { name: `${movie.title} screenings` });
+  expect(within(preview).queryByText("16:00")).not.toBeInTheDocument();
+  expect(within(preview).queryByText("17:00")).not.toBeInTheDocument();
+  expect(within(preview).getAllByText(/^\d\d:\d\d$/).map((el) => el.textContent)).toEqual(["18:00", "19:00", "20:00", "21:00"]);
+  expect(within(preview).getAllByText("VO")).toHaveLength(4);
+  expect(within(preview).getAllByText("Cinema A")).toHaveLength(4);
+  expect(within(preview).getByRole("link", { name: "+1 more" })).toHaveAttribute("href", "/movies/film");
+  expect(within(preview).getByText(/Then In 1 weeks/)).toBeVisible();
+  expect(within(preview).queryByText("23:00")).not.toBeInTheDocument();
+  rerender(<MinimalMovieCard movie={card} cinemas={cinemas} currentTime="2026-10-31T02:00:00Z" expanded />);
+  expect(screen.getByRole("region")).toHaveTextContent("In 1 weeks");
+  expect(screen.queryByText(/Then/)).not.toBeInTheDocument();
+});
+
+it("builds previews solely from loaded screenings matching every active filter", () => {
+  /** Scenario: date, cinema, language and time filters exclude rows before preview grouping. */
+  render(<MinimalCatalogue {...props} movies={[{ ...movie, screenings: [
+    ...movie.screenings,
+    { cinemaId: "a", date: "2026-10-30", time: "22:00", showtime: "2026-10-30T22:00:00-04:00", language: "VO" },
+  ] }]} selection={{ ...props.selection, end: "2026-10-30", cinemas: ["a"], languages: ["VO"], from: "17:00", to: "20:00" }} />);
+  fireEvent.click(screen.getByRole("button", { name: `Preview ${movie.title}` }));
+  const preview = screen.getByRole("region", { name: `${movie.title} screenings` });
+  expect(within(preview).getByText("18:00")).toBeInTheDocument();
+  for (const text of ["19:00", "20:00", "21:00", "22:00", "Cinema B"])
+    expect(within(preview).queryByText(text)).not.toBeInTheDocument();
+  expect(within(preview).getByRole("link", { name: "Schedule" })).toHaveAttribute("href", "/movies/film");
+  expect(within(preview).queryByText(/Then|\+\d+ more/)).not.toBeInTheDocument();
+});
+
+it("hides a screening from the first DST hour during the repeated hour", () => {
+  /** Scenario: 01:45 EDT has started by 01:15 EST, while 01:45 EST is still upcoming on the same Montréal day. */
+  const card = { ...movie, screenings: [
+    { cinemaId: "a", date: "2026-11-01", time: "01:45", showtime: "2026-11-01T05:45:00Z", bookingUrl: "https://example.com/started" },
+    { cinemaId: "b", date: "2026-11-01", time: "01:45", showtime: "2026-11-01T06:45:00Z", bookingUrl: "https://example.com/upcoming" },
+  ] };
+  render(<MinimalMovieCard movie={card} cinemas={cinemas} currentTime="2026-11-01T06:15:00Z" expanded />);
+  const preview = within(screen.getByRole("region", { name: `${movie.title} screenings` }));
+  expect(preview.queryByText("Cinema A")).not.toBeInTheDocument();
+  expect(preview.getByText("Cinema B")).toBeVisible();
+  expect(preview.getByRole("link", { name: /01:45/ })).toHaveAttribute("href", "https://example.com/upcoming");
+  expect(preview.queryByText(/Tomorrow|In \d+ days/)).not.toBeInTheDocument();
 });

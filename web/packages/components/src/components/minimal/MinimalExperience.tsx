@@ -28,6 +28,7 @@ const timeFormatter = new Intl.DateTimeFormat("en-GB", {
 
 function screeningData(item: ScreeningApi): CatalogueScreening {
   return {
+    showtime: item.showtime,
     cinemaId: item.cinema_id,
     cinemaName: item.cinema_name,
     date: toMontrealIsoDate(new Date(item.showtime)),
@@ -281,6 +282,7 @@ export function MinimalExperience({
 
   return (
     <MinimalCatalogue
+      currentTime={currentTime}
       movies={decodedId ? [] : movies}
       catalogueMovies={catalogueMovies}
       serverResults
