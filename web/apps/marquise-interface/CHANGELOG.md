@@ -2,6 +2,7 @@
 
 ## 2026-11-03
 
+- Open fresh visits to Screenings on Today. The period stays in the URL for in-session history, but a newly loaded URL drops `start` and `end` and keeps its other filters. Version 0.2.0. Supports #442.
 - Search Screenings from the always-visible movie search field (press `/` to focus). Shared links use `q`; old `title` links open unsearched. Supports #443.
 
 ## 2026-11-01
