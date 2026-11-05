@@ -18,7 +18,7 @@ it("requests one movie-first page with inclusive local dates and no metadata fan
     ),
   ).toEqual(result);
   expect(fetch).toHaveBeenCalledExactlyOnceWith(
-    "https://api.example/v1/screening-movies/search?start=2026-11-01&end=2026-11-02&page=2",
+    "https://api.example/v1/screening-movies?start=2026-11-01&end=2026-11-02&page=2",
     {
       body: "{}",
       headers: { "Content-Type": "application/json" },
@@ -111,7 +111,7 @@ it("repeats non-adjacent hour ranges so the API matches them with OR", async () 
     },
   });
   const url = new URL(String(fetch.mock.calls[0]?.[0]), "https://api.example");
-  expect(url.pathname).toBe("/v1/screening-movies/search");
+  expect(url.pathname).toBe("/v1/screening-movies");
   expect(url.searchParams.has("hours")).toBe(false);
   expect(url.searchParams.has("exclude_cinema")).toBe(false);
   expect(fetch.mock.calls[0]?.[1]).toMatchObject({

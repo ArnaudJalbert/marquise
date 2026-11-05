@@ -5,6 +5,7 @@ from unittest.mock import create_autospec
 
 import pytest
 
+from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
 from marquise.interface_adapters.readers.screening_movie_reader import (
     ScreeningMovieReadGateway,
     SupabaseScreeningMovieReader,
@@ -45,10 +46,9 @@ async def test_movie_projection_maps_metadata_previews_and_empty_pages() -> None
     )
     now = datetime(2026, 11, 1, 4, tzinfo=UTC)
     reader = SupabaseScreeningMovieReader(gateway)
-    result = await reader.search(now, now, now, 2)
-    gateway.search.assert_awaited_once_with(
-        now, now, now, 2, None, (), (), (), False, ()
-    )
+    request = ScreeningMovieReader.SearchRequest(now, now, now, 2)
+    result = await reader.search(request)
+    gateway.search.assert_awaited_once_with(request)
     assert result.total == 25
     movie = result.items[0]
     assert movie.directors is None and movie.poster_url is None
@@ -57,5 +57,5 @@ async def test_movie_projection_maps_metadata_previews_and_empty_pages() -> None
     assert movie.screenings[0].language == "VO"
     assert movie.screenings[0].ticket_url is None
     gateway.search.return_value = GatewayPage(rows=[], total=25)
-    result = await reader.search(now, now, now, 3)
+    result = await reader.search(ScreeningMovieReader.SearchRequest(now, now, now, 3))
     assert result.total == 25 and result.items == []

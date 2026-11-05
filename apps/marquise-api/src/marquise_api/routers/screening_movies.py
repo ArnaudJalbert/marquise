@@ -65,7 +65,7 @@ class ScreeningMoviePage(BaseModel):
 
 
 @router.post(
-    "/screening-movies/search",
+    "/screening-movies",
     response_model=ScreeningMoviePage,
     responses=error_responses(422, 429),
 )
@@ -99,10 +99,15 @@ async def browse_screening_movies(
             title=title,
             cinemas=tuple(cinema or ()),
             languages=tuple(language or ()),
-            hours=tuple((item.start, item.end) for item in hour_filter.ranges)
+            hours=BrowseScreeningMoviesQuery.HourFilter(
+                ranges=tuple(
+                    BrowseScreeningMoviesQuery.HourRange(item.start, item.end)
+                    for item in hour_filter.ranges
+                ),
+                excluded=hour_filter.operator == "is_not",
+            )
             if hour_filter
-            else (),
-            exclude_hours=hour_filter is not None and hour_filter.operator == "is_not",
+            else None,
             excluded_cinemas=tuple(exclude_cinema or ()),
         )
     )

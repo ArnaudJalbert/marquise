@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 import asyncpg
 import pytest
 
+from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
 from marquise.infrastructure.supabase.gateways.screening_movie_reader import (
     SupabaseScreeningMovieReadGateway,
 )
@@ -62,9 +63,15 @@ async def test_distinct_movie_pages_previews_and_end_metadata(
         SupabaseScreeningMovieReadGateway(db_pool, "marquise-test")
     )
     end = datetime(2026, 11, 2, 4, 59, 59, 999999, tzinfo=UTC)
-    first = await reader.search(start, end, start, 1)
-    second = await reader.search(start, end, start, 2)
-    beyond = await reader.search(start, end, start, 3)
+    first = await reader.search(
+        ScreeningMovieReader.SearchRequest(start, end, start, 1)
+    )
+    second = await reader.search(
+        ScreeningMovieReader.SearchRequest(start, end, start, 2)
+    )
+    beyond = await reader.search(
+        ScreeningMovieReader.SearchRequest(start, end, start, 3)
+    )
     assert [m.id for m in first.items] == [f"m{i:02}" for i in range(24)]
     assert [m.id for m in second.items] == ["m24", "m25", "m26"]
     assert first.total == second.total == beyond.total == 27
@@ -83,7 +90,9 @@ async def test_distinct_movie_pages_previews_and_end_metadata(
     assert preview.screenings[1].ticket_url == "https://tickets.example/real"
     assert all(s.showtime.tzinfo is not None for s in preview.screenings)
     empty = await reader.search(
-        end + timedelta(days=1), end + timedelta(days=2), start, 1
+        ScreeningMovieReader.SearchRequest(
+            end + timedelta(days=1), end + timedelta(days=2), start, 1
+        )
     )
     assert empty.items == [] and empty.total == 0
 
@@ -113,7 +122,9 @@ async def test_inclusive_dst_bounds_ordering_and_started_previews(
     gateway = SupabaseScreeningMovieReadGateway(db_pool, "marquise-test")
     start = datetime(2026, 11, 1, 4, tzinfo=UTC)
     end = datetime(2026, 11, 2, 4, 59, 59, 999999, tzinfo=UTC)
-    result = await gateway.search(start, end, start, 1)
+    result = await gateway.search(
+        ScreeningMovieReader.SearchRequest(start, end, start, 1)
+    )
     assert [m["id"] for m in result.rows] == ["z", "a"]
     assert result.total == 2
     assert [s["id"] for s in result.rows[1]["screenings"]] == [
@@ -150,14 +161,18 @@ async def test_filters_apply_to_qualifying_screenings_before_preview_selection(
         )
     gateway = SupabaseScreeningMovieReadGateway(db_pool, "marquise-test")
     result = await gateway.search(
-        datetime(2026, 11, 3, 5, tzinfo=UTC),
-        datetime(2026, 11, 4, 4, 59, tzinfo=UTC),
-        datetime(2026, 11, 3, 5, tzinfo=UTC),
-        1,
-        "Dune",
-        ("c2",),
-        ("VOSTF",),
-        ((18, 20),),
+        ScreeningMovieReader.SearchRequest(
+            start=datetime(2026, 11, 3, 5, tzinfo=UTC),
+            end=datetime(2026, 11, 4, 4, 59, tzinfo=UTC),
+            now=datetime(2026, 11, 3, 5, tzinfo=UTC),
+            page=1,
+            title="Dune",
+            cinemas=("c2",),
+            languages=("VOSTF",),
+            hours=ScreeningMovieReader.HourFilter(
+                ranges=(ScreeningMovieReader.HourRange(18, 20),)
+            ),
+        )
     )
     assert result.total == 1
     assert [movie["id"] for movie in result.rows] == ["match"]
@@ -196,17 +211,23 @@ async def test_hour_ranges_support_negation_in_montreal_time_and_cinema_exclusio
     gateway = SupabaseScreeningMovieReadGateway(db_pool, "marquise-test")
     now = datetime(2026, 11, 5, 5, tzinfo=UTC)
     result = await gateway.search(
-        now,
-        datetime(2026, 11, 6, 4, 59, 59, tzinfo=UTC),
-        now,
-        1,
-        hours=((17, 21),),
-        exclude_hours=True,
-        excluded_cinemas=("c2",),
+        ScreeningMovieReader.SearchRequest(
+            start=now,
+            end=datetime(2026, 11, 6, 4, 59, 59, tzinfo=UTC),
+            now=now,
+            page=1,
+            hours=ScreeningMovieReader.HourFilter(
+                ranges=(ScreeningMovieReader.HourRange(17, 21),),
+                excluded=True,
+            ),
+            excluded_cinemas=("c2",),
+        )
     )
     assert [movie["id"] for movie in result.rows] == ["morning", "late"]
     assert result.total == 2
     unfiltered = await gateway.search(
-        now, datetime(2026, 11, 6, 4, 59, 59, tzinfo=UTC), now, 1
+        ScreeningMovieReader.SearchRequest(
+            now, datetime(2026, 11, 6, 4, 59, 59, tzinfo=UTC), now, 1
+        )
     )
     assert unfiltered.total == 5

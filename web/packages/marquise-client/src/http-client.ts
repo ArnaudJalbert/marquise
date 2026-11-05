@@ -121,7 +121,7 @@ export class HttpMarquiseClient
     query.languages?.forEach((language) =>
       params.append("language", language),
     );
-    return this.fetchJson(`/v1/screening-movies/search?${params}`, signal, {
+    return this.fetchJson(`/v1/screening-movies?${params}`, signal, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(query.hours ? { hours: query.hours } : {}),

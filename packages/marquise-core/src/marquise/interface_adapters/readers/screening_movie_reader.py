@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Protocol
 
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
@@ -14,19 +13,7 @@ from marquise.interface_adapters.repositories.protocols.base import GatewayPage
 class ScreeningMovieReadGateway(Protocol):
     """Plain-data contract for distinct-movie pagination."""
 
-    async def search(
-        self,
-        start: datetime,
-        end: datetime | None,
-        now: datetime,
-        page: int,
-        title: str | None = None,
-        cinemas: tuple[str, ...] = (),
-        languages: tuple[str, ...] = (),
-        hours: tuple[tuple[int, int], ...] = (),
-        exclude_hours: bool = False,
-        excluded_cinemas: tuple[str, ...] = (),
-    ) -> GatewayPage:
+    async def search(self, request: ScreeningMovieReader.SearchRequest) -> GatewayPage:
         """Return 24 distinct movies with ordered previews and a true total."""
         ...
 
@@ -39,31 +26,10 @@ class SupabaseScreeningMovieReader(ScreeningMovieReader):
         self._gateway = gateway
 
     async def search(
-        self,
-        start: datetime,
-        end: datetime | None,
-        now: datetime,
-        page: int,
-        title: str | None = None,
-        cinemas: tuple[str, ...] = (),
-        languages: tuple[str, ...] = (),
-        hours: tuple[tuple[int, int], ...] = (),
-        exclude_hours: bool = False,
-        excluded_cinemas: tuple[str, ...] = (),
+        self, request: ScreeningMovieReader.SearchRequest
     ) -> Page[ScreeningMovieReader.MovieData]:
         """Map movie metadata and screening projections."""
-        result = await self._gateway.search(
-            start,
-            end,
-            now,
-            page,
-            title,
-            cinemas,
-            languages,
-            hours,
-            exclude_hours,
-            excluded_cinemas,
-        )
+        result = await self._gateway.search(request)
         return Page(
             items=[
                 self.MovieData(

@@ -23,16 +23,12 @@ async def test_montreal_dst_window_and_single_clock() -> None:
         BrowseScreeningMoviesQuery.InputData(date(2026, 11, 1), date(2026, 11, 1), 2)
     )
     reader.search.assert_awaited_once_with(
-        datetime(2026, 11, 1, 4, tzinfo=UTC),
-        datetime(2026, 11, 2, 4, 59, 59, 999999, tzinfo=UTC),
-        now,
-        2,
-        None,
-        (),
-        (),
-        (),
-        False,
-        (),
+        ScreeningMovieReader.SearchRequest(
+            start=datetime(2026, 11, 1, 4, tzinfo=UTC),
+            end=datetime(2026, 11, 2, 4, 59, 59, 999999, tzinfo=UTC),
+            now=now,
+            page=2,
+        )
     )
     clock.assert_called_once_with()
     assert result.movies == ()
@@ -57,9 +53,16 @@ def test_invalid_request(start: date, end: date, page: int) -> None:
 def test_invalid_hour_range(hours: tuple[int, int]) -> None:
     """An empty, inverted or out-of-day range is rejected even beside a valid one."""
     with pytest.raises(ValueError, match="hours"):
-        BrowseScreeningMoviesQuery.InputData(
-            date(2026, 11, 1), None, hours=((0, 24), hours)
+        BrowseScreeningMoviesQuery.HourRange(
+            start=hours[0],
+            end=hours[1],
         )
+
+
+def test_empty_hour_filter() -> None:
+    """An hour filter must name at least one range."""
+    with pytest.raises(ValueError, match="hours"):
+        BrowseScreeningMoviesQuery.HourFilter(ranges=())
 
 
 @pytest.mark.asyncio
@@ -74,19 +77,28 @@ async def test_filter_values_are_passed_to_the_reader() -> None:
         title=" Dune ",
         cinemas=("c1", "c2"),
         languages=("VO", "VOSTF"),
-        hours=((17, 21),),
-        exclude_hours=True,
+        hours=BrowseScreeningMoviesQuery.HourFilter(
+            ranges=(BrowseScreeningMoviesQuery.HourRange(start=17, end=21),),
+            excluded=True,
+        ),
         excluded_cinemas=("c3",),
     )
 
     await BrowseScreeningMoviesQuery(reader, Mock(return_value=now)).execute(request)
 
-    reader.search.assert_awaited_once()
-    assert reader.search.call_args.args[4:] == (
-        " Dune ",
-        ("c1", "c2"),
-        ("VO", "VOSTF"),
-        ((17, 21),),
-        True,
-        ("c3",),
+    reader.search.assert_awaited_once_with(
+        ScreeningMovieReader.SearchRequest(
+            start=datetime(2026, 11, 3, 5, tzinfo=UTC),
+            end=datetime(2026, 11, 6, 4, 59, 59, 999999, tzinfo=UTC),
+            now=now,
+            page=1,
+            title=" Dune ",
+            cinemas=("c1", "c2"),
+            languages=("VO", "VOSTF"),
+            hours=ScreeningMovieReader.HourFilter(
+                ranges=(ScreeningMovieReader.HourRange(start=17, end=21),),
+                excluded=True,
+            ),
+            excluded_cinemas=("c3",),
+        )
     )

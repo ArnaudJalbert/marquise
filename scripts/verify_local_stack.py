@@ -29,7 +29,7 @@ def read_page(path: str, params: dict) -> dict:
 def search_screening_movies(params: dict, filters: dict | None = None) -> dict:
     """Search screening movies with structured filters through the real API."""
     request = Request(
-        f"{ORIGIN}/v1/screening-movies/search?{urlencode(params, doseq=True)}",
+        f"{ORIGIN}/v1/screening-movies?{urlencode(params, doseq=True)}",
         data=json.dumps(filters or {}).encode(),
         headers={"Content-Type": "application/json"},
         method="POST",
@@ -280,7 +280,7 @@ def verify() -> None:
         venue_queries = [
             parse_qs(urlparse(url).query)
             for url in api_urls
-            if urlparse(url).path == "/v1/screening-movies/search"
+            if urlparse(url).path == "/v1/screening-movies"
             and parse_qs(urlparse(url).query).get("cinema")
         ]
         assert venue_queries
@@ -296,7 +296,7 @@ def verify() -> None:
         screening_request_pages = {
             parse_qs(urlparse(url).query).get("page", [""])[0]
             for url in api_urls
-            if urlparse(url).path == "/v1/screening-movies/search"
+            if urlparse(url).path == "/v1/screening-movies"
         }
         assert screening_request_pages == {"1", "2"}
         mobile = browser.new_page(

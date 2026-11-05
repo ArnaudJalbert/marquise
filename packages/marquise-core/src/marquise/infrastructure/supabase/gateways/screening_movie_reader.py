@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-
 import asyncpg
 
+from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
 from marquise.infrastructure.supabase.gateways.screening_reader import _naive_utc
 from marquise.interface_adapters.repositories.protocols.base import GatewayPage
 
@@ -18,20 +17,10 @@ class SupabaseScreeningMovieReadGateway:
         self._pool = pool
         self._schema = schema
 
-    async def search(
-        self,
-        start: datetime,
-        end: datetime | None,
-        now: datetime,
-        page: int,
-        title: str | None = None,
-        cinemas: tuple[str, ...] = (),
-        languages: tuple[str, ...] = (),
-        hours: tuple[tuple[int, int], ...] = (),
-        exclude_hours: bool = False,
-        excluded_cinemas: tuple[str, ...] = (),
-    ) -> GatewayPage:
+    async def search(self, request: ScreeningMovieReader.SearchRequest) -> GatewayPage:
         """Use one SQL snapshot for eligibility, totals, ordering and previews."""
+        hour_filter = request.hours
+        hour_ranges = hour_filter.ranges if hour_filter else ()
         async with self._pool.acquire() as connection:
             rows = await connection.fetch(
                 f'''
@@ -75,17 +64,17 @@ class SupabaseScreeningMovieReadGateway:
                 LEFT JOIN qualifying q ON q.movie_id = p.movie_id AND q.rank <= 3
                 ORDER BY p.next_showtime, p.movie_id, q.showtime, q.id
                 ''',
-                _naive_utc(start),
-                None if end is None else _naive_utc(end),
-                _naive_utc(now),
-                None if not title else title.strip(),
-                list(cinemas),
-                list(languages),
-                [start for start, _ in hours],
-                [end for _, end in hours],
-                exclude_hours,
-                list(excluded_cinemas),
-                (page - 1) * 24,
+                _naive_utc(request.start),
+                None if request.end is None else _naive_utc(request.end),
+                _naive_utc(request.now),
+                None if not request.title else request.title.strip(),
+                list(request.cinemas),
+                list(request.languages),
+                [item.start for item in hour_ranges],
+                [item.end for item in hour_ranges],
+                hour_filter is not None and hour_filter.excluded,
+                list(request.excluded_cinemas),
+                (request.page - 1) * 24,
             )
         movies: dict[str, dict] = {}
         for row in rows:

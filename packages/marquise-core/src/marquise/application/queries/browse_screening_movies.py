@@ -14,12 +14,35 @@ class BrowseScreeningMoviesQuery:
     """Read one movie page using one clock instant for eligibility and previews."""
 
     @dataclass(frozen=True, slots=True)
+    class HourRange:
+        """One half-open whole-hour Montréal range."""
+
+        start: int
+        end: int
+
+        def __post_init__(self) -> None:
+            """Reject empty, inverted, or out-of-day ranges."""
+            if not 0 <= self.start < self.end <= 24:
+                raise ValueError("hours must satisfy 0 <= start < end <= 24")
+
+    @dataclass(frozen=True, slots=True)
+    class HourFilter:
+        """Hour ranges matched together before optional exclusion."""
+
+        ranges: tuple[BrowseScreeningMoviesQuery.HourRange, ...]
+        excluded: bool = False
+
+        def __post_init__(self) -> None:
+            """Require at least one range when an hour filter exists."""
+            if not self.ranges:
+                raise ValueError("hours must include at least one range")
+
+    @dataclass(frozen=True, slots=True)
     class InputData:
         """Inclusive Montreal dates, open-ended without end, and a page of 24.
 
-        ``hours`` holds half-open ``(start, end)`` Montreal hour ranges matched
-        with OR. ``exclude_hours`` negates their combined match. Empty ranges
-        mean any hour.
+        ``hours`` holds named Montréal ranges matched with OR before optional
+        exclusion. No hour filter means any hour.
         """
 
         start: date
@@ -28,8 +51,7 @@ class BrowseScreeningMoviesQuery:
         title: str | None = None
         cinemas: tuple[str, ...] = ()
         languages: tuple[str, ...] = ()
-        hours: tuple[tuple[int, int], ...] = ()
-        exclude_hours: bool = False
+        hours: BrowseScreeningMoviesQuery.HourFilter | None = None
         excluded_cinemas: tuple[str, ...] = ()
 
         def __post_init__(self) -> None:
@@ -40,8 +62,6 @@ class BrowseScreeningMoviesQuery:
                 raise ValueError("end is outside the supported date range")
             if self.page < 1:
                 raise ValueError("page must be at least 1")
-            if not all(0 <= start < end <= 24 for start, end in self.hours):
-                raise ValueError("hours must be ranges with 0 <= start < end <= 24")
 
     @dataclass(frozen=True, slots=True)
     class OutputData:
@@ -70,16 +90,26 @@ class BrowseScreeningMoviesQuery:
             else None
         )
         now = self._clock()
+        hours = input_data.hours
         page = await self._reader.search(
-            start,
-            end,
-            now,
-            input_data.page,
-            input_data.title,
-            input_data.cinemas,
-            input_data.languages,
-            input_data.hours,
-            input_data.exclude_hours,
-            input_data.excluded_cinemas,
+            ScreeningMovieReader.SearchRequest(
+                start=start,
+                end=end,
+                now=now,
+                page=input_data.page,
+                title=input_data.title,
+                cinemas=input_data.cinemas,
+                languages=input_data.languages,
+                hours=ScreeningMovieReader.HourFilter(
+                    ranges=tuple(
+                        ScreeningMovieReader.HourRange(item.start, item.end)
+                        for item in hours.ranges
+                    ),
+                    excluded=hours.excluded,
+                )
+                if hours
+                else None,
+                excluded_cinemas=input_data.excluded_cinemas,
+            )
         )
         return self.OutputData(movies=tuple(page.items), total=page.total)

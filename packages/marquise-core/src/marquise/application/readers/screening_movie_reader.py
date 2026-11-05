@@ -14,6 +14,34 @@ class ScreeningMovieReader(ABC):
     """Read distinct movies with their earliest qualifying screenings."""
 
     @dataclass(frozen=True, slots=True)
+    class HourRange:
+        """One half-open whole-hour Montréal range."""
+
+        start: int
+        end: int
+
+    @dataclass(frozen=True, slots=True)
+    class HourFilter:
+        """Hour ranges matched together before optional exclusion."""
+
+        ranges: tuple[ScreeningMovieReader.HourRange, ...]
+        excluded: bool = False
+
+    @dataclass(frozen=True, slots=True)
+    class SearchRequest:
+        """All bounds and filters for one movie-first page."""
+
+        start: datetime
+        end: datetime | None
+        now: datetime
+        page: int
+        title: str | None = None
+        cinemas: tuple[str, ...] = ()
+        languages: tuple[str, ...] = ()
+        hours: ScreeningMovieReader.HourFilter | None = None
+        excluded_cinemas: tuple[str, ...] = ()
+
+    @dataclass(frozen=True, slots=True)
     class MovieData:
         """Movie metadata and up to three qualifying screenings in order."""
 
@@ -29,18 +57,6 @@ class ScreeningMovieReader(ABC):
         tmdb_vote_count: int | None = None
 
     @abstractmethod
-    async def search(
-        self,
-        start: datetime,
-        end: datetime | None,
-        now: datetime,
-        page: int,
-        title: str | None = None,
-        cinemas: tuple[str, ...] = (),
-        languages: tuple[str, ...] = (),
-        hours: tuple[tuple[int, int], ...] = (),
-        exclude_hours: bool = False,
-        excluded_cinemas: tuple[str, ...] = (),
-    ) -> Page[MovieData]:
+    async def search(self, request: SearchRequest) -> Page[MovieData]:
         """Return a 24-movie page within inclusive bounds, strictly after now."""
         ...

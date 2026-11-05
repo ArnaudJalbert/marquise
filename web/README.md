@@ -77,7 +77,7 @@ pnpm --filter marquise-interface dev
 
 ## API and production builds
 
-- The injected `BrowseClient` separates `POST /v1/screening-movies/search` from
+- The injected `BrowseClient` separates `POST /v1/screening-movies` from
   `GET /v1/movies`. Screening pages contain 24 distinct movies, ordered by the
   earliest upcoming show and ID, plus at most three qualifying screenings each.
   Catalogue pages contain 24 movies and accept an endpoint title search without

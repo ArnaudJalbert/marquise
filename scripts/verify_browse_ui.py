@@ -57,7 +57,7 @@ def verify(origin: str, output: Path) -> None:
         )
         page.goto(origin)
         check_grid(page, 4)
-        assert len(requests) == 1 and "/v1/screening-movies/search?" in requests[0]
+        assert len(requests) == 1 and "/v1/screening-movies?" in requests[0]
         expect(
             page.get_by_text("About this section").locator("..")
         ).not_to_have_attribute("open", "")
