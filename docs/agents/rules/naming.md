@@ -61,6 +61,24 @@ self._remove_duplicate_showtimes_from_cinematheque_page(showtimes)
 - Give every variable a name with at least two letters that reveals its meaning.
 - In Python, use `_` only for a value intentionally discarded.
 
+## Name generic type parameters descriptively
+
+- Use descriptive generic type parameter names such as `ScreeningT`.
+
+```python
+from collections.abc import Sequence
+
+from marquise.domain.entities import Screening
+
+
+def copy_screenings[ScreeningT: Screening](
+    screenings: Sequence[ScreeningT],
+) -> list[ScreeningT]:
+    return list(screenings)
+```
+
+`ScreeningT` identifies a screening type. Using it for both the input and output preserves the caller's specific screening subtype.
+
 ## Name values and properties with nouns
 
 - Name variables and properties with nouns or noun phrases, including boolean values such as `postability: bool`.
