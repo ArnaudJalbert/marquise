@@ -6,6 +6,7 @@ export interface CatalogueCinema {
   website?: string;
 }
 export interface CatalogueScreening {
+  showtime: string;
   cinemaId: string;
   date: string;
   time: string;
@@ -41,6 +42,7 @@ export interface CatalogueSelection {
   to: string;
 }
 export interface MinimalCatalogueProps {
+  currentTime?: string;
   movies: readonly CatalogueMovie[];
   catalogueMovies?: readonly CatalogueMovie[];
   catalogueNotice?: string;

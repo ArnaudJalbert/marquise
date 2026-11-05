@@ -55,6 +55,7 @@ export async function loadMovieWeek(
   });
   return {
     screenings: items.map((item) => ({
+      showtime: item.showtime,
       cinemaId: item.cinema_id,
       cinemaName: item.cinema_name,
       date: toMontrealIsoDate(new Date(item.showtime)),
