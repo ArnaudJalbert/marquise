@@ -137,8 +137,8 @@ Cineplex, TMDB, or the referenced cinemas, ticket providers, or source websites.
 
 ## Authentication
 
-The current read and search endpoints under ``/v1``, plus ``/health`` and
-``/ready``, are public. POST, PATCH, and DELETE mutations under
+The current read endpoints, including search, under ``/v1``, plus ``/health``
+and ``/ready``, are public. POST, PATCH, and DELETE mutations under
 ``/v1/screenings`` require a verified Supabase bearer token with the canonical
 `editor` or `administrator` Marquise role. Both roles have identical global
 permissions, including permanent deletion.
