@@ -123,3 +123,30 @@ it("resolves an exact opaque movie ID through the one-ID query, preserving slash
     "MovieNotFoundError",
   );
 });
+
+it("requests one page of a movie's upcoming screenings from a datetime", async () => {
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockResolvedValue(
+      new Response(
+        JSON.stringify({ items: [], total: 0, page: 1, pages: 0, size: 100 }),
+      ),
+    );
+  const client = new HttpMarquiseClient({ baseUrl: "", fetch });
+  const controller = new AbortController();
+  await client.fetchUpcomingScreeningsPage(
+    "movie 1",
+    "2026-11-01T22:00:00.000Z",
+    controller.signal,
+  );
+  const url = new URL(String(fetch.mock.calls[0]?.[0]), "https://api.example");
+  expect(url.pathname).toBe("/v1/movies/movie%201/screenings");
+  expect([...url.searchParams]).toEqual([
+    ["from", "2026-11-01T22:00:00.000Z"],
+    ["page", "1"],
+    ["size", "100"],
+  ]);
+  expect(fetch).toHaveBeenCalledExactlyOnceWith(expect.any(String), {
+    signal: controller.signal,
+  });
+});

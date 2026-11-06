@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-06
+
+- Add `fetchUpcomingScreeningsPage`, which reads one page of 100 of a movie's screenings at or after a datetime from `GET /v1/movies/{movie_id}/screenings?from=`. Supports #431.
+
 ## 2026-11-01
 
 - Allow screening-movie queries without an end date for complete upcoming listings.

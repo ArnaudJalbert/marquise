@@ -38,4 +38,10 @@ export interface BrowseClient {
     page: number,
     signal?: AbortSignal,
   ): Promise<Page<ScreeningApi>>;
+  /** One page of 100 of a movie's screenings at or after `from`, soonest first. */
+  fetchUpcomingScreeningsPage(
+    movieId: string,
+    from: string,
+    signal?: AbortSignal,
+  ): Promise<Page<ScreeningApi>>;
 }

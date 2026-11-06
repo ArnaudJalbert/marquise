@@ -155,6 +155,17 @@ export class HttpMarquiseClient
     });
     return this.fetchJson(`/v1/screenings?${params}`, signal);
   }
+  async fetchUpcomingScreeningsPage(
+    movieId: string,
+    from: string,
+    signal?: AbortSignal,
+  ): Promise<Page<ScreeningApi>> {
+    const params = new URLSearchParams({ from, page: "1", size: "100" });
+    return this.fetchJson(
+      `/v1/movies/${encodeURIComponent(movieId)}/screenings?${params}`,
+      signal,
+    );
+  }
   private screeningPath(query: ScreeningQuery): string {
     const range = montrealDayRange(query.date);
     const params = new URLSearchParams({

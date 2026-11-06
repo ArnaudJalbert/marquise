@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type {
   CatalogueCinema,
   CatalogueMovie,
+  CatalogueScreening,
   CatalogueSelection,
   MinimalCatalogueProps,
 } from "./catalogue-types";
@@ -78,25 +79,70 @@ function EndSentinel({
   }, [enabled, onReach]);
   return <div className="minimal-page-sentinel" ref={ref} aria-hidden="true" />;
 }
+type UpcomingScreenings = "loading" | "error" | CatalogueScreening[];
+
+/** Upcoming screenings per movie, each loaded at most once while the page lives. */
+function useUpcomingScreenings(
+  onLoad: MinimalCatalogueProps["onLoadUpcomingScreenings"],
+) {
+  const [byMovie, setByMovie] = useState<Record<string, UpcomingScreenings>>({});
+  const requested = useRef(new Set<string>());
+  const controller = useRef<AbortController | null>(null);
+  useEffect(() => {
+    const pageController = new AbortController();
+    controller.current = pageController;
+    return () => pageController.abort();
+  }, []);
+  const settle = (movieId: string, result: UpcomingScreenings) =>
+    setByMovie((current) => ({ ...current, [movieId]: result }));
+  return {
+    load(movie: CatalogueMovie) {
+      const signal = controller.current?.signal;
+      if (!onLoad || !signal || requested.current.has(movie.id)) return;
+      requested.current.add(movie.id);
+      settle(movie.id, "loading");
+      onLoad(movie, signal).then(
+        (screenings) => settle(movie.id, screenings),
+        () => {
+          if (!signal.aborted) settle(movie.id, "error");
+        },
+      );
+    },
+    movie(movie: CatalogueMovie): CatalogueMovie {
+      const result = byMovie[movie.id];
+      return Array.isArray(result) ? { ...movie, screenings: result } : movie;
+    },
+    notice(movieId: string): string | undefined {
+      const result = byMovie[movieId];
+      if (result === "loading") return "Loading…";
+      if (result === "error") return "Couldn't load screenings";
+      return undefined;
+    },
+  };
+}
+
 export function MinimalMovieCard({
   movie,
   cinemas,
   expanded,
   onExpanded,
   showYear = false,
-  previewable = true,
+  previewNotice,
+  emptyNotice = "No matching upcoming screenings.",
   currentTime = new Date().toISOString(),
 }: {
   currentTime?: string;
+  /** Replaces the times while screenings load or after they fail to load. */
+  previewNotice?: string;
+  emptyNotice?: string;
   expanded?: boolean;
   showYear?: boolean;
-  previewable?: boolean;
   onExpanded?: (open: boolean) => void;
   movie: CatalogueMovie;
   cinemas: readonly CatalogueCinema[];
 }) {
   const [localOpen, setLocalOpen] = useState(false);
-  const open = previewable && (expanded ?? localOpen);
+  const open = expanded ?? localOpen;
   const setOpen = onExpanded ?? setLocalOpen;
   const arrow = useRef<HTMLButtonElement>(null);
   const now = new Date(currentTime);
@@ -143,18 +189,16 @@ export function MinimalMovieCard({
         <a href={`/movies/${encodeURIComponent(movie.id)}`} title={movie.title}>
           {movie.title}
         </a>
-        {previewable && (
-          <button
-            ref={arrow}
-            type="button"
-            aria-label={`Preview ${movie.title}`}
-            aria-expanded={open}
-            aria-controls={id}
-            onClick={() => setOpen(!open)}
-          >
-            <ArrowUpRight aria-hidden size={17} />
-          </button>
-        )}
+        <button
+          ref={arrow}
+          type="button"
+          aria-label={`Preview ${movie.title}`}
+          aria-expanded={open}
+          aria-controls={id}
+          onClick={() => setOpen(!open)}
+        >
+          <ArrowUpRight aria-hidden size={17} />
+        </button>
       </div>
       {showYear && movie.year && (
         <small className="minimal-card-year">{movie.year}</small>
@@ -178,12 +222,12 @@ export function MinimalMovieCard({
               <X aria-hidden size={16} />
             </button>
           </header>
-          {preview.length ? preview.map((s, i) => (
+          {previewNotice ? <p role="status">{previewNotice}</p> : preview.length ? preview.map((s, i) => (
             <p key={i}>
               <Showtime screening={s} />
               {cinemas.find((c) => c.id === s.cinemaId)?.name ?? s.cinemaName ?? "Cinema unavailable"}
             </p>
-          )) : <p>No matching upcoming screenings.</p>}
+          )) : <p>{emptyNotice}</p>}
           <footer className="minimal-preview-footer">
             {dayScreenings.length > 4 && <><a href={movieHref}>+{dayScreenings.length - 4} more</a>{" · "}</>}
             {nextDay && <>Then {relativeDay(nextDay, today)}{" · "}</>}
@@ -373,6 +417,7 @@ export function MinimalCatalogue({
   onLoadMore,
   onRetry,
   onLoadWeek,
+  onLoadUpcomingScreenings,
 }: MinimalCatalogueProps) {
   const currentUrl = new URL(href, "http://prototype.invalid");
   const path = currentUrl.pathname;
@@ -389,6 +434,7 @@ export function MinimalCatalogue({
     movies.find((m) => m.id === decodedMovieId);
   const [movieSearch, setMovieSearch] = useState("");
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const upcoming = useUpcomingScreenings(onLoadUpcomingScreenings);
   const cinema = cinemas.find((c) => c.id === cinemaId);
   const infoPath = path.replace(/(.)\/$/, "$1");
   const infoPage = infoPages[infoPath];
@@ -774,10 +820,17 @@ export function MinimalCatalogue({
                       {allMovieMatches.map((item) => (
                         <MinimalMovieCard
                           key={item.id}
-                          movie={item}
+                          movie={upcoming.movie(item)}
+                          currentTime={currentTime}
                           cinemas={cinemas}
                           showYear
-                          previewable={false}
+                          previewNotice={upcoming.notice(item.id)}
+                          emptyNotice="No upcoming screenings"
+                          expanded={previewId === item.id}
+                          onExpanded={(open) => {
+                            setPreviewId(open ? item.id : null);
+                            if (open) upcoming.load(item);
+                          }}
                         />
                       ))}
                     </div>
