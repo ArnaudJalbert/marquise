@@ -627,7 +627,7 @@ it("focuses the movie search field when the visitor presses slash", () => {
   /** Scenario: pressing / anywhere on the page jumps to search, but typing / inside another field stays in that field. */
   render(<MinimalCatalogue {...props} />);
   const search = screen.getByRole("searchbox", { name: "Search movies" });
-  const start = screen.getByLabelText("Start date");
+  const start = screen.getByLabelText("Start time");
   start.focus();
   expect(fireEvent.keyDown(start, { key: "/" })).toBe(true);
   expect(start).toHaveFocus();
