@@ -541,12 +541,10 @@ it("marks only the current section and today's day as selected", () => {
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
-  let reject!: (reason: unknown) => void;
-  const promise = new Promise<T>((onResolve, onReject) => {
+  const promise = new Promise<T>((onResolve) => {
     resolve = onResolve;
-    reject = onReject;
   });
-  return { promise, resolve, reject };
+  return { promise, resolve };
 }
 
 const later = { ...movie, id: "later", title: "A future film", year: 1999, screenings: [] };
