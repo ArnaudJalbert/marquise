@@ -63,8 +63,8 @@ export function relativeDay(date: string, today: string): string {
 }
 
 /** Floored minutes until a showtime, shown only when it starts under two hours from now. */
-export function startsIn(showtime: string, now: number): string {
-  const minutes = Math.floor((Date.parse(showtime) - now) / 60000);
+export function startsIn(showtime: string, currentTimeInMilliseconds: number): string {
+  const minutes = Math.floor((Date.parse(showtime) - currentTimeInMilliseconds) / 60000);
   if (minutes < 0 || minutes >= 120) return "";
   if (minutes < 60) return `in ${minutes} min`;
   return minutes === 60 ? "in 1 h" : `in 1 h ${minutes - 60} min`;
