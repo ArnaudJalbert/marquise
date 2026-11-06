@@ -7,7 +7,7 @@ so these tests touch no database.
 from __future__ import annotations
 
 import asyncio
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, create_autospec
 
@@ -1401,22 +1401,46 @@ def test_get_movie_screenings(client: TestClient, factory: MagicMock) -> None:
     assert body["total"] == 1
 
 
-def test_get_movie_screenings_ignores_unsupported_query_params(
+def test_get_movie_screenings_without_from_keeps_unfiltered_call(
     client: TestClient, factory: MagicMock
 ) -> None:
-    """Filters beyond movie scope aren't accepted — use GET /v1/screenings instead."""
+    """Omitting from keeps the current call; cinema and language stay ignored."""
     factory.get_movie_screenings_query.execute.return_value = SimpleNamespace(
         movie_id="mov-1", movie_title="The Odyssey", screenings=[], total=0
     )
 
     response = client.get(
         "/v1/movies/mov-1/screenings",
-        params={"cinema_id": "cin-1", "language": "V.O.", "from": "2026-06-27"},
+        params={"cinema_id": "cin-1", "language": "V.O."},
     )
 
     assert response.status_code == 200
     factory.get_movie_screenings_query.execute.assert_awaited_once_with(
         GetMovieScreeningsQuery.InputData(movie_id="mov-1", page=1, size=50)
+    )
+
+
+def test_get_movie_screenings_passes_from_as_start(
+    client: TestClient, factory: MagicMock
+) -> None:
+    """The from query parameter is parsed and passed to the query as start."""
+    factory.get_movie_screenings_query.execute.return_value = SimpleNamespace(
+        movie_id="mov-1", movie_title="The Odyssey", screenings=[], total=0
+    )
+
+    response = client.get(
+        "/v1/movies/mov-1/screenings",
+        params={"from": "2026-06-27T18:00:00+00:00", "page": 1, "size": 100},
+    )
+
+    assert response.status_code == 200
+    factory.get_movie_screenings_query.execute.assert_awaited_once_with(
+        GetMovieScreeningsQuery.InputData(
+            movie_id="mov-1",
+            start=datetime(2026, 6, 27, 18, 0, tzinfo=UTC),
+            page=1,
+            size=100,
+        )
     )
 
 

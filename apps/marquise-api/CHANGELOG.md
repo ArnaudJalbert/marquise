@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-06
+
+### v0.1.19
+
+- Accept an optional `from` datetime on `GET /v1/movies/{movie_id}/screenings` to list only screenings at or after it. Requires core v0.2.44. Closes #431.
+
 ## 2026-11-02
 
 ### v0.1.18

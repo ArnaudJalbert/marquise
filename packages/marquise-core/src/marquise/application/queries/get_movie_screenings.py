@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from marquise.application.exceptions import MovieNotFoundError
 from marquise.application.readers import ScreeningReader
@@ -18,6 +19,7 @@ class GetMovieScreeningsQuery:
         """Input data for movie screening summaries."""
 
         movie_id: str
+        start: datetime | None = None
         page: int = 1
         size: int | None = None
 
@@ -60,8 +62,12 @@ class GetMovieScreeningsQuery:
             if input_data.size is not None
             else 0
         )
+        start_filter = (
+            {"start_date": input_data.start} if input_data.start is not None else {}
+        )
         page = await self.screening_reader.search(
             movie_id=input_data.movie_id,
+            **start_filter,
             limit=limit,
             offset=offset,
         )
