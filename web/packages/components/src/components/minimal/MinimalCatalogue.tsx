@@ -108,11 +108,11 @@ function useUpcomingScreenings(
         },
       );
     },
-    movie(movie: CatalogueMovie): CatalogueMovie {
+    getMovieWithUpcomingScreenings(movie: CatalogueMovie): CatalogueMovie {
       const result = byMovie[movie.id];
       return Array.isArray(result) ? { ...movie, screenings: result } : movie;
     },
-    notice(movieId: string): string | undefined {
+    getPreviewNotice(movieId: string): string | undefined {
       const result = byMovie[movieId];
       if (result === "loading") return "Loading…";
       if (result === "error") return "Couldn't load screenings";
@@ -820,11 +820,11 @@ export function MinimalCatalogue({
                       {allMovieMatches.map((item) => (
                         <MinimalMovieCard
                           key={item.id}
-                          movie={upcoming.movie(item)}
+                          movie={upcoming.getMovieWithUpcomingScreenings(item)}
                           currentTime={currentTime}
                           cinemas={cinemas}
                           showYear
-                          previewNotice={upcoming.notice(item.id)}
+                          previewNotice={upcoming.getPreviewNotice(item.id)}
                           emptyNotice="No upcoming screenings"
                           expanded={previewId === item.id}
                           onExpanded={(open) => {
