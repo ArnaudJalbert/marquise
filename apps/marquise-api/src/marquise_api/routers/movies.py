@@ -85,7 +85,7 @@ async def get_movie(
 
 
 @router.get(
-    "/movies/{movie_id}/screenings",
+    "/movies/{movie_id:path}/screenings",
     response_model=Page[ScreeningResponse],
     responses=error_responses(404, 422, 429),
 )

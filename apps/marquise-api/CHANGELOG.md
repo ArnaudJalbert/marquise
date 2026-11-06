@@ -5,6 +5,7 @@
 ### v0.1.19
 
 - Accept an optional `from` datetime on `GET /v1/movies/{movie_id}/screenings` to list only screenings at or after it. Requires core v0.2.44. Closes #431.
+- Match movie IDs containing an encoded slash (`%2F`) on `GET /v1/movies/{movie_id}/screenings` instead of returning 404.
 
 ## 2026-11-02
 

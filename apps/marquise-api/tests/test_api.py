@@ -1444,6 +1444,30 @@ def test_get_movie_screenings_passes_from_as_start(
     )
 
 
+def test_get_movie_screenings_preserves_opaque_slash_id(
+    client: TestClient, factory: MagicMock
+) -> None:
+    """An encoded slash in the movie ID reaches the query as the exact ID."""
+    factory.get_movie_screenings_query.execute.return_value = SimpleNamespace(
+        movie_id="catalogue/id", movie_title="Slash film", screenings=[], total=0
+    )
+
+    response = client.get(
+        "/v1/movies/catalogue%2Fid/screenings"
+        "?from=2026-06-27T18%3A00%3A00%2B00%3A00&page=1&size=100"
+    )
+
+    assert response.status_code == 200
+    factory.get_movie_screenings_query.execute.assert_awaited_once_with(
+        GetMovieScreeningsQuery.InputData(
+            movie_id="catalogue/id",
+            start=datetime(2026, 6, 27, 18, 0, tzinfo=UTC),
+            page=1,
+            size=100,
+        )
+    )
+
+
 def test_get_movie_screenings_not_found(client: TestClient, factory: MagicMock) -> None:
     """GET /movies/{id}/screenings returns a 404 envelope for a missing movie."""
     factory.get_movie_screenings_query.execute.side_effect = MovieNotFoundError(
