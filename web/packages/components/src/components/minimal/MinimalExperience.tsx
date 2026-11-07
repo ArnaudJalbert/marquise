@@ -4,6 +4,7 @@ import {
   posterRenditionUrl,
   toMontrealIsoDate,
   type BrowseClient,
+  type HourFilter,
   type MovieApi,
   type ScreeningApi,
 } from "marquise-client";
@@ -98,6 +99,18 @@ function listingHref(href: string, selection: CatalogueSelection): string {
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
+// shortcut: maps the inclusive hour slider to one half-open range; drop with the slider (#433).
+function sliderHours(from: string, to: string): HourFilter | undefined {
+  const start = Math.min(from ? timeToHour(from, 0) : 0, 23);
+  const end = to ? timeToHour(to, 24) : 24;
+  return start === 0 && end === 24
+    ? undefined
+    : {
+        operator: "is",
+        ranges: [{ start, end: Math.max(end, start + 1) }],
+      };
+}
+
 /** Production composition of the approved UI with injected, bounded API reads. */
 export function MinimalExperience({
   client,
@@ -153,8 +166,7 @@ export function MinimalExperience({
             title: selection.title,
             cinemas: fixedCinemaId ? [fixedCinemaId] : selection.cinemas,
             languages: selection.languages,
-            startHour: selection.from ? timeToHour(selection.from, 0) : 0,
-            endHour: selection.to ? timeToHour(selection.to, 24) : 24,
+            hours: sliderHours(selection.from, selection.to),
           },
           signal,
         ),

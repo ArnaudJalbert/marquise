@@ -19,6 +19,7 @@ export type {
 import {
   addDays,
   relativeDay,
+  startsIn,
   formatScore,
   timeToHour,
   formatHour,
@@ -224,7 +225,7 @@ export function MinimalMovieCard({
           </header>
           {previewNotice ? <p role="status">{previewNotice}</p> : preview.length ? preview.map((s, i) => (
             <p key={i}>
-              <Showtime screening={s} />
+              <Showtime screening={s} countdown={startsIn(s.showtime, now.getTime())} />
               {cinemas.find((c) => c.id === s.cinemaId)?.name ?? s.cinemaName ?? "Cinema unavailable"}
             </p>
           )) : <p>{emptyNotice}</p>}

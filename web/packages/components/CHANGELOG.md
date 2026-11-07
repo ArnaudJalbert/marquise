@@ -3,6 +3,7 @@
 ## 2026-11-06
 
 - Give Movies section Movie Cards the preview button, hover preview and next-day layout. Each card's upcoming screenings load through the injected `onLoadUpcomingScreenings` the first time its preview opens, at most once per movie while the page is open, and the request is aborted on unmount. The preview shows "Loading…", "Couldn't load screenings" or "No upcoming screenings" and keeps the Schedule link. Supports #431.
+- Show an indigo "in N min" or "in 1 h N min" countdown after each preview time that starts within two hours, driven by the catalogue's current time prop. Supports #432.
 
 ## 2026-11-03
 
@@ -10,6 +11,8 @@
 - Give Screenings movie search its own always-visible field outside the Filters panel, focused with `/`. The listing URL now uses `q`; the old `title` param is ignored. Supports #443.
 - Show only the next matching Montréal day in Screenings previews, hide started screenings using absolute showtimes through the repeated DST hour, cap times at four, and add relative day labels and a compact schedule footer in a flat indigo-accented box. Supports #430.
 - Share one Movie Card across the Screenings and Movies sections, and replace the arrow and close text glyphs with line icons so iPhones no longer render emoji. Supports #429.
+
+- Send the screenings hour slider as a structured `is` filter with one half-open hour range. A single-hour pick such as 18:00 to 18:00 covers the whole 18:00 hour. Supports #441.
 
 ## 2026-11-01
 

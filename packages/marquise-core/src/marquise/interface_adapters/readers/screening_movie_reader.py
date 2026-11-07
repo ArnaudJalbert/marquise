@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime, time
 from typing import Protocol
 
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
@@ -14,18 +13,7 @@ from marquise.interface_adapters.repositories.protocols.base import GatewayPage
 class ScreeningMovieReadGateway(Protocol):
     """Plain-data contract for distinct-movie pagination."""
 
-    async def search(
-        self,
-        start: datetime,
-        end: datetime | None,
-        now: datetime,
-        page: int,
-        title: str | None = None,
-        cinemas: tuple[str, ...] = (),
-        languages: tuple[str, ...] = (),
-        start_time: time | None = None,
-        end_time: time | None = None,
-    ) -> GatewayPage:
+    async def search(self, request: ScreeningMovieReader.SearchRequest) -> GatewayPage:
         """Return 24 distinct movies with ordered previews and a true total."""
         ...
 
@@ -38,21 +26,10 @@ class SupabaseScreeningMovieReader(ScreeningMovieReader):
         self._gateway = gateway
 
     async def search(
-        self,
-        start: datetime,
-        end: datetime | None,
-        now: datetime,
-        page: int,
-        title: str | None = None,
-        cinemas: tuple[str, ...] = (),
-        languages: tuple[str, ...] = (),
-        start_time: time | None = None,
-        end_time: time | None = None,
+        self, request: ScreeningMovieReader.SearchRequest
     ) -> Page[ScreeningMovieReader.MovieData]:
         """Map movie metadata and screening projections."""
-        result = await self._gateway.search(
-            start, end, now, page, title, cinemas, languages, start_time, end_time
-        )
+        result = await self._gateway.search(request)
         return Page(
             items=[
                 self.MovieData(

@@ -1,11 +1,17 @@
 # Changelog
 
-## 2026-11-06
+## 2026-11-07
+
+### v0.1.20
+
+- Accept an optional `from` datetime on `GET /v1/movies/{movie_id}/screenings` to list only screenings at or after it. Requires core v0.2.45. Closes #431.
+- Match movie IDs containing an encoded slash (`%2F`) on `GET /v1/movies/{movie_id}/screenings` instead of returning 404.
+
+## 2026-11-03
 
 ### v0.1.19
 
-- Accept an optional `from` datetime on `GET /v1/movies/{movie_id}/screenings` to list only screenings at or after it. Requires core v0.2.44. Closes #431.
-- Match movie IDs containing an encoded slash (`%2F`) on `GET /v1/movies/{movie_id}/screenings` instead of returning 404.
+- **Breaking:** replace `GET /v1/screening-movies` with `POST /v1/screening-movies`. Its Pydantic JSON body accepts a structured `hours` filter with `is` or `is_not` and half-open whole-hour ranges. Invalid operators, empty ranges, and bounds outside `0 <= start < end <= 24` return 422. Add repeatable `exclude_cinema` query parameters. Requires core v0.2.44. Closes #441.
 
 ## 2026-11-02
 

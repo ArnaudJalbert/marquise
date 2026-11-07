@@ -137,10 +137,11 @@ Cineplex, TMDB, or the referenced cinemas, ticket providers, or source websites.
 
 ## Authentication
 
-The current read endpoints under ``/v1``, plus ``/health`` and ``/ready``,
-are public. POST, PATCH, and DELETE screening endpoints require a verified
-Supabase bearer token with the canonical `editor` or `administrator` Marquise
-role. Both roles have identical global permissions, including permanent deletion.
+The current read endpoints, including search, under ``/v1``, plus ``/health``
+and ``/ready``, are public. POST, PATCH, and DELETE mutations under
+``/v1/screenings`` require a verified Supabase bearer token with the canonical
+`editor` or `administrator` Marquise role. Both roles have identical global
+permissions, including permanent deletion.
 Missing/invalid credentials return 401 with `WWW-Authenticate: Bearer`; disallowed
 roles return 403; an unavailable or unconfigured verifier returns 503.
 

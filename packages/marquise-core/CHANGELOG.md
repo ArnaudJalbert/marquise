@@ -2,11 +2,17 @@
 
 Before 2026-07-15 this package was published as `marquise`.
 
-## 2026-11-06
+## 2026-11-07
+
+### v0.2.45
+
+- Let the get movie screenings query take an optional start datetime and pass it to the screening reader search. Closes #431.
+
+## 2026-11-03
 
 ### v0.2.44
 
-- Let the get movie screenings query take an optional start datetime and pass it to the screening reader search. Closes #431.
+- Filter screening movies with structured `is` and `is_not` operators over half-open Montréal hour ranges. Exclude cinemas by ID. Closes #441.
 
 ## 2026-11-02
 
