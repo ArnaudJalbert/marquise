@@ -54,40 +54,6 @@ class MovieMetadataSnapshot:
 
 
 @dataclass(frozen=True, slots=True)
-class MatchMovieInputData:
-    """Independent source evidence; title remains unchanged for screening mapping."""
-
-    title: str
-    release_year: int | None = None
-    directors: tuple[str, ...] = ()
-    duration_minutes: int | None = None
-    identity_title: str | None = None
-
-    def __post_init__(self) -> None:
-        """Require a title for discovery."""
-        if not self.title.strip():
-            raise ValueError("Movie title must not be blank")
-
-
-@dataclass(frozen=True, slots=True)
-class MatchMovieOutputData:
-    """No-match requires complete discovery; failures preserve source data."""
-
-    status: Literal["matched", "unmatched", "failed", "incomplete"]
-    identity: ProviderIdentity | None = None
-    failure: MetadataFailure | None = None
-    titles: tuple[str, ...] = ()
-    release_year: int | None = None
-
-    def __post_init__(self) -> None:
-        """Reject ambiguous identity and failure outcomes."""
-        if (self.status == "matched") != (self.identity is not None):
-            raise ValueError("Only matched results carry an identity")
-        if (self.status == "failed") != (self.failure is not None):
-            raise ValueError("Only failed results carry a failure")
-
-
-@dataclass(frozen=True, slots=True)
 class EnrichMovieInputData:
     """Enrich a stable movie after confirmation, or explicitly refresh it."""
 
@@ -209,22 +175,6 @@ class MovieMetadataRepository(ABC):
         duplicates only after all references are moved. Blocked/stale requests
         change nothing and return blocked with reasons, including missing IDs.
         """
-        ...
-
-
-class MatchMovieExecutor(Protocol):
-    """Injectable matching execution interface, without a production stub."""
-
-    async def execute(self, input_data: MatchMovieInputData) -> MatchMovieOutputData:
-        """Choose an identity using independent source evidence."""
-        ...
-
-
-class EnrichMovieExecutor(Protocol):
-    """Injectable initial enrichment execution interface."""
-
-    async def execute(self, input_data: EnrichMovieInputData) -> EnrichMovieOutputData:
-        """Enrich confirmed identity without changing stable IDs."""
         ...
 
 

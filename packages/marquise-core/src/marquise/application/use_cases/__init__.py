@@ -7,9 +7,7 @@ from marquise.application.use_cases.auth import (
     SetAccountRoleUseCase,
 )
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
-from marquise.application.use_cases.create_missing_movies import (
-    CreateMissingMoviesCommand,
-)
+from marquise.application.use_cases.create_movies import CreateMoviesCommand
 from marquise.application.use_cases.create_screening import CreateScreeningUseCase
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.create_source import CreateSourceUseCase
@@ -24,6 +22,7 @@ from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
+from marquise.application.use_cases.resolve_movies import ResolveMoviesCommand
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.application.use_cases.update_screening import UpdateScreeningUseCase
@@ -32,7 +31,7 @@ __all__ = [
     "AssignSourceUseCase",
     "AuthenticateAdministratorUseCase",
     "CreateCinemaUseCase",
-    "CreateMissingMoviesCommand",
+    "CreateMoviesCommand",
     "CreateScreeningUseCase",
     "CreateScreeningsCommand",
     "CreateSourceUseCase",
@@ -42,6 +41,7 @@ __all__ = [
     "GetCinemaUseCase",
     "GetCinemaSourceUseCase",
     "ImportScreeningsCommand",
+    "ResolveMoviesCommand",
     "InviteAccountUseCase",
     "ListCinemasUseCase",
     "ListRegistrySourcesUseCase",

@@ -3,6 +3,7 @@
 from marquise.application.queries.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
+from marquise.application.queries.find_stored_movies import FindStoredMoviesQuery
 from marquise.application.queries.get_cinema_screenings import (
     GetCinemaScreeningsQuery,
 )
@@ -16,6 +17,7 @@ from marquise.application.queries.verify_access_token import VerifyAccessTokenQu
 
 __all__ = [
     "FetchScreeningsFromSourceQuery",
+    "FindStoredMoviesQuery",
     "GetCinemaScreeningsQuery",
     "GetMovieScreeningsQuery",
     "GetScreeningQuery",

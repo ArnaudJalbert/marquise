@@ -2,6 +2,12 @@
 
 Before 2026-07-15 this package was published as `marquise`.
 
+## 2026-11-07
+
+### v0.2.45
+
+- Split movie import into single-job use cases coordinated by `ImportScreeningsCommand` and `ResolveMoviesCommand`. A TMDB outage now fails the import, screenings are saved before enrichment, and a remake keeps its source title. Remove `CreateMissingMoviesCommand`, the `MatchMovie*` and `EnrichMovieExecutor` exports, and the factory's `create_movies_use_case`. Closes #473.
+
 ## 2026-11-03
 
 ### v0.2.44

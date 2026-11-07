@@ -5,6 +5,7 @@ from unittest.mock import create_autospec
 
 import pytest
 
+from marquise.application.exceptions.movie import MovieMetadataUnavailableError
 from marquise.application.metadata import (
     MetadataBatch,
     MetadataFailure,
@@ -14,9 +15,22 @@ from marquise.application.metadata import (
     ProviderIdentity,
     TitleFact,
 )
-from marquise.application.movie_workflows import MatchMovieInputData
-from marquise.application.use_cases.match_movie import MatchMovieUseCase
+from marquise.application.use_cases.match_movies import MatchMoviesUseCase
 from marquise.infrastructure.name_distance import RapidFuzzNameDistance
+
+MovieInput = MatchMoviesUseCase.MovieInput
+
+
+class MatchOneMovie:
+    """Run the batch use case for the single movie each scenario describes."""
+
+    def __init__(self, *dependencies: object) -> None:
+        self._use_case = MatchMoviesUseCase(*dependencies)
+
+    async def execute(self, movie: MovieInput) -> MatchMoviesUseCase.MovieMatch:
+        """Return the only match."""
+        output = await self._use_case.execute(self._use_case.InputData((movie,)))
+        return output.matches[0]
 
 
 def person(name: str, aliases: tuple[str, ...] = ()) -> PersonFact:
@@ -95,8 +109,8 @@ async def test_acceptance_examples(
         )
     repo = repository((candidate,))
     source_year = 2026 if source.startswith(("Rembrandt", "Le Monde")) else year
-    evidence = MatchMovieInputData(source, source_year, directors, runtime + 1)
-    result = await MatchMovieUseCase(repo, RapidFuzzNameDistance()).execute(evidence)
+    evidence = MovieInput(source, source_year, directors, runtime + 1)
+    result = await MatchOneMovie(repo, RapidFuzzNameDistance()).execute(evidence)
     assert result.identity == candidate.identity
     assert evidence.title == source
     repo.search_movies.assert_any_await(title, source_year)
@@ -119,9 +133,9 @@ async def test_director_spelling(
 ) -> None:
     """Only long names tolerate one edit; source co-directors are never split here."""
     candidate = movie(directors=(person(canonical), person("Extra Director")))
-    result = await MatchMovieUseCase(
+    result = await MatchOneMovie(
         repository((candidate,)), RapidFuzzNameDistance()
-    ).execute(MatchMovieInputData("Film", 2026, (source_name,), 100))
+    ).execute(MovieInput("Film", 2026, (source_name,), 100))
     assert (result.status == "matched") == accepted
 
 
@@ -153,9 +167,9 @@ async def test_eligibility(
 ) -> None:
     """Year and runtime exceptions require independent director corroboration."""
     candidate = movie(title, year, runtime, (person("Director Name"),))
-    result = await MatchMovieUseCase(
+    result = await MatchOneMovie(
         repository((candidate,)), RapidFuzzNameDistance()
-    ).execute(MatchMovieInputData("Film", 2026, directors, source_runtime))
+    ).execute(MovieInput("Film", 2026, directors, source_runtime))
     assert (result.status == "matched") == accepted
 
 
@@ -167,8 +181,8 @@ async def test_discovery_retry_and_every_director() -> None:
     repo.search_movies.return_value = MetadataBatch()
     repo.search_people.return_value = MetadataBatch(candidate.directors)
     repo.directed_movies.return_value = MetadataBatch((candidate, candidate))
-    result = await MatchMovieUseCase(repo, RapidFuzzNameDistance()).execute(
-        MatchMovieInputData("La Patrie", 2026, ("Director Name",), 100)
+    result = await MatchOneMovie(repo, RapidFuzzNameDistance()).execute(
+        MovieInput("La Patrie", 2026, ("Director Name",), 100)
     )
     assert result.identity == candidate.identity
     assert repo.search_movies.await_args_list[1].args == ("La Patrie",)
@@ -184,8 +198,8 @@ async def test_exact_match_survives_noisy_search() -> None:
         for index in range(7)
     )
     repo = repository((winner, *noise))
-    result = await MatchMovieUseCase(repo, RapidFuzzNameDistance()).execute(
-        MatchMovieInputData("& Sons", 2026, ("Pablo Trapero",), 119)
+    result = await MatchOneMovie(repo, RapidFuzzNameDistance()).execute(
+        MovieInput("& Sons", 2026, ("Pablo Trapero",), 119)
     )
     assert result.status == "matched"
     assert result.identity == winner.identity
@@ -205,8 +219,8 @@ async def test_director_discovery_survives_noisy_title_search() -> None:
     repo.search_movies.side_effect = [MetadataBatch(), MetadataBatch(noise)]
     repo.search_people.return_value = MetadataBatch(candidate.directors)
     repo.directed_movies.return_value = MetadataBatch((candidate,))
-    result = await MatchMovieUseCase(repo, RapidFuzzNameDistance()).execute(
-        MatchMovieInputData("La Patrie", 2026, ("Pawel Pawlikowski",), 82)
+    result = await MatchOneMovie(repo, RapidFuzzNameDistance()).execute(
+        MovieInput("La Patrie", 2026, ("Pawel Pawlikowski",), 82)
     )
     assert result.status == "matched"
     assert result.identity == candidate.identity
@@ -231,9 +245,9 @@ async def test_lexicographic_ranking(dimension: str) -> None:
     elif dimension == "unknown":
         loser = replace(loser, duration_minutes=None)
     candidates = (winner, loser) if dimension == "tie" else (loser, winner)
-    result = await MatchMovieUseCase(
+    result = await MatchOneMovie(
         repository(candidates), RapidFuzzNameDistance()
-    ).execute(MatchMovieInputData("Film", 2026, ("Director Name",), 100))
+    ).execute(MovieInput("Film", 2026, ("Director Name",), 100))
     assert result.identity == winner.identity
 
 
@@ -252,9 +266,9 @@ async def test_provider_equivalence_and_search_noise(provider: str) -> None:
     noise = replace(
         movie("Street Fighter II"), identity=ProviderIdentity(provider, "noise")
     )
-    result = await MatchMovieUseCase(
+    result = await MatchOneMovie(
         repository((noise, winner)), RapidFuzzNameDistance()
-    ).execute(MatchMovieInputData("Combattant de rue", 2026))
+    ).execute(MovieInput("Combattant de rue", 2026))
     assert result.identity == ProviderIdentity(provider, "42")
 
 
@@ -272,11 +286,12 @@ async def test_partial_discovery(
     repo.search_movies.return_value = MetadataBatch(
         (candidate,) if has_candidate else (), complete=False, failure=failure
     )
-    result = await MatchMovieUseCase(repo, RapidFuzzNameDistance()).execute(
-        MatchMovieInputData("Film", 2026)
-    )
-    assert result.status == ("failed" if failure else "incomplete")
-    assert result.failure == failure
+    use_case = MatchOneMovie(repo, RapidFuzzNameDistance())
+    if failure:
+        with pytest.raises(MovieMetadataUnavailableError):
+            await use_case.execute(MovieInput("Film", 2026))
+        return
+    assert (await use_case.execute(MovieInput("Film", 2026))).status == "incomplete"
 
 
 @pytest.mark.asyncio
@@ -297,8 +312,8 @@ async def test_detail_only_translation_and_unfiltered_retry() -> None:
             ),
         )
     )
-    result = await MatchMovieUseCase(repo, RapidFuzzNameDistance()).execute(
-        MatchMovieInputData("Le Monde de Wishy", 2026, ("Jens Møller",), 83)
+    result = await MatchOneMovie(repo, RapidFuzzNameDistance()).execute(
+        MovieInput("Le Monde de Wishy", 2026, ("Jens Møller",), 83)
     )
     assert result.identity == candidate.identity
     assert repo.search_movies.await_args_list[1].args == ("Le Monde de Wishy",)
@@ -309,24 +324,20 @@ async def test_detail_only_translation_and_unfiltered_retry() -> None:
 async def test_verity_corroboration(year: int | None) -> None:
     """Verity can pass a year exception only with independent corroboration."""
     candidate = movie("Verity", 2025, 120, (person("Michael Showalter"),))
-    use_case = MatchMovieUseCase(repository((candidate,)), RapidFuzzNameDistance())
+    use_case = MatchOneMovie(repository((candidate,)), RapidFuzzNameDistance())
     assert (
-        await use_case.execute(
-            MatchMovieInputData("Verity", year, ("Michael Showalter",), 119)
-        )
+        await use_case.execute(MovieInput("Verity", year, ("Michael Showalter",), 119))
     ).identity == candidate.identity
-    assert (
-        await use_case.execute(MatchMovieInputData("Verity", year))
-    ).status == "unmatched"
+    assert (await use_case.execute(MovieInput("Verity", year))).status == "unmatched"
 
 
 @pytest.mark.asyncio
 async def test_carrie_does_not_borrow_candidate_evidence() -> None:
     """An input lacking recovered Carrie evidence cannot confirm a year exception."""
     candidate = movie("Carrie", 1976, 98, (person("Brian De Palma"),))
-    result = await MatchMovieUseCase(
+    result = await MatchOneMovie(
         repository((candidate,)), RapidFuzzNameDistance()
-    ).execute(MatchMovieInputData("Carrie"))
+    ).execute(MovieInput("Carrie"))
     assert result.status == "unmatched"
 
 
@@ -338,8 +349,8 @@ async def test_discovery_retains_conflicting_codirector() -> None:
     repo.search_movies.return_value = MetadataBatch()
     repo.search_people.return_value = MetadataBatch(candidate.directors)
     repo.directed_movies.return_value = MetadataBatch((candidate,))
-    result = await MatchMovieUseCase(repo, RapidFuzzNameDistance()).execute(
-        MatchMovieInputData("La Patrie", 2026, ("Director Name", "Other Director"), 100)
+    result = await MatchOneMovie(repo, RapidFuzzNameDistance()).execute(
+        MovieInput("La Patrie", 2026, ("Director Name", "Other Director"), 100)
     )
     assert result.status == "unmatched"
 
@@ -358,8 +369,8 @@ async def test_meaningful_suffixes_are_preserved(title: str) -> None:
     """Arbitrary event labels and meaningful parentheses remain identity text."""
     candidate = movie(title)
     repo = repository((candidate,))
-    result = await MatchMovieUseCase(repo, RapidFuzzNameDistance()).execute(
-        MatchMovieInputData(title, 2026)
+    result = await MatchOneMovie(repo, RapidFuzzNameDistance()).execute(
+        MovieInput(title, 2026)
     )
     assert result.identity == candidate.identity
     repo.search_movies.assert_awaited_once_with(title, 2026)
@@ -380,9 +391,9 @@ async def test_codirectors_require_distinct_people(second_credit: bool) -> None:
     if second_credit:
         directors += (person("Jon Smith"),)
     candidate = movie(year=2025, directors=directors)
-    result = await MatchMovieUseCase(
+    result = await MatchOneMovie(
         repository((candidate,)), RapidFuzzNameDistance()
-    ).execute(MatchMovieInputData("Film", 2026, ("John Smith", "Jon Smith"), 100))
+    ).execute(MovieInput("Film", 2026, ("John Smith", "Jon Smith"), 100))
     assert (result.status == "matched") == second_credit
 
 
@@ -390,9 +401,9 @@ async def test_codirectors_require_distinct_people(second_credit: bool) -> None:
 async def test_director_assignment_can_reassign_an_earlier_typo() -> None:
     """A flexible spelling match does not consume another director's only match."""
     candidate = movie(directors=(person("John Smith"), person("Jona Smith")))
-    result = await MatchMovieUseCase(
+    result = await MatchOneMovie(
         repository((candidate,)), RapidFuzzNameDistance()
-    ).execute(MatchMovieInputData("Film", 2026, ("Jon Smith", "John Smith"), 100))
+    ).execute(MovieInput("Film", 2026, ("Jon Smith", "John Smith"), 100))
     assert result.status == "matched"
 
 
@@ -401,13 +412,13 @@ async def test_source_identity_title_preserves_screening_title() -> None:
     """Search the film title while retaining the original event label."""
     candidate = movie("Julián", 2025, 85)
     repo = repository((candidate,))
-    evidence = MatchMovieInputData(
+    evidence = MovieInput(
         title="CINEMANIA: Julián",
         release_year=2025,
         duration_minutes=85,
         identity_title="Julián",
     )
-    result = await MatchMovieUseCase(repo, RapidFuzzNameDistance()).execute(evidence)
+    result = await MatchOneMovie(repo, RapidFuzzNameDistance()).execute(evidence)
     assert result.identity == candidate.identity
     assert evidence.title == "CINEMANIA: Julián"
     repo.search_movies.assert_awaited_once_with("Julián", 2025)
@@ -418,8 +429,8 @@ async def test_candidate_limit_reports_incomplete() -> None:
     """A bounded search never declares a match while candidates remain unchecked."""
     candidates = tuple(movie(identity=str(i)) for i in range(6))
     repo = repository(candidates)
-    result = await MatchMovieUseCase(repo, RapidFuzzNameDistance()).execute(
-        MatchMovieInputData("Film", 2026, (), 100)
+    result = await MatchOneMovie(repo, RapidFuzzNameDistance()).execute(
+        MovieInput("Film", 2026, (), 100)
     )
     assert result.status == "incomplete"
     assert result.identity is None
@@ -430,9 +441,9 @@ async def test_candidate_limit_reports_incomplete() -> None:
 async def test_case_and_screening_labels_do_not_block_a_match() -> None:
     """An uppercase labelled source title matches the provider title."""
     candidate = movie("The Shining", 1980, 146)
-    result = await MatchMovieUseCase(
+    result = await MatchOneMovie(
         repository((candidate,)), RapidFuzzNameDistance()
-    ).execute(MatchMovieInputData("THE SHINING (anglais avec s.t.f.)", 1980))
+    ).execute(MovieInput("THE SHINING (anglais avec s.t.f.)", 1980))
     assert result.status == "matched"
     assert result.titles == ("The Shining",)
     assert result.release_year == 1980
@@ -443,12 +454,12 @@ async def test_contained_title_matches_but_ranks_below_an_exact_title() -> None:
     """Containment is a weaker title match; the exact title still wins."""
     longer = movie("Street Fighter: The Legend", identity="longer")
     exact = movie("Street Fighter", identity="exact")
-    use_case = MatchMovieUseCase(repository((longer, exact)), RapidFuzzNameDistance())
-    result = await use_case.execute(MatchMovieInputData("Street Fighter", 2026))
+    use_case = MatchOneMovie(repository((longer, exact)), RapidFuzzNameDistance())
+    result = await use_case.execute(MovieInput("Street Fighter", 2026))
     assert result.identity == ProviderIdentity("fixture", "exact")
-    only = MatchMovieUseCase(repository((exact,)), RapidFuzzNameDistance())
+    only = MatchOneMovie(repository((exact,)), RapidFuzzNameDistance())
     contained = await only.execute(
-        MatchMovieInputData("Street Fighter : le film (version française)", 2026)
+        MovieInput("Street Fighter : le film (version française)", 2026)
     )
     assert contained.identity == ProviderIdentity("fixture", "exact")
 
@@ -461,8 +472,8 @@ async def test_confirmed_match_does_not_bypass_runtime_ranking() -> None:
         for i, runtime in enumerate((130, 140, 140, 140, 140, 100))
     )
     repo = repository(candidates)
-    result = await MatchMovieUseCase(repo, RapidFuzzNameDistance()).execute(
-        MatchMovieInputData("Film", 2026, ("Director Name",), 100)
+    result = await MatchOneMovie(repo, RapidFuzzNameDistance()).execute(
+        MovieInput("Film", 2026, ("Director Name",), 100)
     )
     assert result.status == "incomplete"
     assert result.identity is None
@@ -484,8 +495,8 @@ async def test_incomplete_details_do_not_confirm_a_match(
         repo.directed_movies.return_value = MetadataBatch((candidate,))
     repo.movie_details.side_effect = None
     repo.movie_details.return_value = MetadataBatch((candidate,), complete=False)
-    result = await MatchMovieUseCase(repo, RapidFuzzNameDistance()).execute(
-        MatchMovieInputData("Film", 2026, directors, 100)
+    result = await MatchOneMovie(repo, RapidFuzzNameDistance()).execute(
+        MovieInput("Film", 2026, directors, 100)
     )
     expected = "incomplete" if discovery == "title" or directors else "unmatched"
     assert result.status == expected
@@ -502,8 +513,8 @@ async def test_hydration_priority_preserves_provider_tie_order() -> None:
     repo.movie_details.side_effect = lambda identity: MetadataBatch(
         (translated if identity == first.identity else second,)
     )
-    result = await MatchMovieUseCase(repo, RapidFuzzNameDistance()).execute(
-        MatchMovieInputData("Film", 2026, (), 100)
+    result = await MatchOneMovie(repo, RapidFuzzNameDistance()).execute(
+        MovieInput("Film", 2026, (), 100)
     )
     assert result.identity == first.identity
     assert repo.movie_details.await_args_list[0].args == (second.identity,)
@@ -515,8 +526,47 @@ async def test_confirmed_match_waits_for_earlier_provider_candidates() -> None:
     first = movie("Other", directors=(person("Director Name"),), identity="first")
     exact = tuple(movie(directors=first.directors, identity=str(i)) for i in range(5))
     repo = repository((first, *exact))
-    result = await MatchMovieUseCase(repo, RapidFuzzNameDistance()).execute(
-        MatchMovieInputData("Film", 2026, ("Director Name",), 100)
+    result = await MatchOneMovie(repo, RapidFuzzNameDistance()).execute(
+        MovieInput("Film", 2026, ("Director Name",), 100)
     )
     assert result.status == "incomplete"
     assert result.identity is None
+
+
+@pytest.mark.asyncio
+async def test_batch_matches_every_movie_and_names_its_source() -> None:
+    """Each result says which movie it belongs to."""
+    candidate = movie("Film", 2026, 100)
+    use_case = MatchMoviesUseCase(repository((candidate,)), RapidFuzzNameDistance())
+    films = (
+        MovieInput("Film", 2026, source_identifier="one"),
+        MovieInput("Unknown", 2026, source_identifier="two"),
+    )
+    output = await use_case.execute(use_case.InputData(films))
+    assert [match.source for match in output.matches] == list(films)
+    assert [match.status for match in output.matches] == ["matched", "unmatched"]
+
+
+@pytest.mark.parametrize(
+    "movies",
+    [["Film"], ("Film",)],
+)
+def test_input_rejects_wrong_types(movies: object) -> None:
+    """The batch must be a tuple of movie inputs."""
+    with pytest.raises(TypeError):
+        MatchMoviesUseCase.InputData(movies=movies)
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"title": 1},
+        {"title": "Film", "release_year": "2026"},
+        {"title": "Film", "directors": ["Someone"]},
+        {"title": "Film", "identity_title": 1},
+    ],
+)
+def test_movie_input_rejects_wrong_types(fields: dict) -> None:
+    """Input is the one place types are checked."""
+    with pytest.raises(TypeError):
+        MovieInput(**fields)
