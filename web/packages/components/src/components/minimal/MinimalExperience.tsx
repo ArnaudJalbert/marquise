@@ -264,6 +264,19 @@ export function MinimalExperience({
     },
     [client],
   );
+  const loadUpcomingScreenings = useCallback<
+    NonNullable<MinimalCatalogueProps["onLoadUpcomingScreenings"]>
+  >(
+    async (movie, signal) =>
+      (
+        await client.fetchUpcomingScreeningsPage(
+          movie.id,
+          new Date(clock.current).toISOString(),
+          signal,
+        )
+      ).items.map(screeningData),
+    [client],
+  );
   const movies = useMemo(
     () =>
       screenings.items.map((item) => ({
@@ -316,6 +329,7 @@ export function MinimalExperience({
       hasMore={screenings.hasMore}
       onLoadMore={screenings.loadNext}
       onLoadWeek={loadWeek}
+      onLoadUpcomingScreenings={loadUpcomingScreenings}
       detailNotice={
         detail.loading ? (
           <p role="status">Loading movie…</p>

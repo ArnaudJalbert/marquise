@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-06
+
+- Preview upcoming screenings on Movies section cards, loaded from now when a preview first opens. Supports #431.
+
 ## 2026-11-03
 
 - Open fresh visits to Screenings on Today. The period stays in the URL for in-session history, but a newly loaded URL drops `start` and `end` and keeps its other filters. Version 0.2.0. Supports #442.

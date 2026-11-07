@@ -68,6 +68,11 @@ export interface MinimalCatalogueProps {
   hasMore?: boolean;
   onLoadMore?: () => void;
   onRetry: () => void;
+  /** Loads a movies section card's upcoming screenings when its preview first opens. */
+  onLoadUpcomingScreenings?: (
+    movie: CatalogueMovie,
+    signal: AbortSignal,
+  ) => Promise<CatalogueScreening[]>;
   onLoadWeek?: (
     movie: CatalogueMovie,
     start: string,
