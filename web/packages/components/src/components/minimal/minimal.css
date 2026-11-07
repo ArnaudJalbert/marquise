@@ -603,6 +603,10 @@
   min-height: 28px;
   align-items: center;
 }
+.minimal-countdown {
+  color: var(--indigo-deep);
+  font-size: 12px;
+}
 .minimal-preview .minimal-time {
   display: block;
   margin: 2px 0;
