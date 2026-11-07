@@ -14,6 +14,7 @@ import {
   MinimalMovieCard,
   type MinimalCatalogueProps,
   type CatalogueMovie,
+  type CatalogueScreening,
 } from "./MinimalCatalogue";
 
 afterEach(() => {
@@ -538,27 +539,124 @@ it("marks only the current section and today's day as selected", () => {
   ).toHaveAttribute("aria-pressed", "false");
 });
 
-it("renders movies section cards with year and movie links but no preview", () => {
-  /** Scenario: a visitor browsing the movies section sees poster, title and year linking to the movie page, with nothing to preview yet. */
-  const later = { ...movie, id: "later", title: "A future film", year: 1999 };
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((onResolve) => {
+    resolve = onResolve;
+  });
+  return { promise, resolve };
+}
+
+const later = { ...movie, id: "later", title: "A future film", year: 1999, screenings: [] };
+
+it("renders movies section cards with year and movie links that still navigate", () => {
+  /** Scenario: a visitor browsing the movies section sees poster, title and year linking to the movie page, and tapping them navigates without opening a preview. */
+  const onLoadUpcomingScreenings = vi.fn<NonNullable<MinimalCatalogueProps["onLoadUpcomingScreenings"]>>();
   render(
     <MinimalCatalogue
       {...props}
       catalogueMovies={[later]}
       href="/?section=movies"
+      onLoadUpcomingScreenings={onLoadUpcomingScreenings}
     />,
   );
   const card = screen.getByRole("article");
-  expect(
-    within(card).getByRole("link", { name: "View A future film" }),
-  ).toHaveAttribute("href", "/movies/later");
-  expect(
-    within(card).getByRole("link", { name: "A future film" }),
-  ).toHaveAttribute("href", "/movies/later");
+  const poster = within(card).getByRole("link", { name: "View A future film" });
+  expect(poster).toHaveAttribute("href", "/movies/later");
+  const title = within(card).getByRole("link", { name: "A future film" });
+  expect(title).toHaveAttribute("href", "/movies/later");
   expect(within(card).getByText("1999")).toBeInTheDocument();
-  expect(within(card).queryByRole("button")).not.toBeInTheDocument();
-  fireEvent.pointerEnter(card, { pointerType: "mouse" });
+  fireEvent.click(title);
+  expect(props.navigate).toHaveBeenCalledWith("/movies/later");
   expect(within(card).queryByRole("region")).not.toBeInTheDocument();
+  expect(onLoadUpcomingScreenings).not.toHaveBeenCalled();
+});
+
+it("loads a movies section preview once per movie and reopens it instantly", async () => {
+  /** Scenario: hovering shows Loading… then the next day; closing and reopening shows it again with no second request. */
+  const request = deferred<CatalogueScreening[]>();
+  const onLoadUpcomingScreenings = vi.fn<NonNullable<MinimalCatalogueProps["onLoadUpcomingScreenings"]>>(() => request.promise);
+  render(
+    <MinimalCatalogue
+      {...props}
+      catalogueMovies={[later]}
+      href="/?section=movies"
+      onLoadUpcomingScreenings={onLoadUpcomingScreenings}
+    />,
+  );
+  const card = screen.getByRole("article");
+  fireEvent.pointerEnter(card, { pointerType: "mouse" });
+  const preview = () => screen.getByRole("region", { name: "A future film screenings" });
+  expect(within(preview()).getByText("Loading…")).toBeVisible();
+  expect(within(preview()).getByRole("link", { name: "Schedule" })).toHaveAttribute("href", "/movies/later");
+  expect(onLoadUpcomingScreenings).toHaveBeenCalledExactlyOnceWith(later, expect.any(AbortSignal));
+  await act(async () => request.resolve([...movie.screenings]));
+  expect(within(preview()).queryByText("Loading…")).not.toBeInTheDocument();
+  expect(within(preview()).getByText("18:00")).toBeVisible();
+  expect(within(preview()).getByText(/Then Tomorrow/)).toBeVisible();
+  fireEvent.pointerLeave(card, { pointerType: "mouse" });
+  expect(screen.queryByRole("region", { name: "A future film screenings" })).not.toBeInTheDocument();
+  fireEvent.click(within(card).getByRole("button", { name: "Preview A future film" }));
+  expect(within(preview()).getByText("18:00")).toBeVisible();
+  expect(onLoadUpcomingScreenings).toHaveBeenCalledOnce();
+});
+
+it("keeps the schedule link when a movies section preview fails to load", async () => {
+  /** Scenario: a failed request says so and still offers the full schedule, without retrying on reopen. */
+  const onLoadUpcomingScreenings = vi.fn<NonNullable<MinimalCatalogueProps["onLoadUpcomingScreenings"]>>(async () => {
+    throw new Error("offline");
+  });
+  render(
+    <MinimalCatalogue
+      {...props}
+      catalogueMovies={[later]}
+      href="/?section=movies"
+      onLoadUpcomingScreenings={onLoadUpcomingScreenings}
+    />,
+  );
+  const arrow = screen.getByRole("button", { name: "Preview A future film" });
+  fireEvent.click(arrow);
+  const preview = screen.getByRole("region", { name: "A future film screenings" });
+  expect(await within(preview).findByText("Couldn't load screenings")).toBeVisible();
+  expect(within(preview).getByRole("link", { name: "Schedule" })).toHaveAttribute("href", "/movies/later");
+  fireEvent.click(arrow);
+  fireEvent.click(arrow);
+  expect(screen.getByText("Couldn't load screenings")).toBeVisible();
+  expect(onLoadUpcomingScreenings).toHaveBeenCalledOnce();
+});
+
+it("says so when a movie has no upcoming screenings", async () => {
+  /** Scenario: the loader returns nothing, so the preview shows the empty movies section message. */
+  render(
+    <MinimalCatalogue
+      {...props}
+      catalogueMovies={[later]}
+      href="/?section=movies"
+      onLoadUpcomingScreenings={async () => []}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Preview A future film" }));
+  const preview = screen.getByRole("region", { name: "A future film screenings" });
+  expect(await within(preview).findByText("No upcoming screenings")).toBeVisible();
+  expect(within(preview).getByRole("link", { name: "Schedule" })).toBeInTheDocument();
+});
+
+it("aborts a movies section preview request when the catalogue unmounts", () => {
+  /** Scenario: leaving the page cancels the in-flight upcoming screenings request. */
+  const onLoadUpcomingScreenings = vi.fn<NonNullable<MinimalCatalogueProps["onLoadUpcomingScreenings"]>>(() => new Promise(() => {}));
+  const { unmount } = render(
+    <MinimalCatalogue
+      {...props}
+      catalogueMovies={[later]}
+      href="/?section=movies"
+      onLoadUpcomingScreenings={onLoadUpcomingScreenings}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Preview A future film" }));
+  const signal = onLoadUpcomingScreenings.mock.calls[0]?.[1];
+  expect(signal?.aborted).toBe(false);
+  unmount();
+  expect(signal?.aborted).toBe(true);
 });
 
 it("opens and closes the screenings section preview with icon buttons", () => {

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-06
+
+- Add `fetchUpcomingScreeningsPage`, which reads one page of 100 of a movie's screenings at or after a datetime from `GET /v1/movies/{movie_id}/screenings?from=`. Supports #431.
+
 ## 2026-11-03
 
 - Replace `startHour` and `endHour` with a structured hour filter containing an `is` or `is_not` operator and half-open ranges. Send it as JSON to the screening-movie search endpoint. Add `excludedCinemas`. Supports #441.

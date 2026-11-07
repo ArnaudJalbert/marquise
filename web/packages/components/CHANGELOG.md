@@ -2,6 +2,7 @@
 
 ## 2026-11-06
 
+- Give Movies section Movie Cards the preview button, hover preview and next-day layout. Each card's upcoming screenings load through the injected `onLoadUpcomingScreenings` the first time its preview opens, at most once per movie while the page is open, and the request is aborted on unmount. The preview shows "Loading…", "Couldn't load screenings" or "No upcoming screenings" and keeps the Schedule link. Supports #431.
 - Show an indigo "in N min" or "in 1 h N min" countdown after each preview time that starts within two hours, driven by the catalogue's current time prop. Supports #432.
 
 ## 2026-11-03

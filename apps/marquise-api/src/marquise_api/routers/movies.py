@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi_cache.decorator import cache
 from fastapi_pagination import Page, Params
@@ -83,7 +85,7 @@ async def get_movie(
 
 
 @router.get(
-    "/movies/{movie_id}/screenings",
+    "/movies/{movie_id:path}/screenings",
     response_model=Page[ScreeningResponse],
     responses=error_responses(404, 422, 429),
 )
@@ -93,17 +95,24 @@ async def get_movie_screenings(
     request: Request,
     response: Response,
     movie_id: str,
+    from_: datetime | None = Query(
+        default=None,
+        alias="from",
+        description="Start of showtime range (inclusive). Unbounded if omitted.",
+    ),
     params: Params = Depends(),
     query: GetMovieScreeningsQuery = Depends(get_movie_screenings_query),
 ) -> Page[ScreeningResponse]:
-    """List all of a movie's screenings.
+    """List a movie's screenings, ordered by showtime then ID.
 
-    No filtering beyond the movie itself — use ``GET /v1/screenings`` for
-    date range, cinema, or language filters.
+    ``from`` keeps only screenings at or after that datetime; omit it to list
+    all of them. Use ``GET /v1/screenings`` for end date, cinema, or language
+    filters.
     """
     output = await query.execute(
         GetMovieScreeningsQuery.InputData(
             movie_id=movie_id,
+            start=from_,
             page=params.page,
             size=params.size,
         )

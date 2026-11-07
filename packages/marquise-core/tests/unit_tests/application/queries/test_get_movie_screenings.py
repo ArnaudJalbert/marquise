@@ -51,6 +51,24 @@ async def test_returns_reader_summaries() -> None:
 
 
 @pytest.mark.asyncio
+async def test_passes_start_as_reader_start_date() -> None:
+    """A start datetime reaches the reader search as its start date."""
+    movie_repository = create_autospec(MovieRepository, instance=True)
+    movie_repository.exists_by_id.return_value = True
+    reader = create_autospec(ScreeningReader, instance=True)
+    reader.search.return_value = Page(items=[], total=0)
+    start = datetime(2026, 6, 27, 18, 0, tzinfo=UTC)
+
+    await _query(movie_repository, reader).execute(
+        GetMovieScreeningsQuery.InputData(movie_id="mov-1", start=start, size=100)
+    )
+
+    reader.search.assert_awaited_once_with(
+        movie_id="mov-1", start_date=start, limit=100, offset=0
+    )
+
+
+@pytest.mark.asyncio
 async def test_passes_page_and_size_as_limit_offset() -> None:
     """Page 2 with size 5 becomes limit 5 and offset 5."""
     movie_repository = create_autospec(MovieRepository, instance=True)
