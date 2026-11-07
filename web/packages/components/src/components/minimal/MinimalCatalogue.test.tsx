@@ -737,7 +737,7 @@ it("focuses the movie search field when the visitor presses slash", () => {
 it.each([
   ["2026-10-30", ""], ["2026-10-31", "Tomorrow"],
   ["2026-11-01", "In 2 days"], ["2026-11-05", "In 6 days"],
-  ["2026-11-06", "In 1 weeks"], ["2026-11-12", "In 1 weeks"],
+  ["2026-11-06", "In 1 week"], ["2026-11-12", "In 1 week"],
   ["2026-11-19", "In 2 weeks"],
 ])("labels the next Montréal day %s as %s", (date, label) => {
   /** Scenario: relative labels use calendar days, including across DST. */
@@ -761,10 +761,10 @@ it("sorts and caps the next day, counts only its extra times, and updates after 
   expect(within(preview).getAllByText("VO")).toHaveLength(4);
   expect(within(preview).getAllByText("Cinema A")).toHaveLength(4);
   expect(within(preview).getByRole("link", { name: "+1 more" })).toHaveAttribute("href", "/movies/film");
-  expect(within(preview).getByText(/Then In 1 weeks/)).toBeVisible();
+  expect(within(preview).getByText(/Then In 1 week/)).toBeVisible();
   expect(within(preview).queryByText("23:00")).not.toBeInTheDocument();
   rerender(<MinimalMovieCard movie={card} cinemas={cinemas} currentTime="2026-10-31T02:00:00Z" expanded />);
-  expect(screen.getByRole("region")).toHaveTextContent("In 1 weeks");
+  expect(screen.getByRole("region")).toHaveTextContent("In 1 week");
   expect(screen.queryByText(/Then/)).not.toBeInTheDocument();
 });
 
