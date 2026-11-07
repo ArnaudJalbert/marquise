@@ -77,15 +77,8 @@ class CreateMoviesCommand:
                     raise TypeError("movies must only contain MovieInput")
 
     @dataclass(frozen=True, slots=True)
-    class CreatedMovie:
-        title: str
-        source_identifier: str | None
-        movie_id: str
-        tmdb_id: str | None
-
-    @dataclass(frozen=True, slots=True)
     class OutputData:
-        movies: tuple[CreateMoviesCommand.CreatedMovie, ...]
+        movie_ids: tuple[str, ...]
 
     def __init__(self, movie_repository: MovieRepository) -> None:
         self._movie_repository = movie_repository
@@ -97,13 +90,13 @@ class CreateMoviesCommand:
             input_data: The missing movies, keyed by the film they belong to.
 
         Returns:
-            Every source movie tied to the movie created for its key.
+            The ID of each movie created or reused, one per key.
         """
         distinct_movies = self._pick_one_per_key(input_data.movies)
         saved_movies = await self._save_all(distinct_movies)
         logger.info("Created %d movies", len(saved_movies))
         return self.OutputData(
-            movies=self._tie_to_saved(input_data.movies, saved_movies)
+            movie_ids=tuple(movie.id.value for movie in saved_movies.values())
         )
 
     @staticmethod
@@ -147,18 +140,4 @@ class CreateMoviesCommand:
             rating=movie.rating,
             origin_countries=movie.origin_countries,
             tmdb_id=movie.tmdb_id,
-        )
-
-    def _tie_to_saved(
-        self, movies: tuple[MovieInput, ...], saved_movies: dict[str, Movie]
-    ) -> tuple[CreatedMovie, ...]:
-        """Tie every source movie to the movie saved for its key."""
-        return tuple(
-            self.CreatedMovie(
-                movie.title,
-                movie.source_identifier,
-                saved_movies[movie.key].id.value,
-                movie.tmdb_id,
-            )
-            for movie in movies
         )

@@ -1,4 +1,4 @@
-"""Creating one movie per film and tying every source movie to it."""
+"""Creating one movie per film."""
 
 from unittest.mock import Mock, create_autospec
 
@@ -10,18 +10,25 @@ from marquise.application.use_cases.create_movies import CreateMoviesCommand
 MovieInput = CreateMoviesCommand.MovieInput
 
 
-def _movies() -> Mock:
-    movies = create_autospec(MovieRepository, instance=True)
-    movies.create_or_reuse.side_effect = lambda movie: movie
-    return movies
+@pytest.fixture
+def movie_repository() -> Mock:
+    """A repository that saves whatever it is given."""
+    movie_repository = create_autospec(MovieRepository, instance=True)
+    movie_repository.create_or_reuse.side_effect = lambda movie: movie
+    return movie_repository
+
+
+@pytest.fixture
+def command(movie_repository: Mock) -> CreateMoviesCommand:
+    """The command under test."""
+    return CreateMoviesCommand(movie_repository)
 
 
 @pytest.mark.asyncio
-async def test_creates_a_movie_with_every_detail() -> None:
+async def test_creates_a_movie_with_every_detail(
+    command: CreateMoviesCommand, movie_repository: Mock
+) -> None:
     """The saved movie uses the saved title and the source details."""
-    movies = _movies()
-    command = CreateMoviesCommand(movies)
-
     output = await command.execute(
         command.InputData(
             (
@@ -37,22 +44,19 @@ async def test_creates_a_movie_with_every_detail() -> None:
         )
     )
 
-    saved_movie = movies.create_or_reuse.await_args.args[0]
+    saved_movie = movie_repository.create_or_reuse.await_args.args[0]
     assert saved_movie.title == "Dune (2021)"
     assert saved_movie.tmdb_id == "7"
     assert saved_movie.release_year == 2021
     assert saved_movie.description == "Sand"
-    assert output.movies == (
-        command.CreatedMovie("Dune", None, saved_movie.id.value, "7"),
-    )
+    assert output.movie_ids == (saved_movie.id.value,)
 
 
 @pytest.mark.asyncio
-async def test_sources_sharing_a_key_share_one_movie() -> None:
-    """Two source movies of one film create it once."""
-    movies = _movies()
-    command = CreateMoviesCommand(movies)
-
+async def test_sources_sharing_a_key_create_one_movie(
+    command: CreateMoviesCommand, movie_repository: Mock
+) -> None:
+    """Two source movies of one film create it once, and return one ID."""
     output = await command.execute(
         command.InputData(
             (
@@ -62,32 +66,30 @@ async def test_sources_sharing_a_key_share_one_movie() -> None:
         )
     )
 
-    movies.create_or_reuse.assert_awaited_once()
-    assert len({movie.movie_id for movie in output.movies}) == 1
-    assert {movie.title for movie in output.movies} == {"Doomsday", "Docteur Doom"}
+    movie_repository.create_or_reuse.assert_awaited_once()
+    assert len(output.movie_ids) == 1
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("matched_first", [True, False])
-async def test_the_movie_with_an_identity_wins_its_key(matched_first: bool) -> None:
+async def test_the_movie_with_an_identity_wins_its_key(
+    command: CreateMoviesCommand, movie_repository: Mock, matched_first: bool
+) -> None:
     """Whatever the order, the created movie carries the TMDB identity."""
-    movies = _movies()
-    command = CreateMoviesCommand(movies)
     matched = MovieInput("Fjord", "Fjord", "tmdb:7", tmdb_id="7")
     unmatched = MovieInput("Fjord (VOSTA)", "Fjord (VOSTA)", "tmdb:7")
     pair = (matched, unmatched) if matched_first else (unmatched, matched)
 
     await command.execute(command.InputData(pair))
 
-    assert movies.create_or_reuse.await_args.args[0].tmdb_id == "7"
+    assert movie_repository.create_or_reuse.await_args.args[0].tmdb_id == "7"
 
 
 @pytest.mark.asyncio
-async def test_first_unmatched_movie_wins_its_key() -> None:
+async def test_first_unmatched_movie_wins_its_key(
+    command: CreateMoviesCommand, movie_repository: Mock
+) -> None:
     """Among movies without an identity, the first one is created."""
-    movies = _movies()
-    command = CreateMoviesCommand(movies)
-
     await command.execute(
         command.InputData(
             (
@@ -97,7 +99,7 @@ async def test_first_unmatched_movie_wins_its_key() -> None:
         )
     )
 
-    assert movies.create_or_reuse.await_args.args[0].title == "First"
+    assert movie_repository.create_or_reuse.await_args.args[0].title == "First"
 
 
 @pytest.mark.parametrize(

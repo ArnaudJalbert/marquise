@@ -6,7 +6,7 @@ Before 2026-07-15 this package was published as `marquise`.
 
 ### v0.2.45
 
-- Split movie import into single-job use cases coordinated by `ImportScreeningsCommand` and `ResolveMoviesCommand`. A TMDB outage now fails the import, screenings are saved before enrichment, and a remake keeps its source title. Remove `CreateMissingMoviesCommand`, the `MatchMovie*` and `EnrichMovieExecutor` exports, and the factory's `create_movies_use_case`. Closes #473.
+- Split movie import into single-job use cases coordinated by `ImportScreeningsCommand`. Commands return only IDs, and created movies are looked up again before screenings link to them. A TMDB outage now fails the import, screenings are saved before enrichment, a remake keeps its source title, and accented titles are searched with their accents. Remove `CreateMissingMoviesCommand`, the `MatchMovie*` and `EnrichMovieExecutor` exports, and the factory's `create_movies_use_case`. Closes #473.
 
 ## 2026-11-03
 

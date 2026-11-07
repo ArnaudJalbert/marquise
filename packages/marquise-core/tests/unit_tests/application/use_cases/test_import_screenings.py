@@ -5,7 +5,10 @@ from unittest.mock import Mock, create_autospec
 
 import pytest
 
-from marquise.application.exceptions.movie import MovieMetadataUnavailableError
+from marquise.application.exceptions.movie import (
+    MovieMetadataUnavailableError,
+    MovieNotLinkedError,
+)
 from marquise.application.queries.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
@@ -23,124 +26,175 @@ from support.movie_import import (
 )
 
 DAY = datetime(2026, 10, 31, tzinfo=UTC)
+FetchedMovie = FetchScreeningsFromSourceQuery.FetchedMovieData
+FetchedScreening = FetchScreeningsFromSourceQuery.FetchedScreeningData
 
 
-def _fetch(
-    movies: tuple[FetchScreeningsFromSourceQuery.FetchedMovieData, ...] = (),
-    screenings: tuple[FetchScreeningsFromSourceQuery.FetchedScreeningData, ...] = (),
-) -> Mock:
-    fetch = autospec_use_case(FetchScreeningsFromSourceQuery)
-    fetch.execute.return_value = FetchScreeningsFromSourceQuery.OutputData(
+def _fetched(
+    movies: tuple[FetchedMovie, ...], screenings: tuple[FetchedScreening, ...]
+) -> FetchScreeningsFromSourceQuery.OutputData:
+    return FetchScreeningsFromSourceQuery.OutputData(
         cinema_id="cin-1",
         cinema_name="Cinema",
         source_name="source",
         movies=movies,
         screenings=screenings,
     )
-    return fetch
 
 
-def _movies() -> Mock:
-    movies = create_autospec(MovieRepository, instance=True)
-    movies.find_by_tmdb_id.return_value = None
-    movies.find_by_titles.return_value = []
-    movies.create_or_reuse.side_effect = lambda movie: movie
-    return movies
+@pytest.fixture
+def fetch_screenings() -> Mock:
+    """A source with one movie and one screening of it."""
+    fetch_screenings = autospec_use_case(FetchScreeningsFromSourceQuery)
+    fetch_screenings.execute.return_value = _fetched(
+        (FetchedMovie(title="Dune"),),
+        (FetchedScreening(movie_title="dune", showtime=DAY),),
+    )
+    return fetch_screenings
 
 
-def _create_screenings(
-    output: CreateScreeningsCommand.OutputData | None = None,
-) -> Mock:
-    screenings = autospec_use_case(CreateScreeningsCommand)
-    screenings.execute.return_value = output or CreateScreeningsCommand.OutputData(
+@pytest.fixture
+def movie_repository() -> Mock:
+    """A repository with no stored movies."""
+    movie_repository = create_autospec(MovieRepository, instance=True)
+    movie_repository.find_by_tmdb_id.return_value = None
+    movie_repository.find_by_titles.return_value = []
+    movie_repository.create_or_reuse.side_effect = lambda movie: movie
+    return movie_repository
+
+
+@pytest.fixture
+def create_screenings() -> Mock:
+    """A screenings command reporting one import."""
+    create_screenings = autospec_use_case(CreateScreeningsCommand)
+    create_screenings.execute.return_value = CreateScreeningsCommand.OutputData(
         (), 1, 1, 0, 0
     )
-    return screenings
+    return create_screenings
+
+
+@pytest.fixture
+def enricher() -> Mock:
+    """An enricher that leaves every movie as it is."""
+    return build_unchanged_enricher()
+
+
+@pytest.fixture
+def matcher() -> Mock:
+    """A matcher that never matches."""
+    return build_matcher()
+
+
+@pytest.fixture
+def command(
+    fetch_screenings: Mock,
+    movie_repository: Mock,
+    create_screenings: Mock,
+    matcher: Mock,
+    enricher: Mock,
+) -> ImportScreeningsCommand:
+    """The real coordinator, with real movie use cases and mocked edges."""
+    return import_command(
+        fetch_screenings, movie_repository, create_screenings, matcher, enricher
+    )
+
+
+def _input() -> ImportScreeningsCommand.InputData:
+    return ImportScreeningsCommand.InputData("cin-1", DAY.date(), DAY.date())
 
 
 @pytest.mark.asyncio
-async def test_import_normalizes_movie_title_case_before_linking_screenings() -> None:
-    """Import links screening when source changes movie-title casing."""
-    fetch = _fetch(
-        (FetchScreeningsFromSourceQuery.FetchedMovieData(title="Dune"),),
-        (
-            FetchScreeningsFromSourceQuery.FetchedScreeningData(
-                movie_title="dune", showtime=DAY
-            ),
-        ),
-    )
-    movies = _movies()
-    screenings = _create_screenings()
-    command = import_command(fetch, movies, screenings)
-
-    result = await command.execute(
-        command.InputData("cin-1", date(2026, 10, 31), date(2026, 10, 31))
-    )
+async def test_created_movie_is_found_again_and_linked(
+    command: ImportScreeningsCommand,
+    movie_repository: Mock,
+    create_screenings: Mock,
+) -> None:
+    """A new movie is looked up again, and its screening links through casing."""
+    result = await command.execute(_input())
 
     assert result.imported_count == 1
-    saved_movie = movies.create_or_reuse.await_args.args[0]
-    assert screenings.execute.await_args.args[0].screenings[0].movie_id == (
-        saved_movie.id.value
-    )
+    saved_movie = movie_repository.create_or_reuse.await_args.args[0]
+    screening = create_screenings.execute.await_args.args[0].screenings[0]
+    assert screening.movie_id == saved_movie.id.value
+    assert movie_repository.find_by_titles.await_count == 2
 
 
 @pytest.mark.asyncio
-async def test_source_identifiers_keep_same_title_screenings_distinct() -> None:
+async def test_movie_missing_after_creation_stops_before_screenings(
+    command: ImportScreeningsCommand,
+    movie_repository: Mock,
+    create_screenings: Mock,
+) -> None:
+    """A screening is never saved without its movie."""
+    movie_repository.find_by_titles.side_effect = lambda terms: []
+    movie_repository.create_or_reuse.side_effect = lambda movie: Movie(
+        id=MovieId(value="elsewhere"), title="Something Else Entirely"
+    )
+
+    with pytest.raises(MovieNotLinkedError):
+        await command.execute(_input())
+
+    create_screenings.execute.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_source_identifiers_keep_same_title_screenings_distinct(
+    fetch_screenings: Mock,
+    movie_repository: Mock,
+    create_screenings: Mock,
+    enricher: Mock,
+) -> None:
     """Two source films with the same title retain their own screening links."""
-    fetch = _fetch(
+    fetch_screenings.execute.return_value = _fetched(
         (
-            FetchScreeningsFromSourceQuery.FetchedMovieData(
-                title="Same", identifier="one"
-            ),
-            FetchScreeningsFromSourceQuery.FetchedMovieData(
-                title="Same", identifier="two"
-            ),
+            FetchedMovie(title="Same", identifier="one"),
+            FetchedMovie(title="Same", identifier="two"),
         ),
         (
-            FetchScreeningsFromSourceQuery.FetchedScreeningData(
-                "Same", DAY, identifier="one"
-            ),
-            FetchScreeningsFromSourceQuery.FetchedScreeningData(
-                "Same", DAY, identifier="two"
-            ),
+            FetchedScreening("Same", DAY, identifier="one"),
+            FetchedScreening("Same", DAY, identifier="two"),
         ),
     )
-    movies = _movies()
-    movies.find_by_tmdb_id.side_effect = lambda tmdb_id: Movie(
+    movie_repository.find_by_tmdb_id.side_effect = lambda tmdb_id: Movie(
         id=MovieId(value=f"movie-{tmdb_id}"), title="Same", tmdb_id=tmdb_id
     )
-    screenings = _create_screenings()
-    matcher = build_matcher(build_match("1"), build_match("2"))
-    command = import_command(fetch, movies, screenings, matcher)
+    command = import_command(
+        fetch_screenings,
+        movie_repository,
+        create_screenings,
+        build_matcher(build_match("1"), build_match("2")),
+        enricher,
+    )
 
-    await command.execute(command.InputData("cin-1", DAY.date(), DAY.date()))
+    await command.execute(_input())
 
     assert [
-        item.movie_id for item in screenings.execute.await_args.args[0].screenings
+        item.movie_id
+        for item in create_screenings.execute.await_args.args[0].screenings
     ] == ["movie-1", "movie-2"]
 
 
 @pytest.mark.asyncio
-async def test_import_maps_create_results_into_its_own_screening_data() -> None:
+async def test_import_maps_create_results_into_its_own_screening_data(
+    fetch_screenings: Mock, command: ImportScreeningsCommand, create_screenings: Mock
+) -> None:
     """Import returns its own per-screening type with the same values and counts."""
-    screenings = _create_screenings(
-        CreateScreeningsCommand.OutputData(
-            screenings=(
-                CreateScreeningsCommand.ScreeningData("Dune", "2026-08-25T19:00", True),
-                CreateScreeningsCommand.ScreeningData(
-                    "Alien", "2026-08-26T19:00", False, rescheduled=True
-                ),
+    fetch_screenings.execute.return_value = _fetched((), ())
+    create_screenings.execute.return_value = CreateScreeningsCommand.OutputData(
+        screenings=(
+            CreateScreeningsCommand.ScreeningData("Dune", "2026-08-25T19:00", True),
+            CreateScreeningsCommand.ScreeningData(
+                "Alien", "2026-08-26T19:00", False, rescheduled=True
             ),
-            total_count=2,
-            imported_count=1,
-            updated_count=0,
-            skipped_count=3,
-            rescheduled_count=1,
-        )
+        ),
+        total_count=2,
+        imported_count=1,
+        updated_count=0,
+        skipped_count=3,
+        rescheduled_count=1,
     )
-    command = import_command(_fetch(), _movies(), screenings)
 
-    result = await command.execute(command.InputData("cin-1", DAY.date(), DAY.date()))
+    result = await command.execute(_input())
 
     assert result.screenings == (
         command.ScreeningData("Dune", "2026-08-25T19:00", True),
@@ -156,67 +210,55 @@ async def test_import_maps_create_results_into_its_own_screening_data() -> None:
 
 
 @pytest.mark.asyncio
-async def test_enrichment_outage_fails_the_import_after_saving_screenings() -> None:
+async def test_enrichment_outage_fails_the_import_after_saving_screenings(
+    command: ImportScreeningsCommand, create_screenings: Mock, enricher: Mock
+) -> None:
     """An outage while enriching can't lose screenings that were already saved."""
-    screenings = _create_screenings()
-    enricher = build_unchanged_enricher()
     enricher.execute.side_effect = MovieMetadataUnavailableError("offline")
-    fetch = _fetch(
-        (FetchScreeningsFromSourceQuery.FetchedMovieData(title="Dune"),),
-        (
-            FetchScreeningsFromSourceQuery.FetchedScreeningData(
-                movie_title="Dune", showtime=DAY
-            ),
-        ),
-    )
-    command = import_command(fetch, _movies(), screenings, enricher=enricher)
 
     with pytest.raises(MovieMetadataUnavailableError):
-        await command.execute(command.InputData("cin-1", DAY.date(), DAY.date()))
+        await command.execute(_input())
 
-    screenings.execute.assert_awaited_once()
+    create_screenings.execute.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-async def test_stored_and_created_movies_are_all_enriched_with_their_identity() -> None:
+async def test_a_failed_save_skips_enrichment(
+    command: ImportScreeningsCommand, create_screenings: Mock, enricher: Mock
+) -> None:
+    """Failures propagate, so nothing runs after the failed step."""
+    create_screenings.execute.side_effect = ConnectionError("offline")
+
+    with pytest.raises(ConnectionError):
+        await command.execute(_input())
+
+    enricher.execute.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stored_movies_are_enriched_with_their_identity(
+    fetch_screenings: Mock,
+    movie_repository: Mock,
+    create_screenings: Mock,
+    enricher: Mock,
+) -> None:
     """Enrichment gets every movie, including the identity matching confirmed."""
-    fetch = _fetch(
-        (
-            FetchScreeningsFromSourceQuery.FetchedMovieData(title="Matched"),
-            FetchScreeningsFromSourceQuery.FetchedMovieData(title="Unmatched"),
-        ),
-        (
-            FetchScreeningsFromSourceQuery.FetchedScreeningData("Matched", DAY),
-            FetchScreeningsFromSourceQuery.FetchedScreeningData("Unmatched", DAY),
-        ),
+    fetch_screenings.execute.return_value = _fetched(
+        (FetchedMovie(title="Matched"), FetchedMovie(title="Unmatched")),
+        (FetchedScreening("Matched", DAY), FetchedScreening("Unmatched", DAY)),
     )
-    enricher = build_unchanged_enricher()
     command = import_command(
-        fetch,
-        _movies(),
-        _create_screenings(),
+        fetch_screenings,
+        movie_repository,
+        create_screenings,
         build_matcher(build_match("7")),
         enricher,
     )
 
-    await command.execute(command.InputData("cin-1", DAY.date(), DAY.date()))
+    await command.execute(_input())
 
     movies = enricher.execute.await_args.args[0].movies
     assert sorted(str(movie.tmdb_id) for movie in movies) == ["7", "None"]
-
-
-@pytest.mark.asyncio
-async def test_a_failed_save_skips_enrichment() -> None:
-    """Failures propagate, so nothing runs after the failed step."""
-    screenings = _create_screenings()
-    screenings.execute.side_effect = ConnectionError("offline")
-    enricher = build_unchanged_enricher()
-    command = import_command(_fetch(), _movies(), screenings, enricher=enricher)
-
-    with pytest.raises(ConnectionError):
-        await command.execute(command.InputData("cin-1", DAY.date(), DAY.date()))
-
-    enricher.execute.assert_not_awaited()
 
 
 @pytest.mark.parametrize(
@@ -231,3 +273,9 @@ def test_input_rejects_wrong_types(fields: dict) -> None:
     """Input is the one place types are checked."""
     with pytest.raises(TypeError):
         ImportScreeningsCommand.InputData(**fields)
+
+
+def test_input_dates_must_be_in_order() -> None:
+    """The start date can't come after the end date."""
+    with pytest.raises(ValueError):
+        ImportScreeningsCommand.InputData("cin-1", date(2026, 11, 2), date(2026, 11, 1))

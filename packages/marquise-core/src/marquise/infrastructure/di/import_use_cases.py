@@ -10,6 +10,7 @@ from marquise.application.queries.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
 from marquise.application.queries.find_stored_movies import FindStoredMoviesQuery
+from marquise.application.queries.link_screenings import LinkScreeningsQuery
 from marquise.application.repositories import SourceRegistryQuery
 from marquise.application.use_cases.create_movies import CreateMoviesCommand
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
@@ -18,7 +19,6 @@ from marquise.application.use_cases.import_screenings import ImportScreeningsCom
 from marquise.application.use_cases.match_movies import MatchMoviesUseCase
 from marquise.application.use_cases.merge_movies import MergeMoviesUseCase
 from marquise.application.use_cases.refresh_movies import RefreshMoviesUseCase
-from marquise.application.use_cases.resolve_movies import ResolveMoviesCommand
 from marquise.infrastructure.name_distance import RapidFuzzNameDistance
 from marquise.infrastructure.sources.tmdb_metadata import TmdbMetadataHttpSource
 from marquise.infrastructure.supabase.gateways.cinema import SupabaseCinemaGateway
@@ -149,11 +149,10 @@ def build_import_screenings_use_case(
     _, matcher, enricher = build_metadata_workflows(pool, schema, tmdb_api_key)
     return ImportScreeningsCommand(
         fetch_screenings=fetch_screenings_use_case,
-        resolve_movies=ResolveMoviesCommand(
-            match_movies=matcher,
-            find_stored_movies=build_find_stored_movies_query(pool, schema),
-            create_movies=build_create_movies_use_case(pool, schema),
-        ),
+        match_movies=matcher,
+        find_stored_movies=build_find_stored_movies_query(pool, schema),
+        create_movies=build_create_movies_use_case(pool, schema),
+        link_screenings=LinkScreeningsQuery(),
         create_screenings=build_create_screenings_use_case(pool, schema),
         enrich_movies=enricher,
     )

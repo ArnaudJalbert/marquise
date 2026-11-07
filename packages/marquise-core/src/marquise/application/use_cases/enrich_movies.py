@@ -217,13 +217,16 @@ class EnrichMoviesUseCase:
                     raise TypeError("movies must only contain MovieInput")
 
     @dataclass(frozen=True, slots=True)
-    class MovieResult:
-        movie_id: str
-        status: Literal["enriched", "unchanged", "skipped"]
+    class OutputData:
+        enriched_ids: tuple[str, ...]
+        skipped_ids: tuple[str, ...]
 
     @dataclass(frozen=True, slots=True)
-    class OutputData:
-        results: tuple[EnrichMoviesUseCase.MovieResult, ...]
+    class MovieResult:
+        """What enrichment did to one movie."""
+
+        movie_id: str
+        status: Literal["enriched", "unchanged", "skipped"]
 
     def __init__(
         self,
@@ -243,32 +246,37 @@ class EnrichMoviesUseCase:
             input_data: The movies to enrich.
 
         Returns:
-            One result per movie. A movie with no known identity is unchanged,
-            and bad data for one movie skips only that movie.
+            The IDs enriched, and the IDs skipped for bad data. A movie with no
+            known identity is in neither.
 
         Raises:
             MovieMetadataUnavailableError: If the provider could not answer.
         """
-        results = [await self._enrich_one(movie) for movie in input_data.movies]
+        results = [
+            await self._enrich_one(movie.movie_id, movie.tmdb_id)
+            for movie in input_data.movies
+        ]
         logger.info("Enrichment finished for %d movies", len(results))
-        return self.OutputData(results=tuple(results))
+        return self._build_output(results)
 
-    async def _enrich_one(self, movie: MovieInput) -> MovieResult:
+    async def _enrich_one(self, movie_id: str, tmdb_id: str | None) -> MovieResult:
         """Enrich one movie. A movie with no known identity is left as it is."""
-        tmdb_id = await self._find_known_tmdb_id(movie)
-        if tmdb_id is None:
-            return self.MovieResult(movie.movie_id, "unchanged")
+        known_tmdb_id = await self._find_known_tmdb_id(movie_id, tmdb_id)
+        if known_tmdb_id is None:
+            return self.MovieResult(movie_id, "unchanged")
         request = EnrichMovieInputData(
-            movie.movie_id, ProviderIdentity("tmdb", tmdb_id)
+            movie_id, ProviderIdentity("tmdb", known_tmdb_id)
         )
         result = await _enrich(request, self._movies, self._metadata, self._clock)
         return self._check_result(result)
 
-    async def _find_known_tmdb_id(self, movie: MovieInput) -> str | None:
+    async def _find_known_tmdb_id(
+        self, movie_id: str, tmdb_id: str | None
+    ) -> str | None:
         """Return the identity from matching, or the one already stored."""
-        if movie.tmdb_id is not None:
-            return movie.tmdb_id
-        snapshot = await self._movies.get(movie.movie_id)
+        if tmdb_id is not None:
+            return tmdb_id
+        snapshot = await self._movies.get(movie_id)
         return None if snapshot is None else snapshot.tmdb_id
 
     def _check_result(self, result: EnrichMovieOutputData) -> MovieResult:
@@ -277,10 +285,24 @@ class EnrichMoviesUseCase:
             status = "enriched" if result.status == "enriched" else "unchanged"
             return self.MovieResult(result.movie_id, status)
         if result.failure.kind in _SINGLE_MOVIE_FAILURES:
-            logger.warning(
-                "Skipped enrichment for %s: %s", result.movie_id, result.failure.kind
-            )
-            return self.MovieResult(result.movie_id, "skipped")
+            return self._skip(result.movie_id, result.failure.kind)
         raise MovieMetadataUnavailableError(
             f"Movie enrichment failed for '{result.movie_id}': {result.failure.kind}"
+        )
+
+    def _skip(self, movie_id: str, reason: str) -> MovieResult:
+        """Record a movie skipped for bad data, which is not an outage."""
+        logger.warning("Skipped enrichment for %s: %s", movie_id, reason)
+        return self.MovieResult(movie_id, "skipped")
+
+    @staticmethod
+    def _build_output(results: list[MovieResult]) -> OutputData:
+        """Keep the IDs that were enriched and the IDs that were skipped."""
+        return EnrichMoviesUseCase.OutputData(
+            enriched_ids=tuple(
+                result.movie_id for result in results if result.status == "enriched"
+            ),
+            skipped_ids=tuple(
+                result.movie_id for result in results if result.status == "skipped"
+            ),
         )

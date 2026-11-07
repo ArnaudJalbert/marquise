@@ -160,7 +160,11 @@ class FindStoredMoviesQuery:
 
     @staticmethod
     def _choose_search_terms(identities: Identities) -> list[str]:
-        """Choose one broad database search term per canonical title."""
+        """Choose broad database search terms, with and without accents.
+
+        Stored titles may or may not carry accents, and the database search is
+        accent-sensitive, so both spellings are searched.
+        """
         titles = [
             *(movie.title for movie in identities.unmatched),
             *(
@@ -169,8 +173,24 @@ class FindStoredMoviesQuery:
                 for title in (movie.source.title, *movie.source.matched_titles)
             ),
         ]
-        keys = (Movie.title_key(title) for title in titles)
-        return list(dict.fromkeys(max(key.split(), key=len) for key in keys if key))
+        keys = [
+            key
+            for title in titles
+            for key in (
+                Movie.title_key(title),
+                FindStoredMoviesQuery._keep_accents(title),
+            )
+            if key
+        ]
+        return list(dict.fromkeys(max(key.split(), key=len) for key in keys))
+
+    @staticmethod
+    def _keep_accents(title: str) -> str:
+        """Build a title key that keeps accents, because the search keeps them."""
+        folded = Movie.search_title(title).casefold()
+        return " ".join(
+            "".join(char if char.isalnum() else " " for char in folded).split()
+        )
 
     def _compare_with_stored(
         self, identities: Identities, title_candidates: list[Movie]

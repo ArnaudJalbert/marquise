@@ -1,21 +1,23 @@
 """Run the real import pipeline with deterministic mocks at its edges."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
-from unittest.mock import AsyncMock, create_autospec
+from unittest.mock import AsyncMock, NonCallableMagicMock, create_autospec
 
 from marquise.application.metadata import ProviderIdentity
 from marquise.application.queries.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
 from marquise.application.queries.find_stored_movies import FindStoredMoviesQuery
+from marquise.application.queries.link_screenings import LinkScreeningsQuery
 from marquise.application.repositories import MovieRepository
 from marquise.application.use_cases.create_movies import CreateMoviesCommand
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.enrich_movies import EnrichMoviesUseCase
 from marquise.application.use_cases.import_screenings import ImportScreeningsCommand
 from marquise.application.use_cases.match_movies import MatchMoviesUseCase
-from marquise.application.use_cases.resolve_movies import ResolveMoviesCommand
+from marquise.domain.entities import Movie
 
 DAY = datetime(2026, 10, 31, 19, tzinfo=UTC)
 
@@ -73,7 +75,7 @@ def build_matcher(*outcomes: Outcome) -> AsyncMock:
 def build_unchanged_enricher() -> AsyncMock:
     """Return an enricher that leaves every movie as it is."""
     enricher = autospec_use_case(EnrichMoviesUseCase)
-    enricher.execute.return_value = EnrichMoviesUseCase.OutputData(())
+    enricher.execute.return_value = EnrichMoviesUseCase.OutputData((), ())
     return enricher
 
 
@@ -85,16 +87,67 @@ def import_command(
     enricher: EnrichMoviesUseCase | None = None,
 ) -> ImportScreeningsCommand:
     """Build the real coordinator, mocking whatever a test doesn't exercise."""
+    if isinstance(movies, NonCallableMagicMock):
+        remember_created_movies(movies)
     return ImportScreeningsCommand(
         fetch_screenings,
-        ResolveMoviesCommand(
-            matcher or build_matcher(),
-            FindStoredMoviesQuery(movies),
-            CreateMoviesCommand(movies),
-        ),
+        matcher or build_matcher(),
+        FindStoredMoviesQuery(movies),
+        CreateMoviesCommand(movies),
+        LinkScreeningsQuery(),
         create_screenings,
         enricher or build_unchanged_enricher(),
     )
+
+
+def remember_created_movies(movies: NonCallableMagicMock) -> None:
+    """Make a repository mock return the movies it created, like a database.
+
+    The import looks movies up again after creating them, so a mock that
+    forgot them would hide every created movie from that second lookup.
+    """
+    if getattr(movies, "remembers_created_movies", False):
+        return
+    movies.remembers_created_movies = True
+    created: list[Movie] = []
+    create = _configured_behaviour(movies.create_or_reuse)
+    find_by_tmdb_id = _configured_behaviour(movies.find_by_tmdb_id)
+    find_by_titles = _configured_behaviour(movies.find_by_titles)
+
+    def save(movie: Movie) -> Movie:
+        saved = create(movie)
+        created.append(saved)
+        return saved
+
+    def find_created_by_tmdb_id(tmdb_id: str) -> Movie | None:
+        found = [movie for movie in created if movie.tmdb_id == tmdb_id]
+        return found[0] if found else find_by_tmdb_id(tmdb_id)
+
+    movies.create_or_reuse.side_effect = save
+    movies.find_by_tmdb_id.side_effect = find_created_by_tmdb_id
+    movies.find_by_titles.side_effect = lambda terms: [
+        *find_by_titles(terms),
+        *created,
+    ]
+
+
+def _configured_behaviour(method: AsyncMock) -> Callable[[object], object]:
+    """Return what a mocked method was set up to do, as a plain function."""
+    effect = method.side_effect
+    if effect is None:
+        return lambda _: method.return_value
+    if isinstance(effect, BaseException) or (
+        isinstance(effect, type) and issubclass(effect, BaseException)
+    ):
+        raise_effect = effect
+
+        def raise_configured(_: object) -> object:
+            raise raise_effect
+
+        return raise_configured
+    if callable(effect):
+        return effect
+    return lambda _: next(effect)
 
 
 class MovieImport:

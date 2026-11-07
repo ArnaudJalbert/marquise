@@ -533,16 +533,24 @@ async def test_confirmed_match_waits_for_earlier_provider_candidates() -> None:
     assert result.identity is None
 
 
+@pytest.fixture
+def batch_use_case() -> MatchMoviesUseCase:
+    """A matcher that knows one film."""
+    return MatchMoviesUseCase(
+        repository((movie("Film", 2026, 100),)), RapidFuzzNameDistance()
+    )
+
+
 @pytest.mark.asyncio
-async def test_batch_matches_every_movie_and_names_its_source() -> None:
+async def test_batch_matches_every_movie_and_names_its_source(
+    batch_use_case: MatchMoviesUseCase,
+) -> None:
     """Each result says which movie it belongs to."""
-    candidate = movie("Film", 2026, 100)
-    use_case = MatchMoviesUseCase(repository((candidate,)), RapidFuzzNameDistance())
     films = (
         MovieInput("Film", 2026, source_identifier="one"),
         MovieInput("Unknown", 2026, source_identifier="two"),
     )
-    output = await use_case.execute(use_case.InputData(films))
+    output = await batch_use_case.execute(batch_use_case.InputData(films))
     assert [match.source for match in output.matches] == list(films)
     assert [match.status for match in output.matches] == ["matched", "unmatched"]
 

@@ -37,7 +37,7 @@ async def test_reuses_movie_by_tmdb_id_without_changing_its_details() -> None:
     assert result.movies == (command.MovieData(title="Docteur Doom", id="existing"),)
     request = matcher.execute.await_args.args[0].movies[0]
     assert (request.title, request.release_year) == ("Docteur Doom", 2026)
-    repo.find_by_tmdb_id.assert_awaited_once_with("123")
+    assert {call.args for call in repo.find_by_tmdb_id.await_args_list} == {("123",)}
     repo.create_or_reuse.assert_not_awaited()
 
 

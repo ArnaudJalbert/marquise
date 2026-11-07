@@ -22,7 +22,6 @@ from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
-from marquise.application.use_cases.resolve_movies import ResolveMoviesCommand
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.application.use_cases.update_screening import UpdateScreeningUseCase
@@ -41,7 +40,6 @@ __all__ = [
     "GetCinemaUseCase",
     "GetCinemaSourceUseCase",
     "ImportScreeningsCommand",
-    "ResolveMoviesCommand",
     "InviteAccountUseCase",
     "ListCinemasUseCase",
     "ListRegistrySourcesUseCase",

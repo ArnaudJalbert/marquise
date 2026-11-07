@@ -29,47 +29,55 @@ def _snapshot(movie_id: str, tmdb_id: str | None = None) -> MovieMetadataSnapsho
     )
 
 
-def _movies() -> Mock:
-    movies = create_autospec(MovieMetadataRepository, instance=True)
-    movies.get.side_effect = _snapshot
-    return movies
+@pytest.fixture
+def movie_repository() -> Mock:
+    """Stored movies with no TMDB identity of their own."""
+    movie_repository = create_autospec(MovieMetadataRepository, instance=True)
+    movie_repository.get.side_effect = _snapshot
+    return movie_repository
 
 
-def _provider(failure: MetadataFailure | None = None) -> Mock:
+@pytest.fixture
+def provider() -> Mock:
+    """A provider that returns one complete detail per identity."""
     provider = create_autospec(MetadataRepository, instance=True)
-    provider.movie_details.side_effect = lambda identity: (
-        MetadataBatch((), complete=False, failure=failure)
-        if failure
-        else MetadataBatch((MetadataMovie(identity, ()),))
+    provider.movie_details.side_effect = lambda identity: MetadataBatch(
+        (MetadataMovie(identity, ()),)
     )
     return provider
 
 
-def _use_case(movies: Mock, provider: Mock) -> EnrichMoviesUseCase:
+@pytest.fixture
+def use_case(movie_repository: Mock, provider: Mock) -> EnrichMoviesUseCase:
+    """The use case under test, with a fixed clock."""
     return EnrichMoviesUseCase(
-        movies, provider, lambda: datetime(2026, 10, 31, tzinfo=UTC)
+        movie_repository, provider, lambda: datetime(2026, 10, 31, tzinfo=UTC)
+    )
+
+
+def _fail_with(provider: Mock, kind: str) -> None:
+    provider.movie_details.side_effect = lambda identity: MetadataBatch(
+        (), complete=False, failure=MetadataFailure(kind, "nope")
     )
 
 
 @pytest.mark.asyncio
-async def test_enriches_with_the_identity_from_matching() -> None:
-    """A confirmed identity is used and reported as enriched."""
-    provider = _provider()
-    use_case = _use_case(_movies(), provider)
-
+async def test_enriches_with_the_identity_from_matching(
+    use_case: EnrichMoviesUseCase, provider: Mock
+) -> None:
+    """A confirmed identity is used, and the movie is reported as enriched."""
     output = await use_case.execute(use_case.InputData((MovieInput("one", "7"),)))
 
-    assert output.results == (use_case.MovieResult("one", "enriched"),)
+    assert output == use_case.OutputData(enriched_ids=("one",), skipped_ids=())
     provider.movie_details.assert_awaited_once_with(ProviderIdentity("tmdb", "7"))
 
 
 @pytest.mark.asyncio
-async def test_falls_to_the_stored_identity_when_matching_found_none() -> None:
+async def test_falls_back_to_the_stored_identity(
+    use_case: EnrichMoviesUseCase, movie_repository: Mock, provider: Mock
+) -> None:
     """A title-matched row enriches from the TMDB ID it already has."""
-    movies = _movies()
-    movies.get.side_effect = lambda movie_id: _snapshot(movie_id, "9")
-    provider = _provider()
-    use_case = _use_case(movies, provider)
+    movie_repository.get.side_effect = lambda movie_id: _snapshot(movie_id, "9")
 
     await use_case.execute(use_case.InputData((MovieInput("one"),)))
 
@@ -77,22 +85,23 @@ async def test_falls_to_the_stored_identity_when_matching_found_none() -> None:
 
 
 @pytest.mark.asyncio
-async def test_movie_with_no_known_identity_is_unchanged() -> None:
-    """No identity anywhere is an accepted outcome."""
-    provider = _provider()
-    use_case = _use_case(_movies(), provider)
-
+async def test_movie_with_no_known_identity_is_left_out(
+    use_case: EnrichMoviesUseCase, provider: Mock
+) -> None:
+    """No identity anywhere is an accepted outcome, reported as neither."""
     output = await use_case.execute(use_case.InputData((MovieInput("one"),)))
 
-    assert output.results == (use_case.MovieResult("one", "unchanged"),)
+    assert output == use_case.OutputData(enriched_ids=(), skipped_ids=())
     provider.movie_details.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("kind", ["unavailable", "rate_limited"])
-async def test_outage_raises(kind: str) -> None:
+async def test_outage_raises(
+    use_case: EnrichMoviesUseCase, provider: Mock, kind: str
+) -> None:
     """TMDB being down stops the batch."""
-    use_case = _use_case(_movies(), _provider(MetadataFailure(kind, "nope")))
+    _fail_with(provider, kind)
 
     with pytest.raises(MovieMetadataUnavailableError):
         await use_case.execute(use_case.InputData((MovieInput("one", "7"),)))
@@ -100,18 +109,17 @@ async def test_outage_raises(kind: str) -> None:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("kind", ["invalid_data", "not_found"])
-async def test_bad_data_skips_only_that_movie(kind: str) -> None:
+async def test_bad_data_skips_only_that_movie(
+    use_case: EnrichMoviesUseCase, provider: Mock, kind: str
+) -> None:
     """Bad data for one movie is not an outage, so the batch carries on."""
-    use_case = _use_case(_movies(), _provider(MetadataFailure(kind, "nope")))
+    _fail_with(provider, kind)
 
     output = await use_case.execute(
         use_case.InputData((MovieInput("one", "7"), MovieInput("two", "8")))
     )
 
-    assert output.results == (
-        use_case.MovieResult("one", "skipped"),
-        use_case.MovieResult("two", "skipped"),
-    )
+    assert output == use_case.OutputData(enriched_ids=(), skipped_ids=("one", "two"))
 
 
 @pytest.mark.parametrize("fields", [{"movie_id": 1}, {"movie_id": "one", "tmdb_id": 7}])

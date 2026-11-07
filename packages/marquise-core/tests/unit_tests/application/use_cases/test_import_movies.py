@@ -182,7 +182,7 @@ async def test_creates_movie_when_title_candidate_has_different_key() -> None:
     )
 
     assert lookup["It"] == "mov-it"
-    mock_movie_repo.find_by_titles.assert_awaited_once_with(["it"])
+    assert mock_movie_repo.find_by_titles.await_args_list[0].args == (["it"],)
     mock_movie_repo.create_or_reuse.assert_awaited_once()
 
 
