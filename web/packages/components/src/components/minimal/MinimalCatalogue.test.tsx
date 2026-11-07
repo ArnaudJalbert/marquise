@@ -698,3 +698,29 @@ it("hides a screening from the first DST hour during the repeated hour", () => {
   expect(preview.getByRole("link", { name: /01:45/ })).toHaveAttribute("href", "https://example.com/upcoming");
   expect(preview.queryByText(/Tomorrow|In \d+ days/)).not.toBeInTheDocument();
 });
+
+it("shows an indigo countdown after times under two hours away and updates with the current time", () => {
+  /** Scenario: 45, 60 and 119 minutes away count down, 120 does not, and a new current time prop refreshes them. */
+  const card = { ...movie, screenings: [
+    { cinemaId: "a", date: "2026-10-30", time: "16:45", showtime: "2026-10-30T16:45:00-04:00" },
+    { cinemaId: "a", date: "2026-10-30", time: "17:00", showtime: "2026-10-30T17:00:00-04:00" },
+    { cinemaId: "a", date: "2026-10-30", time: "17:59", showtime: "2026-10-30T17:59:00-04:00" },
+    { cinemaId: "a", date: "2026-10-30", time: "18:00", showtime: "2026-10-30T18:00:00-04:00", language: "VO" },
+  ] };
+  const { rerender } = render(<MinimalMovieCard movie={card} cinemas={cinemas} currentTime="2026-10-30T20:00:00Z" expanded />);
+  const preview = () => within(screen.getByRole("region", { name: `${movie.title} screenings` }));
+  expect(preview().getAllByText(/^in /).map((el) => el.textContent)).toEqual(["in 45 min", "in 1 h", "in 1 h 59 min"]);
+  expect(preview().getByText("in 45 min")).toHaveClass("minimal-countdown");
+  expect(preview().getByText("18:00").closest(".minimal-time")).toHaveTextContent(/^18:00 VO$/);
+  rerender(<MinimalMovieCard movie={card} cinemas={cinemas} currentTime="2026-10-30T20:20:00Z" expanded />);
+  expect(preview().getAllByText(/^in /).map((el) => el.textContent)).toEqual(["in 25 min", "in 40 min", "in 1 h 39 min", "in 1 h 40 min"]);
+});
+
+it("passes the experience clock to Screenings previews", () => {
+  /** Scenario: the catalogue forwards its current time prop so the card needs no timer. */
+  const { rerender } = render(<MinimalCatalogue {...props} currentTime="2026-10-30T21:15:00Z" />);
+  fireEvent.click(screen.getByRole("button", { name: `Preview ${movie.title}` }));
+  expect(screen.getByText("in 45 min")).toBeVisible();
+  rerender(<MinimalCatalogue {...props} currentTime="2026-10-30T21:16:00Z" />);
+  expect(screen.getByText("in 44 min")).toBeVisible();
+});

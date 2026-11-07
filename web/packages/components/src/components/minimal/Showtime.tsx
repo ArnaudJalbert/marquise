@@ -1,6 +1,12 @@
 import type { CatalogueScreening } from "./catalogue-types";
 
-export function Showtime({ screening }: { screening: CatalogueScreening }) {
+export function Showtime({
+  screening,
+  countdown,
+}: {
+  screening: CatalogueScreening;
+  countdown?: string;
+}) {
   return (
     <span className="minimal-time">
       {screening.bookingUrl ? (
@@ -14,6 +20,7 @@ export function Showtime({ screening }: { screening: CatalogueScreening }) {
       ) : (
         <span>{screening.time}</span>
       )}{" "}
+      {countdown && <><span className="minimal-countdown">{countdown}</span>{" "}</>}
       {screening.language && <small>{screening.language}</small>}
     </span>
   );
