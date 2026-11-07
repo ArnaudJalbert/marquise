@@ -128,6 +128,9 @@ function clients() {
     fetchScreeningRangePage: vi.fn<BrowseClient["fetchScreeningRangePage"]>(
       async () => page([show]),
     ),
+    fetchUpcomingScreeningsPage: vi.fn<
+      BrowseClient["fetchUpcomingScreeningsPage"]
+    >(async () => page([show])),
   };
 }
 beforeEach(() => {
@@ -633,6 +636,27 @@ it("reads every cinema directory page", async () => {
   expect(client.fetchCinemaPage).toHaveBeenNthCalledWith(
     2,
     2,
+    expect.any(AbortSignal),
+  );
+});
+
+it("previews a movies section card from its upcoming screenings as of now", async () => {
+  history.replaceState(null, "", "/?section=movies");
+  const client = clients();
+  render(<App client={client} />);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Preview Wanted film" }),
+  );
+  const preview = screen.getByRole("region", {
+    name: "Wanted film screenings",
+  });
+  const booking = await within(preview).findByRole("link", { name: "18:00" });
+  expect(booking.getAttribute("href")).toBe(show.ticket_url);
+  expect(within(preview).getByText("VOSTF")).toBeTruthy();
+  expect(within(preview).getByText("Cinema One")).toBeTruthy();
+  expect(client.fetchUpcomingScreeningsPage).toHaveBeenCalledExactlyOnceWith(
+    movie.id,
+    "2026-11-01T22:00:00.000Z",
     expect.any(AbortSignal),
   );
 });
