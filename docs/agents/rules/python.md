@@ -20,8 +20,8 @@ OutputData skips re-validating fields copied from already-validated entities or 
 
 ## Use cases
 
-- `execute(input_data: InputData) -> OutputData` is the only public method.
-- Each use case and query declares its own nested `InputData` and `OutputData` classes and uses them in `execute`. It may inject another use case as a collaborator but never reuses another use case's DTOs. **Enforced:** `packages/marquise-core/tests/unit_tests/application/test_use_case_architecture.py` (its allowlist only shrinks).
+- Use case structure follows [use-cases](use-cases/structure.md).
+- `InputData` and `OutputData` follow [use-cases](use-cases/input-and-output.md).
 - Catch domain exceptions and re-raise them as `ApplicationError` subclasses, so domain exceptions stay inside the application layer.
 
 ## Modules and packages

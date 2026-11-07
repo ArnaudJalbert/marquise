@@ -32,7 +32,7 @@ delivery → infrastructure → interface_adapters → application → domain
 
 ## Injection
 
-- Use cases receive repository interfaces through the constructor.
+- Use cases receive their dependencies through the constructor, as [use-cases](use-cases.md) defines.
 - Adapters receive gateway protocols through the constructor.
 - Controllers receive use cases through the constructor.
 - Concrete dependencies are built only at the composition root (`infrastructure/di/`).
