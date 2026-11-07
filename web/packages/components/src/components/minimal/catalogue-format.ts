@@ -59,7 +59,8 @@ export function relativeDay(date: string, today: string): string {
   if (days === 0) return "";
   if (days === 1) return "Tomorrow";
   if (days < 7) return `In ${days} days`;
-  return `In ${Math.floor(days / 7)} weeks`;
+  const weeks = Math.floor(days / 7);
+  return `In ${weeks} ${weeks === 1 ? "week" : "weeks"}`;
 }
 
 /** Floored minutes until a showtime, shown only when it starts under two hours from now. */
