@@ -1,10 +1,10 @@
 [project]
 name = "marquise-api"
-version = "0.1.19"
+version = "0.1.20"
 description = "Marquise public read and authenticated screening REST API"
 requires-python = ">=3.13"
 dependencies = [
-    "marquise-core>=0.2.35",
+    "marquise-core>=0.2.45",
     "fastapi>=0.138.1",
     "fastapi-cache2>=0.2.2",
     "fastapi-pagination>=0.15.15",
@@ -15,7 +15,6 @@ dependencies = [
 [project.urls]
 Homepage = "https://marquise.ca"
 Repository = "https://github.com/ArnaudJalbert/marquise"
-Changelog = "https://github.com/ArnaudJalbert/marquise/blob/main/apps/marquise-api/CHANGELOG.md"
 
 [project.scripts]
 marquise-api = "marquise_api.main:run"

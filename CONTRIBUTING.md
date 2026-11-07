@@ -233,12 +233,11 @@ Branch and commit conventions: [review and delivery rules](docs/agents/rules/rev
 - [ ] Unit tests pass (`pytest packages/marquise-core/tests/unit_tests/`)
 - [ ] App tests pass if an app was touched
 - [ ] Coverage did not drop below 70%
-- [ ] Entry under current date in the affected package's `CHANGELOG.md` ([index](CHANGELOG.md)); version bump in affected package's `pyproject.toml`
+- [ ] Version bump in affected package's `pyproject.toml`
 
 ### Web changes
 
 - [ ] `pnpm lint`, `pnpm typecheck`, and `pnpm test` pass (from `web/`)
-- [ ] Entry under current date in the affected package's `CHANGELOG.md` if user-facing ([index](CHANGELOG.md))
 
 ### All changes
 

@@ -36,7 +36,7 @@ Read the matching file before the work it names. How rules are written and added
 | [docs/sources.md](docs/sources.md) | Scrapers, source adapters, the source registry |
 | [docs/metadata-contracts.md](docs/metadata-contracts.md), [docs/providers/tmdb-metadata.md](docs/providers/tmdb-metadata.md) | Movie metadata and TMDB |
 | [docs/merge-movies.md](docs/merge-movies.md) | Merging duplicate movies |
-| [docs/releasing.md](docs/releasing.md) | Version bumps, changelogs, tags |
+| [docs/releasing.md](docs/releasing.md) | Version bumps, tags, releases |
 | [docs/deployment.md](docs/deployment.md), [docs/fly-postgres.md](docs/fly-postgres.md) | Deploying, Fly Postgres, scheduled imports |
 | [docs/privacy-operations.md](docs/privacy-operations.md) | Personal data handling |
 | [local/README.md](local/README.md) | The isolated local stack (`make local-up`) |
