@@ -37,10 +37,13 @@ Check `Rules test` is a planned AST test in `packages/marquise-core/tests/unit_t
 | `execute` has a complete docstring | [structure](use-cases/structure.md) | Rules test: `Args` and `Returns` present | Planned |
 | `execute` reads as named steps, top-down order | [structure](use-cases/structure.md) | Review | Review |
 | A use case does one job | [structure](use-cases/structure.md) | Review | Review |
+| A command returns IDs, and data comes from a query | [structure](use-cases/structure.md) | Review | Review |
 | A coordinator has no loops or conditions | [structure](use-cases/structure.md) | Rules test | Planned |
 | Inner `InputData` and `OutputData`, never reused | [input-and-output](use-cases/input-and-output.md) | `test_use_case_architecture.py` | Enforced |
 | `InputData` checks its types | [input-and-output](use-cases/input-and-output.md) | Rules test: `isinstance` in `__post_init__` | Planned |
 | Input stops at `execute` | [input-and-output](use-cases/input-and-output.md) | Rules test: no private method or inner class uses an input type | Planned |
+| Entities first, then repository and reader data classes, then an inner class | [input-and-output](use-cases/input-and-output.md) | Review | Review |
+| No big tuples or complicated dicts | [input-and-output](use-cases/input-and-output.md) | Review | Review |
 | No fallbacks | [failure](use-cases/failure.md) | Review, with Rules test flagging `except Exception` | Partly planned |
 | Failure raises, output never carries one | [failure](use-cases/failure.md) | Review | Review |
 | Safe to run again | [failure](use-cases/failure.md) | Review and integration tests | Review |
@@ -48,6 +51,7 @@ Check `Rules test` is a planned AST test in `packages/marquise-core/tests/unit_t
 | Log levels, no logging before raising, no personal data | [logging](use-cases/logging.md) | Review | Review |
 | Test only through `execute` | [testing](use-cases/testing.md) | Rules test: no private call in use case tests | Planned |
 | Mock with autospec | [testing](use-cases/testing.md) | Rules test: no bare `Mock()` for dependencies | Planned |
+| Mocks and the use case come from fixtures | [testing](use-cases/testing.md) | Review | Review |
 
 ### Functions
 

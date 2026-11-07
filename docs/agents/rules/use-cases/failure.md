@@ -11,23 +11,23 @@ Read when deciding what happens if something goes wrong in a use case.
 - A use case must be safe to run again after failing halfway.
 
 ```python
-# Avoid: hiding a failure and quietly doing the job another way.
+# Prohibited: hiding a failure and quietly doing the job another way.
 try:
     tmdb_id = await self._title_matcher.find_tmdb_id(title)
 except Exception:
     return await self._create_unmatched_movie(title)
 
-# Avoid: returning a failure as output.
+# Prohibited: returning a failure as output.
 if cinema is None:
     return self.OutputData(status="failed")
 
-# Prefer: an error raises, and output means it worked.
+# Mandatory: an error raises, and output means it worked.
 if cinema is None:
     raise CinemaNotFoundError(f"Cinema '{cinema_id}' not found")
 
-# Prefer: the dependency's failure propagates, and an accepted
+# Mandatory: the dependency's failure propagates, and an accepted
 # outcome has an explicit path in the business logic.
-tmdb_id = await self._title_matcher.find_tmdb_id(title)
-if tmdb_id is None:
-    return await self._create_unmatched_movie(title)
+tmdb_ids = [await self._find_tmdb_id(title) for title in titles]
+pairs = list(zip(titles, tmdb_ids, strict=True))
+unmatched = tuple(title for title, tmdb_id in pairs if tmdb_id is None)
 ```

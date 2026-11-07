@@ -20,7 +20,7 @@ Functions follow [functions](functions.md).
 A use case that follows every rule. `TitleMatcher` is a made-up interface. A coordinating use case is shown in [structure](use-cases/structure.md#responsibility).
 
 ```python
-"""Command use case: find or create the movies a cinema shows."""
+"""Command use case: add a movie for each title a cinema shows."""
 
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 
 class AddCinemaMoviesCommand:
-    """Find or create one movie for each title a cinema shows."""
+    """Add a movie for each title a cinema shows, reusing stored movies."""
 
     @dataclass(frozen=True, slots=True)
     class InputData:
@@ -63,6 +63,11 @@ class AddCinemaMoviesCommand:
         title: str
         tmdb_id: str
 
+    @dataclass(frozen=True, slots=True)
+    class TitleMatches:
+        matched: tuple[AddCinemaMoviesCommand.MatchedTitle, ...]
+        unmatched: tuple[str, ...]
+
     def __init__(
         self,
         cinema_repository: CinemaRepository,
@@ -74,7 +79,7 @@ class AddCinemaMoviesCommand:
         self._title_matcher = title_matcher
 
     async def execute(self, input_data: InputData) -> OutputData:
-        """Find or create one movie for each title a cinema shows.
+        """Add a movie for each title a cinema shows, reusing stored movies.
 
         Args:
             input_data: The cinema and the titles it shows.
@@ -86,7 +91,10 @@ class AddCinemaMoviesCommand:
             CinemaNotFoundError: If the cinema does not exist.
         """
         await self._require_cinema(input_data.cinema_id)
-        movies = await self._resolve_all(input_data.titles)
+        matches = await self._match_titles(input_data.titles)
+        stored_movies = await self._find_stored_movies(matches.matched)
+        created_movies = await self._create_missing_movies(matches, stored_movies)
+        movies = [*stored_movies, *created_movies]
         logger.info("Added %d movies for %s", len(movies), input_data.cinema_id)
         return self.OutputData(movie_ids=tuple(movie.id.value for movie in movies))
 
@@ -95,29 +103,44 @@ class AddCinemaMoviesCommand:
         if cinema is None:
             raise CinemaNotFoundError(f"Cinema '{cinema_id}' not found")
 
-    async def _resolve_all(self, titles: tuple[str, ...]) -> list[Movie]:
-        return [await self._resolve_title(title) for title in titles]
+    async def _match_titles(self, titles: tuple[str, ...]) -> TitleMatches:
+        tmdb_ids = [await self._find_tmdb_id(title) for title in titles]
+        pairs = list(zip(titles, tmdb_ids, strict=True))
+        # No match is an accepted outcome, so unmatched titles get their own path.
+        return self.TitleMatches(
+            matched=tuple(
+                self.MatchedTitle(title, tmdb_id)
+                for title, tmdb_id in pairs
+                if tmdb_id is not None
+            ),
+            unmatched=tuple(title for title, tmdb_id in pairs if tmdb_id is None),
+        )
 
-    async def _resolve_title(self, title: str) -> Movie:
-        logger.debug("Resolving title %s", title)
+    async def _find_tmdb_id(self, title: str) -> str | None:
+        logger.debug("Matching title %s", title)
         # A TMDB outage raises here and stops the use case.
-        tmdb_id = await self._title_matcher.find_tmdb_id(title)
-        # No match is an accepted outcome, so it has its own path.
-        if tmdb_id is None:
-            logger.info("No TMDB match for %s", title)
-            return await self._create_unmatched_movie(title)
-        matched = self.MatchedTitle(title, tmdb_id)
-        return await self._find_or_create_matched_movie(matched)
+        return await self._title_matcher.find_tmdb_id(title)
 
-    async def _create_unmatched_movie(self, title: str) -> Movie:
-        movie = Movie(id=MovieId(value=uuid4().hex), title=title)
-        return await self._movie_repository.create_or_reuse(movie)
+    async def _find_stored_movies(
+        self, matched: tuple[MatchedTitle, ...]
+    ) -> list[Movie]:
+        movies = [
+            await self._movie_repository.find_by_tmdb_id(title.tmdb_id)
+            for title in matched
+        ]
+        return [movie for movie in movies if movie is not None]
 
-    async def _find_or_create_matched_movie(self, matched: MatchedTitle) -> Movie:
-        existing = await self._movie_repository.find_by_tmdb_id(matched.tmdb_id)
-        if existing is None:
-            return await self._create_matched_movie(matched)
-        return existing
+    async def _create_missing_movies(
+        self, matches: TitleMatches, stored_movies: list[Movie]
+    ) -> list[Movie]:
+        stored_ids = {movie.tmdb_id for movie in stored_movies}
+        missing = [
+            title for title in matches.matched if title.tmdb_id not in stored_ids
+        ]
+        return [
+            *[await self._create_matched_movie(title) for title in missing],
+            *[await self._create_unmatched_movie(title) for title in matches.unmatched],
+        ]
 
     async def _create_matched_movie(self, matched: MatchedTitle) -> Movie:
         movie = Movie(
@@ -125,5 +148,10 @@ class AddCinemaMoviesCommand:
             title=matched.title,
             tmdb_id=matched.tmdb_id,
         )
+        return await self._movie_repository.create_or_reuse(movie)
+
+    async def _create_unmatched_movie(self, title: str) -> Movie:
+        logger.info("No TMDB match for %s, creating it without one", title)
+        movie = Movie(id=MovieId(value=uuid4().hex), title=title)
         return await self._movie_repository.create_or_reuse(movie)
 ```

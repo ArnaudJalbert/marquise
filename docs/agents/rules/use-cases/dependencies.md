@@ -11,11 +11,11 @@ Read when adding or changing what a use case receives or imports.
 - An injected use case is imported under `TYPE_CHECKING` for its type hint only. The caller builds its input with `self._dependency.InputData(...)`, so nothing is imported at runtime and `InputData` stays an inner class.
 
 ```python
-# Avoid: an optional dependency, and one the use case resolves itself.
+# Prohibited: an optional dependency, and one the use case builds itself.
 def __init__(self, movie_repository: MovieRepository | None = None) -> None:
     self._movie_repository = movie_repository or SupabaseMovieRepository()
 
-# Prefer: everything is required and injected.
+# Mandatory: everything is required and injected.
 def __init__(
     self,
     movie_repository: MovieRepository,
@@ -42,10 +42,10 @@ fetched = await self._fetch_titles.execute(request)
 - The standard library, domain entities and value objects, application exceptions and the interfaces of injected dependencies are always fine to use. The restriction is on shared helper functions.
 
 ```python
-# Avoid on the first pass: logic imported from another use case.
+# Prohibited on the first pass: logic imported from another use case.
 from marquise.application.use_cases.match_title import normalize_title
 
-# Prefer on the first pass: a private method, even if it duplicates code.
+# Mandatory on the first pass: a private method, even if it duplicates code.
 def _normalized_title(self, title: str) -> str:
     return " ".join(title.split())
 ```
