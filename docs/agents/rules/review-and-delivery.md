@@ -17,7 +17,7 @@ Read when filing an issue, or opening, reviewing or merging a pull request.
 - One focused change per PR, linked with `Closes #N`. A trivial docs or metadata PR may state its acceptance criteria in the body instead.
 - Use [the PR template](../../../.github/PULL_REQUEST_TEMPLATE.md).
 - The author states the risks and the weakest assumption.
-- Bump each affected package version once per PR and add one changelog section: [docs/releasing.md](../../releasing.md).
+- Bump each affected package version once per PR: [docs/releasing.md](../../releasing.md).
 
 ## Review
 
