@@ -16,6 +16,7 @@ Read the matching file before the work it names. How rules are written and added
 | Rules | Read when |
 |---|---|
 | [architecture](docs/agents/rules/architecture.md) | Adding a use case, repository, gateway, adapter or endpoint; moving code across layers; wiring dependencies; changing what apps import |
+| [naming](docs/agents/rules/naming.md) | Naming or reviewing variables, parameters, properties, functions, classes, types, or components in Python or TypeScript |
 | [python](docs/agents/rules/python.md) | Writing or reviewing Python |
 | [testing](docs/agents/rules/testing.md) | Writing, moving or reviewing tests |
 | [web](docs/agents/rules/web.md) | Working under `web/` |

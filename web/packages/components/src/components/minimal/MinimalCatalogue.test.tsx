@@ -4,8 +4,10 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from "@testing-library/react";
+import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   MinimalCatalogue,
@@ -29,16 +31,17 @@ const movie: CatalogueMovie = {
     {
       cinemaId: "a",
       date: "2026-10-30",
-      time: "18:00",
+      time: "18:00", showtime: "2026-10-30T18:00:00-04:00",
       language: "VO",
       bookingUrl: "https://example.com",
     },
-    { cinemaId: "b", date: "2026-10-30", time: "19:00", language: "VOSTF" },
-    { cinemaId: "a", date: "2026-10-31", time: "20:00", language: "VO" },
-    { cinemaId: "b", date: "2026-11-01", time: "21:00", language: "VOSTF" },
+    { cinemaId: "b", date: "2026-10-30", time: "19:00", showtime: "2026-10-30T19:00:00-04:00", language: "VOSTF" },
+    { cinemaId: "a", date: "2026-10-31", time: "20:00", showtime: "2026-10-31T20:00:00-04:00", language: "VO" },
+    { cinemaId: "b", date: "2026-11-01", time: "21:00", showtime: "2026-11-01T21:00:00-05:00", language: "VOSTF" },
   ],
 };
 const props: MinimalCatalogueProps = {
+  currentTime: "2026-10-30T16:00:00Z",
   movies: [movie],
   screeningLanguages: ["VO", "VOSTF"],
   cinemas,
@@ -53,42 +56,83 @@ const props: MinimalCatalogueProps = {
   },
   href: "/",
   today: "2026-10-30",
-  tomorrow: "2026-10-31",
-  weekend: ["2026-10-31", "2026-11-01"],
   onSelection: vi.fn(),
   navigate: vi.fn(),
   onRetry: vi.fn(),
 };
 
 describe("minimalist prototype", () => {
-  it("keeps inclusive date shortcuts selected from URL-backed dates", () => {
+  it("titles the page with the period and replaces the date inputs and presets", () => {
+    /** Scenario: the period header and day strip are the only date controls. */
     const onSelection = vi.fn();
-    const { rerender } = render(
-      <MinimalCatalogue {...props} onSelection={onSelection} />,
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Today" }));
-    expect(onSelection).toHaveBeenLastCalledWith(
-      expect.objectContaining({ start: "2026-10-30", end: "2026-10-30" }),
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Tomorrow" }));
-    expect(onSelection).toHaveBeenLastCalledWith(
-      expect.objectContaining({ start: "2026-10-31", end: "2026-10-31" }),
-    );
-    rerender(
+    render(
       <MinimalCatalogue
         {...props}
+        selection={{ ...props.selection, cinemas: ["a"] }}
         onSelection={onSelection}
-        selection={{ ...props.selection, start: "2026-10-31", end: "2026-11-01" }}
       />,
     );
-    expect(screen.getByRole("button", { name: "This weekend" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    expect(
+      screen.getByRole("heading", { level: 1, name: "This weekend" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Start date")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("End date")).not.toBeInTheDocument();
+    for (const name of ["Today", "Tomorrow", "This weekend"])
+      expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Next period" }));
+    expect(onSelection).toHaveBeenLastCalledWith({
+      ...props.selection,
+      cinemas: ["a"],
+      start: "2026-11-06",
+      end: "2026-11-08",
+    });
   });
 
-  it("opens only three screenings with the arrow, separate from movie navigation", () => {
-    render(<MinimalMovieCard movie={movie} cinemas={cinemas} />);
+  it("titles a cinema page with its name and the period as a subheading", () => {
+    /** Scenario: a venue page keeps one h1 and shows the period below it. */
+    render(<MinimalCatalogue {...props} href="/cinemas/a" />);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Cinema A");
+    expect(
+      screen.getByRole("heading", { level: 2, name: "This weekend" }),
+    ).toBeInTheDocument();
+  });
+
+  it("offers tomorrow when nothing is left today", () => {
+    /** Scenario: an empty Today shows "See tomorrow" instead of advancing on its own. */
+    const onSelection = vi.fn();
+    const today = { ...props.selection, start: "2026-10-30", end: "2026-10-30" };
+    render(
+      <MinimalCatalogue
+        {...props}
+        movies={[]}
+        selection={{ ...today, languages: ["VO"] }}
+        onSelection={onSelection}
+      />,
+    );
+    expect(screen.getByRole("heading", { name: "Today" })).toBeInTheDocument();
+    expect(screen.getByText("No screenings left today")).toBeInTheDocument();
+    expect(screen.queryByText("No matching screenings")).not.toBeInTheDocument();
+    expect(onSelection).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "See tomorrow" }));
+    expect(onSelection).toHaveBeenCalledExactlyOnceWith({
+      ...today,
+      languages: ["VO"],
+      start: "2026-10-31",
+      end: "2026-10-31",
+    });
+  });
+
+  it("keeps the generic empty state for other periods", () => {
+    /** Scenario: only an empty Today offers tomorrow; other periods offer a reset. */
+    render(<MinimalCatalogue {...props} movies={[]} />);
+    expect(screen.getByText("No matching screenings")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "See tomorrow" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("opens only the next day with the arrow, separate from movie navigation", () => {
+    render(<MinimalMovieCard movie={movie} cinemas={cinemas} currentTime={props.currentTime} />);
     expect(screen.queryByRole("region")).not.toBeInTheDocument();
     const arrow = screen.getByRole("button", {
       name: `Preview ${movie.title}`,
@@ -98,7 +142,7 @@ describe("minimalist prototype", () => {
       name: `${movie.title} screenings`,
     });
     expect(within(preview).getAllByText(/Cinema [AB]/)).toHaveLength(2);
-    expect(within(preview).getByText("2026-10-31")).toBeInTheDocument();
+    expect(within(preview).getByText(/Then Tomorrow/)).toBeInTheDocument();
     expect(within(preview).queryByText("21:00")).not.toBeInTheDocument();
     expect(
       within(preview).getByRole("link", { name: "18:00" }),
@@ -306,7 +350,7 @@ it("ignores a previous movie's response after navigating to another movie", asyn
     ...movie,
     id: "second",
     title: "Second film",
-    screenings: [{ cinemaId: "b", date: "2026-10-30", time: "12:15" }],
+    screenings: [{ cinemaId: "b", date: "2026-10-30", time: "12:15", showtime: "2026-10-30T12:15:00-04:00", }],
   };
   const common = {
     ...props,
@@ -380,8 +424,8 @@ it("applies the same floored hours that are shown by the sliders", () => {
   const fractionalMovie = {
     ...movie,
     screenings: [
-      { cinemaId: "a", date: "2026-10-30", time: "18:00" },
-      { cinemaId: "a", date: "2026-10-30", time: "22:30" },
+      { cinemaId: "a", date: "2026-10-30", time: "18:00", showtime: "2026-10-30T18:00:00-04:00", },
+      { cinemaId: "a", date: "2026-10-30", time: "22:30", showtime: "2026-10-30T22:30:00-04:00", },
     ],
   };
   render(
@@ -439,7 +483,7 @@ it("loads the complete schedule when the movie has cached preview screenings", a
   const loadWeek = vi
     .fn()
     .mockResolvedValue({
-      screenings: [{ cinemaId: "a", date: "2026-10-30", time: "15:45" }],
+      screenings: [{ cinemaId: "a", date: "2026-10-30", time: "15:45", showtime: "2026-10-30T15:45:00-04:00", }],
       cinemas,
     });
   const { rerender } = render(
@@ -471,8 +515,8 @@ it.each([8.1, null])("renders detail score only when present: %s", (score) => {
   else expect(screen.getByText(/8.1\/10/)).toBeInTheDocument();
 });
 
-it("marks only the current section and the pressed date shortcut", () => {
-  /** Scenario: on screenings for today, assistive tech hears only Screenings as current and only Today as pressed. */
+it("marks only the current section and today's day as selected", () => {
+  /** Scenario: on screenings for today, assistive tech hears only Screenings as current and only today as pressed. */
   render(
     <MinimalCatalogue
       {...props}
@@ -486,9 +530,12 @@ it("marks only the current section and the pressed date shortcut", () => {
   );
   for (const name of ["Movies", "Cinemas"])
     expect(navigation.getByRole("link", { name })).not.toHaveAttribute("aria-current");
-  expect(screen.getByRole("button", { name: "Today" })).toHaveAttribute("aria-pressed", "true");
-  for (const name of ["Tomorrow", "This weekend"])
-    expect(screen.getByRole("button", { name })).toHaveAttribute("aria-pressed", "false");
+  expect(
+    screen.getByRole("button", { name: "Today, Friday October 30th" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  expect(
+    screen.getByRole("button", { name: "Saturday October 31st" }),
+  ).toHaveAttribute("aria-pressed", "false");
 });
 
 it("renders movies section cards with year and movie links but no preview", () => {
@@ -537,4 +584,143 @@ it("opens and closes the screenings section preview with icon buttons", () => {
   expect(
     screen.getByRole("region", { name: `${movie.title} screenings` }),
   ).toBeInTheDocument();
+});
+
+function SearchHarness({ movies }: { movies: CatalogueMovie[] }) {
+  const [selection, setSelection] = useState(props.selection);
+  return (
+    <MinimalCatalogue
+      {...props}
+      movies={movies}
+      selection={selection}
+      onSelection={setSelection}
+    />
+  );
+}
+
+it("filters screening results as the visitor types in the movie search field", async () => {
+  /** Scenario: typing part of a title in the always-visible search field narrows the screening results to matching movies. */
+  const other = { ...movie, id: "other", title: "Dune" };
+  render(<SearchHarness movies={[movie, other]} />);
+  fireEvent.change(screen.getByRole("searchbox", { name: "Search movies" }), {
+    target: { value: "dun" },
+  });
+  expect(
+    await screen.findByRole("link", { name: "View Dune" }, { timeout: 1000 }),
+  ).toBeInTheDocument();
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("link", { name: `View ${movie.title}` }),
+    ).not.toBeInTheDocument(),
+  );
+});
+
+it("keeps movie search out of the filters panel", () => {
+  /** Scenario: the Filters panel holds only filters; the search field sits outside it. */
+  render(<MinimalCatalogue {...props} />);
+  const filters = screen.getByRole("region", { name: "Movie filters" });
+  expect(within(filters).queryByRole("searchbox")).not.toBeInTheDocument();
+  expect(screen.getByRole("searchbox", { name: "Search movies" })).toBeInTheDocument();
+});
+
+it("focuses the movie search field when the visitor presses slash", () => {
+  /** Scenario: pressing / anywhere on the page jumps to search, but typing / inside another field stays in that field. */
+  render(<MinimalCatalogue {...props} />);
+  const search = screen.getByRole("searchbox", { name: "Search movies" });
+  const start = screen.getByLabelText("Start time");
+  start.focus();
+  expect(fireEvent.keyDown(start, { key: "/" })).toBe(true);
+  expect(start).toHaveFocus();
+  start.blur();
+  expect(fireEvent.keyDown(document.body, { key: "/" })).toBe(false);
+  expect(search).toHaveFocus();
+});
+
+it.each([
+  ["2026-10-30", ""], ["2026-10-31", "Tomorrow"],
+  ["2026-11-01", "In 2 days"], ["2026-11-05", "In 6 days"],
+  ["2026-11-06", "In 1 weeks"], ["2026-11-12", "In 1 weeks"],
+  ["2026-11-19", "In 2 weeks"],
+])("labels the next Montréal day %s as %s", (date, label) => {
+  /** Scenario: relative labels use calendar days, including across DST. */
+  render(<MinimalMovieCard movie={{ ...movie, screenings: [{ cinemaId: "a", date, time: "23:00", showtime: `${date}T23:00:00-${date < "2026-11-01" ? "04" : "05"}:00` }] }} cinemas={cinemas} currentTime="2026-10-31T01:00:00Z" expanded />);
+  const preview = screen.getByRole("region", { name: `${movie.title} screenings` });
+  if (label) expect(within(preview).getByText(label)).toBeVisible();
+  else expect(within(preview).queryByText(/^(Tomorrow|In \d+ (days|weeks))$/)).not.toBeInTheDocument();
+  expect(within(preview).queryByText(/Then/)).not.toBeInTheDocument();
+  expect(within(preview).getByRole("link", { name: "Schedule" })).toHaveAttribute("href", "/movies/film");
+});
+
+it("sorts and caps the next day, counts only its extra times, and updates after showtime", () => {
+  /** Scenario: past and already-started shows disappear, and later days supply only a hint. */
+  const screenings = ["22:00", "17:00", "21:00", "18:00", "20:00", "19:00", "16:00"].map((time) => ({ cinemaId: "a", date: "2026-10-30", time, showtime: `2026-10-30T${time}:00-04:00`, language: "VO" }));
+  const card = { ...movie, screenings: [...screenings, { cinemaId: "b", date: "2026-11-06", time: "23:00", showtime: "2026-11-06T23:00:00-05:00", }] };
+  const { rerender } = render(<MinimalMovieCard movie={card} cinemas={cinemas} currentTime="2026-10-30T21:00:00Z" expanded />);
+  const preview = screen.getByRole("region", { name: `${movie.title} screenings` });
+  expect(within(preview).queryByText("16:00")).not.toBeInTheDocument();
+  expect(within(preview).queryByText("17:00")).not.toBeInTheDocument();
+  expect(within(preview).getAllByText(/^\d\d:\d\d$/).map((el) => el.textContent)).toEqual(["18:00", "19:00", "20:00", "21:00"]);
+  expect(within(preview).getAllByText("VO")).toHaveLength(4);
+  expect(within(preview).getAllByText("Cinema A")).toHaveLength(4);
+  expect(within(preview).getByRole("link", { name: "+1 more" })).toHaveAttribute("href", "/movies/film");
+  expect(within(preview).getByText(/Then In 1 weeks/)).toBeVisible();
+  expect(within(preview).queryByText("23:00")).not.toBeInTheDocument();
+  rerender(<MinimalMovieCard movie={card} cinemas={cinemas} currentTime="2026-10-31T02:00:00Z" expanded />);
+  expect(screen.getByRole("region")).toHaveTextContent("In 1 weeks");
+  expect(screen.queryByText(/Then/)).not.toBeInTheDocument();
+});
+
+it("builds previews solely from loaded screenings matching every active filter", () => {
+  /** Scenario: date, cinema, language and time filters exclude rows before preview grouping. */
+  render(<MinimalCatalogue {...props} movies={[{ ...movie, screenings: [
+    ...movie.screenings,
+    { cinemaId: "a", date: "2026-10-30", time: "22:00", showtime: "2026-10-30T22:00:00-04:00", language: "VO" },
+  ] }]} selection={{ ...props.selection, end: "2026-10-30", cinemas: ["a"], languages: ["VO"], from: "17:00", to: "20:00" }} />);
+  fireEvent.click(screen.getByRole("button", { name: `Preview ${movie.title}` }));
+  const preview = screen.getByRole("region", { name: `${movie.title} screenings` });
+  expect(within(preview).getByText("18:00")).toBeInTheDocument();
+  for (const text of ["19:00", "20:00", "21:00", "22:00", "Cinema B"])
+    expect(within(preview).queryByText(text)).not.toBeInTheDocument();
+  expect(within(preview).getByRole("link", { name: "Schedule" })).toHaveAttribute("href", "/movies/film");
+  expect(within(preview).queryByText(/Then|\+\d+ more/)).not.toBeInTheDocument();
+});
+
+it("hides a screening from the first DST hour during the repeated hour", () => {
+  /** Scenario: 01:45 EDT has started by 01:15 EST, while 01:45 EST is still upcoming on the same Montréal day. */
+  const card = { ...movie, screenings: [
+    { cinemaId: "a", date: "2026-11-01", time: "01:45", showtime: "2026-11-01T05:45:00Z", bookingUrl: "https://example.com/started" },
+    { cinemaId: "b", date: "2026-11-01", time: "01:45", showtime: "2026-11-01T06:45:00Z", bookingUrl: "https://example.com/upcoming" },
+  ] };
+  render(<MinimalMovieCard movie={card} cinemas={cinemas} currentTime="2026-11-01T06:15:00Z" expanded />);
+  const preview = within(screen.getByRole("region", { name: `${movie.title} screenings` }));
+  expect(preview.queryByText("Cinema A")).not.toBeInTheDocument();
+  expect(preview.getByText("Cinema B")).toBeVisible();
+  expect(preview.getByRole("link", { name: /01:45/ })).toHaveAttribute("href", "https://example.com/upcoming");
+  expect(preview.queryByText(/Tomorrow|In \d+ days/)).not.toBeInTheDocument();
+});
+
+it("shows an indigo countdown after times under two hours away and updates with the current time", () => {
+  /** Scenario: 45, 60 and 119 minutes away count down, 120 does not, and a new current time prop refreshes them. */
+  const card = { ...movie, screenings: [
+    { cinemaId: "a", date: "2026-10-30", time: "16:45", showtime: "2026-10-30T16:45:00-04:00" },
+    { cinemaId: "a", date: "2026-10-30", time: "17:00", showtime: "2026-10-30T17:00:00-04:00" },
+    { cinemaId: "a", date: "2026-10-30", time: "17:59", showtime: "2026-10-30T17:59:00-04:00" },
+    { cinemaId: "a", date: "2026-10-30", time: "18:00", showtime: "2026-10-30T18:00:00-04:00", language: "VO" },
+  ] };
+  const { rerender } = render(<MinimalMovieCard movie={card} cinemas={cinemas} currentTime="2026-10-30T20:00:00Z" expanded />);
+  const preview = () => within(screen.getByRole("region", { name: `${movie.title} screenings` }));
+  expect(preview().getAllByText(/^in /).map((el) => el.textContent)).toEqual(["in 45 min", "in 1 h", "in 1 h 59 min"]);
+  expect(preview().getByText("in 45 min")).toHaveClass("minimal-countdown");
+  expect(preview().getByText("18:00").closest(".minimal-time")).toHaveTextContent(/^18:00 VO$/);
+  rerender(<MinimalMovieCard movie={card} cinemas={cinemas} currentTime="2026-10-30T20:20:00Z" expanded />);
+  expect(preview().getAllByText(/^in /).map((el) => el.textContent)).toEqual(["in 25 min", "in 40 min", "in 1 h 39 min", "in 1 h 40 min"]);
+});
+
+it("passes the experience clock to Screenings previews", () => {
+  /** Scenario: the catalogue forwards its current time prop so the card needs no timer. */
+  const { rerender } = render(<MinimalCatalogue {...props} currentTime="2026-10-30T21:15:00Z" />);
+  fireEvent.click(screen.getByRole("button", { name: `Preview ${movie.title}` }));
+  expect(screen.getByText("in 45 min")).toBeVisible();
+  rerender(<MinimalCatalogue {...props} currentTime="2026-10-30T21:16:00Z" />);
+  expect(screen.getByText("in 44 min")).toBeVisible();
 });
