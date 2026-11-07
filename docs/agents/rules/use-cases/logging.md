@@ -16,12 +16,12 @@ logger = logging.getLogger(__name__)
 logger.info("Added %d movies for cinema %s", len(movies), cinema_id)
 
 # Lower-level detail: debug.
-logger.debug("Resolving title %s", title)
+logger.debug("Matching title %s", title)
 
 # Accepted problem: warning.
 logger.warning("Skipped enrichment for movie %s: %s", movie_id, reason)
 
-# Avoid: the caller decides how to log this.
+# Prohibited: logging an error you raise. The caller decides how to log it.
 logger.error("Cinema %s not found", cinema_id)
 raise CinemaNotFoundError(f"Cinema '{cinema_id}' not found")
 ```

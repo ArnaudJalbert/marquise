@@ -7,7 +7,9 @@ Read when writing `InputData` or `OutputData`.
 - `InputData` is the gateway into application logic, so it checks the types of its fields in `__post_init__`. This is the only place types are checked. The rest of the application trusts it.
 - `OutputData` has no type checks.
 - `InputData`, and any input class nested in it, only brings data into the use case through `execute`. Private methods don't receive it and inner classes don't hold it, so the outside contract can change without touching the logic.
-- When the logic needs its own data structure, create a separate immutable inner class. Prefer them over complicated dicts or big tuples.
+- Work with domain entities whenever they fit. Most of the time the logic can use the entity.
+- When no entity fits, use the data classes that repositories and readers return, not the database structure behind them. This avoids redefining the same data.
+- Only when neither fits, create a separate immutable inner class. Its only purpose is to replace a big tuple or a complicated dict, and both are prohibited.
 
 ```python
 class AddCinemaMoviesCommand:
@@ -35,15 +37,15 @@ class MatchedTitle:
     title: str
     tmdb_id: str
 
-# Avoid: nothing says what each position means.
+# Prohibited: nothing says what each position means.
 async def _create_matched_movie(self, matched: tuple[str, str]) -> Movie:
     ...
 
-# Avoid: the keys are invisible to the reader and type checker.
+# Prohibited: the keys are invisible to the reader and type checker.
 async def _create_matched_movie(self, matched: dict[str, str]) -> Movie:
     ...
 
-# Prefer: every value has a name and a type.
+# Mandatory: every value has a name and a type.
 async def _create_matched_movie(self, matched: MatchedTitle) -> Movie:
     ...
 ```
@@ -51,22 +53,22 @@ async def _create_matched_movie(self, matched: MatchedTitle) -> Movie:
 `execute` is where input ends. Everything below it works with plain values or the use case's own classes:
 
 ```python
-# Avoid: input leaks into the logic, tying it to the outside contract.
+# Prohibited: input leaks into the logic, tying it to the outside contract.
 @dataclass(frozen=True, slots=True)
 class MatchedTitle:
     source: MovieInput
     tmdb_id: str
 
-async def _resolve_all(self, input_data: InputData) -> list[Movie]:
+async def _match_titles(self, input_data: InputData) -> TitleMatches:
     ...
 
-# Prefer: execute passes values on, and the logic has its own class.
+# Mandatory: execute passes values on, and the logic has its own class.
 @dataclass(frozen=True, slots=True)
 class MatchedTitle:
     title: str
     tmdb_id: str
 
 async def execute(self, input_data: InputData) -> OutputData:
-    movies = await self._resolve_all(input_data.titles)
+    matches = await self._match_titles(input_data.titles)
     ...
 ```
