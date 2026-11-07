@@ -52,6 +52,7 @@ class TestIntersectionObserver implements IntersectionObserver {
   readonly scrollMargin = "0px";
   readonly thresholds = [0];
   private target?: Element;
+  connected = false;
 
   constructor(private readonly callback: IntersectionObserverCallback) {
     endObservers.push(this);
@@ -59,21 +60,36 @@ class TestIntersectionObserver implements IntersectionObserver {
 
   observe(target: Element) {
     this.target = target;
+    this.connected = true;
   }
 
   unobserve() {}
-  disconnect() {}
+  disconnect() {
+    this.connected = false;
+  }
   takeRecords(): IntersectionObserverEntry[] {
     return [];
   }
 
   reachEnd() {
-    if (!this.target) throw new Error("No end sentinel observed");
+    if (!this.target || !this.connected) throw new Error("No connected end sentinel");
     this.callback(
       [{ isIntersecting: true, target: this.target } as IntersectionObserverEntry],
       this,
     );
   }
+}
+// findBy* can resolve on the DOM commit before the sentinel effect subscribes, and
+// earlier observers are disconnected when a page starts loading, so wait for a connected one.
+async function reachEnd(times = 1) {
+  const observer = await waitFor(() => {
+    const latest = endObservers.filter((candidate) => candidate.connected).at(-1);
+    if (!latest) throw new Error("End sentinel not subscribed yet");
+    return latest;
+  });
+  await act(async () => {
+    for (let call = 0; call < times; call++) observer.reachEnd();
+  });
 }
 function page<T>(items: T[]): Page<T> {
   return { items, total: items.length, page: 1, pages: 1, size: 24 };
@@ -132,8 +148,8 @@ it("appends catalogue pages at the end and stops at the reported last page", asy
   history.replaceState(null, "", "/?section=movies");
   const client = clients();
   const pages = Array.from({ length: 3 }, (_, pageIndex) =>
-    Array.from({ length: pageIndex === 2 ? 5 : 24 }, (_, itemIndex) => {
-      const number = pageIndex * 24 + itemIndex + 1;
+    Array.from({ length: pageIndex === 2 ? 1 : 2 }, (_, itemIndex) => {
+      const number = pageIndex * 2 + itemIndex + 1;
       const id = `movie-${number}`;
       const title = `Movie ${number}`;
       return {
@@ -147,31 +163,28 @@ it("appends catalogue pages at the end and stops at the reported last page", asy
   client.fetchScreeningMoviesPage.mockImplementation(
     async ({ page: requestedPage }) => ({
       items: pages[requestedPage - 1] ?? [],
-      total: 53,
+      total: 5,
       page: requestedPage,
-      size: 24,
+      size: 2,
       pages: 3,
     }),
   );
   render(<App client={client} />);
 
-  await screen.findByRole("link", { name: "View Movie 24" });
-  expect(screen.queryByRole("link", { name: "View Movie 25" })).toBeNull();
-  await act(async () => {
-    endObservers.at(-1)?.reachEnd();
-    endObservers.at(-1)?.reachEnd();
-  });
-  await screen.findByRole("link", { name: "View Movie 25" });
+  await screen.findByRole("link", { name: "View Movie 2" });
+  expect(screen.queryByRole("link", { name: "View Movie 3" })).toBeNull();
+  await reachEnd(2);
+  await screen.findByRole("link", { name: "View Movie 3" });
   expect(client.fetchScreeningMoviesPage).toHaveBeenNthCalledWith(
     2,
     { start: "2026-11-01", page: 2, title: undefined },
     expect.any(AbortSignal),
   );
-  await act(async () => endObservers.at(-1)?.reachEnd());
-  await screen.findByRole("link", { name: "View Movie 53" });
-  expect(screen.getAllByRole("article")).toHaveLength(53);
+  await reachEnd();
+  await screen.findByRole("link", { name: "View Movie 5" });
+  expect(screen.getAllByRole("article")).toHaveLength(5);
   expect(client.fetchScreeningMoviesPage).toHaveBeenCalledTimes(3);
-  await act(async () => endObservers.at(-1)?.reachEnd());
+  expect(endObservers.some((candidate) => candidate.connected)).toBe(false);
   expect(client.fetchScreeningMoviesPage).toHaveBeenCalledTimes(3);
 });
 
@@ -209,7 +222,7 @@ it("appends distinct screening movies when their end enters view", async () => {
   render(<App client={client} />);
 
   await screen.findByRole("link", { name: "View Screening 2" });
-  await act(async () => endObservers.at(-1)?.reachEnd());
+  await reachEnd();
   await screen.findByRole("link", { name: "View Screening 3" });
   expect(screen.getAllByRole("link", { name: "View Screening 2" })).toHaveLength(
     1,
@@ -250,7 +263,7 @@ it("keeps loaded catalogue movies after a page failure and retries that page", a
   render(<App client={client} />);
 
   await screen.findByRole("link", { name: "View Movie 24" });
-  await act(async () => endObservers.at(-1)?.reachEnd());
+  await reachEnd();
   await screen.findByRole("alert");
   expect(screen.getByRole("link", { name: "View Movie 1" })).toBeTruthy();
   expect(screen.queryByRole("link", { name: "View Movie 25" })).toBeNull();
@@ -306,7 +319,7 @@ it.each(["/", "/cinemas/c1"])("restores filtered pages from %s after visiting a 
   );
   render(<App client={client} />);
   await screen.findByRole("link", { name: "View Wanted 1" });
-  await act(async () => endObservers.at(-1)?.reachEnd());
+  await reachEnd();
   fireEvent.click(await screen.findByRole("link", { name: "View Wanted 2" }));
   await screen.findByRole("heading", { name: movie.title });
 
@@ -1012,7 +1025,7 @@ it("moves between information pages and listings with Back and Forward", async (
   expect(screen.getByRole("heading", { level: 1, name: "About Marquise" })).toBeTruthy();
   await traverse("/?section=movies");
   await screen.findByRole("link", { name: "View Movie 1" });
-  await act(async () => endObservers.at(-1)?.reachEnd());
+  await reachEnd();
   await screen.findByRole("link", { name: "View Movie 2" });
   await traverse("/about");
   expect(screen.getByRole("heading", { level: 1, name: "About Marquise" })).toBeTruthy();
