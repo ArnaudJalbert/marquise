@@ -1519,7 +1519,10 @@ def test_screening_movies_page_and_validation(
     query.execute.return_value = BrowseScreeningMoviesQuery.OutputData(
         movies=(), total=25
     )
-    response = client.get("/v1/screening-movies?start=2026-11-01&end=2026-11-01&page=2")
+    response = client.post(
+        "/v1/screening-movies?start=2026-11-01&end=2026-11-01&page=2",
+        json={},
+    )
     assert response.status_code == 200
     assert response.json() == {
         "items": [],
@@ -1537,23 +1540,24 @@ def test_screening_movies_page_and_validation(
         "start=2026-11-02&end=2026-11-01",
         "start=2026-11-01&end=2026-11-01&page=0",
     ]:
-        assert client.get(f"/v1/screening-movies?{params}").status_code == 422
+        assert client.post(f"/v1/screening-movies?{params}", json={}).status_code == 422
     query.execute.assert_not_awaited()
 
 
-def test_screening_movies_filters_reach_the_query_and_reject_inverted_hours(
+def test_screening_movies_filters_reach_the_query(
     client: TestClient, factory: MagicMock
 ) -> None:
-    """Repeated filters and daily hours reach one movie-first query."""
+    """Repeated filters, one hour range and exclusions reach one movie-first query."""
     query = create_autospec(BrowseScreeningMoviesQuery, instance=True)
     factory.browse_screening_movies_query = query
     query.execute.return_value = BrowseScreeningMoviesQuery.OutputData(
         movies=(), total=0
     )
-    response = client.get(
+    response = client.post(
         "/v1/screening-movies?start=2026-11-01&end=2026-11-05&page=1"
         "&title=Dune&cinema=c1&cinema=c2&language=VO&language=VOSTF"
-        "&start_hour=18&end_hour=21"
+        "&exclude_cinema=c3&exclude_cinema=c4",
+        json={"hours": {"operator": "is", "ranges": [{"start": 17, "end": 21}]}},
     )
     assert response.status_code == 200
     query.execute.assert_awaited_once_with(
@@ -1564,17 +1568,102 @@ def test_screening_movies_filters_reach_the_query_and_reject_inverted_hours(
             title="Dune",
             cinemas=("c1", "c2"),
             languages=("VO", "VOSTF"),
-            start_hour=18,
-            end_hour=21,
+            hours=BrowseScreeningMoviesQuery.HourFilter(
+                ranges=(BrowseScreeningMoviesQuery.HourRange(start=17, end=21),)
+            ),
+            excluded_cinemas=("c3", "c4"),
         )
     )
-    assert (
-        client.get(
-            "/v1/screening-movies?start=2026-11-01&end=2026-11-05"
-            "&start_hour=21&end_hour=18"
-        ).status_code
-        == 422
+
+
+def test_screening_movies_accepts_an_hour_filter_with_several_ranges(
+    client: TestClient, factory: MagicMock
+) -> None:
+    """A structured hour filter keeps several ranges matched with OR."""
+    query = create_autospec(BrowseScreeningMoviesQuery, instance=True)
+    factory.browse_screening_movies_query = query
+    query.execute.return_value = BrowseScreeningMoviesQuery.OutputData(
+        movies=(), total=0
     )
+    response = client.post(
+        "/v1/screening-movies?start=2026-11-01",
+        json={
+            "hours": {
+                "operator": "is",
+                "ranges": [{"start": 0, "end": 17}, {"start": 21, "end": 24}],
+            }
+        },
+    )
+    assert response.status_code == 200
+    query.execute.assert_awaited_once_with(
+        BrowseScreeningMoviesQuery.InputData(
+            start=date(2026, 11, 1),
+            end=None,
+            hours=BrowseScreeningMoviesQuery.HourFilter(
+                ranges=(
+                    BrowseScreeningMoviesQuery.HourRange(start=0, end=17),
+                    BrowseScreeningMoviesQuery.HourRange(start=21, end=24),
+                )
+            ),
+        )
+    )
+
+
+def test_screening_movies_maps_a_negative_hour_filter(
+    client: TestClient, factory: MagicMock
+) -> None:
+    """A negative hour filter reaches the query without client complements."""
+    query = create_autospec(BrowseScreeningMoviesQuery, instance=True)
+    factory.browse_screening_movies_query = query
+    query.execute.return_value = BrowseScreeningMoviesQuery.OutputData(
+        movies=(), total=0
+    )
+    response = client.post(
+        "/v1/screening-movies?start=2026-11-01",
+        json={
+            "hours": {
+                "operator": "is_not",
+                "ranges": [{"start": 17, "end": 21}],
+            }
+        },
+    )
+    assert response.status_code == 200
+    query.execute.assert_awaited_once_with(
+        BrowseScreeningMoviesQuery.InputData(
+            start=date(2026, 11, 1),
+            end=None,
+            hours=BrowseScreeningMoviesQuery.HourFilter(
+                ranges=(BrowseScreeningMoviesQuery.HourRange(start=17, end=21),),
+                excluded=True,
+            ),
+        )
+    )
+
+
+@pytest.mark.parametrize(
+    "hours",
+    [
+        {"operator": "is", "ranges": []},
+        {"operator": "is", "ranges": [{"start": 21, "end": 17}]},
+        {"operator": "is", "ranges": [{"start": 17, "end": 17}]},
+        {"operator": "is", "ranges": [{"start": -1, "end": 5}]},
+        {"operator": "is", "ranges": [{"start": 0, "end": 25}]},
+        {"operator": "is", "ranges": [{"start": "5", "end": 9}]},
+        {"operator": "contains", "ranges": [{"start": 5, "end": 9}]},
+    ],
+)
+def test_screening_movies_rejects_invalid_hour_ranges(
+    client: TestClient, factory: MagicMock, hours: dict
+) -> None:
+    """Invalid operators and ranges fail Pydantic validation before querying."""
+    query = create_autospec(BrowseScreeningMoviesQuery, instance=True)
+    factory.browse_screening_movies_query = query
+    response = client.post(
+        "/v1/screening-movies?start=2026-11-01",
+        json={"hours": hours},
+    )
+    assert response.status_code == 422
+    query.execute.assert_not_awaited()
 
 
 def test_screening_movie_metadata_and_preview_response(
@@ -1612,7 +1701,9 @@ def test_screening_movie_metadata_and_preview_response(
         ],
         total=1,
     )
-    data = client.get("/v1/screening-movies?start=2026-11-01&end=2026-11-01").json()
+    data = client.post(
+        "/v1/screening-movies?start=2026-11-01&end=2026-11-01", json={}
+    ).json()
     assert data["total"] == 1 and data["pages"] == 1
     assert data["items"][0]["directors"] == ["Director"]
     assert data["items"][0]["tmdb_rating"] == 8.1

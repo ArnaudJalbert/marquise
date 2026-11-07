@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime, time
-
 import asyncpg
 
+from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
 from marquise.infrastructure.supabase.gateways.screening_reader import _naive_utc
 from marquise.interface_adapters.repositories.protocols.base import GatewayPage
 
@@ -18,19 +17,10 @@ class SupabaseScreeningMovieReadGateway:
         self._pool = pool
         self._schema = schema
 
-    async def search(
-        self,
-        start: datetime,
-        end: datetime | None,
-        now: datetime,
-        page: int,
-        title: str | None = None,
-        cinemas: tuple[str, ...] = (),
-        languages: tuple[str, ...] = (),
-        start_time: time | None = None,
-        end_time: time | None = None,
-    ) -> GatewayPage:
+    async def search(self, request: ScreeningMovieReader.SearchRequest) -> GatewayPage:
         """Use one SQL snapshot for eligibility, totals, ordering and previews."""
+        hour_filter = request.hours
+        hour_ranges = hour_filter.ranges if hour_filter else ()
         async with self._pool.acquire() as connection:
             rows = await connection.fetch(
                 f'''
@@ -48,18 +38,20 @@ class SupabaseScreeningMovieReadGateway:
                       AND ($4::text IS NULL OR m.title ILIKE '%' || $4 || '%')
                       AND (cardinality($5::text[]) = 0 OR s.cinema_id = ANY($5))
                       AND (cardinality($6::text[]) = 0 OR s.language = ANY($6))
-                      AND ($7::time IS NULL OR
-                           ((s.showtime AT TIME ZONE 'UTC')
-                               AT TIME ZONE 'America/Montreal')::time >= $7)
-                      AND ($8::time IS NULL OR
-                           ((s.showtime AT TIME ZONE 'UTC')
-                               AT TIME ZONE 'America/Montreal')::time <= $8)
+                      AND (cardinality($7::int[]) = 0 OR EXISTS (
+                           SELECT 1 FROM unnest($7::int[], $8::int[]) h(lo, hi)
+                           WHERE int4range(h.lo, h.hi) @> extract(
+                               hour FROM (s.showtime AT TIME ZONE 'UTC')
+                                   AT TIME ZONE 'America/Montreal'
+                           )::int
+                           ) <> $9::boolean)
+                      AND NOT s.cinema_id = ANY($10::text[])
                 ), eligible AS (
                     SELECT movie_id, showtime AS next_showtime
                     FROM qualifying WHERE rank = 1
                 ), selected AS (
                     SELECT * FROM eligible
-                    ORDER BY next_showtime, movie_id LIMIT 24 OFFSET $9
+                    ORDER BY next_showtime, movie_id LIMIT 24 OFFSET $11
                 )
                 SELECT totals.total, m.id, m.title, m.release_year, m.directors,
                        m.duration_minutes, m.description, m.poster_url,
@@ -72,15 +64,17 @@ class SupabaseScreeningMovieReadGateway:
                 LEFT JOIN qualifying q ON q.movie_id = p.movie_id AND q.rank <= 3
                 ORDER BY p.next_showtime, p.movie_id, q.showtime, q.id
                 ''',
-                _naive_utc(start),
-                None if end is None else _naive_utc(end),
-                _naive_utc(now),
-                None if not title else title.strip(),
-                list(cinemas),
-                list(languages),
-                start_time,
-                end_time,
-                (page - 1) * 24,
+                _naive_utc(request.start),
+                None if request.end is None else _naive_utc(request.end),
+                _naive_utc(request.now),
+                None if not request.title else request.title.strip(),
+                list(request.cinemas),
+                list(request.languages),
+                [item.start for item in hour_ranges],
+                [item.end for item in hour_ranges],
+                hour_filter is not None and hour_filter.excluded,
+                list(request.excluded_cinemas),
+                (request.page - 1) * 24,
             )
         movies: dict[str, dict] = {}
         for row in rows:
