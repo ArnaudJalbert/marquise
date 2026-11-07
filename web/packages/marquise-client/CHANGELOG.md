@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-03
+
+- Replace `startHour` and `endHour` with a structured hour filter containing an `is` or `is_not` operator and half-open ranges. Send it as JSON to the screening-movie search endpoint. Add `excludedCinemas`. Supports #441.
+
 ## 2026-11-01
 
 - Allow screening-movie queries without an end date for complete upcoming listings.

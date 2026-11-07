@@ -330,6 +330,29 @@ it.each(["/", "/cinemas/c1"])("restores filtered pages from %s after visiting a 
   expect(client.fetchScreeningMoviesPage).toHaveBeenCalledTimes(3);
 });
 
+it.each([
+  ["from=18:00&to=22:00", [[18, 22]]],
+  ["from=18:00&to=18:00", [[18, 19]]],
+  ["to=24:00", []],
+])("sends the hour slider %s as half-open hour ranges", async (hours, expected) => {
+  history.replaceState(null, "", `/?start=2026-11-03&end=2026-11-03&${hours}`);
+  const client = clients();
+  render(<App client={client} />);
+  await screen.findByRole("link", { name: "View Wanted film" });
+  expect(client.fetchScreeningMoviesPage).toHaveBeenCalledWith(
+    expect.objectContaining({
+      hours:
+        expected.length === 0
+          ? undefined
+          : {
+              operator: "is",
+              ranges: expected.map(([start, end]) => ({ start, end })),
+            },
+    }),
+    expect.any(AbortSignal),
+  );
+});
+
 it("opens today's movie-first page without catalogue reads or poster fan-out", async () => {
   const client = clients();
   render(<App client={client} />);
@@ -342,8 +365,7 @@ it("opens today's movie-first page without catalogue reads or poster fan-out", a
       title: "",
       cinemas: [],
       languages: [],
-      startHour: 0,
-      endHour: 24,
+      hours: undefined,
     },
     expect.any(AbortSignal),
   );

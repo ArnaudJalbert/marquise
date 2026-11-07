@@ -11,6 +11,8 @@
 - Show only the next matching Montréal day in Screenings previews, hide started screenings using absolute showtimes through the repeated DST hour, cap times at four, and add relative day labels and a compact schedule footer in a flat indigo-accented box. Supports #430.
 - Share one Movie Card across the Screenings and Movies sections, and replace the arrow and close text glyphs with line icons so iPhones no longer render emoji. Supports #429.
 
+- Send the screenings hour slider as a structured `is` filter with one half-open hour range. A single-hour pick such as 18:00 to 18:00 covers the whole 18:00 hour. Supports #441.
+
 ## 2026-11-01
 
 - Replace Terms and Privacy layout placeholders with approved copy; clarify source non-affiliation, TMDB credits, public API reuse, server logging, and the privacy contact. Remove approved information-page draft labels.
