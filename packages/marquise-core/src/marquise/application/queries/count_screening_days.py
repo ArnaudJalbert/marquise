@@ -100,25 +100,28 @@ class CountScreeningDaysQuery:
             TooManyScreeningDaysError: If the horizon exceeds 42 days.
         """
         self._require_bounded_horizon(input_data.start, input_data.end)
+        start, end = self._to_utc_window(input_data.start, input_data.end)
         hours = input_data.hours
+        reader_hours = (
+            None
+            if hours is None
+            else ScreeningMovieReader.HourFilter(
+                ranges=tuple(
+                    ScreeningMovieReader.HourRange(item.start, item.end)
+                    for item in hours.ranges
+                ),
+                excluded=hours.excluded,
+            )
+        )
         counts = await self._reader.count_days(
             ScreeningMovieReader.DayCountRequest(
-                start=self._day_start(input_data.start),
-                end=self._day_start(input_data.end + timedelta(days=1))
-                - timedelta(microseconds=1),
+                start=start,
+                end=end,
                 now=self._clock(),
                 title=input_data.title,
                 cinemas=input_data.cinemas,
                 languages=input_data.languages,
-                hours=ScreeningMovieReader.HourFilter(
-                    ranges=tuple(
-                        ScreeningMovieReader.HourRange(item.start, item.end)
-                        for item in hours.ranges
-                    ),
-                    excluded=hours.excluded,
-                )
-                if hours
-                else None,
+                hours=reader_hours,
                 excluded_cinemas=input_data.excluded_cinemas,
             )
         )
@@ -131,6 +134,12 @@ class CountScreeningDaysQuery:
             raise TooManyScreeningDaysError(
                 f"A count covers at most {self._MAX_DAYS} days"
             )
+
+    def _to_utc_window(self, start: date, end: date) -> tuple[datetime, datetime]:
+        last_instant = self._day_start(end + timedelta(days=1)) - timedelta(
+            microseconds=1
+        )
+        return self._day_start(start), last_instant
 
     def _day_start(self, day: date) -> datetime:
         return datetime.combine(day, time.min, self._ZONE).astimezone(UTC)
