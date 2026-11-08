@@ -199,7 +199,7 @@ function DayStrip({
             className={[
               cellDays === 7 ? "minimal-strip-week" : "minimal-strip-day",
               weekend && "is-weekend",
-              from === 0 && "is-today",
+              cellDays === 1 && from === 0 && "is-today",
               selected && "is-selected",
             ]
               .filter(Boolean)

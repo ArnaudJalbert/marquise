@@ -420,6 +420,27 @@ it("labels each block with its month change, day span and full range", () => {
   ]);
 });
 
+it("names the month on the first cell and where a month starts, in both modes", () => {
+  /** Scenario: days and blocks label their month at the view start and on the 1st. */
+  stubViewport(false);
+  setup("2026-11-24");
+  zoomTo(2);
+  const cellText = (name: string) => block(name).textContent;
+  expect(cellText("Tuesday November 24th")).toBe("NovTue24");
+  expect(cellText("Wednesday November 25th")).toBe("Wed25");
+  expect(cellText("Tuesday December 1st")).toBe("DecTue1");
+  zoomTo(6);
+  expect(blockCells().map((cell) => cell.textContent)).toEqual([
+    "Nov3-9",
+    "10-16",
+    "17-23",
+    "24-30",
+    "Dec1-7",
+    "8-14",
+  ]);
+  expect(block("November 3 to November 9")).not.toHaveClass("is-today");
+});
+
 it("picks a whole block on tap and draws across blocks", () => {
   /** Scenario: block taps and draws commit whole weeks. */
   stubViewport(false);
