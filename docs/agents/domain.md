@@ -26,7 +26,7 @@ This repo uses multi-context domain documentation:
     └── docs/adr/
 ```
 
-`CONTEXT-MAP.md` is authoritative. It includes shared root vocabulary and links each bounded context. Add or move contexts there as boundaries become clearer.
+`CONTEXT-MAP.md` is authoritative. It links each bounded context; root `CONTEXT.md` holds shared vocabulary and the product thesis. Add or move contexts there as boundaries become clearer.
 
 ## Vocabulary
 

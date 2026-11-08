@@ -131,7 +131,7 @@
 .minimal-period-title {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   min-width: 0;
 }
 .minimal-site .minimal-period-title h1,
@@ -145,7 +145,7 @@
 .minimal-site .minimal-period-title button {
   display: grid;
   place-items: center;
-  width: 44px;
+  width: 28px;
   padding: 0;
   border-radius: 999px;
   flex: none;
@@ -156,20 +156,45 @@
 }
 .minimal-zoom {
   display: inline-flex;
-  gap: 2px;
-  padding: 2px;
+  align-items: center;
+  gap: 12px;
+  min-height: 32px;
+  padding: 4px 16px;
   border: 1px solid var(--line);
   border-radius: 999px;
 }
-.minimal-site .minimal-zoom button {
-  min-height: 32px;
-  padding: 4px 12px;
+.minimal-site .minimal-zoom input[type="range"] {
+  width: 128px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
   border: 0;
-  border-radius: 999px;
 }
-.minimal-site .minimal-zoom button[aria-pressed="true"] {
-  color: #fff;
-  background: #000;
+.minimal-zoom span {
+  min-width: 5.5em;
+  font-variant-numeric: tabular-nums;
+}
+/* Phone zoom: a chip that opens the slider in a popover below it. */
+.minimal-zoom-menu {
+  position: relative;
+  flex: none;
+}
+.minimal-site .minimal-zoom-chip {
+  padding: 0 14px;
+  border-radius: 999px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.minimal-zoom-chip span {
+  font-size: 10px;
+}
+.minimal-zoom-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 5;
+  background: #fff;
+  box-shadow: 0 4px 16px #0000001a;
 }
 .minimal-period-detail {
   margin: 2px 0 0;
@@ -217,6 +242,12 @@
 .minimal-strip-day.is-today .minimal-strip-weekday {
   color: #b45309;
   font-weight: 600;
+}
+.minimal-strip-day.is-today .minimal-strip-weekday.is-highlighted {
+  padding: 0 3px;
+  border-radius: 3px;
+  background: #fde047;
+  color: #000;
 }
 .minimal-strip-date {
   font-size: 17px;
@@ -552,12 +583,14 @@
   border-top: 2px solid var(--indigo);
   border-radius: 0;
   background: #fff;
-  padding: 8px;
+  padding: 8px 32px 8px 8px;
   box-shadow: none;
   overflow-wrap: anywhere;
 }
 .minimal-preview .minimal-preview-close {
-
+  position: absolute;
+  top: 8px;
+  right: 8px;
   border: 0;
   padding: 0;
   min-width: 24px;
@@ -566,10 +599,7 @@
   align-items: center;
   justify-content: center;
 }
-.minimal-preview-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.minimal-preview-label {
   color: var(--indigo-deep);
 }
 .minimal-preview-footer,
@@ -995,8 +1025,16 @@
   .minimal-info {
     padding-left: 16px;
   }
+  .minimal-period-top {
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
   .minimal-site .minimal-period-title h1,
   .minimal-site .minimal-period-title h2 {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-size: 22px;
   }
   .minimal-strip-weekday {
@@ -1012,9 +1050,6 @@
   .minimal-library-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
-  }
-  .minimal-preview {
-    padding: 8px;
   }
   .minimal-detail {
     grid-template-columns: 88px 1fr;
