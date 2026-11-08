@@ -516,7 +516,7 @@ export function MinimalCatalogue({
                       filters={selection.filters}
                       onChange={(filters) => onSelection({ ...selection, filters })}
                       cinemas={cinemas}
-                      fixed={cinemaId}
+                      fixedCinemaId={cinemaId}
                     />
                   </>
                 ) : (

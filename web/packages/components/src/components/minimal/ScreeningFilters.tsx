@@ -22,12 +22,12 @@ function filterTypeLabel(type: CatalogueFilterType): string {
 export function ScreeningFilters({
   filters,
   cinemas,
-  fixed,
+  fixedCinemaId,
   onChange,
 }: {
   filters: readonly CatalogueFilter[];
   cinemas: readonly CatalogueCinema[];
-  fixed?: string;
+  fixedCinemaId?: string;
   onChange: (filters: CatalogueFilter[]) => void;
 }) {
   const [pendingFocus, setPendingFocus] = useState<CatalogueFilterType | "add">();
@@ -44,7 +44,7 @@ export function ScreeningFilters({
   const availableTypes = filterTypes.filter(
     (type) =>
       !filters.some((filter) => filter.type === type) &&
-      !(fixed && type === "cinema") &&
+      !(fixedCinemaId && type === "cinema") &&
       (type !== "cinema" || cinemas.length > 0),
   );
   const valueLabel = (filter: CatalogueFilter) =>
