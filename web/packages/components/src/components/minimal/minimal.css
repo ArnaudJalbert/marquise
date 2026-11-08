@@ -1079,3 +1079,118 @@
     gap: 10px;
   }
 }
+/* Sticky screenings bar (#445): shown once the large header scrolls away. */
+html:has(.minimal-screenings-bar) {
+  scroll-padding-top: 72px;
+}
+.minimal-screenings-bar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 5;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 6px 16px #0002;
+}
+.minimal-screenings-bar-row,
+.minimal-screenings-bar-panel {
+  max-width: 1024px;
+  margin: auto;
+  padding: 6px 20px;
+}
+.minimal-screenings-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.minimal-screenings-bar .minimal-period-title {
+  flex: 0 1 auto;
+}
+.minimal-site .minimal-screenings-bar .minimal-period-title button {
+  width: 44px;
+}
+.minimal-screenings-bar .minimal-period-title strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 17px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.minimal-screenings-bar .minimal-strip {
+  flex: 1 1 0;
+  min-width: 140px;
+  margin-top: 0;
+}
+.minimal-site .minimal-screenings-bar .minimal-strip-day {
+  align-content: center;
+  min-height: 44px;
+  padding: 0;
+}
+.minimal-screenings-bar .minimal-strip-month,
+.minimal-screenings-bar .minimal-strip-weekday {
+  display: none;
+}
+.minimal-screenings-bar .minimal-strip-date,
+.minimal-screenings-bar .minimal-strip[data-days="42"] .minimal-strip-date {
+  font-size: 12px;
+}
+.minimal-screenings-bar .minimal-movie-search {
+  flex: 0 1 220px;
+  min-width: 120px;
+}
+.minimal-site .minimal-filters-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  white-space: nowrap;
+}
+.minimal-site .minimal-filters-button[aria-expanded="true"] {
+  border-color: var(--indigo-deep);
+  color: var(--indigo-deep);
+}
+.minimal-filters-button b {
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--indigo-deep);
+  color: #fff;
+  font-size: 11px;
+}
+.minimal-screenings-bar-panel .minimal-filters {
+  margin-bottom: 0;
+}
+.minimal-screenings-bar-panel .minimal-filter-row {
+  margin: 4px 0 8px;
+}
+/* Narrow screens drop the mini strip; search takes its own row. */
+@media (max-width: 639px) {
+  html:has(.minimal-screenings-bar) {
+    scroll-padding-top: 120px;
+  }
+  .minimal-screenings-bar-row,
+  .minimal-screenings-bar-panel {
+    padding: 4px 16px;
+  }
+  .minimal-screenings-bar-row {
+    flex-wrap: wrap;
+    gap: 4px 8px;
+  }
+  .minimal-screenings-bar .minimal-strip {
+    display: none;
+  }
+  .minimal-screenings-bar .minimal-period-title {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .minimal-screenings-bar .minimal-movie-search {
+    order: 3;
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+}

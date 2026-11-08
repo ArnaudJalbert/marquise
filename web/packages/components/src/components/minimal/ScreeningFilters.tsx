@@ -50,6 +50,8 @@ export function ScreeningFilters({
     onChange(filters.map((filter) => filter.type === next.type ? next : filter));
   const closeOnEscape = (event: KeyboardEvent<HTMLDetailsElement>) => {
     if (event.key !== "Escape" || !event.currentTarget.open) return;
+    // Tells an enclosing panel that this Escape is handled.
+    event.preventDefault();
     event.currentTarget.open = false;
     event.currentTarget.querySelector("summary")?.focus();
   };
