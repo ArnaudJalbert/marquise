@@ -132,6 +132,26 @@ def test_empty_hour_filter() -> None:
         CountScreeningDaysQuery.HourFilter(ranges=())
 
 
+@pytest.mark.parametrize("hours", [("0", 17), (0, 17.0)])
+def test_hour_range_types_are_checked(hours: tuple) -> None:
+    """A non-integer hour bound fails where it enters the application."""
+    with pytest.raises(TypeError, match="must be int"):
+        CountScreeningDaysQuery.HourRange(*hours)
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"ranges": [CountScreeningDaysQuery.HourRange(0, 17)]},
+        {"ranges": (CountScreeningDaysQuery.HourRange(0, 17),), "excluded": 1},
+    ],
+)
+def test_hour_filter_types_are_checked(fields: dict) -> None:
+    """Hour ranges must be a tuple and the exclusion flag a bool."""
+    with pytest.raises(TypeError):
+        CountScreeningDaysQuery.HourFilter(**fields)
+
+
 @pytest.mark.parametrize(
     "fields",
     [

@@ -28,7 +28,9 @@ class CountScreeningDaysQuery:
         end: int
 
         def __post_init__(self) -> None:
-            """Reject empty, inverted, or out-of-day ranges."""
+            """Check field types, then reject empty, inverted, or out-of-day ranges."""
+            if not isinstance(self.start, int) or not isinstance(self.end, int):
+                raise TypeError("start and end must be int")
             if not 0 <= self.start < self.end <= 24:
                 raise ValueError("hours must satisfy 0 <= start < end <= 24")
 
@@ -40,7 +42,11 @@ class CountScreeningDaysQuery:
         excluded: bool = False
 
         def __post_init__(self) -> None:
-            """Require at least one range when an hour filter exists."""
+            """Check field types, then require at least one range."""
+            if not isinstance(self.ranges, tuple):
+                raise TypeError("ranges must be a tuple")
+            if not isinstance(self.excluded, bool):
+                raise TypeError("excluded must be a bool")
             if not self.ranges:
                 raise ValueError("hours must include at least one range")
 
