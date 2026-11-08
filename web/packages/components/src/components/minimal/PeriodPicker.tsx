@@ -27,7 +27,7 @@ import {
 const weeksLabel = (weeks: WeekCount) => `${weeks} ${weeks === 1 ? "week" : "weeks"}`;
 
 const PHONE_QUERY = "(max-width: 639px)";
-// Environments without matchMedia (jsdom, old embeds) get the desktop strip.
+// Without matchMedia (jsdom) the strip uses the desktop thresholds.
 function subscribeToPhone(onChange: () => void) {
   const query = window.matchMedia?.(PHONE_QUERY);
   query?.addEventListener("change", onChange);
@@ -94,7 +94,7 @@ function DayStrip({
   const dayCount = view.weeks * 7;
   const cellCount = dayCount / cellDays;
   const firstCell = view.first / cellDays;
-  const cells = Array.from({ length: cellCount }, (_, i) => firstCell + i);
+  const cells = Array.from({ length: cellCount }, (_, index) => firstCell + index);
   const last = view.first + dayCount - 1;
   const focusCell = Math.max(firstCell, Math.min(firstCell + cellCount - 1, toCell(start)));
   const cellAt = (event: PointerEvent<HTMLDivElement>) => {

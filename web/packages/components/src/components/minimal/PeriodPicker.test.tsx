@@ -13,7 +13,7 @@ afterEach(() => {
 });
 
 /** Stubs the phone breakpoint; the returned function flips it and notifies listeners. */
-function viewport(phone: boolean) {
+function stubViewport(phone: boolean) {
   let matches = phone;
   const listeners = new Set<() => void>();
   vi.stubGlobal("matchMedia", (query: string) => ({
@@ -368,7 +368,7 @@ it("drops a cancelled drag", () => {
 
 it("shows days up to three weeks and week blocks from four on desktop", () => {
   /** Scenario: the desktop strip collapses into blocks only at 4 to 6 weeks. */
-  viewport(false);
+  stubViewport(false);
   setup();
   zoomTo(3);
   expect(visibleDays()).toHaveLength(21);
@@ -382,7 +382,7 @@ it("shows days up to three weeks and week blocks from four on desktop", () => {
 
 it("shows week blocks from three weeks at the phone breakpoint, switching live", () => {
   /** Scenario: phones collapse at 3 weeks, and crossing the breakpoint switches modes. */
-  const setPhone = viewport(true);
+  const setPhone = stubViewport(true);
   setup();
   zoomTo(2);
   expect(visibleDays()).toHaveLength(14);
@@ -398,7 +398,7 @@ it("shows week blocks from three weeks at the phone breakpoint, switching live",
 
 it("labels each block with its month change, day span and full range", () => {
   /** Scenario: blocks run in 7-day steps from today and name the month where it changes. */
-  viewport(false);
+  stubViewport(false);
   setup("2026-11-07", "2026-11-07", "2026-11-07");
   zoomTo(6);
   expect(visibleBlocks()).toEqual([
@@ -427,7 +427,7 @@ it("labels each block with its month change, day span and full range", () => {
 
 it("picks a whole block on tap and draws across blocks", () => {
   /** Scenario: block taps and draws commit whole weeks. */
-  viewport(false);
+  stubViewport(false);
   const onChange = setup();
   zoomTo(4);
   const element = strip();
@@ -442,7 +442,7 @@ it("picks a whole block on tap and draws across blocks", () => {
 
 it("snaps resized edges to block edges and moves by whole blocks within the horizon", () => {
   /** Scenario: handles and moves in block mode keep the range block-aligned. */
-  viewport(false);
+  stubViewport(false);
   const onChange = setup("2026-11-07", "2026-11-08");
   zoomTo(6);
   const handle = (edge: string) =>
@@ -461,7 +461,7 @@ it("snaps resized edges to block edges and moves by whole blocks within the hori
 
 it("moves, selects and extends blocks from the keyboard", () => {
   /** Scenario: arrows move between blocks, Enter selects one, Shift+arrows extend by blocks. */
-  viewport(false);
+  stubViewport(false);
   const onChange = setup();
   zoomTo(4);
   const first = block("November 3 to November 9");
@@ -484,7 +484,7 @@ it("moves, selects and extends blocks from the keyboard", () => {
 
 it("draws a non-aligned selection as a partial fill and keeps it through zooming", () => {
   /** Scenario: a weekend or a single day stays as picked while the strip shows blocks. */
-  viewport(false);
+  stubViewport(false);
   const onChange = setup("2026-11-06", "2026-11-08");
   const window = () =>
     (strip().querySelector(".minimal-strip-window") as HTMLElement).style;
