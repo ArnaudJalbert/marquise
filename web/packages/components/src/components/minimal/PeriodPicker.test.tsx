@@ -60,6 +60,14 @@ function dragOn(target: Element, from: number, to: number) {
   fireEvent.pointerUp(element, at(to));
 }
 
+const slider = () => screen.getByRole("slider", { name: "Zoom" });
+const zoomTo = (weeks: number) =>
+  fireEvent.change(slider(), { target: { value: String(weeks) } });
+const visibleDays = () =>
+  Array.from(strip().querySelectorAll(".minimal-strip-day"), (cell) =>
+    cell.getAttribute("aria-label"),
+  );
+
 const title = () => screen.getByRole("heading", { level: 1 }).textContent;
 const selectedDays = () =>
   screen
@@ -67,22 +75,26 @@ const selectedDays = () =>
     .filter((button) => button.classList.contains("minimal-strip-day"))
     .map((button) => button.getAttribute("aria-label"));
 
-it("opens on Today in the two-week view with today marked", () => {
-  /** Scenario: the default period is Today and the strip shows fourteen equal days. */
+it("opens on Today in the one-week view with today marked", () => {
+  /** Scenario: the default period is Today and the strip shows today and the next six days. */
   setup();
   expect(title()).toBe("Today");
   expect(screen.getByText("Tue Nov 3")).toBeInTheDocument();
-  expect(strip().querySelectorAll(".minimal-strip-day")).toHaveLength(14);
+  const days = visibleDays();
+  expect(days).toHaveLength(7);
+  expect([days[0], days[6]]).toEqual([
+    "Today, Tuesday November 3rd",
+    "Monday November 9th",
+  ]);
   expect(screen.getByRole("button", { name: "Today, Tuesday November 3rd" })).toHaveClass(
     "is-today",
   );
   expect(
     screen.getByRole("button", { name: "Saturday November 7th" }),
   ).toHaveClass("is-weekend");
-  expect(screen.getByRole("button", { name: "2 weeks" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  expect(slider()).toHaveValue("1");
+  expect(slider()).toHaveAttribute("aria-valuetext", "1 week");
+  expect(screen.getByText("1 week")).toBeVisible();
 });
 
 it("draws a new period by dragging across days", () => {
@@ -127,7 +139,7 @@ it("moves the selected window by dragging inside it", () => {
 it("moves a one-day selection in a narrow six-week view", () => {
   /** Scenario: narrow resize grips leave the selected range's center interactive. */
   const onChange = setup();
-  fireEvent.click(screen.getByRole("button", { name: "6 weeks" }));
+  zoomTo(6);
   const element = strip(8);
   const window = element.querySelector(".minimal-strip-window") as HTMLElement;
   window.getBoundingClientRect = () =>
@@ -155,6 +167,7 @@ it("resizes the window from either edge", () => {
 it("picks a single day on tap, inside or outside the window", () => {
   /** Scenario: tapping a day without dragging selects just that day. */
   const onChange = setup("2026-11-04", "2026-11-07");
+  zoomTo(2);
   const element = strip();
   fireEvent.pointerDown(screen.getByRole("button", { name: "Thursday November 5th" }), at(2));
   fireEvent.pointerUp(element, at(2));
@@ -214,8 +227,7 @@ it("resets the keyboard anchor after focus leaves the strip", () => {
   const todayCell = screen.getByRole("button", { name: "Today, Tuesday November 3rd" });
   todayCell.focus();
   fireEvent.keyDown(todayCell, { key: "ArrowRight", shiftKey: true });
-  const zoom = screen.getByRole("button", { name: "6 weeks" });
-  zoom.focus();
+  slider().focus();
   const nov5 = screen.getByRole("button", { name: "Thursday November 5th" });
   nov5.focus();
   fireEvent.keyDown(nov5, { key: "ArrowRight", shiftKey: true });
@@ -239,35 +251,74 @@ it("steps the period by its own length and disables stepping before today", () =
   expect(title()).toBe("This weekend");
 });
 
-it("auto zooms to six weeks for long periods and back to two weeks for short ones", () => {
-  /** Scenario: the strip widens for ranges over a week and returns to days after. */
-  const onChange = setup();
-  dragOn(screen.getByRole("button", { name: "Wednesday November 4th" }), 1, 12);
-  expect(onChange).toHaveBeenLastCalledWith("2026-11-04", "2026-11-15");
-  expect(strip().querySelectorAll(".minimal-strip-day")).toHaveLength(42);
-  expect(screen.getByRole("button", { name: "6 weeks" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+it("pans to a stepped period outside the view at the same zoom", () => {
+  /** Scenario: stepping past the visible week shows the next week, still one week wide. */
+  setup("2026-11-09");
   fireEvent.click(screen.getByRole("button", { name: "Next period" }));
-  expect(title()).toBe("Nov 16 → Nov 27");
-  // Tap a day three weeks out: a single day returns to its fortnight.
-  fireEvent.pointerDown(screen.getByRole("button", { name: "Tuesday November 24th" }), at(21));
-  fireEvent.pointerUp(strip(), at(21));
-  expect(onChange).toHaveBeenLastCalledWith("2026-11-24", "2026-11-24");
-  const days = strip().querySelectorAll(".minimal-strip-day");
-  expect(days).toHaveLength(14);
-  expect(days[0]).toHaveAccessibleName("Tuesday November 24th");
+  expect(title()).toBe("Tue Nov 10");
+  const days = visibleDays();
+  expect(days).toHaveLength(7);
+  expect(days[0]).toBe("Tuesday November 10th");
+  expect(selectedDays()).toEqual(["Tuesday November 10th"]);
 });
 
-it("lets the zoom buttons override auto zoom", () => {
-  /** Scenario: choosing a zoom changes only the view, not the period. */
-  const onChange = setup();
-  fireEvent.click(screen.getByRole("button", { name: "6 weeks" }));
-  expect(strip().querySelectorAll(".minimal-strip-day")).toHaveLength(42);
-  fireEvent.click(screen.getByRole("button", { name: "2 weeks" }));
-  expect(strip().querySelectorAll(".minimal-strip-day")).toHaveLength(14);
+it("widens to fit a long period and never narrows on its own", () => {
+  /** Scenario: the view grows to the weeks a period spans and keeps that zoom after. */
+  setup("2026-11-04", "2026-11-15");
+  expect(visibleDays()).toHaveLength(14);
+  expect(slider()).toHaveAttribute("aria-valuetext", "2 weeks");
+  fireEvent.click(screen.getByRole("button", { name: "Next period" }));
+  expect(title()).toBe("Nov 16 → Nov 27");
+  expect(visibleDays()).toHaveLength(21);
+  expect(visibleDays()[0]).toBe("Tuesday November 10th");
+  expect(screen.getByText("3 weeks")).toBeVisible();
+  // Tap a single day: the view stays three weeks wide.
+  fireEvent.pointerDown(screen.getByRole("button", { name: "Tuesday November 24th" }), at(14));
+  fireEvent.pointerUp(strip(), at(14));
+  expect(title()).toBe("Tue Nov 24");
+  expect(visibleDays()).toHaveLength(21);
+  expect(slider()).toHaveValue("3");
+});
+
+it("zooms by whole weeks from the selection start without changing the selection", () => {
+  /** Scenario: the slider re-anchors the view on the selected week and leaves the period alone. */
+  const onChange = setup("2026-11-20");
+  expect(visibleDays()[0]).toBe("Tuesday November 17th");
+  zoomTo(2);
+  expect(visibleDays()).toHaveLength(14);
+  expect(visibleDays()[0]).toBe("Tuesday November 17th");
+  expect(slider()).toHaveAttribute("aria-valuetext", "2 weeks");
+  zoomTo(6);
+  expect(visibleDays()).toHaveLength(42);
+  expect(visibleDays()[0]).toBe("Today, Tuesday November 3rd");
+  zoomTo(1);
+  expect(visibleDays()).toEqual([
+    "Tuesday November 17th",
+    "Wednesday November 18th",
+    "Thursday November 19th",
+    "Friday November 20th",
+    "Saturday November 21st",
+    "Sunday November 22nd",
+    "Monday November 23rd",
+  ]);
   expect(onChange).not.toHaveBeenCalled();
+  expect(title()).toBe("Fri Nov 20");
+});
+
+it("keeps a zoomed view inside the six-week horizon", () => {
+  /** Scenario: zooming near the end of the strip never shows dates past the horizon. */
+  setup("2026-12-10");
+  expect(visibleDays()[0]).toBe("Tuesday December 8th");
+  zoomTo(3);
+  const days = visibleDays();
+  expect(days).toHaveLength(21);
+  expect([days[0], days[20]]).toEqual([
+    "Tuesday November 24th",
+    "Monday December 14th",
+  ]);
+  expect(slider()).toHaveAttribute("min", "1");
+  expect(slider()).toHaveAttribute("max", "6");
+  expect(slider()).toHaveAttribute("step", "1");
 });
 
 it("drops a cancelled drag", () => {

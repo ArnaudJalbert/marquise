@@ -8,18 +8,21 @@ import {
 } from "react";
 import { addDays, formatRangeDate } from "./catalogue-format";
 import {
+  anchorView,
   dayOfMonth,
   daysBetween,
   describePeriod,
   fitView,
-  fortnightView,
   HORIZON_DAYS,
   monthName,
   stepPeriod,
   weekday,
   weekdayName,
   type StripView,
+  type WeekCount,
 } from "./period";
+
+const weeksLabel = (weeks: WeekCount) => `${weeks} ${weeks === 1 ? "week" : "weeks"}`;
 
 type DragMode = "draw" | "move" | "start" | "end";
 interface Drag {
@@ -63,13 +66,14 @@ function DayStrip({
   }
   const [draft, setDraft] = useState<[number, number] | null>(null);
   const [start, end] = draft ?? range;
-  const days = Array.from({ length: view.days }, (_, i) => view.first + i);
-  const last = view.first + view.days - 1;
+  const dayCount = view.weeks * 7;
+  const days = Array.from({ length: dayCount }, (_, i) => view.first + i);
+  const last = view.first + dayCount - 1;
   const focusDay = Math.max(view.first, Math.min(last, start));
   const dayAt = (event: PointerEvent<HTMLDivElement>) => {
     const box = event.currentTarget.getBoundingClientRect();
     const ratio = Math.max(0, Math.min(0.999, (event.clientX - box.left) / box.width));
-    return view.first + Math.floor(ratio * view.days);
+    return view.first + Math.floor(ratio * dayCount);
   };
   const update = (next: Drag) => {
     drag.current = next;
@@ -83,8 +87,8 @@ function DayStrip({
       className="minimal-strip"
       role="group"
       aria-label="Choose dates"
-      data-days={view.days}
-      style={{ "--strip-days": view.days } as CSSProperties}
+      data-days={dayCount}
+      style={{ "--strip-days": dayCount } as CSSProperties}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
           keyboardAnchor.current = null;
@@ -209,7 +213,7 @@ function DayStrip({
               {day === view.first || dayOfMonth(date) === 1 ? monthName(date) : ""}
             </span>
             <span className="minimal-strip-weekday" aria-hidden>
-              {view.days === 42
+              {dayCount === 42
                 ? weekdayName(date).charAt(0)
                 : day === 0
                   ? "Today"
@@ -226,8 +230,8 @@ function DayStrip({
           className="minimal-strip-window"
           aria-hidden
           style={{
-            left: `${((shownStart - view.first) / view.days) * 100}%`,
-            width: `${((shownEnd - shownStart + 1) / view.days) * 100}%`,
+            left: `${((shownStart - view.first) / dayCount) * 100}%`,
+            width: `${((shownEnd - shownStart + 1) / dayCount) * 100}%`,
           }}
         >
           {start >= view.first && <span data-handle="start" />}
@@ -253,9 +257,10 @@ export function PeriodPicker({
   heading?: "h1" | "h2";
 }) {
   const range: [number, number] = [daysBetween(today, start), daysBetween(today, end)];
-  const [view, setView] = useState(() => fitView(undefined, ...range));
+  // A fresh picker opens on one week from today.
+  const [view, setView] = useState(() => fitView({ weeks: 1, first: 0 }, ...range));
   const [fitted, setFitted] = useState(`${today}/${start}/${end}`);
-  // Auto zoom whenever the committed period changes, wherever it came from.
+  // Refit the view whenever the committed period changes, wherever it came from.
   if (fitted !== `${today}/${start}/${end}`) {
     setFitted(`${today}/${start}/${end}`);
     setView(fitView(view, ...range));
@@ -263,8 +268,6 @@ export function PeriodPicker({
   const { title, detail } = describePeriod(start, end, today);
   const previous = stepPeriod(start, end, today, -1);
   const next = stepPeriod(start, end, today, 1);
-  const zoom = (days: 14 | 42) =>
-    setView(days === 14 ? fortnightView(range[0]) : { days, first: 0 });
 
   return (
     <section className="minimal-period" aria-label="Dates">
@@ -288,17 +291,20 @@ export function PeriodPicker({
             <ChevronRight aria-hidden size={18} />
           </button>
         </div>
-        <div className="minimal-zoom" role="group" aria-label="Zoom">
-          {([14, 42] as const).map((days) => (
-            <button
-              key={days}
-              type="button"
-              aria-pressed={view.days === days}
-              onClick={() => zoom(days)}
-            >
-              {days === 14 ? "2 weeks" : "6 weeks"}
-            </button>
-          ))}
+        <div className="minimal-zoom">
+          <input
+            type="range"
+            min={1}
+            max={6}
+            step={1}
+            value={view.weeks}
+            aria-label="Zoom"
+            aria-valuetext={weeksLabel(view.weeks)}
+            onChange={(event) =>
+              setView(anchorView(Number(event.target.value) as WeekCount, range[0]))
+            }
+          />
+          <span aria-hidden>{weeksLabel(view.weeks)}</span>
         </div>
       </div>
       {detail && <p className="minimal-period-detail">{detail}</p>}
