@@ -3,9 +3,14 @@ export {
   MinimalMovieCard,
 } from "./components/minimal/MinimalCatalogue";
 export type {
+  ActiveCatalogueFilter,
+  ActiveCatalogueSelection,
   CatalogueMovie,
   CatalogueCinema,
   CatalogueScreening,
+  CatalogueFilter,
+  CatalogueFilterType,
+  ActiveCatalogueFilterType,
   CatalogueSelection,
   CatalogueState,
   MinimalCatalogueProps,
@@ -57,3 +62,4 @@ export { Card, CardContent } from "./components/ui/card";
 export { cn } from "./lib/utils";
 
 export { MinimalExperience } from "./components/minimal/MinimalExperience";
+export { isCatalogueTimeFilterValue } from "./components/minimal/catalogue-time-filters";

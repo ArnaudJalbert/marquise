@@ -350,26 +350,83 @@ it.each(["/", "/cinemas/c1"])("restores filtered pages from %s after visiting a 
 });
 
 it.each([
-  ["from=18:00&to=22:00", [[18, 22]]],
-  ["from=18:00&to=18:00", [[18, 19]]],
-  ["to=24:00", []],
-])("sends the hour slider %s as half-open hour ranges", async (hours, expected) => {
-  history.replaceState(null, "", `/?start=2026-11-03&end=2026-11-03&${hours}`);
+  ["matinee", "is", [{ start: 0, end: 17 }]],
+  ["evening", "is", [{ start: 17, end: 21 }]],
+  ["late", "is_not", [{ start: 21, end: 24 }]],
+])("sends the %s bucket with the server-side %s operator", async (time, operator, ranges) => {
+  history.replaceState(null, "", `/?start=2026-11-03&end=2026-11-03&time=${operator === "is_not" ? "-" : ""}${time}`);
   const client = clients();
   render(<App client={client} />);
   await screen.findByRole("link", { name: "View Wanted film" });
   expect(client.fetchScreeningMoviesPage).toHaveBeenCalledWith(
     expect.objectContaining({
-      hours:
-        expected.length === 0
-          ? undefined
-          : {
-              operator: "is",
-              ranges: expected.map(([start, end]) => ({ start, end })),
-            },
+      hours: { operator, ranges },
     }),
     expect.any(AbortSignal),
   );
+});
+
+it("ignores retired language and slider URL parameters", async () => {
+  history.replaceState(null, "", "/?language=VOSTF&from=18&to=22");
+  const client = clients();
+  render(<App client={client} />);
+  await screen.findByRole("link", { name: "View Wanted film" });
+  expect(client.fetchScreeningMoviesPage).toHaveBeenCalledWith(
+    expect.objectContaining({ hours: undefined, cinemas: [], excludedCinemas: [] }),
+    expect.any(AbortSignal),
+  );
+});
+
+it("ignores unsupported audio and subtitle filters from the URL", async () => {
+  history.replaceState(
+    null,
+    "",
+    "/?cinema=c1&time=matinee&audio=VO&subtitles=VOSTF",
+  );
+  const client = clients();
+  render(<App client={client} />);
+  await screen.findByRole("link", { name: "View Wanted film" });
+
+  expect(screen.getByRole("group", { name: "cinema filter" }).textContent).toContain(
+    "Cinema is Cinema One",
+  );
+  expect(screen.getByRole("group", { name: "time filter" }).textContent).toContain(
+    "Time is Matinée",
+  );
+  expect(screen.queryByRole("group", { name: "audio filter" })).toBeNull();
+  expect(screen.queryByRole("group", { name: "subtitles filter" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Clear all" })).not.toBeNull();
+  expect(client.fetchScreeningMoviesPage).toHaveBeenCalledWith(
+    expect.objectContaining({
+      cinemas: ["c1"],
+      excludedCinemas: [],
+      hours: { operator: "is", ranges: [{ start: 0, end: 17 }] },
+    }),
+    expect.any(AbortSignal),
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
+  await waitFor(() => {
+    const params = new URL(window.location.href).searchParams;
+    expect(params.has("audio")).toBe(false);
+    expect(params.has("subtitles")).toBe(false);
+    expect(client.fetchScreeningMoviesPage).toHaveBeenLastCalledWith(
+      expect.objectContaining({ cinemas: [], excludedCinemas: [], hours: undefined }),
+      expect.any(AbortSignal),
+    );
+  });
+});
+
+it("sends a negative Cinema chip as a cinema exclusion", async () => {
+  history.replaceState(null, "", "/?cinema=-c1");
+  const client = clients();
+  render(<App client={client} />);
+  await screen.findByRole("link", { name: "View Wanted film" });
+  expect(client.fetchScreeningMoviesPage).toHaveBeenCalledWith(
+    expect.objectContaining({ cinemas: [], excludedCinemas: ["c1"] }),
+    expect.any(AbortSignal),
+  );
+  expect(screen.getByRole("group", { name: "cinema filter" }).textContent).toContain("Cinema is not Cinema One");
 });
 
 it("opens today's movie-first page without catalogue reads or poster fan-out", async () => {
@@ -383,7 +440,7 @@ it("opens today's movie-first page without catalogue reads or poster fan-out", a
       page: 1,
       title: "",
       cinemas: [],
-      languages: [],
+      excludedCinemas: [],
       hours: undefined,
     },
     expect.any(AbortSignal),
@@ -398,7 +455,7 @@ it("opens today's movie-first page without catalogue reads or poster fan-out", a
   expect(screen.queryByRole("heading", { name: "Screenings" })).toBeNull();
   expect(screen.getByRole("heading", { level: 1, name: "Today" })).toBeTruthy();
   expect(screen.queryByLabelText("Start date")).toBeNull();
-  expect(screen.getByText("Filters")).not.toBeNull();
+  expect(screen.getByText("+ Filter")).not.toBeNull();
   expect(screen.getByText("About this section").closest("details")?.open).toBe(
     false,
   );
@@ -409,7 +466,7 @@ it("counts the visible week's screenings with the listing filters and reloads on
   history.replaceState(
     null,
     "",
-    "/?start=2026-11-01&end=2026-11-01&q=Dune&language=VO&from=17:00",
+    "/?start=2026-11-01&end=2026-11-01&q=Dune&time=evening",
   );
   const client = clients();
   client.fetchScreeningDayCounts.mockResolvedValue([
@@ -423,8 +480,8 @@ it("counts the visible week's screenings with the listing filters and reloads on
   const filters = {
     title: "Dune",
     cinemas: [],
-    languages: ["VO"],
-    hours: { operator: "is", ranges: [{ start: 17, end: 24 }] },
+    excludedCinemas: [],
+    hours: { operator: "is", ranges: [{ start: 17, end: 21 }] },
   };
   expect(client.fetchScreeningDayCounts).toHaveBeenCalledExactlyOnceWith(
     { start: "2026-11-01", end: "2026-11-07", ...filters },
@@ -444,8 +501,8 @@ it("counts the visible week's screenings with the listing filters and reloads on
   );
   expect(client.fetchScreeningDayCounts).toHaveBeenCalledOnce();
 
-  fireEvent.click(screen.getByText(/^Filters/));
-  fireEvent.click(screen.getByLabelText("Cinema One"));
+  fireEvent.click(screen.getByText("+ Filter"));
+  fireEvent.click(screen.getByRole("button", { name: "Cinema" }));
   await waitFor(() =>
     expect(client.fetchScreeningDayCounts).toHaveBeenLastCalledWith(
       { start: "2026-11-01", end: "2026-11-07", ...filters, cinemas: ["c1"] },
@@ -455,13 +512,15 @@ it("counts the visible week's screenings with the listing filters and reloads on
   expect(client.fetchScreeningDayCounts).toHaveBeenCalledTimes(2);
 });
 
-it("shows Screenings filters, shares their URL state, and restores browser history", async () => {
+it("round-trips cinema and time chips through the URL", async () => {
   const client = clients();
   render(<App client={client} />);
   await screen.findByRole("link", { name: "View Wanted film" });
-  fireEvent.click(screen.getByText("Filters"));
-  fireEvent.click(screen.getByLabelText("Cinema One"));
-  fireEvent.click(screen.getByLabelText("VOSTF"));
+  fireEvent.click(screen.getByText("+ Filter"));
+  fireEvent.click(screen.getByRole("button", { name: "Cinema" }));
+  fireEvent.click(screen.getByText("+ Filter"));
+  fireEvent.click(screen.getByRole("button", { name: "Time" }));
+  fireEvent.click(screen.getByRole("button", { name: "Change time operator from is" }));
   fireEvent.click(screen.getByRole("button", { name: "Next period" }));
   await waitFor(() => {
     expect(client.fetchScreeningMoviesPage).toHaveBeenLastCalledWith(
@@ -469,17 +528,18 @@ it("shows Screenings filters, shares their URL state, and restores browser histo
         start: "2026-11-02",
         end: "2026-11-02",
         cinemas: ["c1"],
-        languages: ["VOSTF"],
+        excludedCinemas: [],
+        hours: { operator: "is_not", ranges: [{ start: 0, end: 17 }] },
       }),
       expect.any(AbortSignal),
     );
   });
-  expect(new URL(window.location.href).searchParams.getAll("cinema")).toEqual([
-    "c1",
-  ]);
-  expect(new URL(window.location.href).searchParams.getAll("language")).toEqual([
-    "VOSTF",
-  ]);
+  const params = new URL(window.location.href).searchParams;
+  expect(params.get("cinema")).toBe("c1");
+  expect(params.get("time")).toBe("-matinee");
+  expect(params.has("language")).toBe(false);
+  expect(params.has("from")).toBe(false);
+  expect(params.has("to")).toBe(false);
   expect(screen.getByRole("heading", { level: 1, name: "Tomorrow" })).toBeTruthy();
   expect(new URL(window.location.href).searchParams.get("start")).toBe(
     "2026-11-02",
@@ -487,10 +547,12 @@ it("shows Screenings filters, shares their URL state, and restores browser histo
   history.replaceState(
     null,
     "",
-    "/?section=screenings&start=2026-11-01&end=2026-11-01",
+    "/?section=screenings&start=2026-11-01&end=2026-11-01&cinema=c1&time=-matinee",
   );
   fireEvent.popState(window);
   await screen.findByRole("heading", { level: 1, name: "Today" });
+  expect(screen.getByRole("group", { name: "cinema filter" }).textContent).toContain("Cinema is Cinema One");
+  expect(screen.getByRole("group", { name: "time filter" }).textContent).toContain("Time is not Matinée");
 });
 
 it("keeps the movie search focused while its URL and results update", async () => {
