@@ -92,6 +92,33 @@ describe("minimalist prototype", () => {
     expect(screen.getByText("+ Filter")).toHaveFocus();
   });
 
+  it("closes an open filter menu with Escape and returns focus to its summary", () => {
+    /** Scenario: a keyboard visitor dismisses the add-filter and chip value menus with Escape. */
+    function InteractiveCatalogue() {
+      const [selection, setSelection] = useState(props.selection);
+      return <MinimalCatalogue {...props} selection={selection} onSelection={setSelection} />;
+    }
+    render(<InteractiveCatalogue />);
+
+    const addSummary = screen.getByText("+ Filter", { selector: "summary" });
+    addSummary.focus();
+    fireEvent.click(addSummary);
+    expect(addSummary.parentElement).toHaveProperty("open", true);
+    fireEvent.keyDown(addSummary, { key: "Escape" });
+    expect(addSummary.parentElement).toHaveProperty("open", false);
+    expect(addSummary).toHaveFocus();
+
+    fireEvent.click(addSummary);
+    fireEvent.click(screen.getByRole("button", { name: "Cinema" }));
+    const valueSummary = screen.getByText("Cinema A", { selector: "summary" });
+    valueSummary.focus();
+    fireEvent.click(valueSummary);
+    expect(valueSummary.parentElement).toHaveProperty("open", true);
+    fireEvent.keyDown(valueSummary, { key: "Escape" });
+    expect(valueSummary.parentElement).toHaveProperty("open", false);
+    expect(valueSummary).toHaveFocus();
+  });
+
   it("titles the page with the period and replaces the date inputs and presets", () => {
     /** Scenario: the period header and day strip are the only date controls. */
     const onSelection = vi.fn();

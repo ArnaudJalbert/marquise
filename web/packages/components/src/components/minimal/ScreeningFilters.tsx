@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type {
   ActiveCatalogueFilter,
   ActiveCatalogueFilterType,
@@ -49,6 +49,11 @@ export function ScreeningFilters({
       : getCatalogueTimeFilter(filter.value).label;
   const update = (next: ActiveCatalogueFilter) =>
     onChange(filters.map((filter) => filter.type === next.type ? next : filter));
+  const closeOnEscape = (event: KeyboardEvent<HTMLDetailsElement>) => {
+    if (event.key !== "Escape" || !event.currentTarget.open) return;
+    event.currentTarget.open = false;
+    event.currentTarget.querySelector("summary")?.focus();
+  };
   const add = (type: ActiveCatalogueFilterType, menu: HTMLDetailsElement) => {
     if (type === "cinema") {
       const value = cinemas[0]?.id;
@@ -86,7 +91,7 @@ export function ScreeningFilters({
             >
               {filter.operator === "is" ? "is " : "is not "}
             </button>
-            <details className="minimal-filter-value">
+            <details className="minimal-filter-value" onKeyDown={closeOnEscape}>
               <summary>{getFilterValueLabel(filter)}</summary>
               <div className="minimal-filter-options">
                 {(filter.type === "cinema"
@@ -129,7 +134,7 @@ export function ScreeningFilters({
           </div>
         ))}
         {availableTypes.length > 0 && (
-          <details className="minimal-add-filter">
+          <details className="minimal-add-filter" onKeyDown={closeOnEscape}>
             <summary ref={addFilterRef}>+ Filter</summary>
             <div className="minimal-filter-options">
               {availableTypes.map((type) => (
