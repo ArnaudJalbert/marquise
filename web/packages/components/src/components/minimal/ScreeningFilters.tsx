@@ -3,20 +3,16 @@ import type {
   ActiveCatalogueFilter,
   ActiveCatalogueFilterType,
   CatalogueCinema,
-  CatalogueFilterType,
 } from "./catalogue-types";
 import {
   CATALOGUE_TIME_FILTERS,
   getCatalogueTimeFilter,
-  isCatalogueTimeFilterValue,
 } from "./catalogue-time-filters";
 
 const filterTypes: readonly ActiveCatalogueFilterType[] = ["cinema", "time"];
 
-function getFilterTypeLabel(type: CatalogueFilterType): string {
-  return type === "subtitles"
-    ? "Subtitles"
-    : `${type.charAt(0).toUpperCase()}${type.slice(1)}`;
+function getFilterTypeLabel(type: ActiveCatalogueFilterType): string {
+  return `${type.charAt(0).toUpperCase()}${type.slice(1)}`;
 }
 
 export function ScreeningFilters({
@@ -94,28 +90,26 @@ export function ScreeningFilters({
               <summary>{getFilterValueLabel(filter)}</summary>
               <div className="minimal-filter-options">
                 {(filter.type === "cinema"
-                  ? cinemas.map((cinema) => ({ value: cinema.id, label: cinema.name }))
-                  : filter.type === "time"
-                    ? CATALOGUE_TIME_FILTERS.map(({ value, label }) => ({ value, label }))
-                    : []
-                ).map((option) => (
+                  ? cinemas.map((cinema) => ({
+                      label: cinema.name,
+                      next: { ...filter, value: cinema.id },
+                    }))
+                  : CATALOGUE_TIME_FILTERS.map(({ value, label }) => ({
+                      label,
+                      next: { ...filter, value },
+                    }))
+                ).map(({ label, next }) => (
                   <button
-                    key={option.value}
+                    key={next.value}
                     type="button"
-                    aria-pressed={filter.value === option.value}
+                    aria-pressed={filter.value === next.value}
                     onClick={(event) => {
-                      const nextFilter =
-                        filter.type === "cinema"
-                          ? { ...filter, value: option.value }
-                          : isCatalogueTimeFilterValue(option.value)
-                            ? { ...filter, value: option.value }
-                            : undefined;
-                      if (nextFilter) update(nextFilter);
+                      update(next);
                       setPendingFocus(filter.type);
                       event.currentTarget.closest("details")!.open = false;
                     }}
                   >
-                    {option.label}
+                    {label}
                   </button>
                 ))}
               </div>

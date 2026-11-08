@@ -82,18 +82,24 @@ function parseFilter(type: ActiveCatalogueFilterType, value: string) {
   const operator: CatalogueFilter["operator"] = value.startsWith("-") ? "is_not" : "is";
   const filterValue = operator === "is_not" ? value.slice(1) : value;
   if (!filterValue) return undefined;
-  if (type === "time") {
-    if (!isCatalogueTimeFilterValue(filterValue)) return undefined;
-    return { type, value: filterValue, operator };
-  }
+  if (type === "time")
+    return isCatalogueTimeFilterValue(filterValue)
+      ? { type, value: filterValue, operator }
+      : undefined;
   return { type, value: filterValue, operator };
 }
 
-function parseSelection(url: URL, today: string): ActiveCatalogueSelection {
+function parseSelection(
+  url: URL,
+  today: string,
+  fixedCinemaId: string | undefined,
+): ActiveCatalogueSelection {
   const params = url.searchParams;
   const start = params.get("start") ?? today;
   const end = params.get("end") ?? start;
+  // A fixed cinema page already scopes its query, so URL cinema filters are ignored.
   const filters = filterTypes
+    .filter((type) => !(fixedCinemaId && type === "cinema"))
     .map((type) => {
       const value = params.get(type);
       return value === null ? undefined : parseFilter(type, value);
@@ -171,9 +177,9 @@ export function MinimalExperience({
   const listingUrl = isScreenings
     ? url
     : new URL(screeningsHref, "http://marquise.invalid");
-  const selection = parseSelection(listingUrl, today);
   const fixedCinemaPath = /^\/cinemas\/([^/]+)\/?$/.exec(listingUrl.pathname)?.[1];
   const fixedCinemaId = fixedCinemaPath ? decodePathId(fixedCinemaPath) : undefined;
+  const selection = parseSelection(listingUrl, today, fixedCinemaId);
   const clock = useRef(currentTime);
   clock.current = currentTime;
   const movieId = /^\/movies\/([^/]+)$/.exec(url.pathname)?.[1];

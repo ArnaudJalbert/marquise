@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   MinimalCatalogue,
+  type ActiveCatalogueFilter,
   type ActiveCatalogueSelection,
   type CatalogueState,
   type CatalogueMovie,
@@ -12,14 +13,35 @@ import { loadAllMovies, loadMovieWeek } from "./api";
 
 const apiMode = import.meta.env.VITE_MARQUISE_DATA_SOURCE === "api";
 
+type TimeFilterValue = Extract<ActiveCatalogueFilter, { type: "time" }>["value"];
+const timeFilterValues: readonly TimeFilterValue[] = ["matinee", "evening", "late"];
+
+function isTimeFilterValue(value: string): value is TimeFilterValue {
+  return timeFilterValues.some((timeValue) => timeValue === value);
+}
+
+/** Parses `cinema` and `time` params like the app: a leading `-` means "is not". */
+function readFilters(params: URLSearchParams): ActiveCatalogueFilter[] {
+  const filters: ActiveCatalogueFilter[] = [];
+  for (const [type, rawValue] of [
+    ["cinema", params.get("cinema")],
+    ["time", params.get("time")],
+  ] as const) {
+    if (!rawValue) continue;
+    const operator = rawValue.startsWith("-") ? "is_not" : "is";
+    const value = operator === "is_not" ? rawValue.slice(1) : rawValue;
+    if (!value) continue;
+    if (type === "cinema") filters.push({ type, value, operator });
+    else if (isTimeFilterValue(value)) filters.push({ type, value, operator });
+  }
+  return filters;
+}
+
 const initial: ActiveCatalogueSelection = {
   start: today,
   end: today,
   title: "",
-  cinemas: [],
-  languages: [],
-  from: "",
-  to: "",
+  filters: [],
 };
 function readSelection(): ActiveCatalogueSelection {
   const p = new URLSearchParams(location.search);
@@ -27,10 +49,7 @@ function readSelection(): ActiveCatalogueSelection {
     start: p.get("start") ?? today,
     end: p.get("end") ?? today,
     title: p.get("q") ?? "",
-    cinemas: p.getAll("cinema"),
-    languages: p.getAll("language"),
-    from: p.get("from") ?? "",
-    to: p.get("to") ?? "",
+    filters: readFilters(p),
   };
 }
 
@@ -79,11 +98,11 @@ function Preview({ client }: { client: HttpMarquiseClient }) {
     setState("ready");
     setSelection(next);
     const p = new URLSearchParams();
-    for (const key of ["start", "end", "from", "to"] as const)
-      if (next[key]) p.set(key, next[key]);
+    p.set("start", next.start);
+    p.set("end", next.end);
     if (next.title) p.set("q", next.title);
-    next.cinemas.forEach((c) => p.append("cinema", c));
-    next.languages.forEach((l) => p.append("language", l));
+    for (const { type, value, operator } of next.filters)
+      p.set(type, `${operator === "is_not" ? "-" : ""}${value}`);
     history.replaceState(null, "", `${location.pathname}?${p}`);
     setHref(location.href);
   };
