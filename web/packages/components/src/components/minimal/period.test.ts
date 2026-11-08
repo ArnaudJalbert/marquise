@@ -86,6 +86,12 @@ describe("fitView", () => {
     /** Scenario: a period at the end of the strip shows the last weeks. */
     expect(fitView({ weeks: 2, first: 0 }, 40, 41)).toEqual({ weeks: 2, first: 28 });
   });
+
+  it("never widens past six weeks for a period outside the horizon", () => {
+    /** Scenario: a hand-edited URL period cannot stretch the strip past six weeks. */
+    expect(fitView({ weeks: 1, first: 0 }, -1, 40)).toEqual({ weeks: 6, first: 0 });
+    expect(fitView({ weeks: 1, first: 0 }, 0, 50)).toEqual({ weeks: 6, first: 0 });
+  });
 });
 
 describe("anchorView", () => {

@@ -117,5 +117,6 @@ export function anchorView(weeks: WeekCount, day: number): StripView {
 export function fitView(current: StripView, start: number, end: number): StripView {
   if (start >= current.first && end < current.first + current.weeks * 7) return current;
   const spannedWeeks = Math.floor(end / 7) - Math.floor(start / 7) + 1;
-  return anchorView(Math.max(current.weeks, spannedWeeks) as WeekCount, start);
+  const weeks = Math.min(HORIZON_DAYS / 7, Math.max(current.weeks, spannedWeeks));
+  return anchorView(weeks as WeekCount, start);
 }
