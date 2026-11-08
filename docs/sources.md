@@ -36,7 +36,7 @@ Use cases call the registry — they never import scrapers directly.
 | `cinematheque` | `infrastructure/sources/cinematheque/` | `source_adapters/cinematheque.py` |
 | `outremont` | `infrastructure/sources/outremont/` | `source_adapters/outremont.py` |
 
-All paths relative to `packages/marquise-core/src/marquise/`.
+All paths relative to `packages/marquise-core/src/marquise/`. The `tmdb*.py` files beside them are movie metadata providers, not showtime sources ([docs/providers/tmdb-metadata.md](providers/tmdb-metadata.md)).
 
 Showtimes must emit UTC ISO 8601 timestamps — use
 `infrastructure/sources/_timezone.py` for Montreal-local sources.
