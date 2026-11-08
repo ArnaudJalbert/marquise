@@ -2,7 +2,7 @@
 
 from datetime import date
 from math import ceil
-from typing import Literal, Self
+from typing import Annotated, Literal, Self
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -135,6 +135,23 @@ async def browse_screening_movies(
     )
 
 
+class ScreeningDayCountParams(BaseModel):
+    """An inclusive Montréal horizon and the listing's query filters."""
+
+    start: date
+    end: date
+    title: str | None = Field(default=None, max_length=200)
+    cinema: list[str] = []
+    exclude_cinema: list[str] = []
+    language: list[str] = []
+
+    @model_validator(mode="after")
+    def _validate_order(self) -> Self:
+        if self.start > self.end:
+            raise ValueError("Invalid screening filter range")
+        return self
+
+
 @router.post(
     "/screening-day-counts",
     response_model=ScreeningDayCounts,
@@ -144,13 +161,8 @@ async def browse_screening_movies(
 async def count_screening_days(
     request: Request,
     response: Response,
-    start: date,
-    end: date,
+    params: Annotated[ScreeningDayCountParams, Query()],
     filters: ScreeningMovieFilters,
-    title: str | None = Query(default=None, max_length=200),
-    cinema: list[str] | None = Query(default=None),
-    exclude_cinema: list[str] | None = Query(default=None),
-    language: list[str] | None = Query(default=None),
     query: CountScreeningDaysQuery = Depends(get_count_screening_days_query),
 ) -> ScreeningDayCounts:
     """Count screenings per inclusive Montreal date with the listing's filters.
@@ -158,31 +170,37 @@ async def count_screening_days(
     Every date up to 42 days is returned, zero included. Started screenings are
     excluded, so this endpoint is uncached like the listing.
     """
-    if start > end:
-        raise HTTPException(status_code=422, detail="Invalid screening filter range")
-    hour_filter = filters.hours
-    result = await query.execute(
-        CountScreeningDaysQuery.InputData(
-            start=start,
-            end=end,
-            title=title,
-            cinemas=tuple(cinema or ()),
-            languages=tuple(language or ()),
-            hours=CountScreeningDaysQuery.HourFilter(
-                ranges=tuple(
-                    CountScreeningDaysQuery.HourRange(item.start, item.end)
-                    for item in hour_filter.ranges
-                ),
-                excluded=hour_filter.operator == "is_not",
-            )
-            if hour_filter
-            else None,
-            excluded_cinemas=tuple(exclude_cinema or ()),
-        )
-    )
+    result = await query.execute(_to_count_input(params, filters))
     return ScreeningDayCounts(
         days=[
             ScreeningDayCount(date=day.date, screenings=day.screenings)
             for day in result.days
         ]
+    )
+
+
+def _to_count_input(
+    params: ScreeningDayCountParams, filters: ScreeningMovieFilters
+) -> CountScreeningDaysQuery.InputData:
+    hours = None if filters.hours is None else _to_count_hours(filters.hours)
+    return CountScreeningDaysQuery.InputData(
+        start=params.start,
+        end=params.end,
+        title=params.title,
+        cinemas=tuple(params.cinema),
+        languages=tuple(params.language),
+        hours=hours,
+        excluded_cinemas=tuple(params.exclude_cinema),
+    )
+
+
+def _to_count_hours(
+    hour_filter: HourFilterRequest,
+) -> CountScreeningDaysQuery.HourFilter:
+    return CountScreeningDaysQuery.HourFilter(
+        ranges=tuple(
+            CountScreeningDaysQuery.HourRange(item.start, item.end)
+            for item in hour_filter.ranges
+        ),
+        excluded=hour_filter.operator == "is_not",
     )
