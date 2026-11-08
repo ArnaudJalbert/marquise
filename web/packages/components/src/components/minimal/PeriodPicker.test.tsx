@@ -395,6 +395,25 @@ it("shows week blocks from three weeks at the phone breakpoint, switching live",
   expect(visibleBlocks()).toHaveLength(0);
   setPhone(true);
   expect(visibleBlocks()).toHaveLength(3);
+  for (const weeks of [4, 5, 6]) {
+    zoomTo(weeks);
+    expect(visibleDays()).toHaveLength(0);
+    expect(visibleBlocks()).toHaveLength(weeks);
+  }
+});
+
+it("keeps the drag anchor when the phone breakpoint flips mid-drag", () => {
+  /** Scenario: a drag started on a week block finishes on days from that week's first day. */
+  const setPhone = stubViewport(true);
+  const onChange = setup();
+  zoomTo(3);
+  strip();
+  fireEvent.pointerDown(block("November 10 to November 16"), at(1));
+  setPhone(false);
+  const element = strip();
+  fireEvent.pointerMove(element, at(16));
+  fireEvent.pointerUp(element, at(16));
+  expect(onChange).toHaveBeenLastCalledWith("2026-11-10", "2026-11-19");
 });
 
 it("labels each block with its month change, day span and full range", () => {

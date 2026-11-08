@@ -38,7 +38,7 @@ const isPhone = () => window.matchMedia?.(PHONE_QUERY).matches ?? false;
 type DragMode = "draw" | "move" | "start" | "end";
 interface Drag {
   mode: DragMode;
-  /** Cell where the drag started. */
+  /** First day of the starting cell; days survive a switch to or from weeks. */
   anchor: number;
   moved: boolean;
   /** Draft range in days. */
@@ -81,9 +81,10 @@ function DayStrip({
   }
   const [draft, setDraft] = useState<[number, number] | null>(null);
   const [start, end] = draft ?? range;
-  const phone = useSyncExternalStore(subscribeToPhone, isPhone, () => false);
+  const phoneLayout = useSyncExternalStore(subscribeToPhone, isPhone, () => false);
   // Long views show one cell per rolling week; every edit then covers whole weeks.
-  const cellDays = view.weeks >= (phone ? 3 : 4) ? 7 : 1;
+  const weekLayout = view.weeks >= (phoneLayout ? 3 : 4);
+  const cellDays = weekLayout ? 7 : 1;
   const toCell = (day: number) => Math.floor(day / cellDays);
   const toDays = ([from, to]: [number, number]): [number, number] => [
     from * cellDays,
@@ -151,7 +152,7 @@ function DayStrip({
         event.currentTarget.setPointerCapture?.(event.pointerId);
         update({
           mode,
-          anchor: cell,
+          anchor: cell * cellDays,
           moved: false,
           range: mode === "draw" ? toDays([cell, cell]) : range,
         });
@@ -160,10 +161,13 @@ function DayStrip({
         const current = drag.current;
         if (!current) return;
         const cell = cellAt(event);
+        const anchor = toCell(current.anchor);
         update({
           ...current,
-          moved: current.moved || cell !== current.anchor,
-          range: toDays(dragRange(current, cell, selectedCells, lastHorizonCell)),
+          moved: current.moved || cell !== anchor,
+          range: toDays(
+            dragRange({ ...current, anchor }, cell, selectedCells, lastHorizonCell),
+          ),
         });
       }}
       onPointerUp={() => {
@@ -174,7 +178,7 @@ function DayStrip({
         // A tap anywhere picks that single day or week.
         const [nextStart, nextEnd] = current.moved
           ? current.range
-          : toDays([current.anchor, current.anchor]);
+          : toDays([toCell(current.anchor), toCell(current.anchor)]);
         onChange(nextStart, nextEnd);
       }}
       onPointerCancel={() => {
@@ -186,10 +190,10 @@ function DayStrip({
         const [from, to] = toDays([cell, cell]);
         const date = addDays(today, from);
         const endDate = addDays(today, to);
-        const weekend = cellDays === 1 && (weekday(date) === 0 || weekday(date) === 6);
+        const weekend = !weekLayout && (weekday(date) === 0 || weekday(date) === 6);
         const selected = from <= end && to >= start;
         const label =
-          cellDays === 7
+          weekLayout
             ? `${longMonthDay(date)} to ${longMonthDay(endDate)}`
             : `${from === 0 ? "Today, " : ""}${formatRangeDate(date)}`;
         return (
@@ -197,9 +201,9 @@ function DayStrip({
             key={date}
             type="button"
             className={[
-              cellDays === 7 ? "minimal-strip-week" : "minimal-strip-day",
+              weekLayout ? "minimal-strip-week" : "minimal-strip-day",
               weekend && "is-weekend",
-              cellDays === 1 && from === 0 && "is-today",
+              !weekLayout && from === 0 && "is-today",
               selected && "is-selected",
             ]
               .filter(Boolean)
@@ -252,13 +256,13 @@ function DayStrip({
                 ? monthName(endDate)
                 : ""}
             </span>
-            {cellDays === 1 && (
+            {!weekLayout && (
               <span className="minimal-strip-weekday" aria-hidden>
                 {from === 0 ? "Today" : weekdayName(date)}
               </span>
             )}
             <span className="minimal-strip-date" aria-hidden>
-              {cellDays === 7 ? `${dayOfMonth(date)}-${dayOfMonth(endDate)}` : dayOfMonth(date)}
+              {weekLayout ? `${dayOfMonth(date)}-${dayOfMonth(endDate)}` : dayOfMonth(date)}
             </span>
           </button>
         );
