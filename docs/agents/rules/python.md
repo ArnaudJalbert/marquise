@@ -31,7 +31,7 @@ OutputData skips re-validating fields copied from already-validated entities or 
 - Domain exception boundaries follow [architecture](architecture.md#boundaries).
 - Repository gateway errors are declared with their protocols under `interface_adapters/repositories/protocols/`.
 - Auth gateway errors are declared in `interface_adapters/exceptions/auth.py`.
-- The API maps an unvalidated `ValueError` to 422 and maps each `ApplicationError` in `apps/marquise-api/src/marquise_api/exception_handlers.py`.
+- The API maps an unvalidated `ValueError` to 422. In `apps/marquise-api/src/marquise_api/exception_handlers.py`, explicitly mapped `ApplicationError` subclasses get their configured status; unmapped ones fall back to 400.
 
 ## Modules and packages
 
