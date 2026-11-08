@@ -25,7 +25,7 @@ import {
   type WeekCount,
 } from "./period";
 
-const weeksLabel = (weeks: WeekCount) => `${weeks} ${weeks === 1 ? "week" : "weeks"}`;
+const formatWeeks = (weeks: WeekCount) => `${weeks} ${weeks === 1 ? "week" : "weeks"}`;
 
 /** Same breakpoint as the phone rules in minimal.css. */
 const PHONE_QUERY = "(max-width: 639px)";
@@ -62,10 +62,10 @@ function ZoomSlider({
         step={1}
         value={weeks}
         aria-label="Zoom"
-        aria-valuetext={weeksLabel(weeks)}
+        aria-valuetext={formatWeeks(weeks)}
         onChange={(event) => onZoom(Number(event.target.value) as WeekCount)}
       />
-      <span aria-hidden>{weeksLabel(weeks)}</span>
+      <span aria-hidden>{formatWeeks(weeks)}</span>
     </>
   );
 }
@@ -117,7 +117,7 @@ function ZoomChip({
         ref={chip}
         type="button"
         className="minimal-zoom-chip"
-        aria-label={`Zoom, ${weeksLabel(weeks)}`}
+        aria-label={`Zoom, ${formatWeeks(weeks)}`}
         aria-expanded={open}
         onClick={() => setOpen(!open)}
       >
