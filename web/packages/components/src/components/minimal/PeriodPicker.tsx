@@ -1,12 +1,15 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   useCallback,
+  useEffect,
   useId,
   useRef,
   useState,
+  useSyncExternalStore,
   type CSSProperties,
   type KeyboardEvent,
   type PointerEvent,
+  type Ref,
 } from "react";
 import { useResource } from "../discovery/use-resource";
 import { addDays, formatRangeDate } from "./catalogue-format";
@@ -27,6 +30,115 @@ import {
 } from "./period";
 
 const formatWeeks = (weeks: WeekCount) => `${weeks} ${weeks === 1 ? "week" : "weeks"}`;
+
+/** Same breakpoint as the phone rules in minimal.css. */
+const PHONE_QUERY = "(max-width: 639px)";
+
+function subscribeToPhoneLayout(onChange: () => void) {
+  const query = window.matchMedia?.(PHONE_QUERY);
+  query?.addEventListener("change", onChange);
+  return () => query?.removeEventListener("change", onChange);
+}
+
+const isPhoneLayout = () => window.matchMedia?.(PHONE_QUERY).matches ?? false;
+
+/** Whether the phone breakpoint matches, kept live as the viewport changes. */
+function usePhoneLayout(): boolean {
+  return useSyncExternalStore(subscribeToPhoneLayout, isPhoneLayout, () => false);
+}
+
+function ZoomSlider({
+  weeks,
+  onZoom,
+  inputRef,
+}: {
+  weeks: WeekCount;
+  onZoom: (weeks: WeekCount) => void;
+  inputRef?: Ref<HTMLInputElement>;
+}) {
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="range"
+        min={1}
+        max={6}
+        step={1}
+        value={weeks}
+        aria-label="Zoom"
+        aria-valuetext={formatWeeks(weeks)}
+        onChange={(event) => onZoom(Number(event.target.value) as WeekCount)}
+      />
+      <span aria-hidden>{formatWeeks(weeks)}</span>
+    </>
+  );
+}
+
+/** Phone zoom: a "N wk" chip that opens the slider in a popover below it. */
+function ZoomChip({
+  weeks,
+  onZoom,
+}: {
+  weeks: WeekCount;
+  onZoom: (weeks: WeekCount) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const menu = useRef<HTMLDivElement>(null);
+  const chip = useRef<HTMLButtonElement>(null);
+  const slider = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    slider.current?.focus();
+    const closeOutside = (event: globalThis.PointerEvent) => {
+      if (!menu.current?.contains(event.target as Node)) {
+        setOpen(false);
+        chip.current?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    return () => document.removeEventListener("pointerdown", closeOutside);
+  }, [open]);
+
+  return (
+    <div
+      className="minimal-zoom-menu"
+      ref={menu}
+      onKeyDown={(event) => {
+        if (open && event.key === "Escape") {
+          setOpen(false);
+          chip.current?.focus();
+        }
+      }}
+      // Tabbing away closes the popover; taps are handled by closeOutside, and a
+      // tap on the popover's label drops focus to the page (no relatedTarget).
+      onBlur={(event) => {
+        const next = event.relatedTarget;
+        if (next && !event.currentTarget.contains(next)) setOpen(false);
+      }}
+    >
+      <button
+        ref={chip}
+        type="button"
+        className="minimal-zoom-chip"
+        aria-label={`${weeks} wk, zoom ${formatWeeks(weeks)}`}
+        aria-expanded={open}
+        // Safari does not focus a tapped button, so closing would drop focus to the page.
+        onClick={() => {
+          if (open) chip.current?.focus();
+          setOpen(!open);
+        }}
+      >
+        {weeks} wk <span aria-hidden>▾</span>
+      </button>
+      {open && (
+        <div className="minimal-zoom minimal-zoom-popover">
+          <ZoomSlider weeks={weeks} onZoom={onZoom} inputRef={slider} />
+        </div>
+      )}
+    </div>
+  );
+}
 
 type DragMode = "draw" | "move" | "start" | "end";
 interface Drag {
@@ -91,12 +203,15 @@ function DayStrip({
   range,
   view,
   volume,
+  todayAsWeekday,
   onChange,
 }: {
   today: string;
   range: [number, number];
   view: StripView;
   volume: DayVolume;
+  /** Label today with its weekday, highlighted, where "Today" would not fit. */
+  todayAsWeekday: boolean;
   onChange: (start: number, end: number) => void;
 }) {
   const descriptionId = useId();
@@ -260,12 +375,11 @@ function DayStrip({
             <span className="minimal-strip-month" aria-hidden>
               {day === view.first || dayOfMonth(date) === 1 ? monthName(date) : ""}
             </span>
-            <span className="minimal-strip-weekday" aria-hidden>
-              {dayCount === 42
-                ? weekdayName(date).charAt(0)
-                : day === 0
-                  ? "Today"
-                  : weekdayName(date)}
+            <span
+              className={`minimal-strip-weekday${day === 0 && todayAsWeekday ? " is-highlighted" : ""}`}
+              aria-hidden
+            >
+              {day === 0 && !todayAsWeekday ? "Today" : weekdayName(date)}
             </span>
             <span className="minimal-strip-date" aria-hidden>
               {dayOfMonth(date)}
@@ -332,6 +446,8 @@ export function PeriodPicker({
   const { title, detail } = describePeriod(start, end, today);
   const previous = stepPeriod(start, end, today, -1);
   const next = stepPeriod(start, end, today, 1);
+  const phone = usePhoneLayout();
+  const zoom = (weeks: WeekCount) => setView(anchorView(weeks, range[0]));
 
   return (
     <section className="minimal-period" aria-label="Dates">
@@ -355,21 +471,13 @@ export function PeriodPicker({
             <ChevronRight aria-hidden size={18} />
           </button>
         </div>
-        <div className="minimal-zoom">
-          <input
-            type="range"
-            min={1}
-            max={6}
-            step={1}
-            value={view.weeks}
-            aria-label="Zoom"
-            aria-valuetext={formatWeeks(view.weeks)}
-            onChange={(event) =>
-              setView(anchorView(Number(event.target.value) as WeekCount, range[0]))
-            }
-          />
-          <span aria-hidden>{formatWeeks(view.weeks)}</span>
-        </div>
+        {phone ? (
+          <ZoomChip weeks={view.weeks} onZoom={zoom} />
+        ) : (
+          <div className="minimal-zoom">
+            <ZoomSlider weeks={view.weeks} onZoom={zoom} />
+          </div>
+        )}
       </div>
       {detail && <p className="minimal-period-detail">{detail}</p>}
       <DayStrip
@@ -377,6 +485,7 @@ export function PeriodPicker({
         range={range}
         view={view}
         volume={volume}
+        todayAsWeekday={phone && view.weeks === 2}
         onChange={(from, to) => onChange(addDays(today, from), addDays(today, to))}
       />
     </section>
