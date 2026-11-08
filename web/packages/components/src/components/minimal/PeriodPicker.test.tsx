@@ -94,10 +94,11 @@ const visibleDays = () =>
     cell.getAttribute("aria-label"),
   );
 
-const visibleBlocks = () =>
-  Array.from(strip().querySelectorAll(".minimal-strip-week"), (cell) =>
-    cell.getAttribute("aria-label"),
+const blockCells = () =>
+  Array.from(strip().querySelectorAll("button")).filter((cell) =>
+    / to /.test(cell.getAttribute("aria-label") ?? ""),
   );
+const visibleBlocks = () => blockCells().map((cell) => cell.getAttribute("aria-label"));
 const block = (name: string) => screen.getByRole("button", { name });
 
 const title = () => screen.getByRole("heading", { level: 1 }).textContent;
@@ -409,19 +410,13 @@ it("labels each block with its month change, day span and full range", () => {
     "December 5 to December 11",
     "December 12 to December 18",
   ]);
-  const cells = strip().querySelectorAll(".minimal-strip-week");
-  expect(
-    Array.from(cells, (cell) => [
-      cell.querySelector(".minimal-strip-month")?.textContent,
-      cell.querySelector(".minimal-strip-date")?.textContent,
-    ]),
-  ).toEqual([
-    ["Nov", "7-13"],
-    ["", "14-20"],
-    ["", "21-27"],
-    ["Dec", "28-4"],
-    ["", "5-11"],
-    ["", "12-18"],
+  expect(blockCells().map((cell) => cell.textContent)).toEqual([
+    "Nov7-13",
+    "14-20",
+    "21-27",
+    "Dec28-4",
+    "5-11",
+    "12-18",
   ]);
 });
 

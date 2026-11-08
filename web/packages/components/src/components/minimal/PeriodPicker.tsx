@@ -45,15 +45,15 @@ interface Drag {
   range: [number, number];
 }
 
-/** The cell range a drag reaches at `cell`, kept within cells 0 to `lastCell`. */
+/** The cell range a drag reaches at `cell`, kept within cells 0 to `lastHorizonCell`. */
 function dragRange(
   { mode, anchor }: Drag,
   cell: number,
   [start, end]: [number, number],
-  lastCell: number,
+  lastHorizonCell: number,
 ): [number, number] {
   if (mode === "move") {
-    const shift = Math.max(-start, Math.min(lastCell - end, cell - anchor));
+    const shift = Math.max(-start, Math.min(lastHorizonCell - end, cell - anchor));
     return [start + shift, end + shift];
   }
   if (mode === "start") return [Math.min(cell, end), end];
@@ -90,7 +90,7 @@ function DayStrip({
     to * cellDays + cellDays - 1,
   ];
   const selectedCells: [number, number] = [toCell(range[0]), toCell(range[1])];
-  const lastCell = HORIZON_DAYS / cellDays - 1;
+  const lastHorizonCell = HORIZON_DAYS / cellDays - 1;
   const dayCount = view.weeks * 7;
   const cellCount = dayCount / cellDays;
   const firstCell = view.first / cellDays;
@@ -163,7 +163,7 @@ function DayStrip({
         update({
           ...current,
           moved: current.moved || cell !== current.anchor,
-          range: toDays(dragRange(current, cell, selectedCells, lastCell)),
+          range: toDays(dragRange(current, cell, selectedCells, lastHorizonCell)),
         });
       }}
       onPointerUp={() => {
@@ -186,7 +186,7 @@ function DayStrip({
         const [from, to] = toDays([cell, cell]);
         const date = addDays(today, from);
         const endDate = addDays(today, to);
-        const weekend = weekday(date) === 0 || weekday(date) === 6;
+        const weekend = cellDays === 1 && (weekday(date) === 0 || weekday(date) === 6);
         const selected = from <= end && to >= start;
         const label =
           cellDays === 7
@@ -196,18 +196,14 @@ function DayStrip({
           <button
             key={date}
             type="button"
-            className={
-              cellDays === 7
-                ? ["minimal-strip-week", selected && "is-selected"].filter(Boolean).join(" ")
-                : [
-                    "minimal-strip-day",
-                    weekend && "is-weekend",
-                    from === 0 && "is-today",
-                    selected && "is-selected",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")
-            }
+            className={[
+              cellDays === 7 ? "minimal-strip-week" : "minimal-strip-day",
+              weekend && "is-weekend",
+              from === 0 && "is-today",
+              selected && "is-selected",
+            ]
+              .filter(Boolean)
+              .join(" ")}
             aria-label={label}
             // A selection that covers part of a week shows as a partial fill.
             aria-pressed={from >= start && to <= end ? true : selected ? "mixed" : false}
@@ -248,32 +244,22 @@ function DayStrip({
               }
             }}
           >
-            {cellDays === 7 ? (
-              <>
-                <span className="minimal-strip-month" aria-hidden>
-                  {dayOfMonth(endDate) < dayOfMonth(date) || dayOfMonth(date) === 1
-                    ? monthName(endDate)
-                    : cell === firstCell
-                      ? monthName(date)
-                      : ""}
-                </span>
-                <span className="minimal-strip-date" aria-hidden>
-                  {`${dayOfMonth(date)}-${dayOfMonth(endDate)}`}
-                </span>
-              </>
-            ) : (
-              <>
-                <span className="minimal-strip-month" aria-hidden>
-                  {from === view.first || dayOfMonth(date) === 1 ? monthName(date) : ""}
-                </span>
-                <span className="minimal-strip-weekday" aria-hidden>
-                  {from === 0 ? "Today" : weekdayName(date)}
-                </span>
-                <span className="minimal-strip-date" aria-hidden>
-                  {dayOfMonth(date)}
-                </span>
-              </>
+            <span className="minimal-strip-month" aria-hidden>
+              {/* The first cell names its month, later cells only where a month starts. */}
+              {cell === firstCell ||
+              dayOfMonth(endDate) < dayOfMonth(date) ||
+              dayOfMonth(date) === 1
+                ? monthName(endDate)
+                : ""}
+            </span>
+            {cellDays === 1 && (
+              <span className="minimal-strip-weekday" aria-hidden>
+                {from === 0 ? "Today" : weekdayName(date)}
+              </span>
             )}
+            <span className="minimal-strip-date" aria-hidden>
+              {cellDays === 7 ? `${dayOfMonth(date)}-${dayOfMonth(endDate)}` : dayOfMonth(date)}
+            </span>
           </button>
         );
       })}
