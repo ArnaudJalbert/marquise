@@ -210,19 +210,17 @@ export function MinimalMovieCard({
           id={id}
           aria-label={`${movie.title} screenings`}
         >
-          <header className="minimal-preview-header">
-            <strong>{day && relativeDay(day, today)}</strong>
-            <button
-              className="minimal-preview-close"
-              aria-label="Close preview"
-              onClick={() => {
-                setOpen(false);
-                arrow.current?.focus();
-              }}
-            >
-              <X aria-hidden size={16} />
-            </button>
-          </header>
+          <strong className="minimal-preview-label">{day && relativeDay(day, today)}</strong>
+          <button
+            className="minimal-preview-close"
+            aria-label="Close preview"
+            onClick={() => {
+              setOpen(false);
+              arrow.current?.focus();
+            }}
+          >
+            <X aria-hidden size={16} />
+          </button>
           {previewNotice ? <p role="status">{previewNotice}</p> : preview.length ? preview.map((s, i) => (
             <p key={i}>
               <Showtime screening={s} countdown={startsIn(s.showtime, now.getTime())} />
