@@ -77,8 +77,6 @@ const timeRanges = {
 const filterTypes: readonly CatalogueFilterType[] = [
   "cinema",
   "time",
-  "audio",
-  "subtitles",
 ];
 
 function parseFilter(type: CatalogueFilterType, value: string) {
@@ -110,7 +108,20 @@ function parseSelection(url: URL, today: string): CatalogueSelection {
 function listingHref(href: string, selection: CatalogueSelection): string {
   const url = new URL(href, "http://marquise.invalid");
   const params = url.searchParams;
-  for (const key of ["start", "end", "q", "title", "cinema", "time", "language", "from", "to", "page"])
+  for (const key of [
+    "start",
+    "end",
+    "q",
+    "title",
+    "cinema",
+    "time",
+    "audio",
+    "subtitles",
+    "language",
+    "from",
+    "to",
+    "page",
+  ])
     params.delete(key);
   params.set("start", selection.start);
   params.set("end", selection.end);

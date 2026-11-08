@@ -374,6 +374,46 @@ it("ignores retired language and slider URL parameters", async () => {
   );
 });
 
+it("ignores unsupported audio and subtitle filters from the URL", async () => {
+  history.replaceState(
+    null,
+    "",
+    "/?cinema=c1&time=matinee&audio=VO&subtitles=VOSTF",
+  );
+  const client = clients();
+  render(<App client={client} />);
+  await screen.findByRole("link", { name: "View Wanted film" });
+
+  expect(screen.getByRole("group", { name: "cinema filter" }).textContent).toContain(
+    "Cinema is Cinema One",
+  );
+  expect(screen.getByRole("group", { name: "time filter" }).textContent).toContain(
+    "Time is Matinée",
+  );
+  expect(screen.queryByRole("group", { name: "audio filter" })).toBeNull();
+  expect(screen.queryByRole("group", { name: "subtitles filter" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Clear all" })).not.toBeNull();
+  expect(client.fetchScreeningMoviesPage).toHaveBeenCalledWith(
+    expect.objectContaining({
+      cinemas: ["c1"],
+      excludedCinemas: [],
+      hours: { operator: "is", ranges: [{ start: 0, end: 17 }] },
+    }),
+    expect.any(AbortSignal),
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
+  await waitFor(() => {
+    const params = new URL(window.location.href).searchParams;
+    expect(params.has("audio")).toBe(false);
+    expect(params.has("subtitles")).toBe(false);
+    expect(client.fetchScreeningMoviesPage).toHaveBeenLastCalledWith(
+      expect.objectContaining({ cinemas: [], excludedCinemas: [], hours: undefined }),
+      expect.any(AbortSignal),
+    );
+  });
+});
+
 it("sends a negative Cinema chip as a cinema exclusion", async () => {
   history.replaceState(null, "", "/?cinema=-c1");
   const client = clients();
