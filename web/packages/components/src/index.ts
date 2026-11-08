@@ -62,3 +62,4 @@ export { Card, CardContent } from "./components/ui/card";
 export { cn } from "./lib/utils";
 
 export { MinimalExperience } from "./components/minimal/MinimalExperience";
+export { isCatalogueTimeFilterValue } from "./components/minimal/catalogue-time-filters";

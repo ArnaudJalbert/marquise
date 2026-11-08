@@ -43,6 +43,10 @@ export interface CatalogueSelection<
 }
 export type CatalogueFilterType = "cinema" | "time" | "audio" | "subtitles";
 export type ActiveCatalogueFilterType = "cinema" | "time";
+export const ACTIVE_CATALOGUE_FILTER_TYPES: readonly ActiveCatalogueFilterType[] = [
+  "cinema",
+  "time",
+];
 export type ActiveCatalogueSelection = CatalogueSelection<ActiveCatalogueFilterType>;
 export type ActiveCatalogueFilter = CatalogueFilter<ActiveCatalogueFilterType>;
 export type CatalogueFilter<FilterType extends CatalogueFilterType = CatalogueFilterType> = {

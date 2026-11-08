@@ -13,8 +13,16 @@ export function isCatalogueTimeFilterValue(
   return CATALOGUE_TIME_FILTERS.some((filter) => filter.value === value);
 }
 
-export function getCatalogueTimeFilter(value: CatalogueTimeFilterValue) {
-  return CATALOGUE_TIME_FILTERS.find((filter) => filter.value === value)!;
+type CatalogueTimeFilter = (typeof CATALOGUE_TIME_FILTERS)[number];
+
+const CATALOGUE_TIME_FILTER_BY_VALUE: Record<CatalogueTimeFilterValue, CatalogueTimeFilter> = {
+  matinee: CATALOGUE_TIME_FILTERS[0],
+  evening: CATALOGUE_TIME_FILTERS[1],
+  late: CATALOGUE_TIME_FILTERS[2],
+};
+
+export function getCatalogueTimeFilter(value: CatalogueTimeFilterValue): CatalogueTimeFilter {
+  return CATALOGUE_TIME_FILTER_BY_VALUE[value];
 }
 
 export function matchesCatalogueTimeFilter(

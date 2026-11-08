@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import type {
-  ActiveCatalogueFilter,
-  ActiveCatalogueFilterType,
-  CatalogueCinema,
+import {
+  ACTIVE_CATALOGUE_FILTER_TYPES,
+  type ActiveCatalogueFilter,
+  type ActiveCatalogueFilterType,
+  type CatalogueCinema,
 } from "./catalogue-types";
 import {
   CATALOGUE_TIME_FILTERS,
   getCatalogueTimeFilter,
 } from "./catalogue-time-filters";
-
-const filterTypes: readonly ActiveCatalogueFilterType[] = ["cinema", "time"];
 
 function getFilterTypeLabel(type: ActiveCatalogueFilterType): string {
   return `${type.charAt(0).toUpperCase()}${type.slice(1)}`;
@@ -37,7 +36,7 @@ export function ScreeningFilters({
     setPendingFocus(undefined);
   }, [filters, pendingFocus]);
 
-  const availableTypes = filterTypes.filter(
+  const availableTypes = ACTIVE_CATALOGUE_FILTER_TYPES.filter(
     (type) =>
       !filters.some((filter) => filter.type === type) &&
       !(fixedCinemaId && type === "cinema") &&

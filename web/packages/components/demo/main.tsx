@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   MinimalCatalogue,
+  isCatalogueTimeFilterValue,
   type ActiveCatalogueFilter,
   type ActiveCatalogueSelection,
   type CatalogueState,
@@ -12,13 +13,6 @@ import { HttpMarquiseClient } from "marquise-client";
 import { loadAllMovies, loadMovieWeek } from "./api";
 
 const apiMode = import.meta.env.VITE_MARQUISE_DATA_SOURCE === "api";
-
-type TimeFilterValue = Extract<ActiveCatalogueFilter, { type: "time" }>["value"];
-const timeFilterValues: readonly TimeFilterValue[] = ["matinee", "evening", "late"];
-
-function isTimeFilterValue(value: string): value is TimeFilterValue {
-  return timeFilterValues.some((timeValue) => timeValue === value);
-}
 
 /** Parses `cinema` and `time` params like the app: a leading `-` means "is not". */
 function readFilters(params: URLSearchParams): ActiveCatalogueFilter[] {
@@ -32,7 +26,7 @@ function readFilters(params: URLSearchParams): ActiveCatalogueFilter[] {
     const value = operator === "is_not" ? rawValue.slice(1) : rawValue;
     if (!value) continue;
     if (type === "cinema") filters.push({ type, value, operator });
-    else if (isTimeFilterValue(value)) filters.push({ type, value, operator });
+    else if (isCatalogueTimeFilterValue(value)) filters.push({ type, value, operator });
   }
   return filters;
 }

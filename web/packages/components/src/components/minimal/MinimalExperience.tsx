@@ -12,10 +12,13 @@ import { useResource } from "../discovery/use-resource";
 import { usePageResource } from "../discovery/use-page-resource";
 import { MinimalCatalogue } from "./MinimalCatalogue";
 import { decodePathId } from "./catalogue-format";
+import {
+  ACTIVE_CATALOGUE_FILTER_TYPES,
+  type ActiveCatalogueFilterType,
+} from "./catalogue-types";
 import type {
   CatalogueFilter,
   CatalogueMovie,
-  ActiveCatalogueFilterType,
   CatalogueScreening,
   ActiveCatalogueSelection,
   CatalogueState,
@@ -73,11 +76,6 @@ function resourceState(resource: {
 
 const screeningLanguages = ["VO", "VOA", "VOF", "VOSTF", "VOSTA", "VF"];
 
-const filterTypes: readonly ActiveCatalogueFilterType[] = [
-  "cinema",
-  "time",
-];
-
 function parseFilter(type: ActiveCatalogueFilterType, value: string) {
   const operator: CatalogueFilter["operator"] = value.startsWith("-") ? "is_not" : "is";
   const filterValue = operator === "is_not" ? value.slice(1) : value;
@@ -98,7 +96,7 @@ function parseSelection(
   const start = params.get("start") ?? today;
   const end = params.get("end") ?? start;
   // A fixed cinema page already scopes its query, so URL cinema filters are ignored.
-  const filters = filterTypes
+  const filters = ACTIVE_CATALOGUE_FILTER_TYPES
     .filter((type) => !(fixedCinemaId && type === "cinema"))
     .map((type) => {
       const value = params.get(type);
