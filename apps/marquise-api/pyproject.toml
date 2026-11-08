@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://marquise.ca"
+Homepage = "https://marquise.mov"
 Repository = "https://github.com/ArnaudJalbert/marquise"
 
 [project.scripts]

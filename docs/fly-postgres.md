@@ -54,7 +54,7 @@ result = subprocess.run(
     ['flyctl', 'secrets', 'import', '--app', 'marquise-db', '--stage'],
     input=(f'POSTGRES_PASSWORD={password}\n'
            f'DATABASE_URL=postgresql://marquise:{password}'
-           '@marquise-db.internal:5432/marquise\n'),
+           '@marquise-db.flycast:5432/marquise\n'),
     text=True, capture_output=True,
 )
 if result.returncode:
