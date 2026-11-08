@@ -131,7 +131,7 @@
 .minimal-period-title {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   min-width: 0;
 }
 .minimal-site .minimal-period-title h1,
@@ -145,7 +145,7 @@
 .minimal-site .minimal-period-title button {
   display: grid;
   place-items: center;
-  width: 44px;
+  width: 28px;
   padding: 0;
   border-radius: 999px;
   flex: none;
@@ -156,20 +156,23 @@
 }
 .minimal-zoom {
   display: inline-flex;
-  gap: 2px;
-  padding: 2px;
+  align-items: center;
+  gap: 12px;
+  min-height: 32px;
+  padding: 4px 16px;
   border: 1px solid var(--line);
   border-radius: 999px;
 }
-.minimal-site .minimal-zoom button {
-  min-height: 32px;
-  padding: 4px 12px;
+.minimal-site .minimal-zoom input[type="range"] {
+  width: 128px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
   border: 0;
-  border-radius: 999px;
 }
-.minimal-site .minimal-zoom button[aria-pressed="true"] {
-  color: #fff;
-  background: #000;
+.minimal-zoom span {
+  min-width: 5.5em;
+  font-variant-numeric: tabular-nums;
 }
 .minimal-period-detail {
   margin: 2px 0 0;
