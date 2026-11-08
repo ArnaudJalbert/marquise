@@ -13,8 +13,8 @@ backend in the same repository.
 
 The production app uses the approved shared minimalist UI against the real API.
 `/` opens today's Montreal Screenings. `/?section=movies` searches the independent
-catalogue. Both views request the first bounded page. Automatic append, full
-listing filters, and cinema data/pages follow in #335 through #337. Movie links
+catalogue. Both views load bounded pages and append the next page on scroll. Cinema
+directory and venue pages use real data. Movie links
 resolve metadata by exact ID and load the requested schedule window.
 
 The approved sample prototype stays in `packages/components/demo`, outside the
@@ -43,8 +43,8 @@ web/
 
 | Tool | Version |
 |---|---|
-| [Node.js](https://nodejs.org/) | ≥ 20 (developed on 26) |
-| [pnpm](https://pnpm.io/) | 11.x — provisioned via Corepack |
+| [Node.js](https://nodejs.org/) | `^22.13.0 \|\| >=24.0.0` (CI uses 24, the production image 22) |
+| [pnpm](https://pnpm.io/) | 11, pinned in `package.json`, via Corepack |
 
 ```bash
 corepack enable pnpm
@@ -92,9 +92,8 @@ pnpm --filter marquise-interface dev
   available to independent consumers.
 - The shared package ships `dist/index.css`. Workspace development resolves the
   component code and stylesheet from source. The demo stays outside library
-  output. Run `node packages/components/demo/check-isolation.mjs` after building.
+  output; the library build fails if demo fixtures reach `dist/`.
 - Static hosting must rewrite document requests to `index.html` for movie links,
-  refreshes, and subsequent cinema routes. Automatic append and Back restoration
-  are separate delivery work in #336.
+  refreshes, and cinema routes.
 - On constrained hosts, use `pnpm lint -- --threads=2` and
   `pnpm test -- --maxWorkers=2`.
