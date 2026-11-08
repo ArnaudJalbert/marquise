@@ -22,7 +22,16 @@ OutputData skips re-validating fields copied from already-validated entities or 
 
 - Use case structure follows [use-cases](use-cases/structure.md).
 - `InputData` and `OutputData` follow [use-cases](use-cases/input-and-output.md).
-- Catch domain exceptions and re-raise them as `ApplicationError` subclasses, so domain exceptions stay inside the application layer.
+
+## Errors
+
+- Entities and value objects raise `ValueError` from `__post_init__` when their values are invalid.
+- A use case that rejects input for an application limit, rather than an invalid value, raises a use-case-specific `ApplicationError` from `application/exceptions/`. For example, `ListMoviesUseCase` raises `TooManyMovieIdsError` when given more than 100 IDs.
+- Application errors subclass `ApplicationError`, with one module per aggregate in `application/exceptions/`.
+- Domain exceptions are translated by the application layer.
+- Gateway errors live beside their protocols in `interface_adapters/repositories/protocols/`, except for auth gateway errors in `interface_adapters/exceptions/auth.py`.
+- Adapters translate gateway errors into application errors.
+- The API maps an unvalidated `ValueError` to 422 and maps each `ApplicationError` in `apps/marquise-api/src/marquise_api/exception_handlers.py`.
 
 ## Modules and packages
 

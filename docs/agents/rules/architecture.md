@@ -18,6 +18,8 @@ delivery → infrastructure → interface_adapters → application → domain
 | `infrastructure/` | Gateways, I/O, composition-root wiring (`infrastructure/di/`) | Inner layers |
 | `apps/*` (delivery) | Thin CLI and API entrypoints | `marquise` top-level facade only |
 
+Inside `application/`: `use_cases/` (`*UseCase`, plus a few `*Command` import writes), `queries/` (`*Query`), `repositories/` and `readers/` (ABCs), `transactions/` (write-transaction ABCs), `exceptions/`. `metadata.py` and `movie_workflows.py` hold the metadata contracts ([docs/metadata-contracts.md](../../metadata-contracts.md)).
+
 - One responsibility per component.
 - SQL and HTTP live in infrastructure gateways. Use cases and repository adapters hold neither.
 - Business logic lives in use cases, never in delivery or controllers.
