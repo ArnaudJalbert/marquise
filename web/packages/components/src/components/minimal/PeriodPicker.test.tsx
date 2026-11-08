@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
+import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { PeriodPicker } from "./PeriodPicker";
 
@@ -7,7 +8,29 @@ import { PeriodPicker } from "./PeriodPicker";
 const today = "2026-11-03";
 const CELL = 100;
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+/** Stubs the viewport so `(max-width: 639px)` matches on a phone; returns a resize. */
+function viewport(phone: boolean) {
+  const listeners = new Set<() => void>();
+  let matches = phone;
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    get matches() {
+      return matches && query === "(max-width: 639px)";
+    },
+    media: query,
+    addEventListener: (_: string, listener: () => void) => listeners.add(listener),
+    removeEventListener: (_: string, listener: () => void) => listeners.delete(listener),
+  }));
+  return (nextPhone: boolean) =>
+    act(() => {
+      matches = nextPhone;
+      listeners.forEach((listener) => listener());
+    });
+}
 
 function Harness({
   start = today,
@@ -332,4 +355,94 @@ it("drops a cancelled drag", () => {
   expect(onChange).not.toHaveBeenCalled();
   expect(title()).toBe("Today");
   expect(selectedDays()).toEqual(["Today, Tuesday November 3rd"]);
+});
+
+const zoomChip = () => screen.getByRole("button", { name: /^Zoom/ });
+const weekdayLabel = (name: string) =>
+  screen.getByRole("button", { name }).querySelector(".minimal-strip-weekday")
+    ?.textContent;
+
+it("keeps the inline slider and no zoom chip on desktop", () => {
+  /** Scenario: above the phone breakpoint the header shows the slider itself. */
+  viewport(false);
+  setup();
+  expect(slider()).toBeVisible();
+  expect(screen.queryByRole("button", { name: /^Zoom/ })).not.toBeInTheDocument();
+});
+
+it("opens the phone zoom chip popover and closes it with Escape", () => {
+  /** Scenario: on a phone the chip opens the slider; Escape closes it and refocuses the chip. */
+  viewport(true);
+  const onChange = setup();
+  expect(screen.queryByRole("slider")).not.toBeInTheDocument();
+  const chip = zoomChip();
+  expect(chip).toHaveAccessibleName("Zoom, 1 week");
+  expect(chip).toHaveAttribute("aria-expanded", "false");
+  expect(chip).toHaveTextContent("1 wk");
+  fireEvent.click(chip);
+  expect(chip).toHaveAttribute("aria-expanded", "true");
+  expect(slider()).toHaveFocus();
+  zoomTo(3);
+  expect(visibleDays()).toHaveLength(21);
+  expect(chip).toHaveTextContent("3 wk");
+  expect(chip).toHaveAccessibleName("Zoom, 3 weeks");
+  expect(screen.getByText("3 weeks")).toBeVisible();
+  fireEvent.keyDown(slider(), { key: "Escape" });
+  expect(screen.queryByRole("slider")).not.toBeInTheDocument();
+  expect(chip).toHaveAttribute("aria-expanded", "false");
+  expect(chip).toHaveFocus();
+  expect(onChange).not.toHaveBeenCalled();
+});
+
+it("closes the phone zoom popover on a tap outside it", () => {
+  /** Scenario: tapping elsewhere closes the popover and returns focus to the chip. */
+  viewport(true);
+  setup();
+  fireEvent.click(zoomChip());
+  fireEvent.pointerDown(slider());
+  expect(slider()).toBeInTheDocument();
+  fireEvent.pointerDown(screen.getByRole("heading", { level: 1 }));
+  expect(screen.queryByRole("slider")).not.toBeInTheDocument();
+  expect(zoomChip()).toHaveAttribute("aria-expanded", "false");
+  expect(zoomChip()).toHaveFocus();
+});
+
+it("swaps the chip and the inline slider when the viewport crosses the breakpoint", () => {
+  /** Scenario: rotating or resizing keeps the header matched to the live breakpoint. */
+  const resize = viewport(false);
+  setup();
+  expect(slider()).toBeVisible();
+  resize(true);
+  expect(screen.queryByRole("slider")).not.toBeInTheDocument();
+  expect(zoomChip()).toBeVisible();
+  resize(false);
+  expect(slider()).toBeVisible();
+});
+
+it("labels every day with a three-letter weekday at six weeks", () => {
+  /** Scenario: the widest view still reads Tue, Wed, never single letters. */
+  viewport(false);
+  setup();
+  zoomTo(6);
+  expect(weekdayLabel("Wednesday November 4th")).toBe("Wed");
+  expect(weekdayLabel("Today, Tuesday November 3rd")).toBe("Today");
+});
+
+it("shows today's weekday instead of Today on the phone two-week view", () => {
+  /** Scenario: the narrow phone fortnight marks today with its short weekday. */
+  viewport(true);
+  setup();
+  expect(weekdayLabel("Today, Tuesday November 3rd")).toBe("Today");
+  fireEvent.click(zoomChip());
+  zoomTo(2);
+  expect(weekdayLabel("Today, Tuesday November 3rd")).toBe("Tue");
+  expect(weekdayLabel("Wednesday November 4th")).toBe("Wed");
+});
+
+it("keeps Today on the desktop two-week view", () => {
+  /** Scenario: only the phone fortnight swaps the Today label. */
+  viewport(false);
+  setup();
+  zoomTo(2);
+  expect(weekdayLabel("Today, Tuesday November 3rd")).toBe("Today");
 });

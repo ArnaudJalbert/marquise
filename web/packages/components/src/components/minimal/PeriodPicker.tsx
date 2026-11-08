@@ -1,10 +1,14 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
+  useEffect,
+  useId,
   useRef,
   useState,
+  useSyncExternalStore,
   type CSSProperties,
   type KeyboardEvent,
   type PointerEvent,
+  type Ref,
 } from "react";
 import { addDays, formatRangeDate } from "./catalogue-format";
 import {
@@ -23,6 +27,106 @@ import {
 } from "./period";
 
 const weeksLabel = (weeks: WeekCount) => `${weeks} ${weeks === 1 ? "week" : "weeks"}`;
+
+/** Same breakpoint as the phone rules in minimal.css. */
+const PHONE_QUERY = "(max-width: 639px)";
+
+function subscribeToPhoneLayout(onChange: () => void) {
+  const query = window.matchMedia?.(PHONE_QUERY);
+  query?.addEventListener("change", onChange);
+  return () => query?.removeEventListener("change", onChange);
+}
+
+const isPhoneLayout = () => window.matchMedia?.(PHONE_QUERY).matches ?? false;
+
+/** Whether the phone breakpoint matches, kept live as the viewport changes. */
+function usePhoneLayout(): boolean {
+  return useSyncExternalStore(subscribeToPhoneLayout, isPhoneLayout, () => false);
+}
+
+function ZoomSlider({
+  weeks,
+  onZoom,
+  inputRef,
+}: {
+  weeks: WeekCount;
+  onZoom: (weeks: WeekCount) => void;
+  inputRef?: Ref<HTMLInputElement>;
+}) {
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="range"
+        min={1}
+        max={6}
+        step={1}
+        value={weeks}
+        aria-label="Zoom"
+        aria-valuetext={weeksLabel(weeks)}
+        onChange={(event) => onZoom(Number(event.target.value) as WeekCount)}
+      />
+      <span aria-hidden>{weeksLabel(weeks)}</span>
+    </>
+  );
+}
+
+/** Phone zoom: a "N wk" chip that opens the slider in a popover below it. */
+function ZoomChip({
+  weeks,
+  onZoom,
+}: {
+  weeks: WeekCount;
+  onZoom: (weeks: WeekCount) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const menu = useRef<HTMLDivElement>(null);
+  const chip = useRef<HTMLButtonElement>(null);
+  const slider = useRef<HTMLInputElement>(null);
+  const popoverId = useId();
+
+  useEffect(() => {
+    if (!open) return;
+    slider.current?.focus();
+    const close = () => {
+      setOpen(false);
+      chip.current?.focus();
+    };
+    const closeOutside = (event: globalThis.PointerEvent) => {
+      if (!menu.current?.contains(event.target as Node)) close();
+    };
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") close();
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  return (
+    <div className="minimal-zoom-menu" ref={menu}>
+      <button
+        ref={chip}
+        type="button"
+        className="minimal-zoom-chip"
+        aria-label={`Zoom, ${weeksLabel(weeks)}`}
+        aria-expanded={open}
+        aria-controls={popoverId}
+        onClick={() => setOpen(!open)}
+      >
+        {weeks} wk <span aria-hidden>▾</span>
+      </button>
+      {open && (
+        <div id={popoverId} className="minimal-zoom minimal-zoom-popover">
+          <ZoomSlider weeks={weeks} onZoom={onZoom} inputRef={slider} />
+        </div>
+      )}
+    </div>
+  );
+}
 
 type DragMode = "draw" | "move" | "start" | "end";
 interface Drag {
@@ -50,11 +154,14 @@ function DayStrip({
   today,
   range,
   view,
+  todayAsWeekday,
   onChange,
 }: {
   today: string;
   range: [number, number];
   view: StripView;
+  /** Label today with its weekday, highlighted, where "Today" would not fit. */
+  todayAsWeekday: boolean;
   onChange: (start: number, end: number) => void;
 }) {
   const drag = useRef<Drag | null>(null);
@@ -212,12 +319,15 @@ function DayStrip({
             <span className="minimal-strip-month" aria-hidden>
               {day === view.first || dayOfMonth(date) === 1 ? monthName(date) : ""}
             </span>
-            <span className="minimal-strip-weekday" aria-hidden>
-              {dayCount === 42
-                ? weekdayName(date).charAt(0)
-                : day === 0
-                  ? "Today"
-                  : weekdayName(date)}
+            <span
+              className={
+                day === 0 && todayAsWeekday
+                  ? "minimal-strip-weekday is-highlighted"
+                  : "minimal-strip-weekday"
+              }
+              aria-hidden
+            >
+              {day === 0 && !todayAsWeekday ? "Today" : weekdayName(date)}
             </span>
             <span className="minimal-strip-date" aria-hidden>
               {dayOfMonth(date)}
@@ -268,6 +378,8 @@ export function PeriodPicker({
   const { title, detail } = describePeriod(start, end, today);
   const previous = stepPeriod(start, end, today, -1);
   const next = stepPeriod(start, end, today, 1);
+  const phone = usePhoneLayout();
+  const zoom = (weeks: WeekCount) => setView(anchorView(weeks, range[0]));
 
   return (
     <section className="minimal-period" aria-label="Dates">
@@ -291,27 +403,20 @@ export function PeriodPicker({
             <ChevronRight aria-hidden size={18} />
           </button>
         </div>
-        <div className="minimal-zoom">
-          <input
-            type="range"
-            min={1}
-            max={6}
-            step={1}
-            value={view.weeks}
-            aria-label="Zoom"
-            aria-valuetext={weeksLabel(view.weeks)}
-            onChange={(event) =>
-              setView(anchorView(Number(event.target.value) as WeekCount, range[0]))
-            }
-          />
-          <span aria-hidden>{weeksLabel(view.weeks)}</span>
-        </div>
+        {phone ? (
+          <ZoomChip weeks={view.weeks} onZoom={zoom} />
+        ) : (
+          <div className="minimal-zoom">
+            <ZoomSlider weeks={view.weeks} onZoom={zoom} />
+          </div>
+        )}
       </div>
       {detail && <p className="minimal-period-detail">{detail}</p>}
       <DayStrip
         today={today}
         range={range}
         view={view}
+        todayAsWeekday={phone && view.weeks === 2}
         onChange={(from, to) => onChange(addDays(today, from), addDays(today, to))}
       />
     </section>
