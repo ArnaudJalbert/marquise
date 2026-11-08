@@ -75,9 +75,14 @@ class CountScreeningDaysQuery:
                 self.hours, CountScreeningDaysQuery.HourFilter
             ):
                 raise TypeError("hours must be an HourFilter")
-            if self.start > self.end:
+            self._require_valid_dates(self.start, self.end)
+
+        @staticmethod
+        def _require_valid_dates(start: date, end: date) -> None:
+            """Reject an inverted horizon or an end with no following day."""
+            if start > end:
                 raise ValueError("start must not be after end")
-            if self.end == date.max:
+            if end == date.max:
                 raise ValueError("end is outside the supported date range")
 
     @dataclass(frozen=True, slots=True)
@@ -115,10 +120,9 @@ class CountScreeningDaysQuery:
     def _to_day_count_request(
         self, input_data: InputData
     ) -> ScreeningMovieReader.DayCountRequest:
-        start, end = self._to_utc_window(input_data.start, input_data.end)
         return ScreeningMovieReader.DayCountRequest(
-            start=start,
-            end=end,
+            start=self._to_utc_day_start(input_data.start),
+            end=self._to_utc_day_end(input_data.end),
             now=self._clock(),
             title=input_data.title,
             cinemas=input_data.cinemas,
@@ -145,11 +149,9 @@ class CountScreeningDaysQuery:
                 f"A count covers at most {self._MAX_DAYS} days"
             )
 
-    def _to_utc_window(self, start: date, end: date) -> tuple[datetime, datetime]:
-        last_instant = self._to_utc_day_start(end + timedelta(days=1)) - timedelta(
-            microseconds=1
-        )
-        return self._to_utc_day_start(start), last_instant
+    def _to_utc_day_end(self, day: date) -> datetime:
+        next_day_start = self._to_utc_day_start(day + timedelta(days=1))
+        return next_day_start - timedelta(microseconds=1)
 
     def _to_utc_day_start(self, day: date) -> datetime:
         return datetime.combine(day, time.min, self._ZONE).astimezone(UTC)

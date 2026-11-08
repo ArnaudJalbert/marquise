@@ -130,22 +130,40 @@ class SupabaseScreeningMovieReadGateway:
               AND NOT s.cinema_id = ANY($10::text[])
         '''
 
-    @staticmethod
+    @classmethod
     def _bind_filter_arguments(
-        request: _FilterRequest,
+        cls, request: _FilterRequest
     ) -> tuple[datetime | str | list[str] | list[int] | bool | None, ...]:
         """Return the values bound to the shared filter's $1 to $10."""
-        hour_filter = request.hours
-        hour_ranges = hour_filter.ranges if hour_filter else ()
         return (
             _naive_utc(request.start),
-            None if request.end is None else _naive_utc(request.end),
+            cls._bind_end_argument(request.end),
             _naive_utc(request.now),
-            None if not request.title else request.title.strip(),
+            cls._bind_title_argument(request.title),
             list(request.cinemas),
             list(request.languages),
+            *cls._bind_hour_arguments(request.hours),
+            list(request.excluded_cinemas),
+        )
+
+    @staticmethod
+    def _bind_end_argument(end: datetime | None) -> datetime | None:
+        """Return the naive UTC end bound, or None for an open-ended window."""
+        return None if end is None else _naive_utc(end)
+
+    @staticmethod
+    def _bind_title_argument(title: str | None) -> str | None:
+        """Return the trimmed title search, or None when there is none."""
+        return None if not title else title.strip()
+
+    @staticmethod
+    def _bind_hour_arguments(
+        hours: ScreeningMovieReader.HourFilter | None,
+    ) -> tuple[list[int], list[int], bool]:
+        """Return the hour range starts, ends and exclusion flag for $7 to $9."""
+        hour_ranges = hours.ranges if hours else ()
+        return (
             [item.start for item in hour_ranges],
             [item.end for item in hour_ranges],
-            hour_filter is not None and hour_filter.excluded,
-            list(request.excluded_cinemas),
+            hours is not None and hours.excluded,
         )
