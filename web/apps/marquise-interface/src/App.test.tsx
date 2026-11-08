@@ -404,6 +404,57 @@ it("opens today's movie-first page without catalogue reads or poster fan-out", a
   );
 });
 
+it("counts the visible week's screenings with the listing filters and reloads only when they change", async () => {
+  /** Scenario: one aggregate request per horizon and filter state feeds the day strip bars. */
+  history.replaceState(
+    null,
+    "",
+    "/?start=2026-11-01&end=2026-11-01&q=Dune&language=VO&from=17:00",
+  );
+  const client = clients();
+  client.fetchScreeningDayCounts.mockResolvedValue([
+    { date: "2026-11-01", screenings: 3 },
+    { date: "2026-11-02", screenings: 0 },
+  ]);
+  render(<App client={client} />);
+  expect(
+    await screen.findByRole("button", { description: "3 screenings" }),
+  ).toBe(screen.getByRole("button", { name: "Today, Sunday November 1st" }));
+  const filters = {
+    title: "Dune",
+    cinemas: [],
+    languages: ["VO"],
+    hours: { operator: "is", ranges: [{ start: 17, end: 24 }] },
+  };
+  expect(client.fetchScreeningDayCounts).toHaveBeenCalledExactlyOnceWith(
+    { start: "2026-11-01", end: "2026-11-07", ...filters },
+    expect.any(AbortSignal),
+  );
+  expect(client.fetchScreeningMoviesPage).toHaveBeenLastCalledWith(
+    { start: "2026-11-01", end: "2026-11-01", page: 1, ...filters },
+    expect.any(AbortSignal),
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "Next period" }));
+  await waitFor(() =>
+    expect(client.fetchScreeningMoviesPage).toHaveBeenLastCalledWith(
+      expect.objectContaining({ start: "2026-11-02" }),
+      expect.any(AbortSignal),
+    ),
+  );
+  expect(client.fetchScreeningDayCounts).toHaveBeenCalledOnce();
+
+  fireEvent.click(screen.getByText(/^Filters/));
+  fireEvent.click(screen.getByLabelText("Cinema One"));
+  await waitFor(() =>
+    expect(client.fetchScreeningDayCounts).toHaveBeenLastCalledWith(
+      { start: "2026-11-01", end: "2026-11-07", ...filters, cinemas: ["c1"] },
+      expect.any(AbortSignal),
+    ),
+  );
+  expect(client.fetchScreeningDayCounts).toHaveBeenCalledTimes(2);
+});
+
 it("shows Screenings filters, shares their URL state, and restores browser history", async () => {
   const client = clients();
   render(<App client={client} />);

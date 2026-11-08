@@ -189,12 +189,13 @@
   touch-action: pan-y;
 }
 .minimal-site .minimal-strip-day {
+  position: relative;
   display: grid;
   justify-items: center;
   gap: 2px;
   min-width: 0;
   min-height: 72px;
-  padding: 4px 0 8px;
+  padding: 4px 0 20px;
   overflow: hidden;
   white-space: nowrap;
   border: 0;
@@ -227,6 +228,21 @@
 }
 .minimal-strip[data-days="42"] .minimal-strip-date {
   font-size: 12px;
+}
+/* Screening volume: --volume is the day's share of the busiest visible day. */
+.minimal-strip-volume {
+  position: absolute;
+  bottom: 2px;
+  left: 20%;
+  right: 20%;
+  height: calc(var(--volume) * 14px);
+  min-height: 2px;
+  border-radius: 2px;
+  background: #a1a1aa;
+  pointer-events: none;
+}
+.minimal-strip-day.is-selected .minimal-strip-volume {
+  background: var(--indigo-deep);
 }
 .minimal-strip-window {
   position: absolute;

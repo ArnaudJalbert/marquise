@@ -418,6 +418,7 @@ export function MinimalCatalogue({
   onRetry,
   onLoadWeek,
   onLoadUpcomingScreenings,
+  onLoadDayCounts,
 }: MinimalCatalogueProps) {
   const currentUrl = new URL(href, "http://prototype.invalid");
   const path = currentUrl.pathname;
@@ -650,6 +651,7 @@ export function MinimalCatalogue({
                       end={selection.end}
                       today={today}
                       heading={cinema ? "h2" : "h1"}
+                      onLoadDayCounts={onLoadDayCounts}
                       onChange={(start, end) =>
                         onSelection({ ...selection, start, end })
                       }
