@@ -27,19 +27,6 @@ export function formatRangeDate(date: string): string {
       : ({ 1: "st", 2: "nd", 3: "rd" }[day % 10] ?? "th");
   return `${part("weekday")} ${part("month")} ${day}${suffix}`;
 }
-export function timeToHour(time: string, fallback: number): number {
-  const match = /^(\d{2}):(\d{2})$/.exec(time);
-  if (!match) return fallback;
-  return Math.min(
-    24,
-    Math.max(0, Number(match[1]) + Math.floor(Number(match[2]) / 60)),
-  );
-}
-export function formatHour(hour: number): string {
-  if (hour === 0 || hour === 24) return "midnight";
-  return `${hour % 12 || 12}:00 ${hour < 12 ? "AM" : "PM"}`;
-}
-
 /** Malformed URL escapes remain opaque IDs so the API can report not found. */
 export function decodePathId(value: string): string {
   try {
