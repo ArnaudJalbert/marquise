@@ -50,10 +50,7 @@ const props: MinimalCatalogueProps = {
     start: "2026-10-30",
     end: "2026-11-01",
     title: "",
-    cinemas: [],
-    languages: [],
-    from: "",
-    to: "",
+    filters: [],
   },
   href: "/",
   today: "2026-10-30",
@@ -63,13 +60,45 @@ const props: MinimalCatalogueProps = {
 };
 
 describe("minimalist prototype", () => {
+  it("adds, edits, flips, and removes cinema and time filter chips", () => {
+    /** Scenario: visitors can manage cinema and time constraints as visible chips. */
+    function InteractiveCatalogue() {
+      const [selection, setSelection] = useState(props.selection);
+      return <MinimalCatalogue {...props} selection={selection} onSelection={setSelection} />;
+    }
+    render(<InteractiveCatalogue />);
+
+    fireEvent.click(screen.getByText("+ Filter"));
+    fireEvent.click(screen.getByRole("button", { name: "Cinema" }));
+    expect(screen.getByRole("group", { name: "cinema filter" })).toHaveTextContent("Cinema is Cinema A");
+    fireEvent.click(screen.getByText("Cinema A", { selector: "summary" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cinema B" }));
+    expect(screen.getByRole("group", { name: "cinema filter" })).toHaveTextContent("Cinema is Cinema B");
+    expect(screen.getByRole("button", { name: "Change cinema operator from is" })).toHaveFocus();
+    fireEvent.click(screen.getByRole("button", { name: "Change cinema operator from is" }));
+    expect(screen.getByRole("group", { name: "cinema filter" })).toHaveTextContent("Cinema is not Cinema B");
+
+    fireEvent.click(screen.getByText("+ Filter"));
+    fireEvent.click(screen.getByRole("button", { name: "Time" }));
+    expect(screen.getByRole("group", { name: "time filter" })).toHaveTextContent("Time is Matinée");
+    expect(screen.getByRole("button", { name: "Change time operator from is" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Clear all" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Remove cinema filter" }));
+    expect(screen.queryByRole("group", { name: "cinema filter" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Change time operator from is" })).toHaveFocus();
+    expect(screen.queryByRole("button", { name: "Clear all" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Remove time filter" }));
+    expect(screen.queryByRole("group", { name: "time filter" })).not.toBeInTheDocument();
+    expect(screen.getByText("+ Filter")).toHaveFocus();
+  });
+
   it("titles the page with the period and replaces the date inputs and presets", () => {
     /** Scenario: the period header and day strip are the only date controls. */
     const onSelection = vi.fn();
     render(
       <MinimalCatalogue
         {...props}
-        selection={{ ...props.selection, cinemas: ["a"] }}
+        selection={{ ...props.selection, filters: [{ type: "cinema", value: "a", operator: "is" }] }}
         onSelection={onSelection}
       />,
     );
@@ -83,7 +112,7 @@ describe("minimalist prototype", () => {
     fireEvent.click(screen.getByRole("button", { name: "Next period" }));
     expect(onSelection).toHaveBeenLastCalledWith({
       ...props.selection,
-      cinemas: ["a"],
+      filters: [{ type: "cinema", value: "a", operator: "is" }],
       start: "2026-11-06",
       end: "2026-11-08",
     });
@@ -106,7 +135,7 @@ describe("minimalist prototype", () => {
       <MinimalCatalogue
         {...props}
         movies={[]}
-        selection={{ ...today, languages: ["VO"] }}
+        selection={{ ...today, filters: [{ type: "time", value: "evening", operator: "is" }] }}
         onSelection={onSelection}
       />,
     );
@@ -117,7 +146,7 @@ describe("minimalist prototype", () => {
     fireEvent.click(screen.getByRole("button", { name: "See tomorrow" }));
     expect(onSelection).toHaveBeenCalledExactlyOnceWith({
       ...today,
-      languages: ["VO"],
+      filters: [{ type: "time", value: "evening", operator: "is" }],
       start: "2026-10-31",
       end: "2026-10-31",
     });
@@ -158,14 +187,16 @@ describe("minimalist prototype", () => {
     expect(arrow).toHaveFocus();
     expect(arrow).toHaveAttribute("aria-expanded", "false");
   });
-  it("combines cinema, language and daily time on the same screening", () => {
+  it("filters screenings with the selected cinema and time bucket", () => {
     render(
       <MinimalCatalogue
         {...props}
         selection={{
           ...props.selection,
-          cinemas: ["a"],
-          languages: ["VOSTF"],
+          filters: [
+            { type: "cinema", value: "a", operator: "is" },
+            { type: "time", value: "late", operator: "is" },
+          ],
         }}
       />,
     );
@@ -186,9 +217,8 @@ describe("minimalist prototype", () => {
   });
   it("fixes the cinema and omits its selector", () => {
     render(<MinimalCatalogue {...props} href="/cinemas/a" />);
-    expect(
-      screen.queryByRole("group", { name: "Cinemas" }),
-    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText("+ Filter"));
+    expect(screen.queryByRole("button", { name: "Cinema" })).not.toBeInTheDocument();
     fireEvent.click(
       screen.getByRole("button", { name: `Preview ${movie.title}` }),
     );
@@ -204,18 +234,6 @@ describe("minimalist prototype", () => {
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(props.onRetry).toHaveBeenCalledOnce();
-  });
-  it("reports invalid daily windows without displaying misleading results", () => {
-    render(
-      <MinimalCatalogue
-        {...props}
-        selection={{ ...props.selection, from: "22:00", to: "18:00" }}
-      />,
-    );
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "Start must be before end",
-    );
-    expect(screen.queryByRole("article")).not.toBeInTheDocument();
   });
 });
 
@@ -397,31 +415,7 @@ it("loads the initial schedule for an API catalogue movie and permits retry", as
   expect(loadWeek).toHaveBeenCalledTimes(2);
 });
 
-it("keeps both time handles on the midnight-to-midnight scale and prevents crossing", () => {
-  render(
-    <MinimalCatalogue
-      {...props}
-      selection={{ ...props.selection, from: "18:30", to: "22:45" }}
-    />,
-  );
-  fireEvent.click(screen.getByText(/^Filters/));
-  const start = screen.getByRole("slider", { name: "Start time" });
-  const end = screen.getByRole("slider", { name: "End time" });
-  expect(start).toHaveValue("18");
-  expect(end).toHaveValue("22");
-  expect(start).toHaveAttribute("max", "24");
-  expect(end).toHaveAttribute("min", "0");
-  fireEvent.change(start, { target: { value: "23" } });
-  expect(props.onSelection).toHaveBeenLastCalledWith(
-    expect.objectContaining({ from: "22:00" }),
-  );
-  fireEvent.change(end, { target: { value: "10" } });
-  expect(props.onSelection).toHaveBeenLastCalledWith(
-    expect.objectContaining({ to: "18:00" }),
-  );
-});
-
-it("applies the same floored hours that are shown by the sliders", () => {
+it("filters local previews by the selected time bucket", () => {
   const fractionalMovie = {
     ...movie,
     screenings: [
@@ -433,7 +427,7 @@ it("applies the same floored hours that are shown by the sliders", () => {
     <MinimalCatalogue
       {...props}
       movies={[fractionalMovie]}
-      selection={{ ...props.selection, from: "18:30", to: "22:45" }}
+      selection={{ ...props.selection, filters: [{ type: "time", value: "evening", operator: "is" }] }}
     />,
   );
   fireEvent.click(
@@ -713,11 +707,14 @@ it("filters screening results as the visitor types in the movie search field", a
   );
 });
 
-it("keeps movie search out of the filters panel", () => {
-  /** Scenario: the Filters panel holds only filters; the search field sits outside it. */
+it("keeps movie search separate from the screening chips", () => {
+  /** Scenario: screening chips replace the old filter panel and leave search in its own field. */
   render(<MinimalCatalogue {...props} />);
   const filters = screen.getByRole("region", { name: "Movie filters" });
   expect(within(filters).queryByRole("searchbox")).not.toBeInTheDocument();
+  expect(within(filters).getByText("+ Filter")).toBeInTheDocument();
+  expect(within(filters).queryByRole("slider")).not.toBeInTheDocument();
+  expect(within(filters).queryByText("Screening language")).not.toBeInTheDocument();
   expect(screen.getByRole("searchbox", { name: "Search movies" })).toBeInTheDocument();
 });
 
@@ -725,11 +722,13 @@ it("focuses the movie search field when the visitor presses slash", () => {
   /** Scenario: pressing / anywhere on the page jumps to search, but typing / inside another field stays in that field. */
   render(<MinimalCatalogue {...props} />);
   const search = screen.getByRole("searchbox", { name: "Search movies" });
-  const start = screen.getByLabelText("Start time");
-  start.focus();
-  expect(fireEvent.keyDown(start, { key: "/" })).toBe(true);
-  expect(start).toHaveFocus();
-  start.blur();
+  const next = screen.getByRole("button", { name: "Next period" });
+  next.focus();
+  expect(fireEvent.keyDown(next, { key: "/" })).toBe(false);
+  expect(search).toHaveFocus();
+  search.focus();
+  fireEvent.change(search, { target: { value: "/" } });
+  expect(search).toHaveFocus();
   expect(fireEvent.keyDown(document.body, { key: "/" })).toBe(false);
   expect(search).toHaveFocus();
 });
@@ -768,12 +767,12 @@ it("sorts and caps the next day, counts only its extra times, and updates after 
   expect(screen.queryByText(/Then/)).not.toBeInTheDocument();
 });
 
-it("builds previews solely from loaded screenings matching every active filter", () => {
-  /** Scenario: date, cinema, language and time filters exclude rows before preview grouping. */
+it("builds previews from screenings matching the selected cinema and time", () => {
+  /** Scenario: date, cinema and time filters exclude rows before preview grouping. */
   render(<MinimalCatalogue {...props} movies={[{ ...movie, screenings: [
     ...movie.screenings,
     { cinemaId: "a", date: "2026-10-30", time: "22:00", showtime: "2026-10-30T22:00:00-04:00", language: "VO" },
-  ] }]} selection={{ ...props.selection, end: "2026-10-30", cinemas: ["a"], languages: ["VO"], from: "17:00", to: "20:00" }} />);
+  ] }]} selection={{ ...props.selection, end: "2026-10-30", filters: [{ type: "cinema", value: "a", operator: "is" }, { type: "time", value: "evening", operator: "is" }] }} />);
   fireEvent.click(screen.getByRole("button", { name: `Preview ${movie.title}` }));
   const preview = screen.getByRole("region", { name: `${movie.title} screenings` });
   expect(within(preview).getByText("18:00")).toBeInTheDocument();

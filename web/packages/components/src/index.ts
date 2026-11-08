@@ -6,6 +6,8 @@ export type {
   CatalogueMovie,
   CatalogueCinema,
   CatalogueScreening,
+  CatalogueFilter,
+  CatalogueFilterType,
   CatalogueSelection,
   CatalogueState,
   MinimalCatalogueProps,

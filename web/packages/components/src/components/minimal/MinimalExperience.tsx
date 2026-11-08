@@ -11,9 +11,10 @@ import {
 import { useResource } from "../discovery/use-resource";
 import { usePageResource } from "../discovery/use-page-resource";
 import { MinimalCatalogue } from "./MinimalCatalogue";
-import { decodePathId, timeToHour } from "./catalogue-format";
+import { decodePathId } from "./catalogue-format";
 import type {
   CatalogueMovie,
+  CatalogueFilterType,
   CatalogueScreening,
   CatalogueSelection,
   CatalogueState,
@@ -67,48 +68,64 @@ function resourceState(resource: {
 
 const screeningLanguages = ["VO", "VOA", "VOF", "VOSTF", "VOSTA", "VF"];
 
+const timeRanges = {
+  matinee: { start: 0, end: 17 },
+  evening: { start: 17, end: 21 },
+  late: { start: 21, end: 24 },
+} as const;
+
+const filterTypes: readonly CatalogueFilterType[] = [
+  "cinema",
+  "time",
+  "audio",
+  "subtitles",
+];
+
+function parseFilter(type: CatalogueFilterType, value: string) {
+  const operator = value.startsWith("-") ? "is_not" : "is";
+  const filterValue = operator === "is_not" ? value.slice(1) : value;
+  if (!filterValue || (type === "time" && !Object.hasOwn(timeRanges, filterValue)))
+    return undefined;
+  return { type, value: filterValue, operator } as const;
+}
+
 function parseSelection(url: URL, today: string): CatalogueSelection {
   const params = url.searchParams;
   const start = params.get("start") ?? today;
   const end = params.get("end") ?? start;
-  const fromHour = timeToHour(params.get("from") ?? "", 0);
-  const toHour = timeToHour(params.get("to") ?? "", 24);
+  const filters = filterTypes
+    .map((type) => {
+      const value = params.get(type);
+      return value === null ? undefined : parseFilter(type, value);
+    })
+    .filter((filter) => filter !== undefined);
   return {
     start,
     end,
     title: params.get("q") ?? "",
-    cinemas: params.getAll("cinema"),
-    languages: params.getAll("language"),
-    from: fromHour > 0 ? `${String(fromHour).padStart(2, "0")}:00` : "",
-    to: toHour < 24 ? `${String(toHour).padStart(2, "0")}:00` : "",
+    filters,
   };
 }
 
 function listingHref(href: string, selection: CatalogueSelection): string {
   const url = new URL(href, "http://marquise.invalid");
   const params = url.searchParams;
-  for (const key of ["start", "end", "q", "title", "cinema", "language", "from", "to", "page"])
+  for (const key of ["start", "end", "q", "title", "cinema", "time", "language", "from", "to", "page"])
     params.delete(key);
   params.set("start", selection.start);
   params.set("end", selection.end);
   if (selection.title.trim()) params.set("q", selection.title.trim());
-  selection.cinemas.forEach((id) => params.append("cinema", id));
-  selection.languages.forEach((language) => params.append("language", language));
-  if (selection.from) params.set("from", selection.from);
-  if (selection.to) params.set("to", selection.to);
+  selection.filters.forEach(({ type, value, operator }) => {
+    params.set(type, `${operator === "is_not" ? "-" : ""}${value}`);
+  });
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
-// shortcut: maps the inclusive hour slider to one half-open range; drop with the slider (#433).
-function sliderHours(from: string, to: string): HourFilter | undefined {
-  const start = Math.min(from ? timeToHour(from, 0) : 0, 23);
-  const end = to ? timeToHour(to, 24) : 24;
-  return start === 0 && end === 24
-    ? undefined
-    : {
-        operator: "is",
-        ranges: [{ start, end: Math.max(end, start + 1) }],
-      };
+function timeHours(filters: CatalogueSelection["filters"]): HourFilter | undefined {
+  const time = filters.find((filter) => filter.type === "time");
+  if (!time || !Object.hasOwn(timeRanges, time.value)) return undefined;
+  const range = timeRanges[time.value as keyof typeof timeRanges];
+  return { operator: time.operator, ranges: [range] };
 }
 
 /** Production composition of the approved UI with injected, bounded API reads. */
@@ -164,9 +181,16 @@ export function MinimalExperience({
             end: selection.end,
             page,
             title: selection.title,
-            cinemas: fixedCinemaId ? [fixedCinemaId] : selection.cinemas,
-            languages: selection.languages,
-            hours: sliderHours(selection.from, selection.to),
+            cinemas:
+              fixedCinemaId
+                ? [fixedCinemaId]
+                : selection.filters
+                    .filter((filter) => filter.type === "cinema" && filter.operator === "is")
+                    .map((filter) => filter.value),
+            excludedCinemas: selection.filters
+              .filter((filter) => filter.type === "cinema" && filter.operator === "is_not")
+              .map((filter) => filter.value),
+            hours: timeHours(selection.filters),
           },
           signal,
         ),
@@ -175,16 +199,11 @@ export function MinimalExperience({
         selection.start,
         selection.end,
         selection.title,
-        selection.cinemas.join("\0"),
-        selection.languages.join("\0"),
-        selection.from,
-        selection.to,
+        selection.filters.map((filter) => `${filter.type}:${filter.operator}:${filter.value}`).join("\0"),
         fixedCinemaId,
       ],
     ),
-    isScreenings &&
-      selection.start <= selection.end &&
-      (!selection.from || !selection.to || selection.from <= selection.to),
+    isScreenings && selection.start <= selection.end,
   );
   const cinemaResource = useResource(
     useCallback(async (signal: AbortSignal) => {

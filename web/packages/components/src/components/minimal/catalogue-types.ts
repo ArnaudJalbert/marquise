@@ -36,10 +36,13 @@ export interface CatalogueSelection {
   start: string;
   end: string;
   title: string;
-  cinemas: string[];
-  languages: string[];
-  from: string;
-  to: string;
+  filters: CatalogueFilter[];
+}
+export type CatalogueFilterType = "cinema" | "time" | "audio" | "subtitles";
+export interface CatalogueFilter {
+  type: CatalogueFilterType;
+  value: string;
+  operator: "is" | "is_not";
 }
 export interface MinimalCatalogueProps {
   currentTime?: string;
