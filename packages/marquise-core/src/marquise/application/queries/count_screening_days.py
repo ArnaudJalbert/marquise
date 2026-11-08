@@ -125,7 +125,7 @@ class CountScreeningDaysQuery:
                 excluded_cinemas=input_data.excluded_cinemas,
             )
         )
-        days = self._every_day(input_data.start, input_data.end, counts)
+        days = self._fill_missing_days(input_data.start, input_data.end, counts)
         logger.info("Counted screenings on %d days", len(days))
         return self.OutputData(days=days)
 
@@ -136,16 +136,16 @@ class CountScreeningDaysQuery:
             )
 
     def _to_utc_window(self, start: date, end: date) -> tuple[datetime, datetime]:
-        last_instant = self._day_start(end + timedelta(days=1)) - timedelta(
+        last_instant = self._to_utc_day_start(end + timedelta(days=1)) - timedelta(
             microseconds=1
         )
-        return self._day_start(start), last_instant
+        return self._to_utc_day_start(start), last_instant
 
-    def _day_start(self, day: date) -> datetime:
+    def _to_utc_day_start(self, day: date) -> datetime:
         return datetime.combine(day, time.min, self._ZONE).astimezone(UTC)
 
     @staticmethod
-    def _every_day(
+    def _fill_missing_days(
         start: date, end: date, counts: list[ScreeningMovieReader.DayCount]
     ) -> tuple[ScreeningMovieReader.DayCount, ...]:
         totals = {count.date: count.screenings for count in counts}

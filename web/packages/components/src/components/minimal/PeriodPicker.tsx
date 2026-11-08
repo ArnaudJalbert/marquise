@@ -58,7 +58,7 @@ interface DayVolume {
   loading: boolean;
 }
 
-const screeningCount = (count: number) =>
+const formatScreeningCount = (count: number) =>
   count === 0 ? "No screenings" : count === 1 ? "1 screening" : `${count} screenings`;
 
 /** One request per visible horizon and loader; the loader's identity carries the filters. */
@@ -272,7 +272,7 @@ function DayStrip({
             </span>
             {total !== undefined && (
               <span id={`${descriptionId}-${day}`} className="minimal-visually-hidden">
-                {screeningCount(total)}
+                {formatScreeningCount(total)}
               </span>
             )}
             {total !== undefined && total > 0 && (
