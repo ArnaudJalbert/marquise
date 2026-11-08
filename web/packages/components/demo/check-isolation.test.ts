@@ -33,7 +33,10 @@ describe("check-isolation", () => {
   });
 
   it("rejects an unmarked image even without text markers", () => {
-    const result = checkIsolation({ "index.js": "export {};", "assets/cover.jpg": "" });
+    const result = checkIsolation({
+      "index.js": "export {};",
+      "assets/cover.jpg": "",
+    });
 
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain("cover.jpg");
