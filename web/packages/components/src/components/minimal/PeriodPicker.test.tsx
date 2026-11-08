@@ -352,7 +352,7 @@ const totals = (...screenings: number[]): CatalogueDayCount[] =>
   }));
 const dayButton = (name: string) => screen.getByRole("button", { name });
 const volume = (name: string) =>
-  dayButton(name).querySelector<HTMLElement>(".minimal-strip-volume");
+  dayButton(name).querySelector("[data-volume]")?.getAttribute("data-volume");
 const loadCounts = (counts: CatalogueDayCount[]) =>
   vi.fn<LoadDayCounts>(async () => counts);
 
@@ -366,10 +366,10 @@ it("requests the visible week's totals once and draws bars on one scale", async 
   );
   expect(onLoadDayCounts).toHaveBeenCalledOnce();
   expect(onLoadDayCounts.mock.calls[0]?.slice(0, 2)).toEqual(["2026-11-03", "2026-11-09"]);
-  expect(volume("Today, Tuesday November 3rd")?.style.getPropertyValue("--volume")).toBe("1");
-  expect(volume("Wednesday November 4th")?.style.getPropertyValue("--volume")).toBe("0.5");
-  expect(volume("Friday November 6th")?.style.getPropertyValue("--volume")).toBe("0.5");
-  expect(volume("Thursday November 5th")).toBeNull();
+  expect(volume("Today, Tuesday November 3rd")).toBe("1");
+  expect(volume("Wednesday November 4th")).toBe("0.5");
+  expect(volume("Friday November 6th")).toBe("0.5");
+  expect(volume("Thursday November 5th")).toBeUndefined();
   expect(dayButton("Thursday November 5th")).toHaveAccessibleDescription("No screenings");
   expect(dayButton("Monday November 9th")).toHaveAccessibleDescription("1 screening");
 });
@@ -378,9 +378,9 @@ it("renders an all-zero horizon without bars and keeps every day selectable", as
   /** Scenario: a horizon with nothing scheduled has no division error and still selects. */
   const onChange = vi.fn();
   render(<Harness onChange={onChange} onLoadDayCounts={loadCounts(totals(0, 0, 0, 0, 0, 0, 0))} />);
-  await screen.findAllByRole("button", { description: "No screenings" });
-  expect(strip().querySelectorAll(".minimal-strip-volume")).toHaveLength(0);
-  expect(strip().querySelectorAll(".minimal-strip-day")).toHaveLength(7);
+  const days = await screen.findAllByRole("button", { description: "No screenings" });
+  expect(days).toHaveLength(7);
+  expect(strip().querySelectorAll("[data-volume]")).toHaveLength(0);
   fireEvent.click(dayButton("Friday November 6th"), { detail: 0 });
   expect(onChange).toHaveBeenCalledExactlyOnceWith("2026-11-06", "2026-11-06");
 });

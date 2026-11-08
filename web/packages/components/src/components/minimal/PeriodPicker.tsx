@@ -279,6 +279,7 @@ function DayStrip({
               <span
                 className="minimal-strip-volume"
                 aria-hidden
+                data-volume={total / busiest}
                 style={{ "--volume": total / busiest } as CSSProperties}
               />
             )}
