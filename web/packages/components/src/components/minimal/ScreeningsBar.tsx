@@ -1,8 +1,8 @@
-import { SlidersHorizontal } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState, type RefObject } from "react";
 import { addDays } from "./catalogue-format";
 import type { ActiveCatalogueSelection, CatalogueCinema } from "./catalogue-types";
 import { MovieSearch } from "./MovieSearch";
+import { FiltersButton } from "./FiltersButton";
 import { DayStrip, PeriodStepper, usePeriodView } from "./PeriodPicker";
 import { ScreeningFilters } from "./ScreeningFilters";
 
@@ -44,7 +44,6 @@ export function ScreeningsBar({
   useCloseOnOutsidePress(bar, filtersOpen, closeFilters);
   const { range, view } = usePeriodView(selection.start, selection.end, today);
   const setPeriod = (start: string, end: string) => onSelection({ ...selection, start, end });
-  const filterCount = selection.filters.length;
 
   return (
     <section
@@ -76,19 +75,13 @@ export function ScreeningsBar({
           value={selection.title}
           onSearch={(title) => onSelection({ ...selection, title })}
         />
-        <button
+        <FiltersButton
           ref={filtersButton}
-          type="button"
-          className="minimal-filters-button"
-          aria-label={filterCount ? `Filters (${filterCount} active)` : "Filters"}
+          count={selection.filters.length}
           aria-expanded={filtersOpen}
           aria-controls={panelId}
           onClick={() => setFiltersOpen(!filtersOpen)}
-        >
-          <SlidersHorizontal aria-hidden size={16} />
-          Filters
-          {filterCount > 0 && <b aria-hidden>{filterCount}</b>}
-        </button>
+        />
       </div>
       {filtersOpen && (
         <div

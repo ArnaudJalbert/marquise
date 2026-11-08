@@ -1,43 +1,41 @@
-import { useEffect, useRef, useState } from "react";
 import type { ActiveCatalogueSelection, CatalogueCinema } from "./catalogue-types";
 import { MovieSearch } from "./MovieSearch";
 import { PeriodPicker } from "./PeriodPicker";
 import { ScreeningFilters } from "./ScreeningFilters";
+import { PhoneScreeningControls } from "./PhoneScreeningControls";
+import type { CountMovies } from "./ScreeningSheet";
 import { ScreeningsBar } from "./ScreeningsBar";
+import { PHONE_MEDIA_QUERY, useMediaQuery } from "./use-media-query";
+import { useScrolledPast } from "./use-scrolled-past";
 
-/** Whether the element has scrolled fully above the top of the viewport. */
-function useScrolledPast() {
-  const target = useRef<HTMLDivElement>(null);
-  const [scrolledPast, setScrolledPast] = useState(false);
-  useEffect(() => {
-    const element = target.current;
-    if (!element) return;
-    const observer = new IntersectionObserver((entries) => {
-      const entry = entries.at(-1);
-      if (entry) setScrolledPast(!entry.isIntersecting && entry.boundingClientRect.top < 0);
-    });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-  return { target, scrolledPast };
+export interface ScreeningControlsProps {
+  selection: ActiveCatalogueSelection;
+  onSelection: (selection: ActiveCatalogueSelection) => void;
+  /** Counts the movies a draft selection would show, for the phone sheet. */
+  onCountMovies?: CountMovies;
+  cinemas: readonly CatalogueCinema[];
+  today: string;
+  fixedCinemaId?: string;
+  heading?: "h1" | "h2";
 }
 
-/** The screenings period, search, and filter chips, collapsing into a sticky bar on scroll. */
-export function ScreeningControls({
+/**
+ * The screenings period, search, and filter chips, collapsing into a sticky bar on scroll.
+ * Phones get a sticky period bar and a bottom sheet instead.
+ */
+export function ScreeningControls(props: ScreeningControlsProps) {
+  const isPhone = useMediaQuery(PHONE_MEDIA_QUERY);
+  return isPhone ? <PhoneScreeningControls {...props} /> : <WideScreeningControls {...props} />;
+}
+
+function WideScreeningControls({
   selection,
   onSelection,
   cinemas,
   today,
   fixedCinemaId,
   heading,
-}: {
-  selection: ActiveCatalogueSelection;
-  onSelection: (selection: ActiveCatalogueSelection) => void;
-  cinemas: readonly CatalogueCinema[];
-  today: string;
-  fixedCinemaId?: string;
-  heading?: "h1" | "h2";
-}) {
+}: ScreeningControlsProps) {
   const header = useScrolledPast();
   return (
     <>

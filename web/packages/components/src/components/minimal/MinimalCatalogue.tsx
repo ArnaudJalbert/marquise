@@ -270,6 +270,7 @@ export function MinimalCatalogue({
   screeningLanguages,
   selection,
   onSelection,
+  onCountMovies,
   href,
   navigate,
   today,
@@ -499,6 +500,7 @@ export function MinimalCatalogue({
                   <ScreeningControls
                     selection={selection}
                     onSelection={onSelection}
+                    onCountMovies={onCountMovies}
                     cinemas={cinemas}
                     today={today}
                     fixedCinemaId={cinemaId}

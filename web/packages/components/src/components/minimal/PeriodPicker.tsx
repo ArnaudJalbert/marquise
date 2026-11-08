@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   useRef,
   useState,
@@ -256,19 +256,26 @@ export function usePeriodView(start: string, end: string, today: string) {
   return { range, view, setView };
 }
 
-/** ‹ period title › that moves the period by its own length. */
+/**
+ * ‹ period title › that moves the period by its own length.
+ * With `onOpen`, the title is a button opening a dialog that `expanded` reports.
+ */
 export function PeriodStepper({
   start,
   end,
   today,
   onChange,
   heading: Heading = "h1",
+  onOpen,
+  expanded,
 }: {
   start: string;
   end: string;
   today: string;
   onChange: (start: string, end: string) => void;
   heading?: "h1" | "h2" | "strong";
+  onOpen?: (opener: HTMLButtonElement) => void;
+  expanded?: boolean;
 }) {
   const { title } = describePeriod(start, end, today);
   const previous = stepPeriod(start, end, today, -1);
@@ -283,7 +290,22 @@ export function PeriodStepper({
       >
         <ChevronLeft aria-hidden size={18} />
       </button>
-      <Heading>{title}</Heading>
+      <Heading>
+        {onOpen ? (
+          <button
+            type="button"
+            className="minimal-period-open"
+            aria-haspopup="dialog"
+            aria-expanded={expanded}
+            onClick={(event) => onOpen(event.currentTarget)}
+          >
+            <span>{title}</span>
+            <ChevronDown aria-hidden size={16} />
+          </button>
+        ) : (
+          title
+        )}
+      </Heading>
       <button
         type="button"
         aria-label="Next period"

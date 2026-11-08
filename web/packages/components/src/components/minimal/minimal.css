@@ -1168,29 +1168,101 @@ html:has(.minimal-screenings-bar) {
 .minimal-screenings-bar-panel .minimal-filter-row {
   margin: 4px 0 8px;
 }
-/* Narrow screens drop the mini strip; search takes its own row. */
-@media (max-width: 639px) {
-  html:has(.minimal-screenings-bar) {
-    scroll-padding-top: 120px;
-  }
-  .minimal-screenings-bar-row,
-  .minimal-screenings-bar-panel {
-    padding: 4px 16px;
-  }
-  .minimal-screenings-bar-row {
-    flex-wrap: wrap;
-    gap: 4px 8px;
-  }
-  .minimal-screenings-bar .minimal-strip {
-    display: none;
-  }
-  .minimal-screenings-bar .minimal-period-title {
-    flex: 1 1 0;
-    min-width: 0;
-  }
-  .minimal-screenings-bar .minimal-movie-search {
-    order: 3;
-    flex: 1 1 100%;
-    min-width: 0;
-  }
+/* Phone screenings controls (#446): sticky ‹ period ›, a search row, and a bottom sheet. */
+html:has(.minimal-phone-bar) {
+  scroll-padding-top: 64px;
+}
+.minimal-phone-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* Bleed to the screen edges past the site's 16px phone gutter. */
+  margin: 0 -16px;
+  padding: 4px 16px;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+}
+.minimal-phone-bar .minimal-period-title {
+  flex: 1 1 0;
+}
+.minimal-site .minimal-phone-bar .minimal-period-title > button {
+  width: 44px;
+}
+.minimal-phone-bar .minimal-period-title > :is(h1, h2) {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.minimal-site .minimal-period-title .minimal-period-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: auto;
+  max-width: 100%;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 6px;
+  font-weight: inherit;
+}
+.minimal-period-open span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.minimal-period-open svg {
+  flex: none;
+  color: var(--indigo-deep);
+}
+/* The bar's Filters button keeps its icon and count; its label is the accessible name. */
+.minimal-phone-bar .minimal-filters-button span {
+  display: none;
+}
+.minimal-phone-search {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0 16px;
+}
+.minimal-phone-search .minimal-movie-search {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.minimal-site .minimal-sheet {
+  inset: auto 0 0;
+  width: 100%;
+  max-width: none;
+  max-height: 92dvh;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 20px 20px 0 0;
+  background: #fff;
+}
+.minimal-sheet::backdrop {
+  background: #0006;
+}
+.minimal-sheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 92dvh;
+  padding: 16px 16px max(16px, env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.minimal-sheet-body .minimal-filters {
+  margin-bottom: 0;
+}
+.minimal-site .minimal-sheet-apply {
+  position: sticky;
+  bottom: 0;
+  min-height: 48px;
+  margin-top: 4px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--indigo-deep);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
 }

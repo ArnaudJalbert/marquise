@@ -7,6 +7,7 @@ import {
   type HourFilter,
   type MovieApi,
   type ScreeningApi,
+  type ScreeningMovieQuery,
 } from "marquise-client";
 import { useResource } from "../discovery/use-resource";
 import { usePageResource } from "../discovery/use-page-resource";
@@ -145,6 +146,26 @@ function getTimeHours(filters: ActiveCatalogueSelection["filters"]): HourFilter 
   return { operator: time.operator, ranges: [{ start, end }] };
 }
 
+function getScreeningMovieQuery(
+  selection: ActiveCatalogueSelection,
+  fixedCinemaId: string | undefined,
+): Omit<ScreeningMovieQuery, "page"> {
+  return {
+    start: selection.start,
+    end: selection.end,
+    title: selection.title,
+    cinemas: fixedCinemaId
+      ? [fixedCinemaId]
+      : selection.filters
+          .filter((filter) => filter.type === "cinema" && filter.operator === "is")
+          .map((filter) => filter.value),
+    excludedCinemas: selection.filters
+      .filter((filter) => filter.type === "cinema" && filter.operator === "is_not")
+      .map((filter) => filter.value),
+    hours: getTimeHours(selection.filters),
+  };
+}
+
 /** Production composition of the approved UI with injected, bounded API reads. */
 export function MinimalExperience({
   client,
@@ -193,22 +214,7 @@ export function MinimalExperience({
     useCallback(
       (page: number, signal: AbortSignal) =>
         client.fetchScreeningMoviesPage(
-          {
-            start: selection.start,
-            end: selection.end,
-            page,
-            title: selection.title,
-            cinemas:
-              fixedCinemaId
-                ? [fixedCinemaId]
-                : selection.filters
-                    .filter((filter) => filter.type === "cinema" && filter.operator === "is")
-                    .map((filter) => filter.value),
-            excludedCinemas: selection.filters
-              .filter((filter) => filter.type === "cinema" && filter.operator === "is_not")
-              .map((filter) => filter.value),
-            hours: getTimeHours(selection.filters),
-          },
+          { ...getScreeningMovieQuery(selection, fixedCinemaId), page },
           signal,
         ),
       [
@@ -221,6 +227,16 @@ export function MinimalExperience({
       ],
     ),
     isScreenings && selection.start <= selection.end,
+  );
+  const countMovies = useCallback(
+    async (draft: ActiveCatalogueSelection, signal: AbortSignal) =>
+      (
+        await client.fetchScreeningMoviesPage(
+          { ...getScreeningMovieQuery(draft, fixedCinemaId), page: 1 },
+          signal,
+        )
+      ).total,
+    [client, fixedCinemaId],
   );
   const cinemaResource = useResource(
     useCallback(async (signal: AbortSignal) => {
@@ -357,6 +373,7 @@ export function MinimalExperience({
       screeningLanguages={screeningLanguages}
       selection={selection}
       onSelection={onSelection}
+      onCountMovies={countMovies}
       href={href}
       navigate={navigate}
       today={today}

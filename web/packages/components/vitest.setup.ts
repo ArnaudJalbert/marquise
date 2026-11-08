@@ -25,6 +25,23 @@ class IntersectionObserverStub implements IntersectionObserver {
 
 globalThis.IntersectionObserver = IntersectionObserverStub;
 
+// jsdom has no media queries: tests run at desktop width unless they stub `matchMedia`.
+globalThis.matchMedia = (query: string) =>
+  ({
+    matches: false,
+    media: query,
+    addEventListener() {},
+    removeEventListener() {},
+  }) as unknown as MediaQueryList;
+
+// jsdom has no modal dialogs: opening and closing only toggle the `open` attribute.
+HTMLDialogElement.prototype.showModal = function showModal() {
+  this.setAttribute("open", "");
+};
+HTMLDialogElement.prototype.close = function close() {
+  this.removeAttribute("open");
+};
+
 afterEach(() => {
   cleanup();
 });
