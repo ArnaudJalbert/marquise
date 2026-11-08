@@ -46,7 +46,7 @@ function dragRange(
   return day < anchor ? [day, anchor] : [anchor, day];
 }
 
-function DayStrip({
+export function DayStrip({
   today,
   range,
   view,
@@ -242,8 +242,22 @@ function DayStrip({
   );
 }
 
-/** Period title with stepping, zoom, and the draggable day strip. */
-export function PeriodPicker({
+/** Strip view for a period, refitted whenever the committed period changes. */
+export function usePeriodView(start: string, end: string, today: string) {
+  const range: [number, number] = [daysBetween(today, start), daysBetween(today, end)];
+  // A fresh strip opens on one week from today.
+  const [view, setView] = useState(() => fitView({ weeks: 1, first: 0 }, ...range));
+  const [fitted, setFitted] = useState(`${today}/${start}/${end}`);
+  // Refit the view whenever the committed period changes, wherever it came from.
+  if (fitted !== `${today}/${start}/${end}`) {
+    setFitted(`${today}/${start}/${end}`);
+    setView(fitView(view, ...range));
+  }
+  return { range, view, setView };
+}
+
+/** ‹ period title › that moves the period by its own length. */
+export function PeriodStepper({
   start,
   end,
   today,
@@ -254,43 +268,61 @@ export function PeriodPicker({
   end: string;
   today: string;
   onChange: (start: string, end: string) => void;
-  heading?: "h1" | "h2";
+  heading?: "h1" | "h2" | "strong";
 }) {
-  const range: [number, number] = [daysBetween(today, start), daysBetween(today, end)];
-  // A fresh picker opens on one week from today.
-  const [view, setView] = useState(() => fitView({ weeks: 1, first: 0 }, ...range));
-  const [fitted, setFitted] = useState(`${today}/${start}/${end}`);
-  // Refit the view whenever the committed period changes, wherever it came from.
-  if (fitted !== `${today}/${start}/${end}`) {
-    setFitted(`${today}/${start}/${end}`);
-    setView(fitView(view, ...range));
-  }
-  const { title, detail } = describePeriod(start, end, today);
+  const { title } = describePeriod(start, end, today);
   const previous = stepPeriod(start, end, today, -1);
   const next = stepPeriod(start, end, today, 1);
+  return (
+    <div className="minimal-period-title">
+      <button
+        type="button"
+        aria-label="Previous period"
+        disabled={!previous}
+        onClick={() => previous && onChange(...previous)}
+      >
+        <ChevronLeft aria-hidden size={18} />
+      </button>
+      <Heading>{title}</Heading>
+      <button
+        type="button"
+        aria-label="Next period"
+        disabled={!next}
+        onClick={() => next && onChange(...next)}
+      >
+        <ChevronRight aria-hidden size={18} />
+      </button>
+    </div>
+  );
+}
+
+/** Period title with stepping, zoom, and the draggable day strip. */
+export function PeriodPicker({
+  start,
+  end,
+  today,
+  onChange,
+  heading = "h1",
+}: {
+  start: string;
+  end: string;
+  today: string;
+  onChange: (start: string, end: string) => void;
+  heading?: "h1" | "h2";
+}) {
+  const { range, view, setView } = usePeriodView(start, end, today);
+  const { detail } = describePeriod(start, end, today);
 
   return (
     <section className="minimal-period" aria-label="Dates">
       <div className="minimal-period-top">
-        <div className="minimal-period-title">
-          <button
-            type="button"
-            aria-label="Previous period"
-            disabled={!previous}
-            onClick={() => previous && onChange(...previous)}
-          >
-            <ChevronLeft aria-hidden size={18} />
-          </button>
-          <Heading>{title}</Heading>
-          <button
-            type="button"
-            aria-label="Next period"
-            disabled={!next}
-            onClick={() => next && onChange(...next)}
-          >
-            <ChevronRight aria-hidden size={18} />
-          </button>
-        </div>
+        <PeriodStepper
+          start={start}
+          end={end}
+          today={today}
+          heading={heading}
+          onChange={onChange}
+        />
         <div className="minimal-zoom">
           <input
             type="range"

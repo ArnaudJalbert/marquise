@@ -29,9 +29,7 @@ import {
   decodePathId,
 } from "./catalogue-format";
 import { MovieSchedule } from "./MovieSchedule";
-import { PeriodPicker } from "./PeriodPicker";
-import { MovieSearch } from "./MovieSearch";
-import { ScreeningFilters } from "./ScreeningFilters";
+import { ScreeningControls } from "./ScreeningControls";
 import { matchesCatalogueTimeFilter } from "./catalogue-time-filters";
 import { Showtime } from "./Showtime";
 import { InfoMenu, SiteFooter, infoPages } from "./SiteInfo";
@@ -498,29 +496,14 @@ export function MinimalCatalogue({
                   </header>
                 )}
                 {showScreeningFilters ? (
-                  <>
-                    <PeriodPicker
-                      start={selection.start}
-                      end={selection.end}
-                      today={today}
-                      heading={cinema ? "h2" : "h1"}
-                      onChange={(start, end) =>
-                        onSelection({ ...selection, start, end })
-                      }
-                    />
-                    <div className="minimal-screenings-top">
-                      <MovieSearch
-                        value={selection.title}
-                        onSearch={(title) => onSelection({ ...selection, title })}
-                      />
-                    </div>
-                    <ScreeningFilters
-                      filters={selection.filters}
-                      onChange={(filters) => onSelection({ ...selection, filters })}
-                      cinemas={cinemas}
-                      fixedCinemaId={cinemaId}
-                    />
-                  </>
+                  <ScreeningControls
+                    selection={selection}
+                    onSelection={onSelection}
+                    cinemas={cinemas}
+                    today={today}
+                    fixedCinemaId={cinemaId}
+                    heading={cinema ? "h2" : "h1"}
+                  />
                 ) : (
                   <p>{today} · Montréal local time</p>
                 )}
