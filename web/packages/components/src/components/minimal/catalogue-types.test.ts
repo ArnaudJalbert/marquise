@@ -1,6 +1,7 @@
 import { expectTypeOf, describe, expect, it } from "vitest";
 import type {
   ActiveCatalogueFilterType,
+  ActiveCatalogueSelection,
   CatalogueFilter,
   CatalogueFilterType,
   CatalogueSelection,
@@ -11,7 +12,9 @@ describe("catalogue filter types", () => {
     expectTypeOf<CatalogueFilterType>().toEqualTypeOf<
       "cinema" | "time" | "audio" | "subtitles"
     >();
-    expectTypeOf<CatalogueFilter["type"]>().toEqualTypeOf<
+    expectTypeOf<CatalogueFilter["type"]>().toEqualTypeOf<CatalogueFilterType>();
+    expectTypeOf<CatalogueSelection["filters"][number]["type"]>().toEqualTypeOf<CatalogueFilterType>();
+    expectTypeOf<ActiveCatalogueSelection["filters"][number]["type"]>().toEqualTypeOf<
       ActiveCatalogueFilterType
     >();
 
@@ -20,11 +23,26 @@ describe("catalogue filter types", () => {
       { type: "time", value: "evening", operator: "is" },
     ];
     expect(filters).toHaveLength(2);
+
+    const futureSelection: CatalogueSelection = {
+      start: "2026-11-08",
+      end: "2026-11-08",
+      title: "",
+      filters: [
+        { type: "audio", value: "VO", operator: "is" },
+        { type: "subtitles", value: "VOSTF", operator: "is" },
+      ],
+    };
+    expect(futureSelection.filters).toHaveLength(2);
   });
 });
 
-// @ts-expect-error Audio is part of the future vocabulary, not an active filter.
-const _unsupportedAudioFilter: CatalogueFilter = { type: "audio", value: "VO", operator: "is" };
-
-// @ts-expect-error Subtitles is part of the future vocabulary, not an active filter.
-const _unsupportedSubtitlesFilter: CatalogueFilter = { type: "subtitles", value: "VOSTF", operator: "is" };
+const _invalidActiveSelection: ActiveCatalogueSelection = {
+  start: "2026-11-08",
+  end: "2026-11-08",
+  title: "",
+  filters: [
+    // @ts-expect-error Audio is valid in CatalogueSelection, not active UI state.
+    { type: "audio", value: "VO", operator: "is" },
+  ],
+};

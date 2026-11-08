@@ -3,6 +3,8 @@ export {
   MinimalMovieCard,
 } from "./components/minimal/MinimalCatalogue";
 export type {
+  ActiveCatalogueFilter,
+  ActiveCatalogueSelection,
   CatalogueMovie,
   CatalogueCinema,
   CatalogueScreening,

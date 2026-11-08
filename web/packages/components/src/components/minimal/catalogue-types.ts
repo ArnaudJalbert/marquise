@@ -33,21 +33,25 @@ export type CatalogueState =
   | "loading-more"
   | "empty"
   | "error";
-export interface CatalogueSelection {
+export interface CatalogueSelection<
+  FilterType extends CatalogueFilterType = CatalogueFilterType,
+> {
   start: string;
   end: string;
   title: string;
-  filters: CatalogueFilter[];
+  filters: CatalogueFilter<FilterType>[];
 }
 export type CatalogueFilterType = "cinema" | "time" | "audio" | "subtitles";
 export type ActiveCatalogueFilterType = "cinema" | "time";
-export type CatalogueFilter =
-  | { type: "cinema"; value: string; operator: "is" | "is_not" }
-  | {
-      type: "time";
-      value: CatalogueTimeFilterValue;
-      operator: "is" | "is_not";
-    };
+export type ActiveCatalogueSelection = CatalogueSelection<ActiveCatalogueFilterType>;
+export type ActiveCatalogueFilter = CatalogueFilter<ActiveCatalogueFilterType>;
+export type CatalogueFilter<FilterType extends CatalogueFilterType = CatalogueFilterType> = {
+  [Type in FilterType]: {
+    type: Type;
+    value: Type extends "time" ? CatalogueTimeFilterValue : string;
+    operator: "is" | "is_not";
+  };
+}[FilterType];
 export interface MinimalCatalogueProps {
   currentTime?: string;
   movies: readonly CatalogueMovie[];
@@ -66,8 +70,8 @@ export interface MinimalCatalogueProps {
   directoryNotice?: ReactNode;
   cinemas: readonly CatalogueCinema[];
   screeningLanguages: readonly string[];
-  selection: CatalogueSelection;
-  onSelection: (selection: CatalogueSelection) => void;
+  selection: ActiveCatalogueSelection;
+  onSelection: (selection: ActiveCatalogueSelection) => void;
   href: string;
   navigate: (href: string) => void;
   today: string;

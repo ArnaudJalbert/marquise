@@ -17,7 +17,7 @@ import type {
   CatalogueMovie,
   ActiveCatalogueFilterType,
   CatalogueScreening,
-  CatalogueSelection,
+  ActiveCatalogueSelection,
   CatalogueState,
   MinimalCatalogueProps,
 } from "./catalogue-types";
@@ -89,7 +89,7 @@ function parseFilter(type: ActiveCatalogueFilterType, value: string) {
   return { type, value: filterValue, operator };
 }
 
-function parseSelection(url: URL, today: string): CatalogueSelection {
+function parseSelection(url: URL, today: string): ActiveCatalogueSelection {
   const params = url.searchParams;
   const start = params.get("start") ?? today;
   const end = params.get("end") ?? start;
@@ -107,7 +107,7 @@ function parseSelection(url: URL, today: string): CatalogueSelection {
   };
 }
 
-function listingHref(href: string, selection: CatalogueSelection): string {
+function listingHref(href: string, selection: ActiveCatalogueSelection): string {
   const url = new URL(href, "http://marquise.invalid");
   const params = url.searchParams;
   for (const key of [
@@ -134,7 +134,7 @@ function listingHref(href: string, selection: CatalogueSelection): string {
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
-function getTimeHours(filters: CatalogueSelection["filters"]): HourFilter | undefined {
+function getTimeHours(filters: ActiveCatalogueSelection["filters"]): HourFilter | undefined {
   const time = filters.find((filter) => filter.type === "time");
   if (!time) return undefined;
   const { start, end } = getCatalogueTimeFilter(time.value);
@@ -181,7 +181,7 @@ export function MinimalExperience({
   const [search, setSearch] = useState("");
 
   const onSelection = useCallback(
-    (next: CatalogueSelection) => navigate(listingHref(href, next)),
+    (next: ActiveCatalogueSelection) => navigate(listingHref(href, next)),
     [href, navigate],
   );
 

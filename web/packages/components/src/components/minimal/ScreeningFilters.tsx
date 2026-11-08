@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type {
+  ActiveCatalogueFilter,
   ActiveCatalogueFilterType,
   CatalogueCinema,
-  CatalogueFilter,
   CatalogueFilterType,
 } from "./catalogue-types";
 import {
@@ -25,10 +25,10 @@ export function ScreeningFilters({
   fixedCinemaId,
   onChange,
 }: {
-  filters: readonly CatalogueFilter[];
+  filters: readonly ActiveCatalogueFilter[];
   cinemas: readonly CatalogueCinema[];
   fixedCinemaId?: string;
-  onChange: (filters: CatalogueFilter[]) => void;
+  onChange: (filters: ActiveCatalogueFilter[]) => void;
 }) {
   const [pendingFocus, setPendingFocus] = useState<ActiveCatalogueFilterType | "add">();
   const addFilterRef = useRef<HTMLElement>(null);
@@ -47,11 +47,11 @@ export function ScreeningFilters({
       !(fixedCinemaId && type === "cinema") &&
       (type !== "cinema" || cinemas.length > 0),
   );
-  const getFilterValueLabel = (filter: CatalogueFilter) =>
+  const getFilterValueLabel = (filter: ActiveCatalogueFilter) =>
     filter.type === "cinema"
       ? cinemas.find((cinema) => cinema.id === filter.value)?.name ?? "Cinema unavailable"
       : getCatalogueTimeFilter(filter.value).label;
-  const update = (next: CatalogueFilter) =>
+  const update = (next: ActiveCatalogueFilter) =>
     onChange(filters.map((filter) => filter.type === next.type ? next : filter));
   const add = (type: ActiveCatalogueFilterType, menu: HTMLDetailsElement) => {
     if (type === "cinema") {

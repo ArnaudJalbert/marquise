@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   MinimalCatalogue,
-  type CatalogueSelection,
+  type ActiveCatalogueSelection,
   type CatalogueState,
   type CatalogueMovie,
 } from "marquise-components";
@@ -12,7 +12,7 @@ import { loadAllMovies, loadMovieWeek } from "./api";
 
 const apiMode = import.meta.env.VITE_MARQUISE_DATA_SOURCE === "api";
 
-const initial: CatalogueSelection = {
+const initial: ActiveCatalogueSelection = {
   start: today,
   end: today,
   title: "",
@@ -21,7 +21,7 @@ const initial: CatalogueSelection = {
   from: "",
   to: "",
 };
-function readSelection(): CatalogueSelection {
+function readSelection(): ActiveCatalogueSelection {
   const p = new URLSearchParams(location.search);
   return {
     start: p.get("start") ?? today,
@@ -75,7 +75,7 @@ function Preview({ client }: { client: HttpMarquiseClient }) {
     document.getElementById("minimal-main")?.focus();
     window.scrollTo(0, 0);
   };
-  const update = (next: CatalogueSelection) => {
+  const update = (next: ActiveCatalogueSelection) => {
     setState("ready");
     setSelection(next);
     const p = new URLSearchParams();

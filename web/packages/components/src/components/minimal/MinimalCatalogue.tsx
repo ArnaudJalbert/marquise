@@ -5,10 +5,12 @@ import type {
   CatalogueCinema,
   CatalogueMovie,
   CatalogueScreening,
-  CatalogueSelection,
+  ActiveCatalogueSelection,
   MinimalCatalogueProps,
 } from "./catalogue-types";
 export type {
+  ActiveCatalogueFilter,
+  ActiveCatalogueSelection,
   ActiveCatalogueFilterType,
   CatalogueCinema,
   CatalogueFilter,
@@ -38,7 +40,7 @@ import "./minimal.css";
 
 function matchesTimeFilter(
   time: string,
-  filter: CatalogueSelection["filters"][number] | undefined,
+  filter: ActiveCatalogueSelection["filters"][number] | undefined,
 ): boolean {
   if (!filter || filter.type !== "time" || filter.operator === "is_not") return true;
   return matchesCatalogueTimeFilter(time, filter.value);
