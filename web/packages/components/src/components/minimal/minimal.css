@@ -203,14 +203,15 @@
 .minimal-strip {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(var(--strip-days), minmax(0, 1fr));
+  grid-template-columns: repeat(var(--strip-cells), minmax(0, 1fr));
   margin-top: 12px;
   border: 1px solid var(--line);
   border-radius: 6px;
   /* Vertical swipes still scroll the page; horizontal drags select. */
   touch-action: pan-y;
 }
-.minimal-site .minimal-strip-day {
+.minimal-site .minimal-strip-day,
+.minimal-site .minimal-strip-week {
   display: grid;
   justify-items: center;
   gap: 2px;
@@ -227,7 +228,14 @@
 .minimal-site .minimal-strip-day.is-weekend {
   background: #f4f4f8;
 }
-.minimal-site .minimal-strip-day.is-selected {
+.minimal-site .minimal-strip-week {
+  align-content: start;
+}
+.minimal-site .minimal-strip-week + .minimal-strip-week {
+  border-left: 1px solid var(--line);
+}
+.minimal-site .minimal-strip-day.is-selected,
+.minimal-site .minimal-strip-week.is-selected {
   color: var(--indigo-deep);
 }
 .minimal-strip-month {
@@ -252,9 +260,6 @@
 .minimal-strip-date {
   font-size: 17px;
   font-weight: 600;
-}
-.minimal-strip[data-days="42"] .minimal-strip-date {
-  font-size: 12px;
 }
 .minimal-strip-window {
   position: absolute;
