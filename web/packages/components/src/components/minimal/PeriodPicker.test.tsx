@@ -417,7 +417,7 @@ it("keeps the drag anchor when the phone breakpoint flips mid-drag", () => {
 });
 
 it("labels each block with its month change, day span and full range", () => {
-  /** Scenario: blocks run in 7-day steps from today and name the month where it changes. */
+  /** Scenario: blocks run in 7-day steps from today and name a month only when it changes. */
   stubViewport(false);
   setup("2026-11-07", "2026-11-07", "2026-11-07");
   zoomTo(6);
@@ -433,9 +433,33 @@ it("labels each block with its month change, day span and full range", () => {
     "Nov7-13",
     "14-20",
     "21-27",
-    "Dec28-4",
-    "5-11",
+    "28-4",
+    "Dec5-11",
     "12-18",
+  ]);
+});
+
+it("names each block by the month of its first day, always on the first block", () => {
+  /** Scenario: a block crossing into a new month keeps its start month; the next one names the new month. */
+  stubViewport(false);
+  setup("2026-11-28", "2026-11-28", "2026-11-28");
+  zoomTo(6);
+  expect(blockCells().map((cell) => cell.textContent)).toEqual([
+    "Nov28-4",
+    "Dec5-11",
+    "12-18",
+    "19-25",
+    "26-1",
+    "Jan2-8",
+  ]);
+  cleanup();
+  setup("2026-12-08");
+  zoomTo(4);
+  expect(blockCells().map((cell) => cell.textContent)).toEqual([
+    "Nov17-23",
+    "24-30",
+    "Dec1-7",
+    "8-14",
   ]);
 });
 
@@ -492,6 +516,29 @@ it("snaps resized edges to block edges and moves by whole blocks within the hori
   expect(onChange).toHaveBeenLastCalledWith("2026-11-24", "2026-12-07");
   dragOn(block("November 24 to November 30"), 3, 5);
   expect(onChange).toHaveBeenLastCalledWith("2026-12-01", "2026-12-14");
+});
+
+it("draws from an unselected part of a partly selected block and moves only from selected days", () => {
+  /** Scenario: with Nov 12 picked, pressing elsewhere in its block draws; pressing Nov 12 moves it. */
+  stubViewport(false);
+  const onChange = setup("2026-11-12");
+  zoomTo(4);
+  const dayWidth = CELL / 7;
+  const pressDay = (day: number) => ({ ...at(0), clientX: day * dayWidth + dayWidth / 2 });
+  // The view opens on Nov 10, so day 3 is Nov 13 (unselected) and day 2 is Nov 12.
+  let element = strip();
+  fireEvent.pointerDown(block("November 10 to November 16"), pressDay(3));
+  fireEvent.pointerMove(element, at(1));
+  fireEvent.pointerUp(element, at(1));
+  expect(onChange).toHaveBeenLastCalledWith("2026-11-10", "2026-11-23");
+  cleanup();
+  const moved = setup("2026-11-12");
+  zoomTo(4);
+  element = strip();
+  fireEvent.pointerDown(block("November 10 to November 16"), pressDay(2));
+  fireEvent.pointerMove(element, at(1));
+  fireEvent.pointerUp(element, at(1));
+  expect(moved).toHaveBeenLastCalledWith("2026-11-17", "2026-11-23");
 });
 
 it("moves, selects and extends blocks from the keyboard", () => {

@@ -98,11 +98,12 @@ function DayStrip({
   const cells = Array.from({ length: cellCount }, (_, index) => firstCell + index);
   const last = view.first + dayCount - 1;
   const focusCell = Math.max(firstCell, Math.min(firstCell + cellCount - 1, toCell(start)));
-  const cellAt = (event: PointerEvent<HTMLDivElement>) => {
+  const dayAt = (event: PointerEvent<HTMLDivElement>) => {
     const box = event.currentTarget.getBoundingClientRect();
     const ratio = Math.max(0, Math.min(0.999, (event.clientX - box.left) / box.width));
-    return firstCell + Math.floor(ratio * cellCount);
+    return view.first + Math.floor(ratio * dayCount);
   };
+  const cellAt = (event: PointerEvent<HTMLDivElement>) => toCell(dayAt(event));
   const update = (next: Drag) => {
     drag.current = next;
     setDraft(next.range);
@@ -127,7 +128,8 @@ function DayStrip({
         keyboardAnchor.current = null;
         keyboardRange.current = null;
         event.preventDefault();
-        const cell = cellAt(event);
+        const day = dayAt(event);
+        const cell = toCell(day);
         const handle = (event.target as Element)
           .closest("[data-handle]")
           ?.getAttribute("data-handle");
@@ -139,7 +141,8 @@ function DayStrip({
           windowRect.width > 0 &&
           event.clientX > windowRect.left + windowRect.width * 0.25 &&
           event.clientX < windowRect.right - windowRect.width * 0.25;
-        const inSelection = cell >= selectedCells[0] && cell <= selectedCells[1];
+        // Only the selected days move the selection; the rest of a partly selected block draws.
+        const inSelection = day >= range[0] && day <= range[1];
         const mode: DragMode =
           inMoveArea && inSelection
             ? "move"
@@ -249,11 +252,9 @@ function DayStrip({
             }}
           >
             <span className="minimal-strip-month" aria-hidden>
-              {/* The first cell names its month, later cells only where a month starts. */}
-              {cell === firstCell ||
-              dayOfMonth(endDate) < dayOfMonth(date) ||
-              dayOfMonth(date) === 1
-                ? monthName(endDate)
+              {/* Each cell is named by its first day's month, shown on the first cell and where it changes. */}
+              {cell === firstCell || monthName(date) !== monthName(addDays(date, -cellDays))
+                ? monthName(date)
                 : ""}
             </span>
             {!weekLayout && (
