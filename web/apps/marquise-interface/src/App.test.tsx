@@ -119,6 +119,9 @@ function clients() {
           },
         ]),
     ),
+    fetchScreeningDayCounts: vi.fn<BrowseClient["fetchScreeningDayCounts"]>(
+      async () => [],
+    ),
     fetchMoviePage: vi.fn<BrowseClient["fetchMoviePage"]>(async () =>
       page([{ ...movie, id: "catalogue-only", title: "Catalogue only" }]),
     ),
