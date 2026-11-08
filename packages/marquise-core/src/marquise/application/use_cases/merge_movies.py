@@ -1,23 +1,29 @@
 """Validate targeted duplicate merges using the shared matching policy."""
 
-from dataclasses import replace
+from __future__ import annotations
 
+from dataclasses import replace
+from typing import TYPE_CHECKING
+
+from marquise.application.exceptions.movie import MovieMetadataUnavailableError
 from marquise.application.metadata import ProviderIdentity
 from marquise.application.movie_workflows import (
-    MatchMovieExecutor,
-    MatchMovieInputData,
     MergeMoviesInputData,
     MergeMoviesOutputData,
     MovieMetadataRepository,
     MovieMetadataSnapshot,
+    MovieMetadataValues,
 )
+
+if TYPE_CHECKING:
+    from marquise.application.use_cases.match_movies import MatchMoviesUseCase
 
 
 class MergeMoviesUseCase:
     """Keep eligibility in application and atomic state checks in persistence."""
 
     def __init__(
-        self, repository: MovieMetadataRepository, matcher: MatchMovieExecutor
+        self, repository: MovieMetadataRepository, matcher: MatchMoviesUseCase
     ) -> None:
         self._repository = repository
         self._matcher = matcher
@@ -61,21 +67,12 @@ class MergeMoviesUseCase:
             if not values.title:
                 blockers.append(f"Missing identity evidence: {snapshot.movie_id}")
                 continue
-            match = await self._matcher.execute(
-                MatchMovieInputData(
-                    values.title,
-                    values.release_year,
-                    values.directors or (),
-                    values.duration_minutes,
-                )
-            )
-            if match.status != "matched" or match.identity is None:
+            identity = await self._confirmed_identity(values.title, values)
+            if identity is None:
                 blockers.append(f"Unconfirmed identity: {snapshot.movie_id}")
                 continue
-            identities.append(match.identity)
-            if stored_id and (
-                match.identity.provider != "tmdb" or match.identity.id != stored_id
-            ):
+            identities.append(identity)
+            if stored_id and (identity.provider != "tmdb" or identity.id != stored_id):
                 blockers.append(f"Conflicting known identity: {snapshot.movie_id}")
         if len(set(identities)) > 1:
             blockers.append("Targets do not share one confirmed identity")
@@ -84,3 +81,19 @@ class MergeMoviesUseCase:
             if owner is not None and owner.movie_id != request.survivor_id:
                 blockers.append(f"Keep existing TMDB owner: {owner.movie_id}")
         return blockers, identities[0] if identities else None
+
+    async def _confirmed_identity(
+        self, title: str, values: MovieMetadataValues
+    ) -> ProviderIdentity | None:
+        """Match one movie. An outage blocks the merge rather than failing it."""
+        movie = self._matcher.MovieInput(
+            title,
+            values.release_year,
+            values.directors or (),
+            values.duration_minutes,
+        )
+        try:
+            output = await self._matcher.execute(self._matcher.InputData((movie,)))
+        except MovieMetadataUnavailableError:
+            return None
+        return output.matches[0].identity

@@ -1,4 +1,4 @@
-"""Tests for CreateMissingMoviesCommand."""
+"""How the import pipeline finds and creates movies."""
 
 from __future__ import annotations
 
@@ -6,12 +6,13 @@ from unittest.mock import create_autospec
 
 import pytest
 
-from marquise.application.repositories import MovieRepository
-from marquise.application.use_cases.create_missing_movies import (
-    CreateMissingMoviesCommand,
+from marquise.application.queries.fetch_screenings_from_source import (
+    FetchScreeningsFromSourceQuery,
 )
+from marquise.application.repositories import MovieRepository
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
+from support.movie_import import MovieImport, build_movie_import
 
 
 def _make_movie_input(
@@ -21,8 +22,8 @@ def _make_movie_input(
     cast: tuple[str, ...] | None = None,
     duration_minutes: int | None = None,
     release_year: int | None = None,
-) -> CreateMissingMoviesCommand.MovieInput:
-    return CreateMissingMoviesCommand.MovieInput(
+) -> FetchScreeningsFromSourceQuery.FetchedMovieData:
+    return MovieImport.build_movie_input(
         title=title,
         description=description,
         directors=directors,
@@ -34,16 +35,16 @@ def _make_movie_input(
 
 def _make_command(
     movie_repo: MovieRepository,
-) -> CreateMissingMoviesCommand:
-    return CreateMissingMoviesCommand(movie_repository=movie_repo)
+) -> MovieImport:
+    return build_movie_import(movie_repo)
 
 
 async def _run(
-    command: CreateMissingMoviesCommand,
-    movies: tuple[CreateMissingMoviesCommand.MovieInput, ...],
+    command: MovieImport,
+    movies: tuple[FetchScreeningsFromSourceQuery.FetchedMovieData, ...],
 ) -> dict[str, str]:
-    result = await command.execute(CreateMissingMoviesCommand.InputData(movies=movies))
-    return {m.title: m.id for m in result.movies}
+    result = await command.execute(MovieImport.InputData(movies=movies))
+    return {movie.title: movie.id for movie in result.movies}
 
 
 @pytest.mark.asyncio
@@ -181,7 +182,7 @@ async def test_creates_movie_when_title_candidate_has_different_key() -> None:
     )
 
     assert lookup["It"] == "mov-it"
-    mock_movie_repo.find_by_titles.assert_awaited_once_with(["it"])
+    assert mock_movie_repo.find_by_titles.await_args_list[0].args == (["it"],)
     mock_movie_repo.create_or_reuse.assert_awaited_once()
 
 
