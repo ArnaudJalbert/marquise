@@ -13,13 +13,18 @@ import { usePageResource } from "../discovery/use-page-resource";
 import { MinimalCatalogue } from "./MinimalCatalogue";
 import { decodePathId } from "./catalogue-format";
 import type {
+  CatalogueFilter,
   CatalogueMovie,
-  CatalogueFilterType,
+  ActiveCatalogueFilterType,
   CatalogueScreening,
   CatalogueSelection,
   CatalogueState,
   MinimalCatalogueProps,
 } from "./catalogue-types";
+import {
+  getCatalogueTimeFilter,
+  isCatalogueTimeFilterValue,
+} from "./catalogue-time-filters";
 
 const timeFormatter = new Intl.DateTimeFormat("en-GB", {
   timeZone: "America/Toronto",
@@ -68,23 +73,20 @@ function resourceState(resource: {
 
 const screeningLanguages = ["VO", "VOA", "VOF", "VOSTF", "VOSTA", "VF"];
 
-const timeRanges = {
-  matinee: { start: 0, end: 17 },
-  evening: { start: 17, end: 21 },
-  late: { start: 21, end: 24 },
-} as const;
-
-const filterTypes: readonly CatalogueFilterType[] = [
+const filterTypes: readonly ActiveCatalogueFilterType[] = [
   "cinema",
   "time",
 ];
 
-function parseFilter(type: CatalogueFilterType, value: string) {
-  const operator = value.startsWith("-") ? "is_not" : "is";
+function parseFilter(type: ActiveCatalogueFilterType, value: string) {
+  const operator: CatalogueFilter["operator"] = value.startsWith("-") ? "is_not" : "is";
   const filterValue = operator === "is_not" ? value.slice(1) : value;
-  if (!filterValue || (type === "time" && !Object.hasOwn(timeRanges, filterValue)))
-    return undefined;
-  return { type, value: filterValue, operator } as const;
+  if (!filterValue) return undefined;
+  if (type === "time") {
+    if (!isCatalogueTimeFilterValue(filterValue)) return undefined;
+    return { type, value: filterValue, operator };
+  }
+  return { type, value: filterValue, operator };
 }
 
 function parseSelection(url: URL, today: string): CatalogueSelection {
@@ -132,11 +134,11 @@ function listingHref(href: string, selection: CatalogueSelection): string {
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
-function timeHours(filters: CatalogueSelection["filters"]): HourFilter | undefined {
+function getTimeHours(filters: CatalogueSelection["filters"]): HourFilter | undefined {
   const time = filters.find((filter) => filter.type === "time");
-  if (!time || !Object.hasOwn(timeRanges, time.value)) return undefined;
-  const range = timeRanges[time.value as keyof typeof timeRanges];
-  return { operator: time.operator, ranges: [range] };
+  if (!time) return undefined;
+  const { start, end } = getCatalogueTimeFilter(time.value);
+  return { operator: time.operator, ranges: [{ start, end }] };
 }
 
 /** Production composition of the approved UI with injected, bounded API reads. */
@@ -201,7 +203,7 @@ export function MinimalExperience({
             excludedCinemas: selection.filters
               .filter((filter) => filter.type === "cinema" && filter.operator === "is_not")
               .map((filter) => filter.value),
-            hours: timeHours(selection.filters),
+            hours: getTimeHours(selection.filters),
           },
           signal,
         ),

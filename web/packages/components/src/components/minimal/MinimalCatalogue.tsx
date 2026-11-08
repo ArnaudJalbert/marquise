@@ -9,6 +9,7 @@ import type {
   MinimalCatalogueProps,
 } from "./catalogue-types";
 export type {
+  ActiveCatalogueFilterType,
   CatalogueCinema,
   CatalogueFilter,
   CatalogueFilterType,
@@ -29,6 +30,7 @@ import { MovieSchedule } from "./MovieSchedule";
 import { PeriodPicker } from "./PeriodPicker";
 import { MovieSearch } from "./MovieSearch";
 import { ScreeningFilters } from "./ScreeningFilters";
+import { matchesCatalogueTimeFilter } from "./catalogue-time-filters";
 import { Showtime } from "./Showtime";
 import { InfoMenu, SiteFooter, infoPages } from "./SiteInfo";
 import marquiseMark from "./marquise-mark.svg";
@@ -39,10 +41,7 @@ function matchesTimeFilter(
   filter: CatalogueSelection["filters"][number] | undefined,
 ): boolean {
   if (!filter || filter.type !== "time" || filter.operator === "is_not") return true;
-  const hour = Number(time.slice(0, 2));
-  if (filter.value === "matinee") return hour < 17;
-  if (filter.value === "evening") return hour >= 17 && hour < 21;
-  return filter.value === "late" && hour >= 21;
+  return matchesCatalogueTimeFilter(time, filter.value);
 }
 
 function Poster({ movie }: { movie: CatalogueMovie }) {

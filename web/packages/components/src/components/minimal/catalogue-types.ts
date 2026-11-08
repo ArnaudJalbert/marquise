@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { CatalogueTimeFilterValue } from "./catalogue-time-filters";
 export interface CatalogueCinema {
   id: string;
   name: string;
@@ -39,11 +40,14 @@ export interface CatalogueSelection {
   filters: CatalogueFilter[];
 }
 export type CatalogueFilterType = "cinema" | "time" | "audio" | "subtitles";
-export interface CatalogueFilter {
-  type: CatalogueFilterType;
-  value: string;
-  operator: "is" | "is_not";
-}
+export type ActiveCatalogueFilterType = "cinema" | "time";
+export type CatalogueFilter =
+  | { type: "cinema"; value: string; operator: "is" | "is_not" }
+  | {
+      type: "time";
+      value: CatalogueTimeFilterValue;
+      operator: "is" | "is_not";
+    };
 export interface MinimalCatalogueProps {
   currentTime?: string;
   movies: readonly CatalogueMovie[];

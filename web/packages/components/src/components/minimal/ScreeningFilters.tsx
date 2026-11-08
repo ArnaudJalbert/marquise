@@ -1,19 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import type {
+  ActiveCatalogueFilterType,
   CatalogueCinema,
   CatalogueFilter,
   CatalogueFilterType,
 } from "./catalogue-types";
+import {
+  CATALOGUE_TIME_FILTERS,
+  getCatalogueTimeFilter,
+  isCatalogueTimeFilterValue,
+} from "./catalogue-time-filters";
 
-const timeFilters = [
-  { value: "matinee", label: "Matinée", start: 0, end: 17 },
-  { value: "evening", label: "Evening", start: 17, end: 21 },
-  { value: "late", label: "Late", start: 21, end: 24 },
-] as const;
+const filterTypes: readonly ActiveCatalogueFilterType[] = ["cinema", "time"];
 
-const filterTypes = ["cinema", "time"] as const;
-
-function filterTypeLabel(type: CatalogueFilterType): string {
+function getFilterTypeLabel(type: CatalogueFilterType): string {
   return type === "subtitles"
     ? "Subtitles"
     : `${type.charAt(0).toUpperCase()}${type.slice(1)}`;
@@ -30,9 +30,9 @@ export function ScreeningFilters({
   fixedCinemaId?: string;
   onChange: (filters: CatalogueFilter[]) => void;
 }) {
-  const [pendingFocus, setPendingFocus] = useState<CatalogueFilterType | "add">();
+  const [pendingFocus, setPendingFocus] = useState<ActiveCatalogueFilterType | "add">();
   const addFilterRef = useRef<HTMLElement>(null);
-  const chipButtons = useRef(new Map<CatalogueFilterType, HTMLButtonElement>());
+  const chipButtons = useRef(new Map<ActiveCatalogueFilterType, HTMLButtonElement>());
   useEffect(() => {
     if (!pendingFocus) return;
     if (pendingFocus === "add") addFilterRef.current?.focus();
@@ -47,18 +47,23 @@ export function ScreeningFilters({
       !(fixedCinemaId && type === "cinema") &&
       (type !== "cinema" || cinemas.length > 0),
   );
-  const valueLabel = (filter: CatalogueFilter) =>
+  const getFilterValueLabel = (filter: CatalogueFilter) =>
     filter.type === "cinema"
       ? cinemas.find((cinema) => cinema.id === filter.value)?.name ?? "Cinema unavailable"
-      : filter.type === "time"
-        ? timeFilters.find((time) => time.value === filter.value)?.label ?? filter.value
-        : filter.value;
+      : getCatalogueTimeFilter(filter.value).label;
   const update = (next: CatalogueFilter) =>
     onChange(filters.map((filter) => filter.type === next.type ? next : filter));
-  const add = (type: CatalogueFilterType, menu: HTMLDetailsElement) => {
-    const value = type === "cinema" ? cinemas[0]?.id : timeFilters[0].value;
-    if (!value) return;
-    onChange([...filters, { type, value, operator: "is" }]);
+  const add = (type: ActiveCatalogueFilterType, menu: HTMLDetailsElement) => {
+    if (type === "cinema") {
+      const value = cinemas[0]?.id;
+      if (!value) return;
+      onChange([...filters, { type, value, operator: "is" }]);
+    } else {
+      onChange([
+        ...filters,
+        { type, value: CATALOGUE_TIME_FILTERS[0].value, operator: "is" },
+      ]);
+    }
     setPendingFocus(type);
     menu.open = false;
   };
@@ -73,7 +78,7 @@ export function ScreeningFilters({
             role="group"
             aria-label={`${filter.type} filter`}
           >
-            <span>{filterTypeLabel(filter.type)} </span>
+            <span>{getFilterTypeLabel(filter.type)} </span>
             <button
               ref={(button) => {
                 if (button) chipButtons.current.set(filter.type, button);
@@ -86,12 +91,12 @@ export function ScreeningFilters({
               {filter.operator === "is" ? "is " : "is not "}
             </button>
             <details className="minimal-filter-value">
-              <summary>{valueLabel(filter)}</summary>
+              <summary>{getFilterValueLabel(filter)}</summary>
               <div className="minimal-filter-options">
                 {(filter.type === "cinema"
                   ? cinemas.map((cinema) => ({ value: cinema.id, label: cinema.name }))
                   : filter.type === "time"
-                    ? timeFilters.map(({ value, label }) => ({ value, label }))
+                    ? CATALOGUE_TIME_FILTERS.map(({ value, label }) => ({ value, label }))
                     : []
                 ).map((option) => (
                   <button
@@ -99,7 +104,13 @@ export function ScreeningFilters({
                     type="button"
                     aria-pressed={filter.value === option.value}
                     onClick={(event) => {
-                      update({ ...filter, value: option.value });
+                      const nextFilter =
+                        filter.type === "cinema"
+                          ? { ...filter, value: option.value }
+                          : isCatalogueTimeFilterValue(option.value)
+                            ? { ...filter, value: option.value }
+                            : undefined;
+                      if (nextFilter) update(nextFilter);
                       setPendingFocus(filter.type);
                       event.currentTarget.closest("details")!.open = false;
                     }}
@@ -133,7 +144,7 @@ export function ScreeningFilters({
                   key={type}
                   onClick={(event) => add(type, event.currentTarget.closest("details")!)}
                 >
-                  {filterTypeLabel(type)}
+                  {getFilterTypeLabel(type)}
                 </button>
               ))}
             </div>

@@ -8,6 +8,7 @@ export type {
   CatalogueScreening,
   CatalogueFilter,
   CatalogueFilterType,
+  ActiveCatalogueFilterType,
   CatalogueSelection,
   CatalogueState,
   MinimalCatalogueProps,
