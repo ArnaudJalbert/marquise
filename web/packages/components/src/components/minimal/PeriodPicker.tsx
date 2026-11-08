@@ -22,7 +22,7 @@ import {
   type WeekCount,
 } from "./period";
 
-const weeksLabel = (weeks: WeekCount) => `${weeks} ${weeks === 1 ? "week" : "weeks"}`;
+const formatWeeks = (weeks: WeekCount) => `${weeks} ${weeks === 1 ? "week" : "weeks"}`;
 
 type DragMode = "draw" | "move" | "start" | "end";
 interface Drag {
@@ -299,12 +299,12 @@ export function PeriodPicker({
             step={1}
             value={view.weeks}
             aria-label="Zoom"
-            aria-valuetext={weeksLabel(view.weeks)}
+            aria-valuetext={formatWeeks(view.weeks)}
             onChange={(event) =>
               setView(anchorView(Number(event.target.value) as WeekCount, range[0]))
             }
           />
-          <span aria-hidden>{weeksLabel(view.weeks)}</span>
+          <span aria-hidden>{formatWeeks(view.weeks)}</span>
         </div>
       </div>
       {detail && <p className="minimal-period-detail">{detail}</p>}
