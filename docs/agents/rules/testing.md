@@ -4,14 +4,16 @@ Read when writing, moving or reviewing tests in either stack.
 
 ## Boundary
 
-Everything through interface adapters is unit-testable with zero external I/O. Infrastructure is the only layer that touches real externals, in integration tests.
+Everything through interface adapters is unit-testable with zero external I/O. Infrastructure is the only layer that touches real externals. Unit tests stub network calls with injected or patched fetchers where those seams exist. Database gateways use a real disposable database; selected HTTP clients also get offline loopback-HTTP integration tests.
 
 | Code | Test location | Swap in |
 |---|---|---|
 | `domain/` | `unit_tests/domain/` | Nothing |
 | `application/` | `unit_tests/application/` | Repository ABCs via `create_autospec` |
 | `interface_adapters/` | `unit_tests/interface_adapters/` | Gateway `Protocol`s via `create_autospec` |
-| `infrastructure/.../gateways/` | `integration_tests/infrastructure/` | Real disposable database |
+| `infrastructure/supabase/gateways/` | `integration_tests/infrastructure/supabase/` | Real disposable database |
+| `infrastructure/` unit coverage | `unit_tests/infrastructure/` | Fakes, fixtures or stubbed fetchers |
+| Selected `infrastructure/sources/`, `infrastructure/auth/` HTTP clients | `integration_tests/infrastructure/sources/`, `integration_tests/infrastructure/auth/` | Loopback HTTP server |
 | `apps/marquise-api/` | `apps/marquise-api/tests/` | `MarquiseFactory` |
 | `apps/marquise-cli/` | `apps/marquise-cli/tests/` | `MarquiseFactory` |
 
