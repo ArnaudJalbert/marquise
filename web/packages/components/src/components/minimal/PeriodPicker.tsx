@@ -259,13 +259,13 @@ function DayStrip({
   const shownEnd = Math.min(end, last);
   const { totals } = volume;
   // A cell counts the screenings of its days; a week cell sums its seven.
-  const cellTotal = ([from, to]: [number, number]) => {
+  const sumCellScreenings = ([from, to]: [number, number]) => {
     if (!totals) return undefined;
     let sum = 0;
     for (let day = from; day <= to; day += 1) sum += totals.get(addDays(today, day)) ?? 0;
     return sum;
   };
-  const cellTotals = cells.map((cell) => cellTotal(toDays([cell, cell])));
+  const cellTotals = cells.map((cell) => sumCellScreenings(toDays([cell, cell])));
   // One scale across the drawn cells; an all-zero horizon draws no bars.
   const busiest = Math.max(0, ...cellTotals.map((total) => total ?? 0));
 
