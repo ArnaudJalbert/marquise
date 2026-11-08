@@ -22,11 +22,11 @@ OutputData skips re-validating fields copied from already-validated entities or 
 
 - Use case structure follows [use-cases](use-cases/structure.md).
 - `InputData` and `OutputData` follow [use-cases](use-cases/input-and-output.md).
+- Use-case failure behavior follows [use-cases](use-cases/failure.md).
 
 ## Errors
 
 - Entities and value objects raise `ValueError` from `__post_init__` when their values are invalid.
-- A use case that rejects input for an application limit, rather than an invalid value, raises a use-case-specific `ApplicationError` from `application/exceptions/`. For example, `ListMoviesUseCase` raises `TooManyMovieIdsError` when given more than 100 IDs.
 - Application errors subclass `ApplicationError`, with one module per aggregate in `application/exceptions/`.
 - Domain exception boundaries follow [architecture](architecture.md#boundaries).
 - Repository gateway errors are declared with their protocols under `interface_adapters/repositories/protocols/`.

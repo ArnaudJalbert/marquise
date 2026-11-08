@@ -4,6 +4,7 @@ Read when deciding what happens if something goes wrong in a use case.
 
 - A use case never falls back. Its job is to execute business logic on the input it receives, so it doesn't guess at missing input or substitute for it.
 - Missing or invalid mandatory input fails as early as possible, before any work is done.
+- A use case rejects input for an application limit, rather than an invalid value, by raising a use-case-specific `ApplicationError` from `application/exceptions/`. For example, `ListMoviesUseCase` raises `TooManyMovieIdsError` when given more than 100 IDs.
 - A use case reports failure by raising an exception. It returns output only when it executed correctly, so output never carries a failure.
 - For anything that can go wrong, the author decides whether it is an error. If it is, it raises. If it isn't, the business logic handles it explicitly. For example, TMDB being down raises, while TMDB finding no match is handled.
 - A failed dependency raises unless the author decided it isn't an error. The use case never hides a failure or quietly finds another way to do the job.
