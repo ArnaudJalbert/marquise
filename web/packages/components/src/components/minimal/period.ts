@@ -21,6 +21,15 @@ export function weekdayName(date: string): string {
 export function monthName(date: string): string {
   return MONTHS[utcNoon(date).getUTCMonth()] ?? "";
 }
+const LONG_MONTH_DAY = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "UTC",
+  month: "long",
+  day: "numeric",
+});
+/** "November 7". */
+export function longMonthDay(date: string): string {
+  return LONG_MONTH_DAY.format(utcNoon(date));
+}
 /** Whole days from `from` to `to`. */
 export function daysBetween(from: string, to: string): number {
   return Math.round((utcNoon(to).getTime() - utcNoon(from).getTime()) / 86_400_000);
