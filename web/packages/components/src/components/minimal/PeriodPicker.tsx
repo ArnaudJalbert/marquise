@@ -103,7 +103,6 @@ function DayStrip({
     const ratio = Math.max(0, Math.min(0.999, (event.clientX - box.left) / box.width));
     return view.first + Math.floor(ratio * dayCount);
   };
-  const cellAt = (event: PointerEvent<HTMLDivElement>) => toCell(dayAt(event));
   const update = (next: Drag) => {
     drag.current = next;
     setDraft(next.range);
@@ -163,7 +162,7 @@ function DayStrip({
       onPointerMove={(event) => {
         const current = drag.current;
         if (!current) return;
-        const cell = cellAt(event);
+        const cell = toCell(dayAt(event));
         const anchor = toCell(current.anchor);
         update({
           ...current,

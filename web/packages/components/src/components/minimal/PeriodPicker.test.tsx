@@ -463,8 +463,8 @@ it("names each block by the month of its first day, always on the first block", 
   ]);
 });
 
-it("names the month on the first cell and where a month starts, in both modes", () => {
-  /** Scenario: days and blocks label their month at the view start and on the 1st. */
+it("names the month on the first cell and where the month changes, in both modes", () => {
+  /** Scenario: days label their month at the view start and on the 1st; blocks label it on the first block and when their first day's month differs from the block before. */
   stubViewport(false);
   setup("2026-11-24");
   zoomTo(2);
@@ -524,10 +524,10 @@ it("draws from an unselected part of a partly selected block and moves only from
   const onChange = setup("2026-11-12");
   zoomTo(4);
   const dayWidth = CELL / 7;
-  const pressDay = (day: number) => ({ ...at(0), clientX: day * dayWidth + dayWidth / 2 });
+  const atDay = (day: number) => ({ ...at(0), clientX: day * dayWidth + dayWidth / 2 });
   // The view opens on Nov 10, so day 3 is Nov 13 (unselected) and day 2 is Nov 12.
   let element = strip();
-  fireEvent.pointerDown(block("November 10 to November 16"), pressDay(3));
+  fireEvent.pointerDown(block("November 10 to November 16"), atDay(3));
   fireEvent.pointerMove(element, at(1));
   fireEvent.pointerUp(element, at(1));
   expect(onChange).toHaveBeenLastCalledWith("2026-11-10", "2026-11-23");
@@ -535,7 +535,7 @@ it("draws from an unselected part of a partly selected block and moves only from
   const moved = setup("2026-11-12");
   zoomTo(4);
   element = strip();
-  fireEvent.pointerDown(block("November 10 to November 16"), pressDay(2));
+  fireEvent.pointerDown(block("November 10 to November 16"), atDay(2));
   fireEvent.pointerMove(element, at(1));
   fireEvent.pointerUp(element, at(1));
   expect(moved).toHaveBeenLastCalledWith("2026-11-17", "2026-11-23");
