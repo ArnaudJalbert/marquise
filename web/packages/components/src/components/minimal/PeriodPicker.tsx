@@ -88,33 +88,40 @@ function ZoomChip({
   useEffect(() => {
     if (!open) return;
     slider.current?.focus();
-    const close = () => {
-      setOpen(false);
-      chip.current?.focus();
-    };
     const closeOutside = (event: globalThis.PointerEvent) => {
-      if (!menu.current?.contains(event.target as Node)) close();
-    };
-    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") close();
+      if (!menu.current?.contains(event.target as Node)) {
+        setOpen(false);
+        chip.current?.focus();
+      }
     };
     document.addEventListener("pointerdown", closeOutside);
-    document.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.removeEventListener("pointerdown", closeOutside);
-      document.removeEventListener("keydown", closeOnEscape);
-    };
+    return () => document.removeEventListener("pointerdown", closeOutside);
   }, [open]);
 
   return (
-    <div className="minimal-zoom-menu" ref={menu}>
+    <div
+      className="minimal-zoom-menu"
+      ref={menu}
+      onKeyDown={(event) => {
+        if (open && event.key === "Escape") {
+          setOpen(false);
+          chip.current?.focus();
+        }
+      }}
+      // Tabbing away from the chip and slider closes the popover.
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setOpen(false);
+        }
+      }}
+    >
       <button
         ref={chip}
         type="button"
         className="minimal-zoom-chip"
         aria-label={`Zoom, ${weeksLabel(weeks)}`}
         aria-expanded={open}
-        aria-controls={popoverId}
+        aria-controls={open ? popoverId : undefined}
         onClick={() => setOpen(!open)}
       >
         {weeks} wk <span aria-hidden>▾</span>
