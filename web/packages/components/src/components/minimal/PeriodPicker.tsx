@@ -119,7 +119,11 @@ function ZoomChip({
         className="minimal-zoom-chip"
         aria-label={`${weeks} wk, zoom ${formatWeeks(weeks)}`}
         aria-expanded={open}
-        onClick={() => setOpen(!open)}
+        // Safari does not focus a tapped button, so closing would drop focus to the page.
+        onClick={() => {
+          if (open) chip.current?.focus();
+          setOpen(!open);
+        }}
       >
         {weeks} wk <span aria-hidden>▾</span>
       </button>
