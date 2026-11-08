@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { PeriodPicker } from "./PeriodPicker";
@@ -7,15 +7,39 @@ import { PeriodPicker } from "./PeriodPicker";
 const today = "2026-11-03";
 const CELL = 100;
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+/** Stubs the phone breakpoint; the returned function flips it and notifies listeners. */
+function viewport(phone: boolean) {
+  let matches = phone;
+  const listeners = new Set<() => void>();
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    get matches() {
+      return query === "(max-width: 639px)" && matches;
+    },
+    media: query,
+    addEventListener: (_type: string, listener: () => void) => listeners.add(listener),
+    removeEventListener: (_type: string, listener: () => void) =>
+      listeners.delete(listener),
+  }));
+  return (nextPhone: boolean) => {
+    matches = nextPhone;
+    act(() => listeners.forEach((listener) => listener()));
+  };
+}
 
 function Harness({
-  start = today,
+  start,
   end = start,
+  today: todayDate = today,
   onChange,
 }: {
-  start?: string;
+  start: string;
   end?: string;
+  today?: string;
   onChange: (start: string, end: string) => void;
 }) {
   const [period, setPeriod] = useState([start, end] as const);
@@ -23,7 +47,7 @@ function Harness({
     <PeriodPicker
       start={period[0]}
       end={period[1]}
-      today={today}
+      today={todayDate}
       onChange={(nextStart, nextEnd) => {
         onChange(nextStart, nextEnd);
         setPeriod([nextStart, nextEnd]);
@@ -32,18 +56,20 @@ function Harness({
   );
 }
 
-function setup(start?: string, end?: string) {
+function setup(start?: string, end?: string, todayDate = today) {
   const onChange = vi.fn<(start: string, end: string) => void>();
-  render(<Harness start={start} end={end} onChange={onChange} />);
+  render(
+    <Harness start={start ?? todayDate} end={end} today={todayDate} onChange={onChange} />,
+  );
   return onChange;
 }
 
 /** Lays the strip out as equal cells of CELL pixels so pointer math is real. */
 function strip(cellWidth = CELL) {
   const element = screen.getByRole("group", { name: "Choose dates" });
-  const days = element.querySelectorAll(".minimal-strip-day").length;
+  const cells = element.querySelectorAll("button").length;
   element.getBoundingClientRect = () =>
-    ({ left: 0, width: days * cellWidth, top: 0, height: 60 }) as DOMRect;
+    ({ left: 0, width: cells * cellWidth, top: 0, height: 60 }) as DOMRect;
   return element;
 }
 
@@ -67,6 +93,12 @@ const visibleDays = () =>
   Array.from(strip().querySelectorAll(".minimal-strip-day"), (cell) =>
     cell.getAttribute("aria-label"),
   );
+
+const visibleBlocks = () =>
+  Array.from(strip().querySelectorAll(".minimal-strip-week"), (cell) =>
+    cell.getAttribute("aria-label"),
+  );
+const block = (name: string) => screen.getByRole("button", { name });
 
 const title = () => screen.getByRole("heading", { level: 1 }).textContent;
 const selectedDays = () =>
@@ -136,10 +168,10 @@ it("moves the selected window by dragging inside it", () => {
   expect(onChange).toHaveBeenCalledExactlyOnceWith("2026-11-07", "2026-11-08");
 });
 
-it("moves a one-day selection in a narrow six-week view", () => {
+it("moves a one-day selection in a narrow three-week view", () => {
   /** Scenario: narrow resize grips leave the selected range's center interactive. */
   const onChange = setup();
-  zoomTo(6);
+  zoomTo(3);
   const element = strip(8);
   const window = element.querySelector(".minimal-strip-window") as HTMLElement;
   window.getBoundingClientRect = () =>
@@ -290,8 +322,8 @@ it("zooms by whole weeks from the selection start without changing the selection
   expect(visibleDays()[0]).toBe("Tuesday November 17th");
   expect(slider()).toHaveAttribute("aria-valuetext", "2 weeks");
   zoomTo(6);
-  expect(visibleDays()).toHaveLength(42);
-  expect(visibleDays()[0]).toBe("Today, Tuesday November 3rd");
+  expect(visibleBlocks()).toHaveLength(6);
+  expect(visibleBlocks()[0]).toBe("November 3 to November 9");
   zoomTo(1);
   expect(visibleDays()).toEqual([
     "Tuesday November 17th",
@@ -332,4 +364,143 @@ it("drops a cancelled drag", () => {
   expect(onChange).not.toHaveBeenCalled();
   expect(title()).toBe("Today");
   expect(selectedDays()).toEqual(["Today, Tuesday November 3rd"]);
+});
+
+it("shows days up to three weeks and week blocks from four on desktop", () => {
+  /** Scenario: the desktop strip collapses into blocks only at 4 to 6 weeks. */
+  viewport(false);
+  setup();
+  zoomTo(3);
+  expect(visibleDays()).toHaveLength(21);
+  expect(visibleBlocks()).toHaveLength(0);
+  for (const weeks of [4, 5, 6]) {
+    zoomTo(weeks);
+    expect(visibleDays()).toHaveLength(0);
+    expect(visibleBlocks()).toHaveLength(weeks);
+  }
+});
+
+it("shows week blocks from three weeks at the phone breakpoint, switching live", () => {
+  /** Scenario: phones collapse at 3 weeks, and crossing the breakpoint switches modes. */
+  const setPhone = viewport(true);
+  setup();
+  zoomTo(2);
+  expect(visibleDays()).toHaveLength(14);
+  zoomTo(3);
+  expect(visibleDays()).toHaveLength(0);
+  expect(visibleBlocks()).toHaveLength(3);
+  setPhone(false);
+  expect(visibleDays()).toHaveLength(21);
+  expect(visibleBlocks()).toHaveLength(0);
+  setPhone(true);
+  expect(visibleBlocks()).toHaveLength(3);
+});
+
+it("labels each block with its month change, day span and full range", () => {
+  /** Scenario: blocks run in 7-day steps from today and name the month where it changes. */
+  viewport(false);
+  setup("2026-11-07", "2026-11-07", "2026-11-07");
+  zoomTo(6);
+  expect(visibleBlocks()).toEqual([
+    "November 7 to November 13",
+    "November 14 to November 20",
+    "November 21 to November 27",
+    "November 28 to December 4",
+    "December 5 to December 11",
+    "December 12 to December 18",
+  ]);
+  const cells = strip().querySelectorAll(".minimal-strip-week");
+  expect(
+    Array.from(cells, (cell) => [
+      cell.querySelector(".minimal-strip-month")?.textContent,
+      cell.querySelector(".minimal-strip-date")?.textContent,
+    ]),
+  ).toEqual([
+    ["Nov", "7-13"],
+    ["", "14-20"],
+    ["", "21-27"],
+    ["Dec", "28-4"],
+    ["", "5-11"],
+    ["", "12-18"],
+  ]);
+});
+
+it("picks a whole block on tap and draws across blocks", () => {
+  /** Scenario: block taps and draws commit whole weeks. */
+  viewport(false);
+  const onChange = setup();
+  zoomTo(4);
+  const element = strip();
+  fireEvent.pointerDown(block("November 17 to November 23"), at(2));
+  fireEvent.pointerUp(element, at(2));
+  expect(onChange).toHaveBeenLastCalledWith("2026-11-17", "2026-11-23");
+  expect(block("November 17 to November 23")).toHaveAttribute("aria-pressed", "true");
+  dragOn(block("November 10 to November 16"), 1, 0);
+  expect(onChange).toHaveBeenLastCalledWith("2026-11-03", "2026-11-16");
+  expect(title()).toBe("Nov 3 → Nov 16");
+});
+
+it("snaps resized edges to block edges and moves by whole blocks within the horizon", () => {
+  /** Scenario: handles and moves in block mode keep the range block-aligned. */
+  viewport(false);
+  const onChange = setup("2026-11-07", "2026-11-08");
+  zoomTo(6);
+  const handle = (edge: string) =>
+    strip().querySelector(`[data-handle="${edge}"]`) as Element;
+  dragOn(handle("end"), 0, 1);
+  expect(onChange).toHaveBeenLastCalledWith("2026-11-03", "2026-11-16");
+  dragOn(handle("start"), 0, 1);
+  expect(onChange).toHaveBeenLastCalledWith("2026-11-10", "2026-11-16");
+  dragOn(handle("end"), 1, 2);
+  expect(onChange).toHaveBeenLastCalledWith("2026-11-10", "2026-11-23");
+  dragOn(block("November 10 to November 16"), 1, 3);
+  expect(onChange).toHaveBeenLastCalledWith("2026-11-24", "2026-12-07");
+  dragOn(block("November 24 to November 30"), 3, 5);
+  expect(onChange).toHaveBeenLastCalledWith("2026-12-01", "2026-12-14");
+});
+
+it("moves, selects and extends blocks from the keyboard", () => {
+  /** Scenario: arrows move between blocks, Enter selects one, Shift+arrows extend by blocks. */
+  viewport(false);
+  const onChange = setup();
+  zoomTo(4);
+  const first = block("November 3 to November 9");
+  expect(first).toHaveAttribute("tabindex", "0");
+  first.focus();
+  fireEvent.keyDown(first, { key: "ArrowRight" });
+  const second = block("November 10 to November 16");
+  expect(second).toHaveFocus();
+  fireEvent.click(second);
+  expect(onChange).toHaveBeenLastCalledWith("2026-11-10", "2026-11-16");
+  fireEvent.keyDown(second, { key: "ArrowRight", shiftKey: true });
+  const third = block("November 17 to November 23");
+  expect(third).toHaveFocus();
+  expect(onChange).toHaveBeenLastCalledWith("2026-11-10", "2026-11-23");
+  fireEvent.keyDown(third, { key: "ArrowLeft", shiftKey: true });
+  fireEvent.keyDown(second, { key: "ArrowLeft", shiftKey: true });
+  expect(first).toHaveFocus();
+  expect(onChange).toHaveBeenLastCalledWith("2026-11-03", "2026-11-16");
+});
+
+it("draws a non-aligned selection as a partial fill and keeps it through zooming", () => {
+  /** Scenario: a weekend or a single day stays as picked while the strip shows blocks. */
+  viewport(false);
+  const onChange = setup("2026-11-06", "2026-11-08");
+  const window = () =>
+    (strip().querySelector(".minimal-strip-window") as HTMLElement).style;
+  zoomTo(5);
+  expect(window().left).toBe(`${(3 / 35) * 100}%`);
+  expect(window().width).toBe(`${(3 / 35) * 100}%`);
+  expect(block("November 3 to November 9")).toHaveAttribute("aria-pressed", "mixed");
+  expect(block("November 10 to November 16")).toHaveAttribute("aria-pressed", "false");
+  zoomTo(1);
+  zoomTo(6);
+  expect(onChange).not.toHaveBeenCalled();
+  expect(title()).toBe("This weekend");
+  cleanup();
+  setup("2026-11-12");
+  zoomTo(4);
+  expect(window().left).toBe(`${(2 / 28) * 100}%`);
+  expect(window().width).toBe(`${(1 / 28) * 100}%`);
+  expect(title()).toBe("Thu Nov 12");
 });

@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   useRef,
   useState,
+  useSyncExternalStore,
   type CSSProperties,
   type KeyboardEvent,
   type PointerEvent,
@@ -14,6 +15,7 @@ import {
   describePeriod,
   fitView,
   HORIZON_DAYS,
+  longMonthDay,
   monthName,
   stepPeriod,
   weekday,
@@ -24,26 +26,39 @@ import {
 
 const weeksLabel = (weeks: WeekCount) => `${weeks} ${weeks === 1 ? "week" : "weeks"}`;
 
+const PHONE_QUERY = "(max-width: 639px)";
+// Environments without matchMedia (jsdom, old embeds) get the desktop strip.
+function subscribeToPhone(onChange: () => void) {
+  const query = window.matchMedia?.(PHONE_QUERY);
+  query?.addEventListener("change", onChange);
+  return () => query?.removeEventListener("change", onChange);
+}
+const isPhone = () => window.matchMedia?.(PHONE_QUERY).matches ?? false;
+
 type DragMode = "draw" | "move" | "start" | "end";
 interface Drag {
   mode: DragMode;
+  /** Cell where the drag started. */
   anchor: number;
   moved: boolean;
+  /** Draft range in days. */
   range: [number, number];
 }
 
+/** The cell range a drag reaches at `cell`, kept within cells 0 to `lastCell`. */
 function dragRange(
   { mode, anchor }: Drag,
-  day: number,
+  cell: number,
   [start, end]: [number, number],
+  lastCell: number,
 ): [number, number] {
   if (mode === "move") {
-    const shift = Math.max(-start, Math.min(HORIZON_DAYS - 1 - end, day - anchor));
+    const shift = Math.max(-start, Math.min(lastCell - end, cell - anchor));
     return [start + shift, end + shift];
   }
-  if (mode === "start") return [Math.min(day, end), end];
-  if (mode === "end") return [start, Math.max(day, start)];
-  return day < anchor ? [day, anchor] : [anchor, day];
+  if (mode === "start") return [Math.min(cell, end), end];
+  if (mode === "end") return [start, Math.max(cell, start)];
+  return cell < anchor ? [cell, anchor] : [anchor, cell];
 }
 
 function DayStrip({
@@ -66,14 +81,26 @@ function DayStrip({
   }
   const [draft, setDraft] = useState<[number, number] | null>(null);
   const [start, end] = draft ?? range;
+  const phone = useSyncExternalStore(subscribeToPhone, isPhone, () => false);
+  // Long views show one cell per rolling week; every edit then covers whole weeks.
+  const cellDays = view.weeks >= (phone ? 3 : 4) ? 7 : 1;
+  const toCell = (day: number) => Math.floor(day / cellDays);
+  const toDays = ([from, to]: [number, number]): [number, number] => [
+    from * cellDays,
+    to * cellDays + cellDays - 1,
+  ];
+  const selectedCells: [number, number] = [toCell(range[0]), toCell(range[1])];
+  const lastCell = HORIZON_DAYS / cellDays - 1;
   const dayCount = view.weeks * 7;
-  const days = Array.from({ length: dayCount }, (_, i) => view.first + i);
+  const cellCount = dayCount / cellDays;
+  const firstCell = view.first / cellDays;
+  const cells = Array.from({ length: cellCount }, (_, i) => firstCell + i);
   const last = view.first + dayCount - 1;
-  const focusDay = Math.max(view.first, Math.min(last, start));
-  const dayAt = (event: PointerEvent<HTMLDivElement>) => {
+  const focusCell = Math.max(firstCell, Math.min(firstCell + cellCount - 1, toCell(start)));
+  const cellAt = (event: PointerEvent<HTMLDivElement>) => {
     const box = event.currentTarget.getBoundingClientRect();
     const ratio = Math.max(0, Math.min(0.999, (event.clientX - box.left) / box.width));
-    return view.first + Math.floor(ratio * dayCount);
+    return firstCell + Math.floor(ratio * cellCount);
   };
   const update = (next: Drag) => {
     drag.current = next;
@@ -87,8 +114,7 @@ function DayStrip({
       className="minimal-strip"
       role="group"
       aria-label="Choose dates"
-      data-days={dayCount}
-      style={{ "--strip-days": dayCount } as CSSProperties}
+      style={{ "--strip-cells": cellCount } as CSSProperties}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
           keyboardAnchor.current = null;
@@ -100,7 +126,7 @@ function DayStrip({
         keyboardAnchor.current = null;
         keyboardRange.current = null;
         event.preventDefault();
-        const day = dayAt(event);
+        const cell = cellAt(event);
         const handle = (event.target as Element)
           .closest("[data-handle]")
           ?.getAttribute("data-handle");
@@ -112,31 +138,32 @@ function DayStrip({
           windowRect.width > 0 &&
           event.clientX > windowRect.left + windowRect.width * 0.25 &&
           event.clientX < windowRect.right - windowRect.width * 0.25;
+        const inSelection = cell >= selectedCells[0] && cell <= selectedCells[1];
         const mode: DragMode =
-          inMoveArea && day >= range[0] && day <= range[1]
+          inMoveArea && inSelection
             ? "move"
             : handle === "start" || handle === "end"
-            ? handle
-            : day >= range[0] && day <= range[1]
-              ? "move"
-              : "draw";
+              ? handle
+              : inSelection
+                ? "move"
+                : "draw";
         // jsdom has no pointer capture; browsers keep the drag on the strip.
         event.currentTarget.setPointerCapture?.(event.pointerId);
         update({
           mode,
-          anchor: day,
+          anchor: cell,
           moved: false,
-          range: mode === "draw" ? [day, day] : range,
+          range: mode === "draw" ? toDays([cell, cell]) : range,
         });
       }}
       onPointerMove={(event) => {
         const current = drag.current;
         if (!current) return;
-        const day = dayAt(event);
+        const cell = cellAt(event);
         update({
           ...current,
-          moved: current.moved || day !== current.anchor,
-          range: dragRange(current, day, range),
+          moved: current.moved || cell !== current.anchor,
+          range: toDays(dragRange(current, cell, selectedCells, lastCell)),
         });
       }}
       onPointerUp={() => {
@@ -144,10 +171,10 @@ function DayStrip({
         if (!current) return;
         drag.current = null;
         setDraft(null);
-        // A tap anywhere picks that single day.
+        // A tap anywhere picks that single day or week.
         const [nextStart, nextEnd] = current.moved
           ? current.range
-          : [current.anchor, current.anchor];
+          : toDays([current.anchor, current.anchor]);
         onChange(nextStart, nextEnd);
       }}
       onPointerCancel={() => {
@@ -155,31 +182,42 @@ function DayStrip({
         setDraft(null);
       }}
     >
-      {days.map((day) => {
-        const date = addDays(today, day);
+      {cells.map((cell) => {
+        const [from, to] = toDays([cell, cell]);
+        const date = addDays(today, from);
+        const endDate = addDays(today, to);
         const weekend = weekday(date) === 0 || weekday(date) === 6;
-        const selected = day >= start && day <= end;
+        const selected = from <= end && to >= start;
+        const label =
+          cellDays === 7
+            ? `${longMonthDay(date)} to ${longMonthDay(endDate)}`
+            : `${from === 0 ? "Today, " : ""}${formatRangeDate(date)}`;
         return (
           <button
             key={date}
             type="button"
-            className={[
-              "minimal-strip-day",
-              weekend && "is-weekend",
-              day === 0 && "is-today",
-              selected && "is-selected",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            aria-label={`${day === 0 ? "Today, " : ""}${formatRangeDate(date)}`}
-            aria-pressed={selected}
-            tabIndex={day === focusDay ? 0 : -1}
+            className={
+              cellDays === 7
+                ? ["minimal-strip-week", selected && "is-selected"].filter(Boolean).join(" ")
+                : [
+                    "minimal-strip-day",
+                    weekend && "is-weekend",
+                    from === 0 && "is-today",
+                    selected && "is-selected",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")
+            }
+            aria-label={label}
+            // A selection that covers part of a week shows as a partial fill.
+            aria-pressed={from >= start && to <= end ? true : selected ? "mixed" : false}
+            tabIndex={cell === focusCell ? 0 : -1}
             // Pointer taps commit on pointer up; this handles keyboard activation.
             onClick={(event) => {
               if (event.detail === 0) {
                 keyboardAnchor.current = null;
                 keyboardRange.current = null;
-                onChange(day, day);
+                onChange(from, to);
               }
             }}
             onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => {
@@ -192,13 +230,14 @@ function DayStrip({
               if (sibling instanceof HTMLButtonElement) {
                 event.preventDefault();
                 if (event.shiftKey) {
-                  const anchor = keyboardAnchor.current ?? day;
-                  keyboardAnchor.current = anchor;
-                  const nextDay = day + (event.key === "ArrowRight" ? 1 : -1);
-                  const nextRange: [number, number] = [
-                    Math.min(anchor, nextDay),
-                    Math.max(anchor, nextDay),
-                  ];
+                  // The anchor is kept in days so it survives a switch between days and weeks.
+                  const anchor = toCell(keyboardAnchor.current ?? from);
+                  keyboardAnchor.current = anchor * cellDays;
+                  const nextCell = cell + (event.key === "ArrowRight" ? 1 : -1);
+                  const nextRange = toDays([
+                    Math.min(anchor, nextCell),
+                    Math.max(anchor, nextCell),
+                  ]);
                   keyboardRange.current = nextRange.join("/");
                   onChange(...nextRange);
                 } else {
@@ -209,19 +248,32 @@ function DayStrip({
               }
             }}
           >
-            <span className="minimal-strip-month" aria-hidden>
-              {day === view.first || dayOfMonth(date) === 1 ? monthName(date) : ""}
-            </span>
-            <span className="minimal-strip-weekday" aria-hidden>
-              {dayCount === 42
-                ? weekdayName(date).charAt(0)
-                : day === 0
-                  ? "Today"
-                  : weekdayName(date)}
-            </span>
-            <span className="minimal-strip-date" aria-hidden>
-              {dayOfMonth(date)}
-            </span>
+            {cellDays === 7 ? (
+              <>
+                <span className="minimal-strip-month" aria-hidden>
+                  {dayOfMonth(endDate) < dayOfMonth(date) || dayOfMonth(date) === 1
+                    ? monthName(endDate)
+                    : cell === firstCell
+                      ? monthName(date)
+                      : ""}
+                </span>
+                <span className="minimal-strip-date" aria-hidden>
+                  {`${dayOfMonth(date)}-${dayOfMonth(endDate)}`}
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="minimal-strip-month" aria-hidden>
+                  {from === view.first || dayOfMonth(date) === 1 ? monthName(date) : ""}
+                </span>
+                <span className="minimal-strip-weekday" aria-hidden>
+                  {from === 0 ? "Today" : weekdayName(date)}
+                </span>
+                <span className="minimal-strip-date" aria-hidden>
+                  {dayOfMonth(date)}
+                </span>
+              </>
+            )}
           </button>
         );
       })}
