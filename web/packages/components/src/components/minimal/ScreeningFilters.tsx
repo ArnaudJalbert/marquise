@@ -53,7 +53,7 @@ export function ScreeningFilters({
     event.currentTarget.open = false;
     event.currentTarget.querySelector("summary")?.focus();
   };
-  const add = (type: ActiveCatalogueFilterType, menu: HTMLDetailsElement) => {
+  const add = (type: ActiveCatalogueFilterType, menu: HTMLDetailsElement | null) => {
     if (type === "cinema") {
       const value = cinemas[0]?.id;
       if (!value) return;
@@ -65,7 +65,7 @@ export function ScreeningFilters({
       ]);
     }
     setPendingFocus(type);
-    menu.open = false;
+    if (menu) menu.open = false;
   };
 
   return (
@@ -110,7 +110,8 @@ export function ScreeningFilters({
                     onClick={(event) => {
                       update(next);
                       setPendingFocus(filter.type);
-                      event.currentTarget.closest("details")!.open = false;
+                      const details = event.currentTarget.closest("details");
+                      if (details) details.open = false;
                     }}
                   >
                     {label}
@@ -140,7 +141,7 @@ export function ScreeningFilters({
                 <button
                   type="button"
                   key={type}
-                  onClick={(event) => add(type, event.currentTarget.closest("details")!)}
+                  onClick={(event) => add(type, event.currentTarget.closest("details"))}
                 >
                   {getFilterTypeLabel(type)}
                 </button>
