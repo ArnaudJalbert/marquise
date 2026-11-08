@@ -355,10 +355,8 @@ it("drops a cancelled drag", () => {
   expect(selectedDays()).toEqual(["Today, Tuesday November 3rd"]);
 });
 
-const zoomChip = () => screen.getByRole("button", { name: /^Zoom/ });
-const weekdayLabel = (name: string) =>
-  screen.getByRole("button", { name }).querySelector(".minimal-strip-weekday")
-    ?.textContent;
+const zoomChip = () => screen.getByRole("button", { name: /, zoom / });
+const dayCell = (name: string) => screen.getByRole("button", { name });
 
 it("opens the phone zoom chip popover and closes it with Escape", () => {
   /** Scenario: on a phone the chip opens the slider; Escape closes it and refocuses the chip. */
@@ -366,7 +364,7 @@ it("opens the phone zoom chip popover and closes it with Escape", () => {
   const onChange = setup();
   expect(screen.queryByRole("slider")).not.toBeInTheDocument();
   const chip = zoomChip();
-  expect(chip).toHaveAccessibleName("Zoom, 1 week");
+  expect(chip).toHaveAccessibleName("1 wk, zoom 1 week");
   expect(chip).toHaveAttribute("aria-expanded", "false");
   expect(chip).toHaveTextContent("1 wk");
   fireEvent.click(chip);
@@ -375,7 +373,7 @@ it("opens the phone zoom chip popover and closes it with Escape", () => {
   zoomTo(3);
   expect(visibleDays()).toHaveLength(21);
   expect(chip).toHaveTextContent("3 wk");
-  expect(chip).toHaveAccessibleName("Zoom, 3 weeks");
+  expect(chip).toHaveAccessibleName("3 wk, zoom 3 weeks");
   expect(screen.getByText("3 weeks")).toBeVisible();
   fireEvent.keyDown(slider(), { key: "Escape" });
   expect(screen.queryByRole("slider")).not.toBeInTheDocument();
@@ -419,7 +417,7 @@ it("swaps the chip and the inline slider when the viewport crosses the breakpoin
   const resize = stubViewport(false);
   setup();
   expect(slider()).toBeVisible();
-  expect(screen.queryByRole("button", { name: /^Zoom/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /, zoom / })).not.toBeInTheDocument();
   resize(true);
   expect(screen.queryByRole("slider")).not.toBeInTheDocument();
   expect(zoomChip()).toBeVisible();
@@ -432,19 +430,20 @@ it("labels every day with a three-letter weekday at six weeks", () => {
   stubViewport(false);
   setup();
   zoomTo(6);
-  expect(weekdayLabel("Wednesday November 4th")).toBe("Wed");
-  expect(weekdayLabel("Today, Tuesday November 3rd")).toBe("Today");
+  expect(dayCell("Wednesday November 4th")).toHaveTextContent("Wed");
+  expect(dayCell("Today, Tuesday November 3rd")).toHaveTextContent("Today");
 });
 
 it("shows today's weekday instead of Today on the phone two-week view", () => {
   /** Scenario: the narrow phone fortnight marks today with its short weekday. */
   stubViewport(true);
   setup();
-  expect(weekdayLabel("Today, Tuesday November 3rd")).toBe("Today");
+  expect(dayCell("Today, Tuesday November 3rd")).toHaveTextContent("Today");
   fireEvent.click(zoomChip());
   zoomTo(2);
-  expect(weekdayLabel("Today, Tuesday November 3rd")).toBe("Tue");
-  expect(weekdayLabel("Wednesday November 4th")).toBe("Wed");
+  expect(dayCell("Today, Tuesday November 3rd")).toHaveTextContent("Tue");
+  expect(dayCell("Today, Tuesday November 3rd")).not.toHaveTextContent("Today");
+  expect(dayCell("Wednesday November 4th")).toHaveTextContent("Wed");
 });
 
 it("keeps Today on the desktop two-week view", () => {
@@ -452,5 +451,5 @@ it("keeps Today on the desktop two-week view", () => {
   stubViewport(false);
   setup();
   zoomTo(2);
-  expect(weekdayLabel("Today, Tuesday November 3rd")).toBe("Today");
+  expect(dayCell("Today, Tuesday November 3rd")).toHaveTextContent("Today");
 });

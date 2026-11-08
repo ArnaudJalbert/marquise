@@ -117,7 +117,7 @@ function ZoomChip({
         ref={chip}
         type="button"
         className="minimal-zoom-chip"
-        aria-label={`Zoom, ${formatWeeks(weeks)}`}
+        aria-label={`${weeks} wk, zoom ${formatWeeks(weeks)}`}
         aria-expanded={open}
         onClick={() => setOpen(!open)}
       >
