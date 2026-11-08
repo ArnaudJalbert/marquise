@@ -277,6 +277,7 @@ it("widens to fit a long period and never narrows on its own", () => {
   fireEvent.pointerUp(strip(), at(14));
   expect(title()).toBe("Tue Nov 24");
   expect(visibleDays()).toHaveLength(21);
+  expect(visibleDays()[0]).toBe("Tuesday November 10th");
   expect(slider()).toHaveValue("3");
 });
 

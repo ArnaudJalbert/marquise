@@ -61,6 +61,7 @@ describe("fitView", () => {
     /** Scenario: fitting does not jump when the period is in view. */
     expect(fitView({ weeks: 1, first: 0 }, 0, 0)).toEqual({ weeks: 1, first: 0 });
     expect(fitView({ weeks: 2, first: 7 }, 8, 9)).toEqual({ weeks: 2, first: 7 });
+    expect(fitView({ weeks: 3, first: 0 }, 10, 10)).toEqual({ weeks: 3, first: 0 });
   });
 
   it("pans at the same zoom to the block holding the period start", () => {
