@@ -106,34 +106,38 @@ class CountScreeningDaysQuery:
             TooManyScreeningDaysError: If the horizon exceeds 42 days.
         """
         self._require_bounded_horizon(input_data.start, input_data.end)
-        start, end = self._to_utc_window(input_data.start, input_data.end)
-        hours = input_data.hours
-        reader_hours = (
-            None
-            if hours is None
-            else ScreeningMovieReader.HourFilter(
-                ranges=tuple(
-                    ScreeningMovieReader.HourRange(item.start, item.end)
-                    for item in hours.ranges
-                ),
-                excluded=hours.excluded,
-            )
-        )
-        counts = await self._reader.count_days(
-            ScreeningMovieReader.DayCountRequest(
-                start=start,
-                end=end,
-                now=self._clock(),
-                title=input_data.title,
-                cinemas=input_data.cinemas,
-                languages=input_data.languages,
-                hours=reader_hours,
-                excluded_cinemas=input_data.excluded_cinemas,
-            )
-        )
+        request = self._to_day_count_request(input_data)
+        counts = await self._reader.count_days(request)
         days = self._fill_missing_days(input_data.start, input_data.end, counts)
         logger.info("Counted screenings on %d days", len(days))
         return self.OutputData(days=days)
+
+    def _to_day_count_request(
+        self, input_data: InputData
+    ) -> ScreeningMovieReader.DayCountRequest:
+        start, end = self._to_utc_window(input_data.start, input_data.end)
+        return ScreeningMovieReader.DayCountRequest(
+            start=start,
+            end=end,
+            now=self._clock(),
+            title=input_data.title,
+            cinemas=input_data.cinemas,
+            languages=input_data.languages,
+            hours=self._to_reader_hours(input_data.hours),
+            excluded_cinemas=input_data.excluded_cinemas,
+        )
+
+    @staticmethod
+    def _to_reader_hours(
+        hours: CountScreeningDaysQuery.HourFilter | None,
+    ) -> ScreeningMovieReader.HourFilter | None:
+        if hours is None:
+            return None
+        ranges = tuple(
+            ScreeningMovieReader.HourRange(item.start, item.end)
+            for item in hours.ranges
+        )
+        return ScreeningMovieReader.HourFilter(ranges=ranges, excluded=hours.excluded)
 
     def _require_bounded_horizon(self, start: date, end: date) -> None:
         if (end - start).days + 1 > self._MAX_DAYS:

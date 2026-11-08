@@ -131,12 +131,12 @@ export class HttpMarquiseClient
     return result.days;
   }
   /** Both screening reads send identical filters: query parameters plus a JSON hours body. */
-  private postScreeningFilters<T>(
+  private postScreeningFilters<ResponseT>(
     path: string,
     params: URLSearchParams,
     filters: ScreeningFilters,
     signal?: AbortSignal,
-  ): Promise<T> {
+  ): Promise<ResponseT> {
     if (filters.title?.trim()) params.set("title", filters.title.trim());
     filters.cinemas?.forEach((id) => params.append("cinema", id));
     filters.excludedCinemas?.forEach((id) => params.append("exclude_cinema", id));

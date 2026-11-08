@@ -33,7 +33,7 @@ class SupabaseScreeningMovieReadGateway:
                            row_number() OVER (
                                PARTITION BY s.movie_id ORDER BY s.showtime, s.id
                            ) AS rank
-                    {self._qualifying_screenings()}
+                    {self._build_qualifying_screenings_sql()}
                 ), eligible AS (
                     SELECT movie_id, showtime AS next_showtime
                     FROM qualifying WHERE rank = 1
@@ -52,7 +52,7 @@ class SupabaseScreeningMovieReadGateway:
                 LEFT JOIN qualifying q ON q.movie_id = p.movie_id AND q.rank <= 3
                 ORDER BY p.next_showtime, p.movie_id, q.showtime, q.id
                 ''',
-                *self._filter_arguments(request),
+                *self._bind_filter_arguments(request),
                 (request.page - 1) * 24,
             )
         movies: dict[str, dict] = {}
@@ -101,14 +101,14 @@ class SupabaseScreeningMovieReadGateway:
                 SELECT ((s.showtime AT TIME ZONE 'UTC')
                         AT TIME ZONE 'America/Montreal')::date AS day,
                        count(*)::int AS screenings
-                {self._qualifying_screenings()}
+                {self._build_qualifying_screenings_sql()}
                 GROUP BY day ORDER BY day
                 """,
-                *self._filter_arguments(request),
+                *self._bind_filter_arguments(request),
             )
         return [dict(row) for row in rows]
 
-    def _qualifying_screenings(self) -> str:
+    def _build_qualifying_screenings_sql(self) -> str:
         """Return the listing's FROM and WHERE clauses over arguments $1 to $10."""
         return f'''
             FROM "{self._schema}".screenings s
@@ -131,7 +131,7 @@ class SupabaseScreeningMovieReadGateway:
         '''
 
     @staticmethod
-    def _filter_arguments(
+    def _bind_filter_arguments(
         request: _FilterRequest,
     ) -> tuple[datetime | str | list[str] | list[int] | bool | None, ...]:
         """Return the values bound to the shared filter's $1 to $10."""
