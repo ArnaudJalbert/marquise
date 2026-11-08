@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { PeriodPicker } from "./PeriodPicker";
@@ -12,23 +12,22 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-/** Stubs the phone breakpoint; the returned function flips it and notifies listeners. */
+/** Stubs the viewport so `(max-width: 639px)` matches on a phone; returns a resize. */
 function stubViewport(phone: boolean) {
-  let matches = phone;
   const listeners = new Set<() => void>();
+  let matches = phone;
   vi.stubGlobal("matchMedia", (query: string) => ({
     get matches() {
-      return query === "(max-width: 639px)" && matches;
+      return matches && query === "(max-width: 639px)";
     },
-    media: query,
-    addEventListener: (_type: string, listener: () => void) => listeners.add(listener),
-    removeEventListener: (_type: string, listener: () => void) =>
-      listeners.delete(listener),
+    addEventListener: (_: string, listener: () => void) => listeners.add(listener),
+    removeEventListener: (_: string, listener: () => void) => listeners.delete(listener),
   }));
-  return (nextPhone: boolean) => {
-    matches = nextPhone;
-    act(() => listeners.forEach((listener) => listener()));
-  };
+  return (nextPhone: boolean) =>
+    act(() => {
+      matches = nextPhone;
+      listeners.forEach((listener) => listener());
+    });
 }
 
 function Harness({
@@ -100,6 +99,10 @@ const blockCells = () =>
   );
 const visibleBlocks = () => blockCells().map((cell) => cell.getAttribute("aria-label"));
 const block = (name: string) => screen.getByRole("button", { name });
+const zoomChip = () => screen.getByRole("button", { name: /, zoom / });
+const dayCell = (name: string) => screen.getByRole("button", { name });
+/** The weekday label in a day cell, matched as the whole text so "Wednesday" fails. */
+const weekdayIn = (name: string, label: string) => within(dayCell(name)).getByText(label);
 
 const title = () => screen.getByRole("heading", { level: 1 }).textContent;
 const selectedDays = () =>
@@ -385,6 +388,7 @@ it("shows week blocks from three weeks at the phone breakpoint, switching live",
   /** Scenario: phones collapse at 3 weeks, and crossing the breakpoint switches modes. */
   const setPhone = stubViewport(true);
   setup();
+  fireEvent.click(zoomChip());
   zoomTo(2);
   expect(visibleDays()).toHaveLength(14);
   zoomTo(3);
@@ -395,6 +399,7 @@ it("shows week blocks from three weeks at the phone breakpoint, switching live",
   expect(visibleBlocks()).toHaveLength(0);
   setPhone(true);
   expect(visibleBlocks()).toHaveLength(3);
+  fireEvent.click(zoomChip());
   for (const weeks of [4, 5, 6]) {
     zoomTo(weeks);
     expect(visibleDays()).toHaveLength(0);
@@ -406,6 +411,7 @@ it("keeps the drag anchor when the phone breakpoint flips mid-drag", () => {
   /** Scenario: a drag started on a week block finishes on days from that week's first day. */
   const setPhone = stubViewport(true);
   const onChange = setup();
+  fireEvent.click(zoomChip());
   zoomTo(3);
   strip();
   fireEvent.pointerDown(block("November 10 to November 16"), at(1));
@@ -585,4 +591,112 @@ it("draws a non-aligned selection as a partial fill and keeps it through zooming
   expect(window().left).toBe(`${(2 / 28) * 100}%`);
   expect(window().width).toBe(`${(1 / 28) * 100}%`);
   expect(title()).toBe("Thu Nov 12");
+});
+
+it("opens the phone zoom chip popover and closes it with Escape", () => {
+  /** Scenario: on a phone the chip opens the slider; Escape closes it and refocuses the chip. */
+  stubViewport(true);
+  const onChange = setup();
+  expect(screen.queryByRole("slider")).not.toBeInTheDocument();
+  const chip = zoomChip();
+  expect(chip).toHaveAccessibleName("1 wk, zoom 1 week");
+  expect(chip).toHaveAttribute("aria-expanded", "false");
+  expect(chip).toHaveTextContent("1 wk");
+  fireEvent.click(chip);
+  expect(chip).toHaveAttribute("aria-expanded", "true");
+  expect(slider()).toHaveFocus();
+  zoomTo(3);
+  expect(visibleBlocks()).toHaveLength(3);
+  expect(chip).toHaveTextContent("3 wk");
+  expect(chip).toHaveAccessibleName("3 wk, zoom 3 weeks");
+  expect(screen.getByText("3 weeks")).toBeVisible();
+  fireEvent.keyDown(slider(), { key: "Escape" });
+  expect(screen.queryByRole("slider")).not.toBeInTheDocument();
+  expect(chip).toHaveAttribute("aria-expanded", "false");
+  expect(chip).toHaveFocus();
+  expect(onChange).not.toHaveBeenCalled();
+});
+
+it("closes the phone zoom popover on a tap outside it", () => {
+  /** Scenario: tapping elsewhere closes the popover and returns focus to the chip. */
+  stubViewport(true);
+  setup();
+  fireEvent.click(zoomChip());
+  fireEvent.pointerDown(slider());
+  expect(slider()).toBeInTheDocument();
+  fireEvent.pointerDown(screen.getByRole("heading", { level: 1 }));
+  expect(screen.queryByRole("slider")).not.toBeInTheDocument();
+  expect(zoomChip()).toHaveAttribute("aria-expanded", "false");
+  expect(zoomChip()).toHaveFocus();
+});
+
+it("keeps focus on the chip when a tap on it closes the popover", () => {
+  /** Scenario: Safari does not focus a tapped button, so closing from the chip refocuses it. */
+  stubViewport(true);
+  setup();
+  fireEvent.click(zoomChip());
+  expect(slider()).toHaveFocus();
+  fireEvent.click(zoomChip());
+  expect(screen.queryByRole("slider")).not.toBeInTheDocument();
+  expect(zoomChip()).toHaveAttribute("aria-expanded", "false");
+  expect(zoomChip()).toHaveFocus();
+});
+
+it("closes the phone zoom popover when focus tabs away from it", () => {
+  /** Scenario: keyboard focus leaving the chip and slider closes the popover. */
+  stubViewport(true);
+  setup();
+  fireEvent.click(zoomChip());
+  fireEvent.blur(slider(), { relatedTarget: zoomChip() });
+  expect(slider()).toBeInTheDocument();
+  // A tap on the popover's label or padding drops focus to the page.
+  fireEvent.blur(slider(), { relatedTarget: null });
+  expect(slider()).toBeInTheDocument();
+  fireEvent.blur(slider(), {
+    relatedTarget: screen.getByRole("button", { name: "Next period" }),
+  });
+  expect(screen.queryByRole("slider")).not.toBeInTheDocument();
+  expect(zoomChip()).toHaveAttribute("aria-expanded", "false");
+});
+
+it("swaps the chip and the inline slider when the viewport crosses the breakpoint", () => {
+  /** Scenario: rotating or resizing keeps the header matched to the live breakpoint. */
+  const resize = stubViewport(false);
+  setup();
+  expect(slider()).toBeVisible();
+  expect(screen.queryByRole("button", { name: /, zoom / })).not.toBeInTheDocument();
+  resize(true);
+  expect(screen.queryByRole("slider")).not.toBeInTheDocument();
+  expect(zoomChip()).toBeVisible();
+  resize(false);
+  expect(slider()).toBeVisible();
+});
+
+it("labels every day with a three-letter weekday at three weeks", () => {
+  /** Scenario: the widest day view still reads Tue, Wed, never single letters. */
+  stubViewport(false);
+  setup();
+  zoomTo(3);
+  expect(weekdayIn("Wednesday November 4th", "Wed")).toBeInTheDocument();
+  expect(dayCell("Today, Tuesday November 3rd")).toHaveTextContent("Today");
+});
+
+it("shows today's weekday instead of Today on the phone two-week view", () => {
+  /** Scenario: the narrow phone fortnight marks today with its short weekday. */
+  stubViewport(true);
+  setup();
+  expect(dayCell("Today, Tuesday November 3rd")).toHaveTextContent("Today");
+  fireEvent.click(zoomChip());
+  zoomTo(2);
+  expect(weekdayIn("Today, Tuesday November 3rd", "Tue")).toBeInTheDocument();
+  expect(dayCell("Today, Tuesday November 3rd")).not.toHaveTextContent("Today");
+  expect(weekdayIn("Wednesday November 4th", "Wed")).toBeInTheDocument();
+});
+
+it("keeps Today on the desktop two-week view", () => {
+  /** Scenario: only the phone fortnight swaps the Today label. */
+  stubViewport(false);
+  setup();
+  zoomTo(2);
+  expect(dayCell("Today, Tuesday November 3rd")).toHaveTextContent("Today");
 });
