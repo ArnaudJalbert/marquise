@@ -1,15 +1,20 @@
 import { toMontrealIsoDate } from "marquise-client";
 import { ArrowRight, ArrowUpRight, X } from "lucide-react";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   CatalogueCinema,
   CatalogueMovie,
   CatalogueScreening,
-  CatalogueSelection,
+  ActiveCatalogueSelection,
   MinimalCatalogueProps,
 } from "./catalogue-types";
 export type {
+  ActiveCatalogueFilter,
+  ActiveCatalogueSelection,
+  ActiveCatalogueFilterType,
   CatalogueCinema,
+  CatalogueFilter,
+  CatalogueFilterType,
   CatalogueMovie,
   CatalogueScreening,
   CatalogueSelection,
@@ -21,17 +26,26 @@ import {
   relativeDay,
   startsIn,
   formatScore,
-  timeToHour,
-  formatHour,
   decodePathId,
 } from "./catalogue-format";
 import { MovieSchedule } from "./MovieSchedule";
 import { PeriodPicker } from "./PeriodPicker";
 import { MovieSearch } from "./MovieSearch";
+import { ScreeningFilters } from "./ScreeningFilters";
+import { matchesCatalogueTimeFilter } from "./catalogue-time-filters";
 import { Showtime } from "./Showtime";
 import { InfoMenu, SiteFooter, infoPages } from "./SiteInfo";
 import marquiseMark from "./marquise-mark.svg";
 import "./minimal.css";
+
+function matchesTimeFilter(
+  time: string,
+  filter: ActiveCatalogueSelection["filters"][number] | undefined,
+): boolean {
+  if (!filter || filter.type !== "time") return true;
+  const matches = matchesCatalogueTimeFilter(time, filter.value);
+  return filter.operator === "is" ? matches : !matches;
+}
 
 function Poster({ movie }: { movie: CatalogueMovie }) {
   const [failed, setFailed] = useState(false);
@@ -238,158 +252,6 @@ export function MinimalMovieCard({
     </article>
   );
 }
-function Filters({
-  selection: s,
-  onSelection,
-  cinemas,
-  screeningLanguages,
-  fixed,
-}: Pick<
-  MinimalCatalogueProps,
-  "selection" | "onSelection" | "cinemas" | "screeningLanguages"
-> & { fixed?: string }) {
-  const change = (patch: Partial<CatalogueSelection>) =>
-    onSelection({ ...s, ...patch });
-  const fromHour = timeToHour(s.from, 0);
-  const toHour = Math.max(fromHour, timeToHour(s.to, 24));
-  const toggle = (key: "cinemas" | "languages", value: string) =>
-    change({
-      [key]: s[key].includes(value)
-        ? s[key].filter((v) => v !== value)
-        : [...s[key], value],
-    });
-  return (
-    <section className="minimal-filters" aria-label="Movie filters">
-      <div className="minimal-filter-row">
-        <details
-          className="minimal-other-filters"
-          onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              event.currentTarget.open = false;
-              event.currentTarget.querySelector("summary")?.focus();
-            }
-          }}
-        >
-          <summary>
-            Filters
-            {s.cinemas.length + s.languages.length > 0 || s.from || s.to
-              ? " •"
-              : ""}
-          </summary>
-          <div className="minimal-filter-panels">
-            {!fixed && (
-              <fieldset>
-                <legend>Cinemas</legend>
-                {cinemas.map((c) => (
-                  <label key={c.id}>
-                    <input
-                      type="checkbox"
-                      checked={s.cinemas.includes(c.id)}
-                      onChange={() => toggle("cinemas", c.id)}
-                    />
-                    {c.name}
-                  </label>
-                ))}
-              </fieldset>
-            )}
-            <fieldset>
-              <legend>Screening language</legend>
-              {screeningLanguages.map((l) => (
-                <label key={l}>
-                  <input
-                    type="checkbox"
-                    checked={s.languages.includes(l)}
-                    onChange={() => toggle("languages", l)}
-                  />
-                  {l}
-                </label>
-              ))}
-            </fieldset>
-            <fieldset>
-              <legend>Daily time</legend>
-              <div className="minimal-time-range-control">
-                <div className="minimal-time-range-values">
-                  <span>From {formatHour(fromHour)}</span>
-                  <span>To {formatHour(toHour)}</span>
-                </div>
-                <div
-                  className="minimal-time-range"
-                  style={
-                    {
-                      "--range-start": `${(fromHour / 24) * 100}%`,
-                      "--range-end": `${(toHour / 24) * 100}%`,
-                    } as CSSProperties
-                  }
-                >
-                  <input
-                    type="range"
-                    min="0"
-                    max="24"
-                    step="1"
-                    value={fromHour}
-                    aria-label="Start time"
-                    aria-valuetext={formatHour(fromHour)}
-                    onChange={(event) => {
-                      const hour = Math.min(Number(event.target.value), toHour);
-                      change({
-                        from:
-                          hour === 0
-                            ? ""
-                            : `${String(hour).padStart(2, "0")}:00`,
-                      });
-                    }}
-                  />
-                  <input
-                    type="range"
-                    min="0"
-                    max="24"
-                    step="1"
-                    value={toHour}
-                    aria-label="End time"
-                    aria-valuetext={formatHour(toHour)}
-                    onChange={(event) => {
-                      const hour = Math.max(
-                        Number(event.target.value),
-                        fromHour,
-                      );
-                      change({
-                        to:
-                          hour === 24
-                            ? ""
-                            : `${String(hour).padStart(2, "0")}:00`,
-                      });
-                    }}
-                  />
-                </div>
-                <div className="minimal-time-range-ticks" aria-hidden="true">
-                  <span>Midnight</span>
-                  <span>6 AM</span>
-                  <span>Noon</span>
-                  <span>6 PM</span>
-                  <span>Midnight</span>
-                </div>
-              </div>
-            </fieldset>
-            <div className="minimal-filter-actions">
-              <button
-                onClick={() =>
-                  change({
-                    cinemas: [],
-                    languages: [],
-                    from: "",
-                    to: "",
-                  })
-                }
-              >
-                Clear filters
-              </button>
-            </div>
-          </div>
-        </details>
-      </div>
-    </section>
-  );
-}
 export function MinimalCatalogue({
   movies,
   catalogueMovies = movies,
@@ -438,15 +300,9 @@ export function MinimalCatalogue({
   const cinema = cinemas.find((c) => c.id === cinemaId);
   const infoPath = path.replace(/(.)\/$/, "$1");
   const infoPage = infoPages[infoPath];
-  const from = selection.from
-    ? `${String(timeToHour(selection.from, 0)).padStart(2, "0")}:00`
-    : "";
-  const to = selection.to
-    ? `${String(timeToHour(selection.to, 24)).padStart(2, "0")}:00`
-    : "";
-  const invalid =
-    selection.start > selection.end ||
-    Boolean(selection.from && selection.to && selection.from > selection.to);
+  const cinemaFilter = selection.filters.find((filter) => filter.type === "cinema");
+  const timeFilter = selection.filters.find((filter) => filter.type === "time");
+  const invalid = selection.start > selection.end;
   const matching = serverResults
     ? movies
     : movies
@@ -458,14 +314,11 @@ export function MinimalCatalogue({
                 s.date >= selection.start &&
                 s.date <= selection.end &&
                 (!cinemaId || s.cinemaId === cinemaId) &&
-                (!selection.cinemas.length ||
-                  cinemaId ||
-                  selection.cinemas.includes(s.cinemaId)) &&
-                (!selection.languages.length ||
-                  (s.language !== undefined &&
-                    selection.languages.includes(s.language))) &&
-                (!from || s.time >= from) &&
-                (!to || s.time <= to),
+                (!cinemaFilter ||
+                  (cinemaFilter.operator === "is"
+                    ? s.cinemaId === cinemaFilter.value
+                    : s.cinemaId !== cinemaFilter.value)) &&
+                matchesTimeFilter(s.time, timeFilter),
             )
             .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)),
         }))
@@ -624,8 +477,8 @@ export function MinimalCatalogue({
                 <SectionDescription
                   text={
                     cinema
-                      ? "Browse upcoming showtimes at this cinema, with filters for date, time, and language. For example, choose Friday evening to see what's on."
-                      : "Find movies with showtimes in a date range you choose. For example, set Monday to Friday next week to see what's playing, then filter by cinema or language."
+                      ? "Browse upcoming showtimes at this cinema, with filters for date and time. For example, choose Friday evening to see what's on."
+                      : "Find movies with showtimes in a date range you choose. For example, set Monday to Friday next week to see what's playing, then filter by cinema or time."
                   }
                 />
                 {cinema && (
@@ -660,12 +513,11 @@ export function MinimalCatalogue({
                         onSearch={(title) => onSelection({ ...selection, title })}
                       />
                     </div>
-                    <Filters
-                      selection={selection}
-                      onSelection={onSelection}
-                      screeningLanguages={screeningLanguages}
+                    <ScreeningFilters
+                      filters={selection.filters}
+                      onChange={(filters) => onSelection({ ...selection, filters })}
                       cinemas={cinemas}
-                      fixed={cinemaId}
+                      fixedCinemaId={cinemaId}
                     />
                   </>
                 ) : (
@@ -673,8 +525,7 @@ export function MinimalCatalogue({
                 )}
                 {invalid ? (
                   <p role="alert">
-                    Start must be before end. Choose a valid date and daily time
-                    range.
+                    Start must be before end. Choose a valid date range.
                   </p>
                 ) : state === "initial-loading" ? (
                   <div role="status" className="minimal-state">
@@ -727,10 +578,7 @@ export function MinimalCatalogue({
                                   start: today,
                                   end: today,
                                   title: "",
-                                  cinemas: [],
-                                  languages: [],
-                                  from: "",
-                                  to: "",
+                                  filters: [],
                                 })
                               }
                             >
