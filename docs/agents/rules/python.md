@@ -29,8 +29,8 @@ OutputData skips re-validating fields copied from already-validated entities or 
 - A use case that rejects input for an application limit, rather than an invalid value, raises a use-case-specific `ApplicationError` from `application/exceptions/`. For example, `ListMoviesUseCase` raises `TooManyMovieIdsError` when given more than 100 IDs.
 - Application errors subclass `ApplicationError`, with one module per aggregate in `application/exceptions/`.
 - Domain exception boundaries follow [architecture](architecture.md#boundaries).
-- Gateway errors live beside their protocols in `interface_adapters/repositories/protocols/`, except for auth gateway errors in `interface_adapters/exceptions/auth.py`.
-- Adapters translate gateway errors into application errors.
+- Repository gateway errors live beside their protocols in `interface_adapters/repositories/protocols/`; auth gateway errors live in `interface_adapters/exceptions/auth.py`.
+- Supabase repository adapters translate persistence `GatewayError`s into application errors. Source adapters propagate the error defined by their source protocol, as [use-case failure rules](use-cases/failure.md) require.
 - The API maps an unvalidated `ValueError` to 422 and maps each `ApplicationError` in `apps/marquise-api/src/marquise_api/exception_handlers.py`.
 
 ## Modules and packages
