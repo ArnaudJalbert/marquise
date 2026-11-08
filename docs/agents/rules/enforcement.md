@@ -75,3 +75,10 @@ Check `Rules test` is a planned AST test in `packages/marquise-core/tests/unit_t
 | Yes-or-no functions use `is_`, `has_` or `can_` | [naming](naming.md#name-functions-with-verbs) | Rules test: functions returning `bool` | Planned |
 | Functions start with a verb | [naming](naming.md#name-functions-with-verbs) | Review. A word list would be unreliable | Review |
 | Values are nouns, names reveal intent | [naming](naming.md#reveal-intent) | Review | Review |
+
+### Python and testing
+
+| Rule | Home | Check | Status |
+|---|---|---|---|
+| Error construction, ownership and API mapping | [python](python.md#errors) | Review against domain boundaries and exception-handler tests | Review |
+| Test boundary and layer-specific placement | [testing](testing.md#boundary) | Review and relevant unit and integration suites | Review |
