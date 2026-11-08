@@ -28,6 +28,7 @@ from marquise.application.exceptions import (
     SourceAlreadyExistsError,
     SourceNotFoundError,
     TooManyMovieIdsError,
+    TooManyScreeningDaysError,
 )
 from marquise.application.metadata import (
     LocalizedMovieMetadata,
@@ -62,6 +63,7 @@ from marquise.application.movie_workflows import (
 from marquise.application.queries.browse_screening_movies import (
     BrowseScreeningMoviesQuery,
 )
+from marquise.application.queries.count_screening_days import CountScreeningDaysQuery
 from marquise.application.queries.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
@@ -142,6 +144,7 @@ __all__ = [
     "RefreshMoviesExecutor",
     "MergeMoviesExecutor",
     "BrowseScreeningMoviesQuery",
+    "CountScreeningDaysQuery",
     "AccountAlreadyExistsError",
     "ApplicationError",
     "AssignSourceUseCase",
@@ -194,6 +197,7 @@ __all__ = [
     "SourceAlreadyExistsError",
     "SourceNotFoundError",
     "TooManyMovieIdsError",
+    "TooManyScreeningDaysError",
     "UnassignSourceUseCase",
     "UpdateCinemaUseCase",
     "VerifyAccessTokenQuery",

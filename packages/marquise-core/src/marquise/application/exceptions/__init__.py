@@ -28,6 +28,7 @@ from marquise.application.exceptions.screening import (
     ScreeningNotFoundError,
     ScreeningUpdateNotFoundError,
     ScreeningWriteBusyError,
+    TooManyScreeningDaysError,
 )
 from marquise.application.exceptions.source import (
     CinemaSourceAssignmentAlreadyExistsError,
@@ -62,4 +63,5 @@ __all__ = [
     "SourceAlreadyExistsError",
     "SourceNotFoundError",
     "TooManyMovieIdsError",
+    "TooManyScreeningDaysError",
 ]

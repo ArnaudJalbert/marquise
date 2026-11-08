@@ -9,6 +9,7 @@ import asyncpg
 from marquise.application.queries.browse_screening_movies import (
     BrowseScreeningMoviesQuery,
 )
+from marquise.application.queries.count_screening_days import CountScreeningDaysQuery
 from marquise.application.queries.get_cinema_screenings import GetCinemaScreeningsQuery
 from marquise.application.queries.get_movie_screenings import GetMovieScreeningsQuery
 from marquise.application.queries.get_screening import GetScreeningQuery
@@ -107,6 +108,18 @@ def build_browse_screening_movies_query(
 ) -> BrowseScreeningMoviesQuery:
     """Build the movie-first reader and inject the request clock."""
     return BrowseScreeningMoviesQuery(
+        reader=SupabaseScreeningMovieReader(
+            gateway=SupabaseScreeningMovieReadGateway(pool, schema)
+        ),
+        clock=lambda: datetime.now(UTC),
+    )
+
+
+def build_count_screening_days_query(
+    pool: asyncpg.Pool, schema: str
+) -> CountScreeningDaysQuery:
+    """Build the daily screening-count reader and inject the request clock."""
+    return CountScreeningDaysQuery(
         reader=SupabaseScreeningMovieReader(
             gateway=SupabaseScreeningMovieReadGateway(pool, schema)
         ),
