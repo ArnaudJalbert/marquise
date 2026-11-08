@@ -20,7 +20,6 @@ function stubViewport(phone: boolean) {
     get matches() {
       return matches && query === "(max-width: 639px)";
     },
-    media: query,
     addEventListener: (_: string, listener: () => void) => listeners.add(listener),
     removeEventListener: (_: string, listener: () => void) => listeners.delete(listener),
   }));
@@ -361,14 +360,6 @@ const weekdayLabel = (name: string) =>
   screen.getByRole("button", { name }).querySelector(".minimal-strip-weekday")
     ?.textContent;
 
-it("keeps the inline slider and no zoom chip on desktop", () => {
-  /** Scenario: above the phone breakpoint the header shows the slider itself. */
-  stubViewport(false);
-  setup();
-  expect(slider()).toBeVisible();
-  expect(screen.queryByRole("button", { name: /^Zoom/ })).not.toBeInTheDocument();
-});
-
 it("opens the phone zoom chip popover and closes it with Escape", () => {
   /** Scenario: on a phone the chip opens the slider; Escape closes it and refocuses the chip. */
   stubViewport(true);
@@ -413,6 +404,9 @@ it("closes the phone zoom popover when focus tabs away from it", () => {
   fireEvent.click(zoomChip());
   fireEvent.blur(slider(), { relatedTarget: zoomChip() });
   expect(slider()).toBeInTheDocument();
+  // A tap on the popover's label or padding drops focus to the page.
+  fireEvent.blur(slider(), { relatedTarget: null });
+  expect(slider()).toBeInTheDocument();
   fireEvent.blur(slider(), {
     relatedTarget: screen.getByRole("button", { name: "Next period" }),
   });
@@ -425,6 +419,7 @@ it("swaps the chip and the inline slider when the viewport crosses the breakpoin
   const resize = stubViewport(false);
   setup();
   expect(slider()).toBeVisible();
+  expect(screen.queryByRole("button", { name: /^Zoom/ })).not.toBeInTheDocument();
   resize(true);
   expect(screen.queryByRole("slider")).not.toBeInTheDocument();
   expect(zoomChip()).toBeVisible();

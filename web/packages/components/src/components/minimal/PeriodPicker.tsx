@@ -1,7 +1,6 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   useEffect,
-  useId,
   useRef,
   useState,
   useSyncExternalStore,
@@ -83,7 +82,6 @@ function ZoomChip({
   const menu = useRef<HTMLDivElement>(null);
   const chip = useRef<HTMLButtonElement>(null);
   const slider = useRef<HTMLInputElement>(null);
-  const popoverId = useId();
 
   useEffect(() => {
     if (!open) return;
@@ -108,11 +106,11 @@ function ZoomChip({
           chip.current?.focus();
         }
       }}
-      // Tabbing away from the chip and slider closes the popover.
+      // Tabbing away closes the popover; taps are handled by closeOutside, and a
+      // tap on the popover's label drops focus to the page (no relatedTarget).
       onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-          setOpen(false);
-        }
+        const next = event.relatedTarget;
+        if (next && !event.currentTarget.contains(next)) setOpen(false);
       }}
     >
       <button
@@ -121,13 +119,12 @@ function ZoomChip({
         className="minimal-zoom-chip"
         aria-label={`Zoom, ${weeksLabel(weeks)}`}
         aria-expanded={open}
-        aria-controls={open ? popoverId : undefined}
         onClick={() => setOpen(!open)}
       >
         {weeks} wk <span aria-hidden>▾</span>
       </button>
       {open && (
-        <div id={popoverId} className="minimal-zoom minimal-zoom-popover">
+        <div className="minimal-zoom minimal-zoom-popover">
           <ZoomSlider weeks={weeks} onZoom={onZoom} inputRef={slider} />
         </div>
       )}
@@ -327,11 +324,7 @@ function DayStrip({
               {day === view.first || dayOfMonth(date) === 1 ? monthName(date) : ""}
             </span>
             <span
-              className={
-                day === 0 && todayAsWeekday
-                  ? "minimal-strip-weekday is-highlighted"
-                  : "minimal-strip-weekday"
-              }
+              className={`minimal-strip-weekday${day === 0 && todayAsWeekday ? " is-highlighted" : ""}`}
               aria-hidden
             >
               {day === 0 && !todayAsWeekday ? "Today" : weekdayName(date)}
