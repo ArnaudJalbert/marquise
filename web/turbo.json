@@ -3,7 +3,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "env": ["VITE_MARQUISE_DATA_SOURCE", "VITE_MARQUISE_API_BASE_URL"],
+      "env": ["VITE_MARQUISE_API_BASE_URL"],
       "outputs": ["dist/**"]
     },
     "dev": {

@@ -12,7 +12,6 @@
 #
 # Optional secrets:
 #   fly secrets set CINEPLEX_API_KEY="..."
-#   fly secrets set OMDB_API_KEY="..."
 #
 # To list currently set secrets:
 #   fly secrets list

@@ -749,6 +749,14 @@ it.each([
   expect(within(preview).getByRole("link", { name: "Schedule" })).toHaveAttribute("href", "/movies/film");
 });
 
+it("shows the close button and first showtime in today's preview", () => {
+  /** Scenario: a film screening today opens straight to its first showtime, with the close button beside it. */
+  render(<MinimalMovieCard movie={movie} cinemas={cinemas} currentTime={props.currentTime} expanded />);
+  const preview = within(screen.getByRole("region", { name: `${movie.title} screenings` }));
+  expect(preview.getByRole("button", { name: "Close preview" })).toBeVisible();
+  expect(preview.getByRole("link", { name: "18:00" }).closest("p")).toHaveTextContent("Cinema A");
+});
+
 it("sorts and caps the next day, counts only its extra times, and updates after showtime", () => {
   /** Scenario: past and already-started shows disappear, and later days supply only a hint. */
   const screenings = ["22:00", "17:00", "21:00", "18:00", "20:00", "19:00", "16:00"].map((time) => ({ cinemaId: "a", date: "2026-10-30", time, showtime: `2026-10-30T${time}:00-04:00`, language: "VO" }));
