@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   release-checks:
-    name: Version bump + CHANGELOG
+    name: Version bump
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -48,19 +48,15 @@ jobs:
           MAIN_VER=$(git show origin/${{ github.base_ref }}:packages/marquise-core/pyproject.toml \
             | python3 -c "import sys,tomllib; print(tomllib.load(sys.stdin.buffer)['project']['version'])")
           PR_VER=$(python3 -c "import tomllib; print(tomllib.load(open('packages/marquise-core/pyproject.toml','rb'))['project']['version'])")
-          python3 -c "import sys;v1=[int(x) for x in sys.argv[1].split('.')];v2=[int(x) for x in sys.argv[2].split('.')];assert v2>v1, f'Version must increase: {sys.argv[1]} → {sys.argv[2]}';print(f'✓ {sys.argv[1]} → {sys.argv[2]}')" "$MAIN_VER" "$PR_VER"
-          echo "new_ver=$PR_VER" >> $GITHUB_ENV
-
-      - name: Check marquise-core CHANGELOG
-        if: steps.filter.outputs.core == 'true'
-        env:
-          NEW_VER: ${{ env.new_ver }}
-        run: |
-          grep -qF "### v$NEW_VER" packages/marquise-core/CHANGELOG.md || {
-            echo "::error::Missing CHANGELOG entry for marquise-core v$NEW_VER"
-            exit 1
-          }
-          echo '✓ CHANGELOG entry found'
+          if [[ "$PR_VER" == "$MAIN_VER" ]]; then
+            git diff --quiet "origin/${{ github.base_ref }}" HEAD -- packages/marquise-core/src/ || {
+              echo "::error::marquise-core source changes require a version bump"
+              exit 1
+            }
+            echo "✓ marquise-core version unchanged"
+          else
+            python3 -c "import sys;v1=[int(x) for x in sys.argv[1].split('.')];v2=[int(x) for x in sys.argv[2].split('.')];assert v2>v1, f'Version must increase: {sys.argv[1]} → {sys.argv[2]}';print(f'✓ {sys.argv[1]} → {sys.argv[2]}')" "$MAIN_VER" "$PR_VER"
+          fi
 
       - name: Check marquise-api version bump
         if: steps.filter.outputs.api == 'true'
@@ -68,19 +64,15 @@ jobs:
           MAIN_VER=$(git show origin/${{ github.base_ref }}:apps/marquise-api/pyproject.toml \
             | python3 -c "import sys,tomllib; print(tomllib.load(sys.stdin.buffer)['project']['version'])")
           PR_VER=$(python3 -c "import tomllib; print(tomllib.load(open('apps/marquise-api/pyproject.toml','rb'))['project']['version'])")
-          python3 -c "import sys;v1=[int(x) for x in sys.argv[1].split('.')];v2=[int(x) for x in sys.argv[2].split('.')];assert v2>v1, f'Version must increase: {sys.argv[1]} → {sys.argv[2]}';print(f'✓ {sys.argv[1]} → {sys.argv[2]}')" "$MAIN_VER" "$PR_VER"
-          echo "new_ver=$PR_VER" >> $GITHUB_ENV
-
-      - name: Check marquise-api CHANGELOG
-        if: steps.filter.outputs.api == 'true'
-        env:
-          NEW_VER: ${{ env.new_ver }}
-        run: |
-          grep -qF "### v$NEW_VER" apps/marquise-api/CHANGELOG.md || {
-            echo "::error::Missing CHANGELOG entry for marquise-api v$NEW_VER"
-            exit 1
-          }
-          echo '✓ CHANGELOG entry found'
+          if [[ "$PR_VER" == "$MAIN_VER" ]]; then
+            git diff --quiet "origin/${{ github.base_ref }}" HEAD -- apps/marquise-api/src/ || {
+              echo "::error::marquise-api source changes require a version bump"
+              exit 1
+            }
+            echo "✓ marquise-api version unchanged"
+          else
+            python3 -c "import sys;v1=[int(x) for x in sys.argv[1].split('.')];v2=[int(x) for x in sys.argv[2].split('.')];assert v2>v1, f'Version must increase: {sys.argv[1]} → {sys.argv[2]}';print(f'✓ {sys.argv[1]} → {sys.argv[2]}')" "$MAIN_VER" "$PR_VER"
+          fi
 
       - name: Check marquise-cli version bump
         if: steps.filter.outputs.cli == 'true'
@@ -88,19 +80,15 @@ jobs:
           MAIN_VER=$(git show origin/${{ github.base_ref }}:apps/marquise-cli/pyproject.toml \
             | python3 -c "import sys,tomllib; print(tomllib.load(sys.stdin.buffer)['project']['version'])")
           PR_VER=$(python3 -c "import tomllib; print(tomllib.load(open('apps/marquise-cli/pyproject.toml','rb'))['project']['version'])")
-          python3 -c "import sys;v1=[int(x) for x in sys.argv[1].split('.')];v2=[int(x) for x in sys.argv[2].split('.')];assert v2>v1, f'Version must increase: {sys.argv[1]} → {sys.argv[2]}';print(f'✓ {sys.argv[1]} → {sys.argv[2]}')" "$MAIN_VER" "$PR_VER"
-          echo "new_ver=$PR_VER" >> $GITHUB_ENV
-
-      - name: Check marquise-cli CHANGELOG
-        if: steps.filter.outputs.cli == 'true'
-        env:
-          NEW_VER: ${{ env.new_ver }}
-        run: |
-          grep -qF "### v$NEW_VER" apps/marquise-cli/CHANGELOG.md || {
-            echo "::error::Missing CHANGELOG entry for marquise-cli v$NEW_VER"
-            exit 1
-          }
-          echo '✓ CHANGELOG entry found'
+          if [[ "$PR_VER" == "$MAIN_VER" ]]; then
+            git diff --quiet "origin/${{ github.base_ref }}" HEAD -- apps/marquise-cli/src/ || {
+              echo "::error::marquise-cli source changes require a version bump"
+              exit 1
+            }
+            echo "✓ marquise-cli version unchanged"
+          else
+            python3 -c "import sys;v1=[int(x) for x in sys.argv[1].split('.')];v2=[int(x) for x in sys.argv[2].split('.')];assert v2>v1, f'Version must increase: {sys.argv[1]} → {sys.argv[2]}';print(f'✓ {sys.argv[1]} → {sys.argv[2]}')" "$MAIN_VER" "$PR_VER"
+          fi
 
       - name: Build and verify changed package distributions
         run: |

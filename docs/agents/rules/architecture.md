@@ -18,7 +18,7 @@ delivery → infrastructure → interface_adapters → application → domain
 | `infrastructure/` | Gateways, I/O, composition-root wiring (`infrastructure/di/`) | Inner layers |
 | `apps/*` (delivery) | Thin CLI and API entrypoints | `marquise` top-level facade only |
 
-Inside `application/`: `use_cases/` (`*UseCase`, plus a few `*Command` import writes), `queries/` (`*Query`), `repositories/` and `readers/` (ABCs), `transactions/` (write-transaction ABCs), `exceptions/`. `metadata.py` and `movie_workflows.py` hold the metadata contracts ([docs/metadata-contracts.md](../../metadata-contracts.md)).
+Inside `application/` are `use_cases/` (`*UseCase`, plus a few `*Command` import writes), `queries/` (`*Query`), `repositories/`, `readers/`, `transactions/` (write-transaction ABCs), and `exceptions/`. `metadata.py` and `movie_workflows.py` hold the metadata contracts ([docs/metadata-contracts.md](../../metadata-contracts.md)).
 
 - One responsibility per component.
 - SQL and HTTP live in infrastructure gateways. Use cases and repository adapters hold neither.
@@ -34,7 +34,7 @@ Inside `application/`: `use_cases/` (`*UseCase`, plus a few `*Command` import wr
 
 ## Injection
 
-- Use cases receive repository interfaces through the constructor.
+- Use cases receive their dependencies through the constructor, as [use-cases](use-cases.md) defines.
 - Adapters receive gateway protocols through the constructor.
 - Controllers receive use cases through the constructor.
 - Concrete dependencies are built only at the composition root (`infrastructure/di/`).

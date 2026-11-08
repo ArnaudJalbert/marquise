@@ -20,15 +20,18 @@ OutputData skips re-validating fields copied from already-validated entities or 
 
 ## Use cases
 
-- `execute(input_data: InputData) -> OutputData` is the only public method.
-- Each use case and query declares its own nested `InputData` and `OutputData` classes and uses them in `execute`. It may inject another use case as a collaborator but never reuses another use case's DTOs. **Enforced:** `packages/marquise-core/tests/unit_tests/application/test_use_case_architecture.py` (its allowlist only shrinks).
+- Use case structure follows [use-cases](use-cases/structure.md).
+- `InputData` and `OutputData` follow [use-cases](use-cases/input-and-output.md).
+- Use-case failure behavior follows [use-cases](use-cases/failure.md).
 
 ## Errors
 
-- Entities, value objects and InputData raise `ValueError` from `__post_init__` on invalid values. The API maps it to 422.
-- An InputData that enforces an application limit, not value validity, raises a use-case-specific `ApplicationError` from `application/exceptions/` instead (e.g. `TooManyMovieIdsError` for the 100-id cap in `ListMoviesUseCase`). The API maps each one in `apps/marquise-api/src/marquise_api/exception_handlers.py`.
-- Application errors subclass `ApplicationError`, one module per aggregate in `application/exceptions/`.
-- Gateway errors live beside their protocols in `interface_adapters/repositories/protocols/` (auth gateway errors in `interface_adapters/exceptions/auth.py`). Adapters translate them into application errors.
+- Entities and value objects raise `ValueError` from `__post_init__` when their values are invalid.
+- Application errors subclass `ApplicationError`, with one module per aggregate in `application/exceptions/`.
+- Domain exception boundaries follow [architecture](architecture.md#boundaries).
+- Repository gateway errors are declared with their protocols under `interface_adapters/repositories/protocols/`.
+- Auth gateway errors are declared in `interface_adapters/exceptions/auth.py`.
+- The API maps an unvalidated `ValueError` to 422. In `apps/marquise-api/src/marquise_api/exception_handlers.py`, explicitly mapped `ApplicationError` subclasses get their configured status; unmapped ones fall back to 400.
 
 ## Modules and packages
 

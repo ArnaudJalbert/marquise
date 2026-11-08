@@ -12,7 +12,7 @@ Documentation lives in the repository (not all pages are published here):
 
 | Document | Purpose |
 |----------|---------|
-| [Rules](https://github.com/ArnaudJalbert/marquise/tree/main/docs/agents/rules) | Architecture, Python, testing, web and review rules |
+| [Rules](https://github.com/ArnaudJalbert/marquise/tree/main/docs/agents/rules) | Architecture, naming, Python, testing, web and review rules |
 | [Agent guide](https://github.com/ArnaudJalbert/marquise/blob/main/AGENTS.md) | Priorities, rule index and guide index |
 | [Contributing](https://github.com/ArnaudJalbert/marquise/blob/main/CONTRIBUTING.md) | Setup, commands, paths, CI |
 

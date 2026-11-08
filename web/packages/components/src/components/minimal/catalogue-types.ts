@@ -6,6 +6,7 @@ export interface CatalogueCinema {
   website?: string;
 }
 export interface CatalogueScreening {
+  showtime: string;
   cinemaId: string;
   date: string;
   time: string;
@@ -41,6 +42,7 @@ export interface CatalogueSelection {
   to: string;
 }
 export interface MinimalCatalogueProps {
+  currentTime?: string;
   movies: readonly CatalogueMovie[];
   catalogueMovies?: readonly CatalogueMovie[];
   catalogueNotice?: string;
@@ -62,12 +64,15 @@ export interface MinimalCatalogueProps {
   href: string;
   navigate: (href: string) => void;
   today: string;
-  tomorrow: string;
-  weekend: readonly [string, string];
   state?: CatalogueState;
   hasMore?: boolean;
   onLoadMore?: () => void;
   onRetry: () => void;
+  /** Loads a movies section card's upcoming screenings when its preview first opens. */
+  onLoadUpcomingScreenings?: (
+    movie: CatalogueMovie,
+    signal: AbortSignal,
+  ) => Promise<CatalogueScreening[]>;
   onLoadWeek?: (
     movie: CatalogueMovie,
     start: string,

@@ -9,6 +9,8 @@ Montreal cinema showtimes: a Python backend (uv workspace: `packages/marquise-co
 
 When they pull apart, keep the architecture and find a smaller change inside it. When unsure, ship the simple version and say what was skipped.
 
+The [use-cases](docs/agents/rules/use-cases.md) and [functions](docs/agents/rules/functions.md) rules take precedence over ponytail.
+
 ## Rules
 
 Read the matching file before the work it names. How rules are written and added: [docs/agents/rules/README.md](docs/agents/rules/README.md).
@@ -16,9 +18,13 @@ Read the matching file before the work it names. How rules are written and added
 | Rules | Read when |
 |---|---|
 | [architecture](docs/agents/rules/architecture.md) | Adding a use case, repository, gateway, adapter or endpoint; moving code across layers; wiring dependencies; changing what apps import |
+| [use-cases](docs/agents/rules/use-cases.md) | Creating, changing or reviewing a use case or query |
+| [functions](docs/agents/rules/functions.md) | Writing or reviewing Python functions and methods |
+| [naming](docs/agents/rules/naming.md) | Naming or reviewing variables, parameters, properties, functions, classes, types, or components in Python or TypeScript |
 | [python](docs/agents/rules/python.md) | Writing or reviewing Python |
 | [testing](docs/agents/rules/testing.md) | Writing, moving or reviewing tests |
 | [web](docs/agents/rules/web.md) | Working under `web/` |
+| [enforcement](docs/agents/rules/enforcement.md) | Adding a rule or check; deciding what to verify at each stage |
 | [review-and-delivery](docs/agents/rules/review-and-delivery.md) | Filing an issue; opening, reviewing or merging a PR |
 
 ## Guides
@@ -30,7 +36,7 @@ Read the matching file before the work it names. How rules are written and added
 | [docs/sources.md](docs/sources.md) | Scrapers, source adapters, the source registry |
 | [docs/metadata-contracts.md](docs/metadata-contracts.md), [docs/providers/tmdb-metadata.md](docs/providers/tmdb-metadata.md) | Movie metadata and TMDB |
 | [docs/merge-movies.md](docs/merge-movies.md) | Merging duplicate movies |
-| [docs/releasing.md](docs/releasing.md) | Version bumps, changelogs, tags |
+| [docs/releasing.md](docs/releasing.md) | Version bumps, tags, releases |
 | [docs/deployment.md](docs/deployment.md), [docs/fly-postgres.md](docs/fly-postgres.md) | Deploying, Fly Postgres, scheduled imports |
 | [docs/privacy-operations.md](docs/privacy-operations.md) | Personal data handling |
 | [local/README.md](local/README.md) | The isolated local stack (`make local-up`) |

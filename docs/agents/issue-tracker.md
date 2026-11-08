@@ -2,6 +2,10 @@
 
 Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all operations.
 
+## Spec and ticket relationships
+
+Specs are parent issues. Create each work ticket as a direct child of its spec using GitHub's native sub-issue relationship. Do not create or assign milestones when creating specs or tickets. See [triage labels](triage-labels.md) for issue classification.
+
 ## Conventions
 
 - **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.

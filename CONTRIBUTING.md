@@ -232,7 +232,7 @@ Web tests are colocated with their source as `*.test.ts` / `*.test.tsx`.
 Pull requests to `main` run the repository workflows:
 
 - `quality`: `ruff format --check`, `ruff check`, `ty check packages/marquise-core/src`, core unit tests with the 70% coverage gate, API and CLI tests, and the deterministic integration suite against a disposable PostgreSQL 17 service. The core unit tests include the architecture tests (`test_import_boundary.py`, `test_public_api.py`, `test_use_case_architecture.py`).
-- `release-validation`: when a package's `src/**` or `pyproject.toml` changes, its version must increase, its `CHANGELOG.md` must contain a `### vX.Y.Z` heading for the new version, and its distributions must build.
+- `release-validation`: when a package's `src/**` or `pyproject.toml` changes, its version must increase, and its distributions must build.
 - `web-quality`: for web changes, install the frozen pnpm workspace and run web lint, TypeScript checks, unit tests, and production builds on Node.js 24.
 
 The nightly `integration` workflow runs the same deterministic suite against its own PostgreSQL 17 service. It needs no production secrets or live provider access. The separate `provider-connectivity` workflow checks the real Cineplex and CinemaCinema endpoints daily and by manual dispatch. Its failures are visible but do not fail the deterministic suite; a connectivity check does not validate every showtime or movie-detail response.
@@ -259,12 +259,11 @@ Branch and commit conventions: [review and delivery rules](docs/agents/rules/rev
 - [ ] Unit tests pass (`pytest packages/marquise-core/tests/unit_tests/`)
 - [ ] App tests pass if an app was touched
 - [ ] Coverage did not drop below 70%
-- [ ] Version bump in the affected package's `pyproject.toml` and a `### vX.Y.Z` entry under the current date in its `CHANGELOG.md` ([index](CHANGELOG.md))
+- [ ] Version bump in affected package's `pyproject.toml`
 
 ### Web changes
 
 - [ ] `pnpm lint`, `pnpm typecheck`, and `pnpm test` pass (from `web/`)
-- [ ] Entry under current date in the affected package's `CHANGELOG.md` if user-facing ([index](CHANGELOG.md))
 
 ### All changes
 

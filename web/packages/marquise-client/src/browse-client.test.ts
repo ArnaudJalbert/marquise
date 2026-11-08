@@ -19,7 +19,12 @@ it("requests one movie-first page with inclusive local dates and no metadata fan
   ).toEqual(result);
   expect(fetch).toHaveBeenCalledExactlyOnceWith(
     "https://api.example/v1/screening-movies?start=2026-11-01&end=2026-11-02&page=2",
-    { signal: controller.signal },
+    {
+      body: "{}",
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+      signal: controller.signal,
+    },
   );
 });
 
@@ -59,8 +64,11 @@ it("serializes combined movie-first filters with repeated alternatives", async (
     title: "Dune",
     cinemas: ["c1", "c2"],
     languages: ["VO", "VOSTF"],
-    startHour: 18,
-    endHour: 21,
+    hours: {
+      operator: "is",
+      ranges: [{ start: 17, end: 21 }],
+    },
+    excludedCinemas: ["c3", "c4"],
   });
   const url = new URL(String(fetch.mock.calls[0]?.[0]), "https://api.example");
   expect([...url.searchParams]).toEqual([
@@ -70,11 +78,80 @@ it("serializes combined movie-first filters with repeated alternatives", async (
     ["title", "Dune"],
     ["cinema", "c1"],
     ["cinema", "c2"],
+    ["exclude_cinema", "c3"],
+    ["exclude_cinema", "c4"],
     ["language", "VO"],
     ["language", "VOSTF"],
-    ["start_hour", "18"],
-    ["end_hour", "21"],
   ]);
+  expect(fetch.mock.calls[0]?.[1]).toMatchObject({
+    body: JSON.stringify({
+      hours: { operator: "is", ranges: [{ start: 17, end: 21 }] },
+    }),
+  });
+});
+
+it("repeats non-adjacent hour ranges so the API matches them with OR", async () => {
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockResolvedValue(
+      new Response(
+        JSON.stringify({ items: [], total: 0, page: 1, pages: 0, size: 24 }),
+      ),
+    );
+  const client = new HttpMarquiseClient({ baseUrl: "", fetch });
+  await client.fetchScreeningMoviesPage({
+    start: "2026-11-01",
+    page: 1,
+    hours: {
+      operator: "is",
+      ranges: [
+        { start: 0, end: 17 },
+        { start: 21, end: 24 },
+      ],
+    },
+  });
+  const url = new URL(String(fetch.mock.calls[0]?.[0]), "https://api.example");
+  expect(url.pathname).toBe("/v1/screening-movies");
+  expect(url.searchParams.has("hours")).toBe(false);
+  expect(url.searchParams.has("exclude_cinema")).toBe(false);
+  expect(fetch.mock.calls[0]?.[1]).toMatchObject({
+    body: JSON.stringify({
+      hours: {
+        operator: "is",
+        ranges: [
+          { start: 0, end: 17 },
+          { start: 21, end: 24 },
+        ],
+      },
+    }),
+  });
+});
+
+it("surfaces an invalid hour range rejected by the API", async () => {
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockResolvedValue(
+      new Response(JSON.stringify({ detail: "Invalid" }), { status: 422 }),
+    );
+  const client = new HttpMarquiseClient({ baseUrl: "", fetch });
+  await expect(
+    client.fetchScreeningMoviesPage({
+      start: "2026-11-01",
+      page: 1,
+      hours: {
+        operator: "is_not",
+        ranges: [{ start: 21, end: 17 }],
+      },
+    }),
+  ).rejects.toBeInstanceOf(HttpMarquiseClientError);
+  expect(fetch.mock.calls[0]?.[1]).toMatchObject({
+    body: JSON.stringify({
+      hours: {
+        operator: "is_not",
+        ranges: [{ start: 21, end: 17 }],
+      },
+    }),
+  });
 });
 
 it("propagates API failure and cancellation without a sample-data fallback", async () => {
@@ -122,4 +199,31 @@ it("resolves an exact opaque movie ID through the one-ID query, preserving slash
     "name",
     "MovieNotFoundError",
   );
+});
+
+it("requests one page of a movie's upcoming screenings from a datetime, preserving slashes", async () => {
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockResolvedValue(
+      new Response(
+        JSON.stringify({ items: [], total: 0, page: 1, pages: 0, size: 100 }),
+      ),
+    );
+  const client = new HttpMarquiseClient({ baseUrl: "", fetch });
+  const controller = new AbortController();
+  await client.fetchUpcomingScreeningsPage(
+    "catalogue/id",
+    "2026-11-01T22:00:00.000Z",
+    controller.signal,
+  );
+  const url = new URL(String(fetch.mock.calls[0]?.[0]), "https://api.example");
+  expect(url.pathname).toBe("/v1/movies/catalogue%2Fid/screenings");
+  expect([...url.searchParams]).toEqual([
+    ["from", "2026-11-01T22:00:00.000Z"],
+    ["page", "1"],
+    ["size", "100"],
+  ]);
+  expect(fetch).toHaveBeenCalledExactlyOnceWith(expect.any(String), {
+    signal: controller.signal,
+  });
 });

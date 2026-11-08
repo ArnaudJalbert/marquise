@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from datetime import datetime, time
+from datetime import datetime
 
 from marquise.application.readers.screening_reader import ScreeningReader
 from marquise.application.repositories.page import Page
@@ -12,6 +12,34 @@ from marquise.application.repositories.page import Page
 
 class ScreeningMovieReader(ABC):
     """Read distinct movies with their earliest qualifying screenings."""
+
+    @dataclass(frozen=True, slots=True)
+    class HourRange:
+        """One half-open whole-hour Montréal range."""
+
+        start: int
+        end: int
+
+    @dataclass(frozen=True, slots=True)
+    class HourFilter:
+        """Hour ranges matched together before optional exclusion."""
+
+        ranges: tuple[ScreeningMovieReader.HourRange, ...]
+        excluded: bool = False
+
+    @dataclass(frozen=True, slots=True)
+    class SearchRequest:
+        """All bounds and filters for one movie-first page."""
+
+        start: datetime
+        end: datetime | None
+        now: datetime
+        page: int
+        title: str | None = None
+        cinemas: tuple[str, ...] = ()
+        languages: tuple[str, ...] = ()
+        hours: ScreeningMovieReader.HourFilter | None = None
+        excluded_cinemas: tuple[str, ...] = ()
 
     @dataclass(frozen=True, slots=True)
     class MovieData:
@@ -29,17 +57,6 @@ class ScreeningMovieReader(ABC):
         tmdb_vote_count: int | None = None
 
     @abstractmethod
-    async def search(
-        self,
-        start: datetime,
-        end: datetime | None,
-        now: datetime,
-        page: int,
-        title: str | None = None,
-        cinemas: tuple[str, ...] = (),
-        languages: tuple[str, ...] = (),
-        start_time: time | None = None,
-        end_time: time | None = None,
-    ) -> Page[MovieData]:
+    async def search(self, request: SearchRequest) -> Page[MovieData]:
         """Return a 24-movie page within inclusive bounds, strictly after now."""
         ...

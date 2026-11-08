@@ -28,8 +28,9 @@ export class HttpMarquiseClientError extends Error {
   constructor(
     readonly path: string,
     readonly status: number,
+    method = "GET",
   ) {
-    super(`Marquise API request failed: GET ${path} returned ${status}`);
+    super(`Marquise API request failed: ${method} ${path} returned ${status}`);
     this.name = "HttpMarquiseClientError";
   }
 }
@@ -116,14 +117,15 @@ export class HttpMarquiseClient
     params.set("page", String(query.page));
     if (query.title?.trim()) params.set("title", query.title.trim());
     query.cinemas?.forEach((id) => params.append("cinema", id));
+    query.excludedCinemas?.forEach((id) => params.append("exclude_cinema", id));
     query.languages?.forEach((language) =>
       params.append("language", language),
     );
-    if (query.startHour !== undefined && query.startHour > 0)
-      params.set("start_hour", String(query.startHour));
-    if (query.endHour !== undefined && query.endHour < 24)
-      params.set("end_hour", String(query.endHour));
-    return this.fetchJson(`/v1/screening-movies?${params}`, signal);
+    return this.fetchJson(`/v1/screening-movies?${params}`, signal, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(query.hours ? { hours: query.hours } : {}),
+    });
   }
   async fetchMovieMetadata(
     id: string,
@@ -154,6 +156,17 @@ export class HttpMarquiseClient
       size: "100",
     });
     return this.fetchJson(`/v1/screenings?${params}`, signal);
+  }
+  async fetchUpcomingScreeningsPage(
+    movieId: string,
+    from: string,
+    signal?: AbortSignal,
+  ): Promise<Page<ScreeningApi>> {
+    const params = new URLSearchParams({ from, page: "1", size: "100" });
+    return this.fetchJson(
+      `/v1/movies/${encodeURIComponent(movieId)}/screenings?${params}`,
+      signal,
+    );
   }
   private screeningPath(query: ScreeningQuery): string {
     const range = montrealDayRange(query.date);
@@ -269,9 +282,21 @@ export class HttpMarquiseClient
       },
     };
   }
-  private async fetchJson<T>(path: string, signal?: AbortSignal): Promise<T> {
-    const response = await this.fetchImpl(this.baseUrl + path, { signal });
-    if (!response.ok) throw new HttpMarquiseClientError(path, response.status);
+  private async fetchJson<T>(
+    path: string,
+    signal?: AbortSignal,
+    init: RequestInit = {},
+  ): Promise<T> {
+    const response = await this.fetchImpl(this.baseUrl + path, {
+      ...init,
+      signal,
+    });
+    if (!response.ok)
+      throw new HttpMarquiseClientError(
+        path,
+        response.status,
+        init.method ?? "GET",
+      );
     return (await response.json()) as T;
   }
 }
