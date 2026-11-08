@@ -1,0 +1,44 @@
+// @vitest-environment node
+import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { describe, expect, it } from "vitest";
+
+const script = path.resolve(import.meta.dirname, "check-isolation.mjs");
+
+function checkIsolation(files: Record<string, string>) {
+  const dist = mkdtempSync(path.join(tmpdir(), "isolation-"));
+  try {
+    for (const [name, source] of Object.entries(files)) {
+      mkdirSync(path.dirname(path.join(dist, name)), { recursive: true });
+      writeFileSync(path.join(dist, name), source);
+    }
+    return spawnSync(process.execPath, [script, dist], { encoding: "utf8" });
+  } finally {
+    rmSync(dist, { recursive: true, force: true });
+  }
+}
+
+describe("check-isolation", () => {
+  it("accepts library code, styles, maps and declarations", () => {
+    const result = checkIsolation({
+      "index.js": "export const x = 1;",
+      "index.css": ".x{}",
+      "index.js.map": "{}",
+      "types/index.d.ts": "export {};",
+    });
+
+    expect(result.status).toBe(0);
+  });
+
+  it("rejects an unmarked image even without text markers", () => {
+    const result = checkIsolation({
+      "index.js": "export {};",
+      "assets/cover.jpg": "",
+    });
+
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("cover.jpg");
+  });
+});

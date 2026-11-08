@@ -21,6 +21,15 @@ export function weekdayName(date: string): string {
 export function monthName(date: string): string {
   return MONTHS[utcNoon(date).getUTCMonth()] ?? "";
 }
+const LONG_MONTH_DAY = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "UTC",
+  month: "long",
+  day: "numeric",
+});
+/** "November 7". */
+export function longMonthDay(date: string): string {
+  return LONG_MONTH_DAY.format(utcNoon(date));
+}
 /** Whole days from `from` to `to`. */
 export function daysBetween(from: string, to: string): number {
   return Math.round((utcNoon(to).getTime() - utcNoon(from).getTime()) / 86_400_000);
@@ -99,25 +108,24 @@ export function stepPeriod(
     : [nextStart, nextEnd];
 }
 
+export type WeekCount = 1 | 2 | 3 | 4 | 5 | 6;
+
 export interface StripView {
-  days: 14 | 42;
-  /** Offset from today of the first visible day. */
+  weeks: WeekCount;
+  /** Offset from today of the first visible day; always a multiple of 7. */
   first: number;
 }
 
-export function fortnightView(start: number): StripView {
-  const first = Math.floor(start / 7) * 7;
-  return { days: 14, first: Math.max(0, Math.min(HORIZON_DAYS - 14, first)) };
+/** `weeks` whole weeks from the block holding `day`, clamped to the horizon. */
+export function anchorView(weeks: WeekCount, day: number): StripView {
+  const first = Math.floor(day / 7) * 7;
+  return { weeks, first: Math.max(0, Math.min(HORIZON_DAYS - weeks * 7, first)) };
 }
 
-/** Auto zoom: two weeks for a week or less, six weeks for longer periods. */
-export function fitView(
-  current: StripView | undefined,
-  start: number,
-  end: number,
-): StripView {
-  if (end - start + 1 > 7) return { days: 42, first: 0 };
-  if (current?.days === 14 && start >= current.first && end < current.first + 14)
-    return current;
-  return fortnightView(start);
+/** Keeps a visible period in view, else pans at the same zoom, widening only to fit. */
+export function fitView(current: StripView, start: number, end: number): StripView {
+  if (start >= current.first && end < current.first + current.weeks * 7) return current;
+  const spannedWeeks = Math.floor(end / 7) - Math.floor(start / 7) + 1;
+  const weeks = Math.min(HORIZON_DAYS / 7, Math.max(current.weeks, spannedWeeks));
+  return anchorView(weeks as WeekCount, start);
 }
