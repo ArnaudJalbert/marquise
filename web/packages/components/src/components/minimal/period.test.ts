@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describePeriod, fitView, stepPeriod } from "./period";
+import { anchorView, describePeriod, fitView, stepPeriod } from "./period";
 
 // Tuesday November 3, 2026.
 const today = "2026-11-03";
@@ -57,25 +57,50 @@ describe("stepPeriod", () => {
 });
 
 describe("fitView", () => {
-  it("shows two weeks for a week or less inside one fortnight", () => {
-    /** Scenario: auto zoom keeps short periods in the day view. */
-    expect(fitView(undefined, 0, 0)).toEqual({ days: 14, first: 0 });
-    expect(fitView(undefined, 9, 15)).toEqual({ days: 14, first: 7 });
+  it("keeps the current view when the period is already visible", () => {
+    /** Scenario: fitting does not jump when the period is in view. */
+    expect(fitView({ weeks: 1, first: 0 }, 0, 0)).toEqual({ weeks: 1, first: 0 });
+    expect(fitView({ weeks: 2, first: 7 }, 8, 9)).toEqual({ weeks: 2, first: 7 });
+    expect(fitView({ weeks: 3, first: 0 }, 10, 10)).toEqual({ weeks: 3, first: 0 });
   });
 
-  it("widens to six weeks for periods longer than a week", () => {
-    /** Scenario: auto zoom widens when the period is longer than a week. */
-    expect(fitView(undefined, 0, 9)).toEqual({ days: 42, first: 0 });
-    expect(fitView({ days: 14, first: 0 }, 3, 10)).toEqual({ days: 42, first: 0 });
+  it("pans at the same zoom to the block holding the period start", () => {
+    /** Scenario: a period outside the view moves the view by whole weeks. */
+    expect(fitView({ weeks: 1, first: 0 }, 9, 10)).toEqual({ weeks: 1, first: 7 });
+    expect(fitView({ weeks: 2, first: 0 }, 24, 24)).toEqual({ weeks: 2, first: 21 });
+    expect(fitView({ weeks: 1, first: 14 }, 3, 3)).toEqual({ weeks: 1, first: 0 });
   });
 
-  it("keeps the last fortnight inside the horizon", () => {
-    /** Scenario: a short period at the end of the strip shows the last two weeks. */
-    expect(fitView(undefined, 40, 41)).toEqual({ days: 14, first: 28 });
+  it("widens to the number of blocks the period spans", () => {
+    /** Scenario: a period longer than the view widens it just enough to fit. */
+    expect(fitView({ weeks: 1, first: 0 }, 3, 10)).toEqual({ weeks: 2, first: 0 });
+    expect(fitView({ weeks: 2, first: 0 }, 13, 24)).toEqual({ weeks: 3, first: 7 });
+    expect(fitView({ weeks: 1, first: 0 }, 0, 41)).toEqual({ weeks: 6, first: 0 });
   });
 
-  it("keeps the current fortnight when the period is already visible", () => {
-    /** Scenario: auto zoom does not jump when the period is in view. */
-    expect(fitView({ days: 14, first: 7 }, 8, 9)).toEqual({ days: 14, first: 7 });
+  it("never narrows on its own", () => {
+    /** Scenario: a short period keeps the wider zoom the user chose. */
+    expect(fitView({ weeks: 4, first: 0 }, 30, 30)).toEqual({ weeks: 4, first: 14 });
+  });
+
+  it("keeps the view inside the horizon", () => {
+    /** Scenario: a period at the end of the strip shows the last weeks. */
+    expect(fitView({ weeks: 2, first: 0 }, 40, 41)).toEqual({ weeks: 2, first: 28 });
+  });
+
+  it("never widens past six weeks for a period outside the horizon", () => {
+    /** Scenario: a hand-edited URL period cannot stretch the strip past six weeks. */
+    expect(fitView({ weeks: 1, first: 0 }, -1, 40)).toEqual({ weeks: 6, first: 0 });
+    expect(fitView({ weeks: 1, first: 0 }, 0, 50)).toEqual({ weeks: 6, first: 0 });
+  });
+});
+
+describe("anchorView", () => {
+  it("starts the view at the block holding the day, clamped to the horizon", () => {
+    /** Scenario: zooming keeps the selection start's week first when it can. */
+    expect(anchorView(1, 0)).toEqual({ weeks: 1, first: 0 });
+    expect(anchorView(2, 17)).toEqual({ weeks: 2, first: 14 });
+    expect(anchorView(3, 37)).toEqual({ weeks: 3, first: 21 });
+    expect(anchorView(6, 37)).toEqual({ weeks: 6, first: 0 });
   });
 });
