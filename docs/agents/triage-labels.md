@@ -20,6 +20,8 @@ The GitHub Project's `Status` field is the workflow contract. It controls ticket
 
 Idea, spec, and ticket labels describe what an issue represents. They can sit beside type and area labels, and they do not change Project `Status` or authorize implementation.
 
+Specs are parent issues. Create each work ticket as a direct child of its spec using GitHub's native sub-issue relationship. Do not create or assign milestones when creating specs or tickets. Labels classify issues and do not establish parentage.
+
 ## Workflow status
 
 Use the Project `Status` values documented in the [autonomous implementation loop](https://github.com/users/ArnaudJalbert/projects/3): `Backlog`, `Scoping`, `Ready`, `In progress`, `In review`, `Reviewed`, `Blocked`, `Done`, and `Canceled`. In particular, `Blocked` is a board status for work needing Arnaud's intervention, not an issue label for an ordinary dependency wait.
