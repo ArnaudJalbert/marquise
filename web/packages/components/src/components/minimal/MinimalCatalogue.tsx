@@ -42,8 +42,9 @@ function matchesTimeFilter(
   time: string,
   filter: ActiveCatalogueSelection["filters"][number] | undefined,
 ): boolean {
-  if (!filter || filter.type !== "time" || filter.operator === "is_not") return true;
-  return matchesCatalogueTimeFilter(time, filter.value);
+  if (!filter || filter.type !== "time") return true;
+  const matches = matchesCatalogueTimeFilter(time, filter.value);
+  return filter.operator === "is" ? matches : !matches;
 }
 
 function Poster({ movie }: { movie: CatalogueMovie }) {

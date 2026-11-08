@@ -440,6 +440,29 @@ it("filters local previews by the selected time bucket", () => {
   expect(preview.queryByText("22:30")).not.toBeInTheDocument();
 });
 
+it("excludes a time bucket from local previews for a negative filter", () => {
+  const fractionalMovie = {
+    ...movie,
+    screenings: [
+      { cinemaId: "a", date: "2026-10-30", time: "18:00", showtime: "2026-10-30T18:00:00-04:00" },
+      { cinemaId: "a", date: "2026-10-30", time: "22:30", showtime: "2026-10-30T22:30:00-04:00" },
+    ],
+  };
+  render(
+    <MinimalCatalogue
+      {...props}
+      movies={[fractionalMovie]}
+      selection={{ ...props.selection, filters: [{ type: "time", value: "evening", operator: "is_not" }] }}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: `Preview ${movie.title}` }));
+  const preview = within(
+    screen.getByRole("region", { name: `${movie.title} screenings` }),
+  );
+  expect(preview.queryByText("18:00")).not.toBeInTheDocument();
+  expect(preview.getByText("22:30")).toBeInTheDocument();
+});
+
 it("recovers the detail poster and highlights Movies after navigating from a failed poster", () => {
   const first = { ...movie, poster: "/broken.jpg" };
   const second = {
