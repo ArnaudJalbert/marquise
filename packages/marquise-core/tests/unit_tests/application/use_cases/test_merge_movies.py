@@ -5,17 +5,18 @@ from unittest.mock import create_autospec
 
 import pytest
 
-from marquise.application.metadata import MetadataFailure, ProviderIdentity
+from marquise.application.exceptions.movie import MovieMetadataUnavailableError
+from marquise.application.metadata import ProviderIdentity
 from marquise.application.movie_workflows import (
-    MatchMovieExecutor,
-    MatchMovieOutputData,
     MergeMoviesInputData,
     MergeMoviesOutputData,
     MovieMetadataRepository,
     MovieMetadataSnapshot,
     MovieMetadataValues,
 )
+from marquise.application.use_cases.match_movies import MatchMoviesUseCase
 from marquise.application.use_cases.merge_movies import MergeMoviesUseCase
+from support.movie_import import autospec_use_case
 
 
 def snapshots() -> tuple[MovieMetadataSnapshot, ...]:
@@ -37,13 +38,23 @@ def snapshots() -> tuple[MovieMetadataSnapshot, ...]:
     )
 
 
+def match_output(
+    status: str, identity: ProviderIdentity | None = None
+) -> MatchMoviesUseCase.OutputData:
+    """Answer a one-movie match request."""
+    source = MatchMoviesUseCase.MovieInput("Fjord")
+    return MatchMoviesUseCase.OutputData(
+        (MatchMoviesUseCase.MovieMatch(source, status, identity),)
+    )
+
+
 def collaborators() -> tuple:
     """Provide signature-checked collaborators with no concrete implementations."""
     repository = create_autospec(MovieMetadataRepository, instance=True)
-    matcher = create_autospec(MatchMovieExecutor, instance=True)
+    matcher = autospec_use_case(MatchMoviesUseCase)
     repository.merge.return_value = MergeMoviesOutputData("preview", snapshots())
     repository.find_by_tmdb_id.return_value = snapshots()[0]
-    matcher.execute.return_value = MatchMovieOutputData(
+    matcher.execute.return_value = match_output(
         "matched", ProviderIdentity("tmdb", "1401459")
     )
     return repository, matcher, MergeMoviesUseCase(repository, matcher)
@@ -57,7 +68,7 @@ async def test_preview_validates_every_movie_without_apply() -> None:
     assert result.status == "preview"
     repo.merge.assert_awaited_once_with(MergeMoviesInputData("a", ("b", "c")))
     assert matcher.execute.await_count == 3
-    assert matcher.execute.await_args_list[1].args[0].title == "Fjord VF"
+    assert matcher.execute.await_args_list[1].args[0].movies[0].title == "Fjord VF"
 
 
 @pytest.mark.asyncio
@@ -81,12 +92,9 @@ async def test_apply_passes_exact_approval_after_rematching() -> None:
 async def test_unconfirmed_evidence_blocks_apply(status: str) -> None:
     """A lookup failure or lack of confirmation cannot authorize a merge."""
     repo, matcher, use_case = collaborators()
-    matcher.execute.return_value = MatchMovieOutputData(
-        status,
-        failure=MetadataFailure("unavailable", "offline")
-        if status == "failed"
-        else None,
-    )
+    matcher.execute.return_value = match_output(status)
+    if status == "failed":
+        matcher.execute.side_effect = MovieMetadataUnavailableError("offline")
     result = await use_case.execute(MergeMoviesInputData("a", ("b", "c"), snapshots()))
     assert result.status == "blocked"
     repo.merge.assert_awaited_once()
@@ -102,8 +110,7 @@ async def test_unsafe_plan_blocks(change: str) -> None:
     approved = list(snapshots())
     if change == "conflict":
         matcher.execute.side_effect = [
-            MatchMovieOutputData("matched", ProviderIdentity("tmdb", str(i)))
-            for i in range(3)
+            match_output("matched", ProviderIdentity("tmdb", str(i))) for i in range(3)
         ]
     elif change == "owner":
         approved[1] = replace(approved[1], tmdb_id="1401459")
@@ -141,7 +148,7 @@ async def test_unlinked_groups_preview_with_confirmed_identity(
     unlinked = tuple(replace(s, tmdb_id=stored_id) for s in snapshots())
     repo.merge.return_value = MergeMoviesOutputData("preview", unlinked)
     repo.find_by_tmdb_id.return_value = None
-    matcher.execute.return_value = MatchMovieOutputData(
+    matcher.execute.return_value = match_output(
         "matched", ProviderIdentity(provider, "42")
     )
     result = await use_case.execute(MergeMoviesInputData("a", ("b", "c")))
@@ -156,7 +163,7 @@ async def test_changed_identity_blocks_unlinked_apply() -> None:
     unlinked = tuple(replace(s, tmdb_id=None) for s in snapshots())
     repo.merge.return_value = MergeMoviesOutputData("preview", unlinked)
     repo.find_by_tmdb_id.return_value = None
-    matcher.execute.return_value = MatchMovieOutputData(
+    matcher.execute.return_value = match_output(
         "matched", ProviderIdentity("tmdb", "new")
     )
     request = MergeMoviesInputData(

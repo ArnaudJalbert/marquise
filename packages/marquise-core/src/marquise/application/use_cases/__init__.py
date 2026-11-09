@@ -7,9 +7,7 @@ from marquise.application.use_cases.auth import (
     SetAccountRoleUseCase,
 )
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
-from marquise.application.use_cases.create_missing_movies import (
-    CreateMissingMoviesCommand,
-)
+from marquise.application.use_cases.create_movies import CreateMoviesCommand
 from marquise.application.use_cases.create_screening import CreateScreeningUseCase
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.create_source import CreateSourceUseCase
@@ -32,7 +30,7 @@ __all__ = [
     "AssignSourceUseCase",
     "AuthenticateAdministratorUseCase",
     "CreateCinemaUseCase",
-    "CreateMissingMoviesCommand",
+    "CreateMoviesCommand",
     "CreateScreeningUseCase",
     "CreateScreeningsCommand",
     "CreateSourceUseCase",

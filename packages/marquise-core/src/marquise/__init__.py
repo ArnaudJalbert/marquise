@@ -28,6 +28,7 @@ from marquise.application.exceptions import (
     SourceAlreadyExistsError,
     SourceNotFoundError,
     TooManyMovieIdsError,
+    TooManyScreeningDaysError,
 )
 from marquise.application.metadata import (
     LocalizedMovieMetadata,
@@ -42,12 +43,8 @@ from marquise.application.metadata import (
     TitleFact,
 )
 from marquise.application.movie_workflows import (
-    EnrichMovieExecutor,
     EnrichMovieInputData,
     EnrichMovieOutputData,
-    MatchMovieExecutor,
-    MatchMovieInputData,
-    MatchMovieOutputData,
     MergeMoviesExecutor,
     MergeMoviesInputData,
     MergeMoviesOutputData,
@@ -62,6 +59,7 @@ from marquise.application.movie_workflows import (
 from marquise.application.queries.browse_screening_movies import (
     BrowseScreeningMoviesQuery,
 )
+from marquise.application.queries.count_screening_days import CountScreeningDaysQuery
 from marquise.application.queries.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
@@ -82,9 +80,6 @@ from marquise.application.use_cases.auth import (
     SetAccountRoleUseCase,
 )
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
-from marquise.application.use_cases.create_missing_movies import (
-    CreateMissingMoviesCommand,
-)
 from marquise.application.use_cases.create_screening import CreateScreeningUseCase
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.create_source import CreateSourceUseCase
@@ -127,8 +122,6 @@ __all__ = [
     "MetadataRepository",
     "MovieMetadataValues",
     "MovieMetadataSnapshot",
-    "MatchMovieInputData",
-    "MatchMovieOutputData",
     "EnrichMovieInputData",
     "EnrichMovieOutputData",
     "RefreshMoviesInputData",
@@ -137,11 +130,10 @@ __all__ = [
     "MergeMoviesOutputData",
     "MovieWorkflowConflictError",
     "MovieMetadataRepository",
-    "MatchMovieExecutor",
-    "EnrichMovieExecutor",
     "RefreshMoviesExecutor",
     "MergeMoviesExecutor",
     "BrowseScreeningMoviesQuery",
+    "CountScreeningDaysQuery",
     "AccountAlreadyExistsError",
     "ApplicationError",
     "AssignSourceUseCase",
@@ -157,7 +149,6 @@ __all__ = [
     "CinemaSourceAssignmentAlreadyExistsError",
     "CinemaSourceAssignmentNotFoundError",
     "CreateCinemaUseCase",
-    "CreateMissingMoviesCommand",
     "CreateScreeningUseCase",
     "CreateScreeningsCommand",
     "ImportScreeningsCommand",
@@ -194,6 +185,7 @@ __all__ = [
     "SourceAlreadyExistsError",
     "SourceNotFoundError",
     "TooManyMovieIdsError",
+    "TooManyScreeningDaysError",
     "UnassignSourceUseCase",
     "UpdateCinemaUseCase",
     "VerifyAccessTokenQuery",

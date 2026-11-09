@@ -6,8 +6,8 @@ import {
   type BrowseClient,
   type HourFilter,
   type MovieApi,
+  type ScreeningFilters,
   type ScreeningApi,
-  type ScreeningMovieQuery,
 } from "marquise-client";
 import { useResource } from "../discovery/use-resource";
 import { usePageResource } from "../discovery/use-page-resource";
@@ -146,13 +146,11 @@ function getTimeHours(filters: ActiveCatalogueSelection["filters"]): HourFilter 
   return { operator: time.operator, ranges: [{ start, end }] };
 }
 
-function getScreeningMovieQuery(
+function getScreeningFilters(
   selection: ActiveCatalogueSelection,
   fixedCinemaId: string | undefined,
-): Omit<ScreeningMovieQuery, "page"> {
+): ScreeningFilters {
   return {
-    start: selection.start,
-    end: selection.end,
     title: selection.title,
     cinemas: fixedCinemaId
       ? [fixedCinemaId]
@@ -210,21 +208,22 @@ export function MinimalExperience({
     [href, navigate],
   );
 
+  // The listing and the day-strip counts share one filter state.
+  const filterKey = selection.filters
+    .map((filter) => `${filter.type}:${filter.operator}:${filter.value}`)
+    .join("\0");
+  const filters = useMemo(
+    () => getScreeningFilters(selection, fixedCinemaId),
+    [selection.title, filterKey, fixedCinemaId],
+  );
   const screenings = usePageResource(
     useCallback(
       (page: number, signal: AbortSignal) =>
         client.fetchScreeningMoviesPage(
-          { ...getScreeningMovieQuery(selection, fixedCinemaId), page },
+          { start: selection.start, end: selection.end, page, ...filters },
           signal,
         ),
-      [
-        client,
-        selection.start,
-        selection.end,
-        selection.title,
-        selection.filters.map((filter) => `${filter.type}:${filter.operator}:${filter.value}`).join("\0"),
-        fixedCinemaId,
-      ],
+      [client, selection.start, selection.end, filters],
     ),
     isScreenings && selection.start <= selection.end,
   );
@@ -232,11 +231,23 @@ export function MinimalExperience({
     async (draft: ActiveCatalogueSelection, signal: AbortSignal) =>
       (
         await client.fetchScreeningMoviesPage(
-          { ...getScreeningMovieQuery(draft, fixedCinemaId), page: 1 },
+          {
+            start: draft.start,
+            end: draft.end,
+            page: 1,
+            ...getScreeningFilters(draft, fixedCinemaId),
+          },
           signal,
         )
       ).total,
     [client, fixedCinemaId],
+  );
+  const loadDayCounts = useCallback<
+    NonNullable<MinimalCatalogueProps["onLoadDayCounts"]>
+  >(
+    (start, end, signal) =>
+      client.fetchScreeningDayCounts({ start, end, ...filters }, signal),
+    [client, filters],
   );
   const cinemaResource = useResource(
     useCallback(async (signal: AbortSignal) => {
@@ -383,6 +394,7 @@ export function MinimalExperience({
       onLoadMore={screenings.loadNext}
       onLoadWeek={loadWeek}
       onLoadUpcomingScreenings={loadUpcomingScreenings}
+      onLoadDayCounts={isScreenings ? loadDayCounts : undefined}
       detailNotice={
         detail.loading ? (
           <p role="status">Loading movie…</p>

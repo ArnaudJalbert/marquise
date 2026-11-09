@@ -27,6 +27,11 @@ export interface CatalogueMovie {
   synopsis?: string;
   screenings: readonly CatalogueScreening[];
 }
+/** Matching screenings on one Montréal date, from the server's daily totals. */
+export interface CatalogueDayCount {
+  date: string;
+  screenings: number;
+}
 export type CatalogueState =
   | "ready"
   | "initial-loading"
@@ -85,6 +90,12 @@ export interface MinimalCatalogueProps {
   hasMore?: boolean;
   onLoadMore?: () => void;
   onRetry: () => void;
+  /** Loads the day strip's screening totals for its visible dates under the current filters. */
+  onLoadDayCounts?: (
+    start: string,
+    end: string,
+    signal: AbortSignal,
+  ) => Promise<readonly CatalogueDayCount[]>;
   /** Loads a movies section card's upcoming screenings when its preview first opens. */
   onLoadUpcomingScreenings?: (
     movie: CatalogueMovie,

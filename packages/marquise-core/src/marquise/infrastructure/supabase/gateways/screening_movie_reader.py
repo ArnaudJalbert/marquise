@@ -2,15 +2,21 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 import asyncpg
 
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
 from marquise.infrastructure.supabase.gateways.screening_reader import _naive_utc
 from marquise.interface_adapters.repositories.protocols.base import GatewayPage
 
+type _FilterRequest = (
+    ScreeningMovieReader.SearchRequest | ScreeningMovieReader.DayCountRequest
+)
+
 
 class SupabaseScreeningMovieReadGateway:
-    """Page movies before returning at most three previews per movie."""
+    """Page movies or count days over one shared qualifying-screening filter."""
 
     def __init__(self, pool: asyncpg.Pool, schema: str) -> None:
         """Inject the open connection pool and schema."""
@@ -19,8 +25,6 @@ class SupabaseScreeningMovieReadGateway:
 
     async def search(self, request: ScreeningMovieReader.SearchRequest) -> GatewayPage:
         """Use one SQL snapshot for eligibility, totals, ordering and previews."""
-        hour_filter = request.hours
-        hour_ranges = hour_filter.ranges if hour_filter else ()
         async with self._pool.acquire() as connection:
             rows = await connection.fetch(
                 f'''
@@ -29,23 +33,7 @@ class SupabaseScreeningMovieReadGateway:
                            row_number() OVER (
                                PARTITION BY s.movie_id ORDER BY s.showtime, s.id
                            ) AS rank
-                    FROM "{self._schema}".screenings s
-                    JOIN "{self._schema}".cinemas c ON c.id = s.cinema_id
-                    JOIN "{self._schema}".movies m ON m.id = s.movie_id
-                    WHERE s.showtime >= $1
-                      AND ($2::timestamp IS NULL OR s.showtime <= $2)
-                      AND s.showtime > $3
-                      AND ($4::text IS NULL OR m.title ILIKE '%' || $4 || '%')
-                      AND (cardinality($5::text[]) = 0 OR s.cinema_id = ANY($5))
-                      AND (cardinality($6::text[]) = 0 OR s.language = ANY($6))
-                      AND (cardinality($7::int[]) = 0 OR EXISTS (
-                           SELECT 1 FROM unnest($7::int[], $8::int[]) h(lo, hi)
-                           WHERE int4range(h.lo, h.hi) @> extract(
-                               hour FROM (s.showtime AT TIME ZONE 'UTC')
-                                   AT TIME ZONE 'America/Montreal'
-                           )::int
-                           ) <> $9::boolean)
-                      AND NOT s.cinema_id = ANY($10::text[])
+                    {self._build_qualifying_screenings_sql()}
                 ), eligible AS (
                     SELECT movie_id, showtime AS next_showtime
                     FROM qualifying WHERE rank = 1
@@ -64,16 +52,7 @@ class SupabaseScreeningMovieReadGateway:
                 LEFT JOIN qualifying q ON q.movie_id = p.movie_id AND q.rank <= 3
                 ORDER BY p.next_showtime, p.movie_id, q.showtime, q.id
                 ''',
-                _naive_utc(request.start),
-                None if request.end is None else _naive_utc(request.end),
-                _naive_utc(request.now),
-                None if not request.title else request.title.strip(),
-                list(request.cinemas),
-                list(request.languages),
-                [item.start for item in hour_ranges],
-                [item.end for item in hour_ranges],
-                hour_filter is not None and hour_filter.excluded,
-                list(request.excluded_cinemas),
+                *self._bind_filter_arguments(request),
                 (request.page - 1) * 24,
             )
         movies: dict[str, dict] = {}
@@ -111,3 +90,80 @@ class SupabaseScreeningMovieReadGateway:
                 }
             )
         return GatewayPage(rows=list(movies.values()), total=rows[0]["total"])
+
+    async def count_days(
+        self, request: ScreeningMovieReader.DayCountRequest
+    ) -> list[dict]:
+        """Count every qualifying screening per Montréal date in one SQL query."""
+        async with self._pool.acquire() as connection:
+            rows = await connection.fetch(
+                f"""
+                SELECT ((s.showtime AT TIME ZONE 'UTC')
+                        AT TIME ZONE 'America/Montreal')::date AS day,
+                       count(*)::int AS screenings
+                {self._build_qualifying_screenings_sql()}
+                GROUP BY day ORDER BY day
+                """,
+                *self._bind_filter_arguments(request),
+            )
+        return [dict(row) for row in rows]
+
+    def _build_qualifying_screenings_sql(self) -> str:
+        """Return the listing's FROM and WHERE clauses over arguments $1 to $10."""
+        return f'''
+            FROM "{self._schema}".screenings s
+            JOIN "{self._schema}".cinemas c ON c.id = s.cinema_id
+            JOIN "{self._schema}".movies m ON m.id = s.movie_id
+            WHERE s.showtime >= $1
+              AND ($2::timestamp IS NULL OR s.showtime <= $2)
+              AND s.showtime > $3
+              AND ($4::text IS NULL OR m.title ILIKE '%' || $4 || '%')
+              AND (cardinality($5::text[]) = 0 OR s.cinema_id = ANY($5))
+              AND (cardinality($6::text[]) = 0 OR s.language = ANY($6))
+              AND (cardinality($7::int[]) = 0 OR EXISTS (
+                   SELECT 1 FROM unnest($7::int[], $8::int[]) h(lo, hi)
+                   WHERE int4range(h.lo, h.hi) @> extract(
+                       hour FROM (s.showtime AT TIME ZONE 'UTC')
+                           AT TIME ZONE 'America/Montreal'
+                   )::int
+                   ) <> $9::boolean)
+              AND NOT s.cinema_id = ANY($10::text[])
+        '''
+
+    @classmethod
+    def _bind_filter_arguments(
+        cls, request: _FilterRequest
+    ) -> tuple[datetime | str | list[str] | list[int] | bool | None, ...]:
+        """Return the values bound to the shared filter's $1 to $10."""
+        return (
+            _naive_utc(request.start),
+            cls._bind_end_argument(request.end),
+            _naive_utc(request.now),
+            cls._bind_title_argument(request.title),
+            list(request.cinemas),
+            list(request.languages),
+            *cls._bind_hour_arguments(request.hours),
+            list(request.excluded_cinemas),
+        )
+
+    @staticmethod
+    def _bind_end_argument(end: datetime | None) -> datetime | None:
+        """Return the naive UTC end bound, or None for an open-ended window."""
+        return None if end is None else _naive_utc(end)
+
+    @staticmethod
+    def _bind_title_argument(title: str | None) -> str | None:
+        """Return the trimmed title search, or None when there is none."""
+        return None if not title else title.strip()
+
+    @staticmethod
+    def _bind_hour_arguments(
+        hours: ScreeningMovieReader.HourFilter | None,
+    ) -> tuple[list[int], list[int], bool]:
+        """Return the hour range starts, ends and exclusion flag for $7 to $9."""
+        hour_ranges = hours.ranges if hours else ()
+        return (
+            [item.start for item in hour_ranges],
+            [item.end for item in hour_ranges],
+            hours is not None and hours.excluded,
+        )

@@ -1,6 +1,6 @@
 """Unit coverage for the movie-card read adapter without external I/O."""
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from unittest.mock import create_autospec
 
 import pytest
@@ -59,3 +59,23 @@ async def test_movie_projection_maps_metadata_previews_and_empty_pages() -> None
     gateway.search.return_value = GatewayPage(rows=[], total=25)
     result = await reader.search(ScreeningMovieReader.SearchRequest(now, now, now, 3))
     assert result.total == 25 and result.items == []
+
+
+@pytest.mark.asyncio
+async def test_day_counts_map_gateway_rows() -> None:
+    """Each plain day row becomes a typed daily total, in gateway order."""
+    gateway = create_autospec(ScreeningMovieReadGateway, instance=True)
+    gateway.count_days.return_value = [
+        {"day": date(2026, 11, 3), "screenings": 33},
+        {"day": date(2026, 11, 4), "screenings": 1},
+    ]
+    now = datetime(2026, 11, 3, 5, tzinfo=UTC)
+    request = ScreeningMovieReader.DayCountRequest(now, now, now)
+
+    counts = await SupabaseScreeningMovieReader(gateway).count_days(request)
+
+    gateway.count_days.assert_awaited_once_with(request)
+    assert counts == [
+        ScreeningMovieReader.DayCount(date(2026, 11, 3), 33),
+        ScreeningMovieReader.DayCount(date(2026, 11, 4), 1),
+    ]

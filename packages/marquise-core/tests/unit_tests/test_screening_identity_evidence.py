@@ -6,13 +6,6 @@ from unittest.mock import create_autospec
 import pytest
 
 from marquise.application.repositories import MovieRepository
-from marquise.application.repositories.movie_identity_search import (
-    MovieIdentityCandidate,
-    MovieIdentitySearch,
-)
-from marquise.application.use_cases.create_missing_movies import (
-    CreateMissingMoviesCommand,
-)
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
 from marquise.infrastructure.sources.cinemamoderne.gateways.source import (
@@ -21,6 +14,7 @@ from marquise.infrastructure.sources.cinemamoderne.gateways.source import (
 from marquise.infrastructure.sources.cineplex.gateways.source import (
     _extract_movie_detail,
 )
+from support.movie_import import build_match, build_matcher, build_movie_import
 
 
 def test_festival_label_produces_identity_title() -> None:
@@ -55,20 +49,15 @@ def test_cineplex_extracts_attributed_identity() -> None:
 async def test_identity_lookup_preserves_screening_label() -> None:
     """Lookup uses the film title and returns the original screening label."""
     repo = create_autospec(MovieRepository, instance=True)
-    search = create_autospec(MovieIdentitySearch, instance=True)
-    search.search.return_value = [
-        MovieIdentityCandidate(
-            provider="tmdb", id="123", title="Julián", release_year=2025
-        )
-    ]
+    matcher = build_matcher(build_match("123"))
     repo.find_by_tmdb_id.return_value = Movie(
         id=MovieId(value="existing"), title="Julián", tmdb_id="123"
     )
-    command = CreateMissingMoviesCommand(repo, search)
+    command = build_movie_import(repo, matcher)
     result = await command.execute(
         command.InputData(
             movies=(
-                command.MovieInput(
+                command.build_movie_input(
                     title="CINEMANIA: Julián",
                     identity_title="Julián",
                     release_year=2025,
@@ -76,7 +65,8 @@ async def test_identity_lookup_preserves_screening_label() -> None:
             )
         )
     )
-    search.search.assert_awaited_once_with("Julián", 2025)
+    request = matcher.execute.await_args.args[0].movies[0]
+    assert (request.identity_title, request.release_year) == ("Julián", 2025)
     assert result.movies == (
         command.MovieData(title="CINEMANIA: Julián", id="existing"),
     )

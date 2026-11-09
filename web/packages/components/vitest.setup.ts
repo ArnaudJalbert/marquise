@@ -35,12 +35,15 @@ globalThis.matchMedia = (query: string) =>
   }) as unknown as MediaQueryList;
 
 // jsdom has no modal dialogs: opening and closing only toggle the `open` attribute.
-HTMLDialogElement.prototype.showModal = function showModal() {
-  this.setAttribute("open", "");
-};
-HTMLDialogElement.prototype.close = function close() {
-  this.removeAttribute("open");
-};
+// Node-environment tests have no DOM at all, so skip the shim there.
+if (typeof HTMLDialogElement !== "undefined") {
+  HTMLDialogElement.prototype.showModal = function showModal() {
+    this.setAttribute("open", "");
+  };
+  HTMLDialogElement.prototype.close = function close() {
+    this.removeAttribute("open");
+  };
+}
 
 afterEach(() => {
   cleanup();

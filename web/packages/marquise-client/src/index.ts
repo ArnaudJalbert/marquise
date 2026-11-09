@@ -20,6 +20,9 @@ export type {
   BrowseClient,
   HourFilter,
   HourRange,
+  ScreeningDayCountApi,
+  ScreeningDayCountQuery,
+  ScreeningFilters,
   ScreeningMovieApi,
   ScreeningMovieQuery,
 } from "./browse-client";

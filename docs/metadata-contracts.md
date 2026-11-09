@@ -1,8 +1,10 @@
 # Metadata workflow contracts
 
-Issue #358 defines the shared seam for parent #349. These are additive contracts,
-not configured services. Existing imports still use MovieIdentitySearch and
-MovieRepository. No factory properties or commands are registered here.
+Issue #358 defines the shared seam for parent #349. Imports, movie refresh and
+movie merge use these contracts: `infrastructure/di/import_use_cases.py` wires
+TmdbMetadataAdapter, `MarquiseFactory` exposes `refresh_movies_use_case` and
+`merge_movies_use_case`, and the CLI runs `movie refresh`, `movie merge-preview`
+and `movie merge-apply`.
 
 ## Ownership and signatures
 
@@ -12,8 +14,10 @@ MovieRepository. No factory properties or commands are registered here.
   MetadataBatch. Adapters retrieve all relevant pages internally, preserve
   provider order and report incomplete retrieval. Details contain zero or one
   movie. Missing detail is an incomplete batch with a not_found failure.
-- `marquise.application.movie_workflows` owns workflow InputData/OutputData,
-  execution Protocols and the separate MovieMetadataRepository ABC. Every
+- `marquise.application.movie_workflows` owns workflow InputData/OutputData at
+  module level. These are allowlisted exceptions in
+  `test_use_case_architecture.py`; new use cases nest their own DTOs. It also
+  owns execution Protocols and the separate MovieMetadataRepository ABC. Every
   executor has async `execute(input_data)`. All names are public facade exports.
 - The persistence port uses string movie IDs and immutable snapshots. It supports
   get, explicit TMDB lookup, stable ordered TMDB enumeration, atomic metadata

@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Marquise logo concepts (square lens, 20° tilt, beam 84)</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: var(--font-sans, Geist, system-ui, sans-serif); }
+  body.standalone { background: #0b0d10; color: #f1f3f5; padding: 32px; --font-mono: "Geist Mono", ui-monospace, monospace; }
+  h2 { font-size: 12px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; opacity: .7; margin: 28px 0 12px; }
+  h2:first-child { margin-top: 0; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+  .card { border: 1px solid #35414d; border-radius: 12px; overflow: hidden; }
+  .art { aspect-ratio: 1; display: grid; place-items: center; }
+  .art svg { width: 80%; height: 80%; }
+  .meta { padding: 8px 10px; font: 11px var(--font-mono); color: #c3ccd5; background: #222c36; }
+  .meta b { color: #f1f3f5; font-weight: 600; }
+  .row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; border: 1px solid #35414d; border-radius: 12px; padding: 20px; }
+  .tile { display: grid; place-items: center; border-radius: 22%; }
+  .lockup { display: flex; align-items: center; gap: 12px; font-weight: 700; letter-spacing: -0.03em; }
+</style>
+</head>
+<body>
+<h2>Concepts</h2>
+<div class="grid" id="concepts"></div>
+<h2>Palettes on the locked shape</h2>
+<div class="grid" id="palettes"></div>
+<h2>App icon and favicon</h2>
+<div class="row" id="icons" style="background:#faf6f0"></div>
+<script>
+if (window.self === window.top) document.body.classList.add("standalone");
+
+// Locked geometry: square lens (side 76) centred on the origin, beam apex at the centre.
+const S = 76, E = S / 2, LEN = 84, ANG = 20, SPREAD = 34;
+const rad = (d) => (d * Math.PI) / 180;
+const at = (deg, len) => [Math.cos(rad(deg)) * len, -Math.sin(rad(deg)) * len];
+const tri = (ang = ANG, spread = SPREAD, len = LEN) => {
+  const [x1, y1] = at(ang + spread / 2, len), [x2, y2] = at(ang - spread / 2, len);
+  return `M0,0 L${x1},${y1} L${x2},${y2} Z`;
+};
+const arcTri = (len = LEN) => {
+  const [x1, y1] = at(ANG + SPREAD / 2, len), [x2, y2] = at(ANG - SPREAD / 2, len);
+  return `M0,0 L${x1},${y1} A${len},${len} 0 0 1 ${x2},${y2} Z`;
+};
+const sq = (rx, attrs) => `<rect x="${-E}" y="${-E}" width="${S}" height="${S}" rx="${rx}" ${attrs}/>`;
+const R = S * 0.22;
+let uid = 0;
+
+// Base mark: lens, beam, and beam masked to the lens in the overlap colour.
+function mark({ c, b, o, rx = R, beam = tri(), lens = null, extra = "", under = "", beamFill = null }) {
+  const id = "m" + uid++;
+  const lensShape = lens || ((attrs) => sq(rx, attrs));
+  return `<defs><mask id="${id}"><rect x="-200" y="-200" width="400" height="400" fill="#000"/>${lensShape('fill="#fff"')}</mask></defs>
+    ${under}${lensShape(`fill="${c}"`)}<path d="${beam}" fill="${beamFill || b}"/><path d="${beam}" fill="${o}" mask="url(#${id})"/>${extra}`;
+}
+const svg = (inner, vb = "-48 -77 142 142") => `<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+
+const P = {
+  sunset: { c: "#ff7a59", b: "#ffc94a", o: "#e5386d" },
+  dusk: { c: "#3d348b", b: "#f7b801", o: "#f35b04" },
+  candy: { c: "#5e9cff", b: "#ffd166", o: "#06d6a0" },
+  lagoon: { c: "#2ec4b6", b: "#ffbf69", o: "#ff6b6b" },
+  berry: { c: "#7f5af0", b: "#ff8fab", o: "#d63af9" },
+  grape: { c: "#6a4c93", b: "#ffca3a", o: "#ff595e" },
+  harbour: { c: "#26547c", b: "#06d6a0", o: "#ffd166" },
+  cherry: { c: "#d7263d", b: "#f4d35e", o: "#1b998b" },
+};
+const CREAM = "#faf6f0", INK = "#1d1a24", DARK = "#14181c";
+
+const concepts = [
+  ["Base", "rounded square, the locked shape", CREAM, () => mark(P.sunset)],
+  ["Sharp", "hard corners, more mechanical", CREAM, () => mark({ ...P.sunset, rx: 0 })],
+  ["Light cone", "arc end, beam spreads like light", CREAM, () => mark({ ...P.sunset, beam: arcTri() })],
+  ["Fade", "beam dissolves as it travels", CREAM, () => {
+    const g = "g" + uid++;
+    return `<defs><linearGradient id="${g}" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="${at(ANG, LEN)[0]}" y2="${at(ANG, LEN)[1]}"><stop offset=".35" stop-color="${P.sunset.b}"/><stop offset="1" stop-color="${P.sunset.b}" stop-opacity="0"/></linearGradient></defs>` + mark({ ...P.sunset, beamFill: `url(#${g})` });
+  }],
+  ["Projector body", "lens dot where the beam starts", CREAM, () => mark({ ...P.sunset, extra: `<circle r="9" fill="${INK}"/><circle r="4" fill="${P.sunset.b}"/>` })],
+  ["Marquee bulbs", "bulbs around the frame, a nod to the name", DARK, () => {
+    const dots = [];
+    for (let i = 0; i < 5; i++) {
+      const t = -E + 10 + (i * (S - 20)) / 4;
+      dots.push([t, -E + 7], [t, E - 7], [-E + 7, t], [E - 7, t]);
+    }
+    const uniq = [...new Map(dots.map((d) => [d.join(), d])).values()];
+    return mark({ ...P.dusk, extra: uniq.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3.2" fill="#ffe8a3"/>`).join("") });
+  }],
+  ["Film frame", "sprocket holes top and bottom", CREAM, () => {
+    const holes = [-24, -8, 8, 24].flatMap((x) => [[x, -E + 6], [x, E - 12]]);
+    return mark({ ...P.sunset, rx: 6, extra: holes.map(([x, y]) => `<rect x="${x - 4}" y="${y}" width="8" height="6" rx="1.5" fill="${CREAM}"/>`).join("") });
+  }],
+  ["Three rays", "beam split into three, like a light fan", CREAM, () => {
+    const id = "m" + uid++;
+    const rays = [ANG + 12, ANG, ANG - 12].map((a) => tri(a, 8, LEN));
+    return `<defs><mask id="${id}"><rect x="-200" y="-200" width="400" height="400" fill="#000"/>${sq(R, 'fill="#fff"')}</mask></defs>${sq(R, `fill="${P.sunset.c}"`)}
+      ${rays.map((r) => `<path d="${r}" fill="${P.sunset.b}"/><path d="${r}" fill="${P.sunset.o}" mask="url(#${id})"/>`).join("")}`;
+  }],
+  ["Outline lens", "frame only; overlap shows on the stroke", CREAM, () => {
+    const id = "m" + uid++, st = 11, inset = (S - st) / 2;
+    const ring = (attrs) => `<rect x="${-inset}" y="${-inset}" width="${S - st}" height="${S - st}" rx="${R - st / 2}" fill="none" stroke-width="${st}" ${attrs}/>`;
+    return `<defs><mask id="${id}"><rect x="-200" y="-200" width="400" height="400" fill="#000"/>${ring('stroke="#fff"')}</mask></defs>${ring(`stroke="${P.sunset.c}"`)}<path d="${tri()}" fill="${P.sunset.b}"/><path d="${tri()}" fill="${P.sunset.o}" mask="url(#${id})"/>`;
+  }],
+  ["Screen", "the beam lands on a screen", CREAM, () => {
+    const [x, y] = at(ANG, LEN + 6);
+    return mark({ ...P.sunset, extra: `<rect x="-3" y="-30" width="6" height="60" rx="3" fill="${INK}" transform="translate(${x} ${y}) rotate(${-ANG})"/>` });
+  }, "-48 -84 152 152"],
+  ["Diamond", "lens turned 45°", CREAM, () => mark({ ...P.sunset, lens: (attrs) => `<rect x="${-E * 0.86}" y="${-E * 0.86}" width="${S * 0.86}" height="${S * 0.86}" rx="10" transform="rotate(45)" ${attrs}/>` })],
+  ["Shadow stack", "a second square behind, like layered frames", CREAM, () => mark({ ...P.sunset, under: `<rect x="${-E + 9}" y="${-E + 9}" width="${S}" height="${S}" rx="${R}" fill="${P.sunset.o}" opacity=".35"/>` }), "-48 -77 146 146"],
+  ["Mono ink", "one colour, overlap knocked out", CREAM, () => mark({ c: INK, b: INK, o: CREAM })],
+  ["Mono inverse", "for dark backgrounds", DARK, () => mark({ c: "#f1f3f5", b: "#f1f3f5", o: DARK })],
+  ["Ink + accent", "dark lens, coloured light", CREAM, () => mark({ c: INK, b: P.sunset.b, o: P.sunset.c })],
+  ["Glow", "dark lens, near-white light inside", DARK, () => mark({ c: "#3d348b", b: "#f7b801", o: "#fff6dc" })],
+];
+
+document.getElementById("concepts").innerHTML = concepts.map(([name, note, bg, draw, vb]) =>
+  `<div class="card"><div class="art" style="background:${bg}">${svg(draw(), vb)}</div><div class="meta"><b>${name}</b><br>${note}</div></div>`).join("");
+
+document.getElementById("palettes").innerHTML = Object.entries(P).flatMap(([name, p]) =>
+  [[CREAM, ""], [DARK, " · dark"]].map(([bg, suffix]) => `<div class="card"><div class="art" style="background:${bg}">${svg(mark(p))}</div><div class="meta"><b>${name}</b>${suffix}</div></div>`)
+).join("");
+
+// App icon: mark on a tile, plus favicons and a lockup.
+const icon = (p, tileBg, size) => `<div class="tile" style="width:${size}px;height:${size}px;background:${tileBg}">${svg(mark(p), "-58 -87 162 162").replace("<svg ", `<svg width="${size * 0.82}" height="${size * 0.82}" `)}</div>`;
+document.getElementById("icons").innerHTML =
+  icon(P.sunset, CREAM, 96) + icon(P.sunset, "#fff", 96) + icon(P.dusk, DARK, 96) + icon(P.candy, "#1d2b4a", 96) +
+  [32, 16].map((s) => svg(mark(P.sunset)).replace("<svg ", `<svg width="${s}" height="${s}" `)).join("") +
+  [32, 16].map((s) => svg(mark(P.dusk)).replace("<svg ", `<svg width="${s}" height="${s}" `)).join("") +
+  `<div class="lockup" style="color:${INK};font-size:34px">${svg(mark(P.sunset)).replace("<svg ", '<svg width="48" height="48" ')}Marquise</div>`;
+</script>
+</body>
+</html>

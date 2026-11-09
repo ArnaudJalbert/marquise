@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 from marquise.application.queries.browse_screening_movies import (
     BrowseScreeningMoviesQuery,
 )
+from marquise.application.queries.count_screening_days import CountScreeningDaysQuery
 from marquise.application.queries.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
@@ -29,9 +30,6 @@ from marquise.application.use_cases.auth import (
     SetAccountRoleUseCase,
 )
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
-from marquise.application.use_cases.create_missing_movies import (
-    CreateMissingMoviesCommand,
-)
 from marquise.application.use_cases.create_screening import CreateScreeningUseCase
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.create_source import CreateSourceUseCase
@@ -185,6 +183,11 @@ class MarquiseFactory:
         return self._container.browse_screening_movies_query
 
     @property
+    def count_screening_days_query(self) -> CountScreeningDaysQuery:
+        """Configured daily screening-count query."""
+        return self._container.count_screening_days_query
+
+    @property
     def search_screenings_query(self) -> SearchScreeningsQuery:
         """Configured query for searching screenings."""
         return self._container.search_screenings_query
@@ -260,11 +263,6 @@ class MarquiseFactory:
     def fetch_screenings_use_case(self) -> FetchScreeningsFromSourceQuery:
         """Configured query for fetching source screenings."""
         return self._container.fetch_screenings_use_case
-
-    @property
-    def create_movies_use_case(self) -> CreateMissingMoviesCommand:
-        """Configured command for creating missing movies."""
-        return self._container.create_movies_use_case
 
     @property
     def create_screenings_use_case(self) -> CreateScreeningsCommand:

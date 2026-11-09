@@ -15,7 +15,7 @@ from marquise.application.movie_workflows import (
     RefreshMoviesInputData,
     RefreshMoviesOutputData,
 )
-from marquise.application.use_cases.enrich_movie import _enrich
+from marquise.application.use_cases.enrich_movies import _enrich
 
 
 class RefreshMoviesUseCase:

@@ -36,6 +36,7 @@ from marquise import (
     SourceAlreadyExistsError,
     SourceNotFoundError,
     TooManyMovieIdsError,
+    TooManyScreeningDaysError,
 )
 
 logger = logging.getLogger(__name__)
@@ -58,6 +59,7 @@ _APPLICATION_ERROR_MAPPING: dict[type[ApplicationError], tuple[int, str]] = {
     SourceNotFoundError: (404, "not_found"),
     CinemaSourceAssignmentNotFoundError: (404, "not_found"),
     TooManyMovieIdsError: (422, "invalid_input"),
+    TooManyScreeningDaysError: (422, "invalid_input"),
     CinemaAlreadyExistsError: (409, "conflict"),
     ScreeningAlreadyExistsError: (409, "conflict"),
     ScreeningExternalIdConflictError: (409, "conflict"),

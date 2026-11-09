@@ -1,4 +1,8 @@
-import type { ActiveCatalogueSelection, CatalogueCinema } from "./catalogue-types";
+import type {
+  ActiveCatalogueSelection,
+  CatalogueCinema,
+  MinimalCatalogueProps,
+} from "./catalogue-types";
 import { MovieSearch } from "./MovieSearch";
 import { PeriodPicker } from "./PeriodPicker";
 import { ScreeningFilters } from "./ScreeningFilters";
@@ -13,6 +17,8 @@ export interface ScreeningControlsProps {
   onSelection: (selection: ActiveCatalogueSelection) => void;
   /** Counts the movies a draft selection would show, for the phone sheet. */
   onCountMovies?: CountMovies;
+  /** Loads the day strip's screening totals under the applied filters. */
+  onLoadDayCounts?: MinimalCatalogueProps["onLoadDayCounts"];
   cinemas: readonly CatalogueCinema[];
   today: string;
   fixedCinemaId?: string;
@@ -31,6 +37,7 @@ export function ScreeningControls(props: ScreeningControlsProps) {
 function WideScreeningControls({
   selection,
   onSelection,
+  onLoadDayCounts,
   cinemas,
   today,
   fixedCinemaId,
@@ -60,6 +67,7 @@ function WideScreeningControls({
           today={today}
           heading={heading}
           onChange={(start, end) => onSelection({ ...selection, start, end })}
+          onLoadDayCounts={onLoadDayCounts}
         />
         <div className="minimal-screenings-top">
           <MovieSearch

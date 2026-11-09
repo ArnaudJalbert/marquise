@@ -22,9 +22,6 @@ from marquise.application.queries.list_cinema_source_assignments import (
 from marquise.application.queries.search_screenings import SearchScreeningsQuery
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
-from marquise.application.use_cases.create_missing_movies import (
-    CreateMissingMoviesCommand,
-)
 from marquise.application.use_cases.create_screening import CreateScreeningUseCase
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.create_source import CreateSourceUseCase
@@ -252,7 +249,6 @@ async def test_list_assignments_query_returns_configured_query() -> None:
         "get_cinema_source_use_case",
         "list_registry_sources_use_case",
         "fetch_screenings_use_case",
-        "create_movies_use_case",
         "create_screenings_use_case",
         "create_screening_use_case",
         "update_screening_use_case",
@@ -287,7 +283,6 @@ def test_configured_use_cases_require_initialize(property_name: str) -> None:
         ("get_cinema_source_use_case", GetCinemaSourceUseCase),
         ("list_registry_sources_use_case", ListRegistrySourcesUseCase),
         ("fetch_screenings_use_case", FetchScreeningsFromSourceQuery),
-        ("create_movies_use_case", CreateMissingMoviesCommand),
         ("create_screenings_use_case", CreateScreeningsCommand),
         ("create_screening_use_case", CreateScreeningUseCase),
         ("update_screening_use_case", UpdateScreeningUseCase),
