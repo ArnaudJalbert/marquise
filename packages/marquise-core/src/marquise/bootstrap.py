@@ -30,9 +30,6 @@ from marquise.application.use_cases.auth import (
     SetAccountRoleUseCase,
 )
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
-from marquise.application.use_cases.create_missing_movies import (
-    CreateMissingMoviesCommand,
-)
 from marquise.application.use_cases.create_screening import CreateScreeningUseCase
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.create_source import CreateSourceUseCase
@@ -266,11 +263,6 @@ class MarquiseFactory:
     def fetch_screenings_use_case(self) -> FetchScreeningsFromSourceQuery:
         """Configured query for fetching source screenings."""
         return self._container.fetch_screenings_use_case
-
-    @property
-    def create_movies_use_case(self) -> CreateMissingMoviesCommand:
-        """Configured command for creating missing movies."""
-        return self._container.create_movies_use_case
 
     @property
     def create_screenings_use_case(self) -> CreateScreeningsCommand:

@@ -1,8 +1,13 @@
 """Discover and rank movie identities using independent source evidence."""
 
-import unicodedata
-from typing import Protocol
+from __future__ import annotations
 
+import logging
+import unicodedata
+from dataclasses import dataclass
+from typing import Literal, Protocol
+
+from marquise.application.exceptions.movie import MovieMetadataUnavailableError
 from marquise.application.metadata import (
     MetadataBatch,
     MetadataFailure,
@@ -11,11 +16,9 @@ from marquise.application.metadata import (
     PersonFact,
     ProviderIdentity,
 )
-from marquise.application.movie_workflows import (
-    MatchMovieInputData,
-    MatchMovieOutputData,
-)
 from marquise.domain.entities import Movie
+
+logger = logging.getLogger(__name__)
 
 _MAX_CANDIDATE_DETAILS = 5
 
@@ -38,8 +41,60 @@ def _normalize(value: str) -> str:
     )
 
 
-class MatchMovieUseCase:
+class MatchMoviesUseCase:
     """Select only eligible identities, retaining provider order for true ties."""
+
+    @dataclass(frozen=True, slots=True)
+    class MovieInput:
+        """Independent source evidence for one movie."""
+
+        title: str
+        release_year: int | None = None
+        directors: tuple[str, ...] = ()
+        duration_minutes: int | None = None
+        identity_title: str | None = None
+        source_identifier: str | None = None
+
+        def __post_init__(self) -> None:
+            if not isinstance(self.title, str):
+                raise TypeError("title must be a string")
+            if not self.title.strip():
+                raise ValueError("Movie title must not be blank")
+            self._check_optional(str, "identity_title", "source_identifier")
+            self._check_optional(int, "release_year", "duration_minutes")
+            if not isinstance(self.directors, tuple):
+                raise TypeError("directors must be a tuple")
+
+        def _check_optional(self, expected_type: type, *fields: str) -> None:
+            for field in fields:
+                value = getattr(self, field)
+                if value is not None and not isinstance(value, expected_type):
+                    raise TypeError(f"{field} must be a {expected_type.__name__}")
+
+    @dataclass(frozen=True, slots=True)
+    class InputData:
+        movies: tuple[MatchMoviesUseCase.MovieInput, ...]
+
+        def __post_init__(self) -> None:
+            if not isinstance(self.movies, tuple):
+                raise TypeError("movies must be a tuple")
+            for movie in self.movies:
+                if not isinstance(movie, MatchMoviesUseCase.MovieInput):
+                    raise TypeError("movies must only contain MovieInput")
+
+    @dataclass(frozen=True, slots=True)
+    class MovieMatch:
+        """One movie's outcome. A movie with no safe match has no identity."""
+
+        source: MatchMoviesUseCase.MovieInput
+        status: Literal["matched", "unmatched", "incomplete"]
+        identity: ProviderIdentity | None = None
+        titles: tuple[str, ...] = ()
+        release_year: int | None = None
+
+    @dataclass(frozen=True, slots=True)
+    class OutputData:
+        matches: tuple[MatchMoviesUseCase.MovieMatch, ...]
 
     def __init__(self, metadata: MetadataRepository, distance: NameDistance) -> None:
         """Inject discovery and distance without binding policy to a provider."""
@@ -94,7 +149,7 @@ class MatchMovieUseCase:
         return 1 if assign(exact_only=False) else None
 
     def _rank(
-        self, source: MatchMovieInputData, title: str, movie: MetadataMovie
+        self, source: MovieInput, title: str, movie: MetadataMovie
     ) -> tuple[int, int, int, float] | None:
         title_tier = self._title_tier(title, movie)
         title_match = title_tier < 2
@@ -150,7 +205,24 @@ class MatchMovieUseCase:
             return 0
         return 1 if any(Movie.titles_overlap(title, value) for value in values) else 2
 
-    async def execute(self, input_data: MatchMovieInputData) -> MatchMovieOutputData:
+    async def execute(self, input_data: InputData) -> OutputData:
+        """Find the provider identity of every movie, one at a time.
+
+        Args:
+            input_data: The source evidence for each movie.
+
+        Returns:
+            One match per movie, each naming the movie it belongs to. A movie
+            with no safe match is an accepted outcome, not an error.
+
+        Raises:
+            MovieMetadataUnavailableError: If the provider could not answer.
+        """
+        matches = [await self._match_one(movie) for movie in input_data.movies]
+        logger.info("Matched %d movies", len(matches))
+        return self.OutputData(matches=tuple(matches))
+
+    async def _match_one(self, input_data: MovieInput) -> MovieMatch:
         """Search with year, retry unfiltered, then discover through directors.
 
         Each discovery strategy owns its detail budget and its completeness.
@@ -236,14 +308,17 @@ class MatchMovieUseCase:
                 else:
                     title_remaining -= 1
 
-        def decide() -> MatchMovieOutputData:
+        def decide() -> MatchMoviesUseCase.MovieMatch:
             ranked = [
                 (rank, identity)
                 for identity, movie in candidates.items()
                 if (rank := self._rank(input_data, normalized_title, movie)) is not None
             ]
             if failures:
-                return MatchMovieOutputData("failed", failure=failures[0])
+                raise MovieMetadataUnavailableError(
+                    f"Movie identity failed for '{input_data.title}': "
+                    f"{failures[0].kind}"
+                )
             if ranked:
                 winner_rank, winner_identity = min(
                     ranked, key=lambda pair: (pair[0], candidate_order[pair[1]])
@@ -263,7 +338,8 @@ class MatchMovieUseCase:
                     complete = title_complete and not title_budget_exhausted
                 if details_complete and (confirmed or complete):
                     chosen = candidates[winner_identity]
-                    return MatchMovieOutputData(
+                    return self.MovieMatch(
+                        input_data,
                         "matched",
                         winner_identity,
                         titles=tuple(
@@ -278,7 +354,7 @@ class MatchMovieUseCase:
                         ),
                         release_year=chosen.release_year,
                     )
-                return MatchMovieOutputData("incomplete")
+                return self.MovieMatch(input_data, "incomplete")
             incomplete = (
                 not details_complete
                 or not title_complete
@@ -286,16 +362,18 @@ class MatchMovieUseCase:
                 or not director_complete
                 or director_year_cut
             )
-            return MatchMovieOutputData("incomplete" if incomplete else "unmatched")
+            status = "incomplete" if incomplete else "unmatched"
+            logger.info("Movie identity %s for %s", status, input_data.title)
+            return self.MovieMatch(input_data, status)
 
         await hydrate(
             await self._metadata.search_movies(title, source_year), director=False
         )
-        if (selected := decide()).status in ("matched", "failed"):
+        if (selected := decide()).status == "matched":
             return selected
         if source_year is not None:
             await hydrate(await self._metadata.search_movies(title), director=False)
-            if (selected := decide()).status in ("matched", "failed"):
+            if (selected := decide()).status == "matched":
                 return selected
         seen_people: set[ProviderIdentity] = set()
         for name in input_data.directors:

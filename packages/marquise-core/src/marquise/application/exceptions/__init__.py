@@ -17,7 +17,9 @@ from marquise.application.exceptions.cinema import (
 )
 from marquise.application.exceptions.movie import (
     MovieIdentityConflictError,
+    MovieMetadataUnavailableError,
     MovieNotFoundError,
+    MovieNotLinkedError,
     MovieWorkflowConflictError,
     TooManyMovieIdsError,
 )
@@ -51,7 +53,9 @@ __all__ = [
     "CinemaSourceAssignmentAlreadyExistsError",
     "CinemaSourceAssignmentNotFoundError",
     "MovieIdentityConflictError",
+    "MovieMetadataUnavailableError",
     "MovieNotFoundError",
+    "MovieNotLinkedError",
     "MovieWorkflowConflictError",
     "ScreeningAlreadyExistsError",
     "ScreeningExternalIdConflictError",

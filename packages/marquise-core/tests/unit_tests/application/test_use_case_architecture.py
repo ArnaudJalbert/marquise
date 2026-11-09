@@ -20,26 +20,12 @@ APPLICATION_DIR = (
 USE_CASE_PACKAGES = ("use_cases", "queries")
 
 ALLOWLIST = {
-    "use_cases/create_missing_movies.py: imports EnrichMovieInputData from "
-    "shared use case module marquise.application.movie_workflows",
-    "use_cases/create_missing_movies.py: imports MatchMovieInputData from "
-    "shared use case module marquise.application.movie_workflows",
-    "use_cases/enrich_movie.py: imports EnrichMovieInputData from shared use case "
+    "use_cases/enrich_movies.py: imports EnrichMovieInputData from shared use case "
     "module marquise.application.movie_workflows",
-    "use_cases/enrich_movie.py: imports EnrichMovieOutputData from shared use "
+    "use_cases/enrich_movies.py: imports EnrichMovieOutputData from shared use "
     "case module marquise.application.movie_workflows",
-    "use_cases/enrich_movie.py: EnrichMovieUseCase has no nested InputData",
-    "use_cases/enrich_movie.py: EnrichMovieUseCase has no nested OutputData",
-    "use_cases/match_movie.py: MatchMovieUseCase has no nested InputData",
-    "use_cases/match_movie.py: MatchMovieUseCase has no nested OutputData",
-    "use_cases/match_movie.py: imports MatchMovieInputData from shared use case "
-    "module marquise.application.movie_workflows",
-    "use_cases/match_movie.py: imports MatchMovieOutputData from shared use case "
-    "module marquise.application.movie_workflows",
     "use_cases/merge_movies.py: MergeMoviesUseCase has no nested InputData",
     "use_cases/merge_movies.py: MergeMoviesUseCase has no nested OutputData",
-    "use_cases/merge_movies.py: imports MatchMovieInputData from shared use case "
-    "module marquise.application.movie_workflows",
     "use_cases/merge_movies.py: imports MergeMoviesInputData from shared use "
     "case module marquise.application.movie_workflows",
     "use_cases/merge_movies.py: imports MergeMoviesOutputData from shared use "
@@ -55,7 +41,7 @@ ALLOWLIST = {
     "use_cases/refresh_movies.py: imports RefreshMoviesOutputData from shared use "
     "case module marquise.application.movie_workflows",
     "use_cases/refresh_movies.py: imports _enrich from use case module "
-    "marquise.application.use_cases.enrich_movie",
+    "marquise.application.use_cases.enrich_movies",
 }
 
 

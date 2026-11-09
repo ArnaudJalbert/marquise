@@ -9,14 +9,14 @@ import asyncpg
 from marquise.application.queries.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
+from marquise.application.queries.find_stored_movies import FindStoredMoviesQuery
+from marquise.application.queries.link_screenings import LinkScreeningsQuery
 from marquise.application.repositories import SourceRegistryQuery
-from marquise.application.use_cases.create_missing_movies import (
-    CreateMissingMoviesCommand,
-)
+from marquise.application.use_cases.create_movies import CreateMoviesCommand
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
-from marquise.application.use_cases.enrich_movie import EnrichMovieUseCase
+from marquise.application.use_cases.enrich_movies import EnrichMoviesUseCase
 from marquise.application.use_cases.import_screenings import ImportScreeningsCommand
-from marquise.application.use_cases.match_movie import MatchMovieUseCase
+from marquise.application.use_cases.match_movies import MatchMoviesUseCase
 from marquise.application.use_cases.merge_movies import MergeMoviesUseCase
 from marquise.application.use_cases.refresh_movies import RefreshMoviesUseCase
 from marquise.infrastructure.name_distance import RapidFuzzNameDistance
@@ -72,35 +72,42 @@ def build_fetch_screenings_use_case(
     )
 
 
-def build_create_movies_use_case(
-    pool: asyncpg.Pool, schema: str, tmdb_api_key: str
-) -> CreateMissingMoviesCommand:
-    """Build missing-movie creation with an injected TMDB lookup."""
-    movies, matcher, enricher = build_metadata_workflows(pool, schema, tmdb_api_key)
-    return CreateMissingMoviesCommand(
+def build_find_stored_movies_query(
+    pool: asyncpg.Pool, schema: str
+) -> FindStoredMoviesQuery:
+    """Build the stored movie lookup."""
+    return FindStoredMoviesQuery(
         movie_repository=SupabaseMovieRepository(
             gateway=SupabaseMovieGateway(pool=pool, schema=schema)
-        ),
-        matcher=matcher,
-        enricher=enricher,
-        metadata_movies=movies,
+        )
+    )
+
+
+def build_create_movies_use_case(
+    pool: asyncpg.Pool, schema: str
+) -> CreateMoviesCommand:
+    """Build movie creation."""
+    return CreateMoviesCommand(
+        movie_repository=SupabaseMovieRepository(
+            gateway=SupabaseMovieGateway(pool=pool, schema=schema)
+        )
     )
 
 
 def build_metadata_workflows(
     pool: asyncpg.Pool, schema: str, tmdb_api_key: str
-) -> tuple[SupabaseMovieMetadataRepository, MatchMovieUseCase, EnrichMovieUseCase]:
+) -> tuple[SupabaseMovieMetadataRepository, MatchMoviesUseCase, EnrichMoviesUseCase]:
     """Compose provider, matching and stable-ID persistence collaborators."""
     movies = SupabaseMovieMetadataRepository(
         SupabaseMovieMetadataGateway(pool, schema),
         SupabaseMovieMergeGateway(pool, schema),
     )
     metadata = TmdbMetadataAdapter(TmdbMetadataHttpSource(tmdb_api_key, max_pages=3))
-    matcher = MatchMovieUseCase(metadata, RapidFuzzNameDistance())
+    matcher = MatchMoviesUseCase(metadata, RapidFuzzNameDistance())
     return (
         movies,
         matcher,
-        EnrichMovieUseCase(movies, metadata, lambda: datetime.now(UTC)),
+        EnrichMoviesUseCase(movies, metadata, lambda: datetime.now(UTC)),
     )
 
 
@@ -133,13 +140,19 @@ def build_create_screenings_use_case(
 
 
 def build_import_screenings_use_case(
+    pool: asyncpg.Pool,
+    schema: str,
+    tmdb_api_key: str,
     fetch_screenings_use_case: FetchScreeningsFromSourceQuery,
-    create_movies_use_case: CreateMissingMoviesCommand,
-    create_screenings_use_case: CreateScreeningsCommand,
 ) -> ImportScreeningsCommand:
     """Build the application-level cinema import workflow."""
+    _, matcher, enricher = build_metadata_workflows(pool, schema, tmdb_api_key)
     return ImportScreeningsCommand(
-        fetch_screenings_use_case=fetch_screenings_use_case,
-        create_movies_use_case=create_movies_use_case,
-        create_screenings_use_case=create_screenings_use_case,
+        fetch_screenings=fetch_screenings_use_case,
+        match_movies=matcher,
+        find_stored_movies=build_find_stored_movies_query(pool, schema),
+        create_movies=build_create_movies_use_case(pool, schema),
+        link_screenings=LinkScreeningsQuery(),
+        create_screenings=build_create_screenings_use_case(pool, schema),
+        enrich_movies=enricher,
     )

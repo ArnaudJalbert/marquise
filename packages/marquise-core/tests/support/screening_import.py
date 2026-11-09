@@ -14,9 +14,6 @@ from marquise.application.repositories import (
     SourceRegistryQuery,
 )
 from marquise.application.repositories.source_registry_query import ShowtimeRow
-from marquise.application.use_cases.create_missing_movies import (
-    CreateMissingMoviesCommand,
-)
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.import_screenings import ImportScreeningsCommand
 from marquise.domain.entities import (
@@ -33,6 +30,7 @@ from marquise.domain.value_objects import (
     Showtime,
     SourceName,
 )
+from support.movie_import import import_command
 
 
 def owner() -> Screening:
@@ -78,9 +76,9 @@ async def run_import(
     movies.find_by_titles.return_value = list(
         {row.movie.id: row.movie for row in rows}.values()
     )
-    command = ImportScreeningsCommand(
+    command = import_command(
         FetchScreeningsFromSourceQuery(cinemas, assignments, source),
-        CreateMissingMoviesCommand(movies),
+        movies,
         CreateScreeningsCommand(repository),
     )
     return await command.execute(
