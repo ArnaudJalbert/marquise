@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Marquise logo: prism + lit underside</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: var(--font-sans, Geist, system-ui, sans-serif); }
+  body.standalone { background: #0b0d10; color: #f1f3f5; padding: 32px; --font-mono: "Geist Mono", ui-monospace, monospace; }
+  h2 { font-size: 12px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; opacity: .7; margin: 28px 0 12px; }
+  h2:first-child { margin-top: 0; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+  .card { border: 1px solid #35414d; border-radius: 12px; overflow: hidden; }
+  .art { aspect-ratio: 1.4; display: grid; place-items: center; }
+  .art svg { width: 82%; }
+  .meta { padding: 8px 10px; font: 11px var(--font-mono); color: #c3ccd5; background: #222c36; }
+  .meta b { color: #f1f3f5; font-weight: 600; }
+  .lockups { display: grid; gap: 12px; }
+  .lockup { border: 1px solid #35414d; border-radius: 12px; padding: 22px 26px; display: flex; align-items: center; gap: 16px; font-weight: 700; letter-spacing: -0.03em; }
+  .lockup.stack { flex-direction: column; gap: 10px; }
+  .icons { display: flex; gap: 18px; align-items: end; flex-wrap: wrap; padding: 18px; border: 1px solid #35414d; border-radius: 12px; }
+  .icons figure { margin: 0; text-align: center; font: 10px var(--font-mono); color: #6b7280; }
+  .tile { display: grid; place-items: center; border-radius: 22%; margin-bottom: 6px; }
+</style>
+</head>
+<body>
+<h2>Light strip contrast on white (WCAG, 3:1 target for graphics)</h2>
+<div id="strip-contrast"></div>
+
+<h2>Shaded palettes: neighbouring hues</h2>
+<div class="grid" id="shade-near"></div>
+<h2>Shaded palettes: one hue, lit and shadow side</h2>
+<div class="grid" id="shade-same"></div>
+<h2>Shaded on dark</h2>
+<div class="grid" id="shade-dark"></div>
+
+<h2>Proportions (corner height / end height)</h2>
+<div class="grid" id="proportions"></div>
+<h2>Lit underside thickness and gap</h2>
+<div class="grid" id="underside"></div>
+<h2>Palettes</h2>
+<div class="grid" id="palettes"></div>
+<h2>Lockups</h2>
+<div class="lockups" id="lockups"></div>
+<h2>App icon and favicon (chunkier cut for small sizes)</h2>
+<div class="icons" id="icons" style="background:#faf6f0;color:#1d1a24"></div>
+<script>
+if (window.self === window.top) document.body.classList.add("standalone");
+
+const CREAM = "#faf6f0", INK = "#1d1a24", DARK = "#14181c";
+// left face, right face, light
+const PAL = {
+  cherry: ["#d7263d", "#1b998b", "#f4d35e"],
+  sunset: ["#ff7a59", "#e5386d", "#ffc94a"],
+  dusk: ["#3d348b", "#f35b04", "#f7b801"],
+  candy: ["#5e9cff", "#06d6a0", "#ffd166"],
+  lagoon: ["#2ec4b6", "#ff6b6b", "#ffbf69"],
+  berry: ["#7f5af0", "#d63af9", "#ff8fab"],
+  ink: [INK, "#3a3546", "#ffc94a"],
+  mono: [INK, INK, INK],
+};
+
+// Prism: corner edge (u = 1) nearest and tallest, faces taper to the far ends (u = 0).
+// Returns the svg string sized to its own bounding box.
+function prism({ end = 34, mid = 64, w = 88, lit = 0.18, gap = 0, split = 0, pal = PAL.cherry } = {}) {
+  const [lf, rf, light, lightShade = light] = pal;
+  const pt = (s, u, v) => [s * w * (1 - u), -(end + (mid - end) * u) / 2 + (end + (mid - end) * u) * v];
+  const poly = (s, v0, v1, fill, dx = 0) =>
+    `<polygon transform="translate(${dx} 0)" points="${[pt(s, 0, v0), pt(s, 1, v0), pt(s, 1, v1), pt(s, 0, v1)].map((p) => p.join(",")).join(" ")}" fill="${fill}"/>`;
+  const g = gap / mid; // gap expressed in face-height units at the corner
+  const body = poly(-1, 0, 1, lf, -split / 2) + poly(1, 0, 1, rf, split / 2) +
+    (lit ? poly(-1, 1 + g, 1 + g + lit, light, -split / 2) + poly(1, 1 + g, 1 + g + lit, lightShade, split / 2) : "");
+  const top = -mid / 2, bottom = mid / 2 + mid * (g + lit), pad = 4;
+  return `<svg viewBox="${-w - pad - split / 2} ${top - pad} ${2 * w + 2 * pad + split} ${bottom - top + 2 * pad}" xmlns="http://www.w3.org/2000/svg">${body}</svg>`;
+}
+
+// Shaded palettes: left face is the lit side, right face the shadow side, then the light strip.
+const NEAR = {
+  sunset: ["#ff7a59", "#e5386d", "#ffc94a"],
+  "peach rose": ["#ffa07a", "#ef6f8e", "#ffe08a"],
+  "coral plum": ["#ff6f61", "#b8336a", "#ffd166"],
+  tangerine: ["#ff9f1c", "#f2542d", "#fff1c1"],
+  candy: ["#5e9cff", "#06d6a0", "#ffd166"],
+  "sky blue": ["#56cfe1", "#4e8fde", "#ffd166"],
+  "mint sea": ["#3ccfb4", "#168aad", "#ffd166"],
+  lagoon: ["#2ec4b6", "#ff6b6b", "#ffbf69"],
+  berry: ["#7f5af0", "#d63af9", "#ff8fab"],
+  "grape pink": ["#9b5de5", "#f15bb5", "#fee440"],
+  "lilac indigo": ["#a78bfa", "#6366f1", "#fcd34d"],
+  "indigo violet": ["#4361ee", "#7209b7", "#f7b801"],
+};
+const SAME = {
+  coral: ["#ff8566", "#e0563a", "#ffd166"],
+  rose: ["#ff7aa2", "#e04a7c", "#ffd8a8"],
+  violet: ["#8b6cf6", "#6a4ad8", "#ffb3c7"],
+  blue: ["#6aa8ff", "#3f7be0", "#ffd166"],
+  teal: ["#34c6b8", "#1f9e93", "#ffbf69"],
+  marigold: ["#ffb703", "#fb8500", "#fff1c1"],
+};
+const card = (opts, label, bg = CREAM) =>
+  `<div class="card"><div class="art" style="background:${bg}">${prism(opts)}</div><div class="meta">${label}</div></div>`;
+
+const swatch = (pal) => pal.map((c) => `<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${c};margin-right:3px;vertical-align:-1px"></span>`).join("");
+document.getElementById("shade-near").innerHTML = Object.entries(NEAR).map(([n, pal]) => card({ pal }, `${swatch(pal)}<b>${n}</b>`)).join("");
+document.getElementById("shade-same").innerHTML = Object.entries(SAME).map(([n, pal]) => card({ pal }, `${swatch(pal)}<b>${n}</b>`)).join("");
+document.getElementById("shade-dark").innerHTML = ["sunset", "peach rose", "coral plum", "mint sea", "berry", "grape pink", "lilac indigo", "indigo violet"]
+  .map((n) => card({ pal: NEAR[n] }, `${swatch(NEAR[n])}<b>${n}</b>`, DARK)).join("");
+
+// Contrast check for the light strip. Pure yellow can't reach 3:1 on white without turning mustard,
+// so the light-background version uses amber, optionally shaded like the faces.
+const lum = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255)
+  .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+  .reduce((acc, c, i) => acc + c * [0.2126, 0.7152, 0.0722][i], 0);
+const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+const STRIPS = [
+  ["current yellow", (p) => [p[2]]],
+  ["amber", (p) => [p[3] ? p[3][0] : "#f59f00"]],
+  ["deep amber", (p) => [p[3] ? p[3][1] : "#e07a00"]],
+  ["shaded strip", (p) => p[3] ? [p[3][0], p[3][1]] : ["#f59f00", "#d96c00"]],
+];
+const STRIP_ROWS = [
+  ["coral plum", NEAR["coral plum"]],
+  ["sunset", NEAR.sunset],
+  ["lilac indigo", NEAR["lilac indigo"]],
+  ["grape pink", NEAR["grape pink"]],
+  ["mint sea", NEAR["mint sea"]],
+  ["candy", NEAR.candy],
+  ["berry", [...NEAR.berry, ["#ff6b9a", "#ff5781"]]],
+];
+document.getElementById("strip-contrast").innerHTML = STRIP_ROWS.map(([name, p]) =>
+  `<div class="grid" style="grid-template-columns:90px repeat(5,1fr);align-items:center;margin-bottom:10px"><span style="font:11px var(--font-mono);opacity:.7">${name}</span>` +
+  STRIPS.map(([label, pick]) => {
+    const strip = pick(p), pal = [p[0], p[1], ...strip];
+    const worst = Math.min(...strip.map((c) => ratio(c, "#ffffff")));
+    return `<div class="card"><div class="art" style="background:#fff">${prism({ pal })}</div><div class="meta"><b style="color:${worst >= 3 ? "#7ee2a8" : worst >= 2 ? "#ffd166" : "#ff8f8f"}">${worst.toFixed(2)}:1</b> ${label}</div></div>`;
+  }).join("") +
+  `<div class="card"><div class="art" style="background:${DARK}">${prism({ pal: p.slice(0, 3) })}</div><div class="meta"><b style="color:#7ee2a8">${ratio(p[2], DARK).toFixed(1)}:1</b> yellow on dark</div></div></div>`
+).join("");
+
+document.getElementById("proportions").innerHTML = [
+  [{ end: 34, mid: 64 }, "<b>64 / 34</b> current"],
+  [{ end: 40, mid: 64 }, "<b>64 / 40</b> calmer taper"],
+  [{ end: 28, mid: 64 }, "<b>64 / 28</b> deeper"],
+  [{ end: 40, mid: 76 }, "<b>76 / 40</b> taller"],
+  [{ end: 34, mid: 64, w: 70 }, "<b>shorter wings</b>"],
+  [{ end: 44, mid: 80, w: 74 }, "<b>chunky</b> for small sizes"],
+].map(([o, l]) => card(o, l)).join("");
+
+document.getElementById("underside").innerHTML = [
+  [{ lit: 0.1 }, "<b>thin</b> 0.10"],
+  [{ lit: 0.18 }, "<b>current</b> 0.18"],
+  [{ lit: 0.28 }, "<b>thick</b> 0.28"],
+  [{ lit: 0.16, gap: 5 }, "<b>gap</b> light floats under"],
+  [{ lit: 0.18, split: 4 }, "<b>split</b> faces and light separated at the corner"],
+  [{ lit: 0.16, gap: 5, split: 4 }, "<b>gap + split</b> all four pieces apart"],
+].map(([o, l]) => card(o, l)).join("");
+
+document.getElementById("palettes").innerHTML = Object.entries(PAL).flatMap(([name, pal]) =>
+  name === "mono" ? [card({ pal, gap: 5 }, "<b>mono</b> gap keeps the light readable"), card({ pal: ["#f1f3f5", "#f1f3f5", "#f1f3f5"], gap: 5 }, "<b>mono</b> dark", DARK)]
+  : [card({ pal }, `<b>${name}</b>`), card({ pal }, `<b>${name}</b> dark`, DARK)]
+).join("");
+
+const lock = (pal, fg, bg, word, size, stack = false, mark = {}) =>
+  `<div class="lockup ${stack ? "stack" : ""}" style="background:${bg};color:${fg};font-size:${size}px">` +
+  prism({ pal, ...mark }).replace("<svg ", `<svg style="width:${stack ? 120 : 92}px" `) + `<span>${word}</span></div>`;
+document.getElementById("lockups").innerHTML = [
+  lock(PAL.cherry, INK, CREAM, "Marquise", 38),
+  lock(PAL.dusk, "#f1f3f5", DARK, "Marquise", 38),
+  lock(PAL.sunset, INK, "#fff", "marquise", 38),
+  lock(PAL.cherry, INK, CREAM, "Marquise", 30, true),
+  lock(PAL.mono, INK, CREAM, "Marquise", 38, false, { gap: 5 }),
+].join("");
+
+const chunky = { end: 44, mid: 80, w: 74, lit: 0.22 };
+const tile = (pal, tileBg, size) =>
+  `<figure><div class="tile" style="width:${size}px;height:${size}px;background:${tileBg}">${prism({ pal, ...chunky }).replace("<svg ", `<svg style="width:${size * 0.74}px" `)}</div>${size}px tile</figure>`;
+const bare = (pal, size) =>
+  `<figure><div style="width:${size}px;height:${size}px;display:grid;place-items:center;margin-bottom:6px">${prism({ pal, ...chunky }).replace("<svg ", `<svg style="width:${size}px" `)}</div>${size}px</figure>`;
+document.getElementById("icons").innerHTML =
+  tile(PAL.cherry, "#fff", 96) + tile(PAL.cherry, DARK, 96) + tile(PAL.dusk, DARK, 96) + tile(PAL.cherry, CREAM, 48) +
+  bare(PAL.cherry, 32) + bare(PAL.cherry, 24) + bare(PAL.cherry, 16) +
+  tile(PAL.cherry, DARK, 32) + tile(PAL.cherry, DARK, 16);
+</script>
+</body>
+</html>

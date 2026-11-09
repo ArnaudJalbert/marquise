@@ -1,0 +1,319 @@
+<!doctype html>
+<!-- PROTOTYPE, throwaway. Explores date-range controls for the screenings page. Switch variants with ?v=a..e or the bottom bar. -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>PROTOTYPE · date range</title>
+<style>
+  :root { --indigo:#6366f1; --deep:#4f46e5; --soft:#eef2ff; --ink:var(--foreground,#18181b); --mute:var(--muted-foreground,#71717a); --line:var(--border,#e4e4e7); }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.4 ui-sans-serif,system-ui,-apple-system,sans-serif; color:var(--ink); padding:4px 0 8px; }
+  h1 { font-size:13px; letter-spacing:.08em; text-transform:uppercase; color:var(--mute); margin:0 0 4px; }
+  .q { color:var(--mute); margin:0 0 24px; font-size:13px; }
+  button { font:inherit; cursor:pointer; }
+  #stage { min-height:260px; user-select:none; }
+  .big { font-size:28px; font-weight:650; letter-spacing:-.02em; display:flex; align-items:center; gap:12px; margin-bottom:6px; }
+  .sub { color:var(--mute); font-size:13px; margin-bottom:18px; }
+  .step { border:1px solid var(--line); background:transparent; border-radius:999px; width:34px; height:34px; display:grid; place-items:center; color:var(--mute); }
+  .step:hover { color:var(--ink); border-color:var(--ink); }
+  .step:disabled { opacity:.3; pointer-events:none; }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:14px; }
+  .chip { border:1px solid var(--line); background:transparent; color:var(--ink); border-radius:999px; padding:5px 12px; font-size:13px; }
+  .chip.on { background:var(--deep); border-color:var(--deep); color:#fff; }
+  #state { margin-top:22px; font:12px/1.5 ui-monospace,monospace; border:1px dashed var(--line); border-radius:8px; padding:10px 12px; white-space:pre; color:var(--mute); }
+  #bar { display:inline-flex; flex-wrap:wrap; margin-bottom:18px; gap:4px; background:#18181b; padding:5px; border-radius:999px; box-shadow:0 8px 24px #0003; }
+  #bar button { border:0; background:transparent; color:#a1a1aa; padding:7px 14px; border-radius:999px; font-size:13px; }
+  #bar button.on { background:#fff; color:#18181b; }
+
+  /* A filmstrip */
+  .strip-wrap { display:flex; align-items:center; gap:8px; }
+  .strip { display:flex; overflow-x:auto; background:#111; padding:14px 0; border-radius:6px; scrollbar-width:none; position:relative; flex:1;
+    background-image: radial-gradient(circle at 50% 50%, #fff3 3px, transparent 3.5px), radial-gradient(circle at 50% 50%, #fff3 3px, transparent 3.5px);
+    background-size:16px 14px; background-repeat:repeat-x; background-position:0 0, 0 100%; }
+  .frame { flex:0 0 66px; height:86px; margin:0 3px; border-radius:3px; background:#27272a; color:#d4d4d8; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; position:relative; touch-action:none; transition:background .12s; }
+  .frame .wd { font-size:11px; text-transform:uppercase; letter-spacing:.06em; opacity:.7; }
+  .frame .d { font-size:22px; font-weight:650; }
+  .frame .m { position:absolute; top:-13px; left:0; font-size:10px; color:#a1a1aa; text-transform:uppercase; letter-spacing:.1em; }
+  .frame .dots { display:flex; gap:2px; height:4px; margin-top:4px; }
+  .frame .dots i { width:4px; height:4px; border-radius:50%; background:currentColor; opacity:.6; }
+  .frame.we { background:#323238; }
+  .frame.sel { background:var(--indigo); color:#fff; }
+  .frame.edge { background:var(--deep); box-shadow:0 0 0 2px #c7d2fe inset; }
+  .frame.today .d::after { content:""; display:block; height:2px; background:#f59e0b; margin-top:1px; }
+
+  /* B sentence */
+  .sentence { font-size:34px; font-weight:600; letter-spacing:-.02em; line-height:1.5; }
+  .tok { border:0; background:var(--soft); color:var(--deep); padding:0 10px; border-radius:10px; font-weight:650; position:relative; }
+  .tok:hover { background:#e0e7ff; }
+  .menu { position:absolute; z-index:5; background:var(--popover,#fff); color:var(--ink); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 32px #0002; padding:6px; font-size:15px; font-weight:500; min-width:220px; }
+  .menu button { color:inherit; display:flex; justify-content:space-between; gap:24px; width:100%; border:0; background:none; text-align:left; padding:7px 10px; border-radius:8px; }
+  .menu button:hover { background:var(--soft); }
+  .menu small { color:var(--mute); }
+  .typein { margin-top:18px; display:flex; gap:8px; align-items:center; }
+  .typein input { font:inherit; background:transparent; color:var(--ink); font-size:16px; border:1px solid var(--line); border-radius:10px; padding:8px 12px; width:340px; }
+  .typein .hint { font-size:12px; color:var(--mute); }
+
+  /* C brush */
+  svg.brush { touch-action:none; width:100%; max-width:900px; height:auto; display:block; }
+  svg.brush .bar { fill:#d4d4d8; }
+  svg.brush .bar.in { fill:var(--indigo); }
+  svg.brush .win { fill:#6366f114; stroke:var(--deep); stroke-width:1.5; cursor:grab; }
+  svg.brush .h { fill:var(--deep); cursor:ew-resize; }
+  svg.brush text { font-size:11px; fill:var(--mute); }
+  svg.brush .wkline { stroke:var(--line); }
+
+  /* D week grid */
+  .grid { display:grid; grid-template-columns:96px repeat(7, 54px); gap:4px; width:max-content; }
+  .grid .hd { font-size:11px; color:var(--mute); text-align:center; text-transform:uppercase; letter-spacing:.06em; padding-bottom:4px; }
+  .grid .wk { border:0; background:none; font-size:12px; color:var(--mute); text-align:right; padding-right:10px; border-radius:8px; }
+  .grid .wk:hover { color:var(--deep); background:var(--soft); }
+  .cell { height:46px; border:0; border-radius:8px; position:relative; font-size:14px; font-variant-numeric:tabular-nums; color:var(--ink); }
+  .cell .n { position:absolute; bottom:4px; right:6px; font-size:10px; color:var(--mute); }
+  .cell.past { opacity:.3; pointer-events:none; }
+  .cell.sel { background:var(--indigo) !important; color:#fff; }
+  .cell.sel .n { color:#e0e7ff; }
+  .cell.preview { background:#c7d2fe !important; }
+  .cell.edge { background:var(--deep) !important; color:#fff; }
+
+  /* E marquee */
+  .marquee { display:inline-flex; flex-direction:column; align-items:center; background:#1c1917; padding:22px 28px 18px; border-radius:14px; position:relative;
+    box-shadow: 0 0 0 6px #292524, 0 0 0 7px #44403c; }
+  .bulbs { position:absolute; inset:-3px; border-radius:16px; pointer-events:none;
+    background: radial-gradient(circle, #fde68a 2.5px, transparent 3px) 0 0/18px 18px; mask: linear-gradient(#000,#000) content-box exclude, linear-gradient(#000,#000); padding:3px; animation:blink 1.2s steps(2) infinite; }
+  @keyframes blink { 50% { background-position:9px 0; } }
+  .letters { display:flex; gap:14px; align-items:center; }
+  .slot { display:flex; flex-direction:column; align-items:center; }
+  .slot button.arrow { border:0; background:none; color:#78716c; font-size:14px; padding:2px 10px; }
+  .slot button.arrow:hover { color:#fde68a; }
+  .tiles { display:flex; gap:3px; outline:none; }
+  .tiles:focus-visible { box-shadow:0 0 0 2px #fde68a; border-radius:4px; }
+  .tile { width:30px; height:42px; background:#fafaf9; color:#1c1917; display:grid; place-items:center; font:800 24px/1 ui-sans-serif,system-ui; border-radius:3px; box-shadow:inset 0 -3px 0 #d6d3d1; }
+  .dash { color:#fde68a; font-size:28px; font-weight:800; }
+  .mq-len { margin-top:12px; display:flex; gap:6px; }
+  .mq-len button { background:#292524; color:#d6d3d1; border:1px solid #44403c; border-radius:999px; padding:4px 12px; font-size:12px; }
+  .mq-len button.on { background:#fde68a; color:#1c1917; border-color:#fde68a; }
+</style>
+</head>
+<body>
+<div id="bar"></div>
+<h1>Prototype · screenings date range</h1>
+<p class="q" id="q"></p>
+<div id="stage"></div>
+<div id="state"></div>
+
+<script>
+// ---------- shared model ----------
+const DAYS = 42; // today .. +6 weeks
+const T0 = Date.UTC(2026, 10, 2, 12); // Mon Nov 2 2026
+const day = (o) => new Date(T0 + o * 864e5);
+const WD = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const MO = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const wd = (o) => day(o).getUTCDay();
+const dn = (o) => day(o).getUTCDate();
+const short = (o) => `${WD[wd(o)]} ${MO[day(o).getUTCMonth()]} ${dn(o)}`;
+const counts = Array.from({ length: DAYS }, (_, o) => {
+  const w = wd(o), base = [9, 4, 5, 6, 8, 14, 17][w];
+  return Math.max(0, Math.round(base + Math.sin(o * 2.3) * 4));
+});
+const clamp = (v) => Math.max(0, Math.min(DAYS - 1, v));
+const S = { start: 4, end: 6 }; // default: Fri..Sun this weekend
+const len = () => S.end - S.start + 1;
+const total = () => counts.slice(S.start, S.end + 1).reduce((a, b) => a + b, 0);
+const nextWd = (target, from = 0) => { let o = from; while (wd(o) !== target) o++; return o; };
+
+function named(s = S.start, e = S.end) {
+  if (s === e) return s === 0 ? "Today" : s === 1 ? "Tomorrow" : short(s);
+  const fri = nextWd(5), mon2 = nextWd(1, 1);
+  if (s === fri && e === fri + 2) return "This weekend";
+  if (s === fri + 7 && e === fri + 9) return "Next weekend";
+  if (s === 0 && e === 6) return "Next 7 days";
+  if (s === 0 && e === nextWd(0)) return "This week";
+  if (s === mon2 && e === mon2 + 6) return "Next week";
+  return null;
+}
+const rangeText = () => S.start === S.end ? short(S.start) : `${short(S.start)} → ${short(S.end)}`;
+const title = () => named() ?? rangeText();
+
+function set(s, e) {
+  s = clamp(s); e = clamp(e);
+  if (e < s) [s, e] = [e, s];
+  S.start = s; S.end = e; render();
+}
+// Step by the period's own length: weekend -> next weekend, week -> next week, a day -> next day.
+function shift(dir) {
+  const n = len(), name = named();
+  const k = name && /weekend|week/i.test(name) ? 7 : n;
+  if (S.start + dir * k < 0 || S.end + dir * k > DAYS - 1) return;
+  set(S.start + dir * k, S.end + dir * k);
+}
+const PRESETS = [
+  ["Today", () => [0, 0]], ["Tomorrow", () => [1, 1]],
+  ["This weekend", () => { const f = nextWd(5); return [f, f + 2]; }],
+  ["Next 7 days", () => [0, 6]],
+  ["Next week", () => { const m = nextWd(1, 1); return [m, m + 6]; }],
+  ["Next weekend", () => { const f = nextWd(5) + 7; return [f, f + 2]; }],
+];
+const presetChips = () => `<div class="chips">${PRESETS.map(([l, f]) => {
+  const [a, b] = f(); return `<button class="chip ${a === S.start && b === S.end ? "on" : ""}" data-p="${l}">${l}</button>`;
+}).join("")}</div>`;
+function wirePresets(root) {
+  root.querySelectorAll("[data-p]").forEach((b) => b.onclick = () => set(...PRESETS.find((p) => p[0] === b.dataset.p)[1]()));
+}
+const header = () => `
+  <div class="big"><button class="step" data-s="-1" ${S.start === 0 ? "disabled" : ""}>‹</button>
+  <span>${title()}</span><button class="step" data-s="1">›</button></div>
+  <div class="sub">${named() ? rangeText() + " · " : ""}${len()} day${len() > 1 ? "s" : ""} · ${total()} screenings</div>`;
+function wireHeader(root) { root.querySelectorAll("[data-s]").forEach((b) => b.onclick = () => shift(+b.dataset.s)); }
+
+// ---------- variants ----------
+const V = {};
+
+V.a = { name: "Filmstrip", q: "Drag across frames to select. Tap one frame for a single day. ‹ › steps by the period length.", render(root) {
+  root.innerHTML = header() + `<div class="strip-wrap"><div class="strip">${counts.map((c, o) => `
+    <div class="frame ${[0,6].includes(wd(o)) ? "we" : ""} ${o >= S.start && o <= S.end ? "sel" : ""} ${(o === S.start || o === S.end) && len() > 1 ? "edge" : ""} ${o === 0 ? "today" : ""}" data-o="${o}">
+      ${dn(o) === 1 || o === 0 ? `<span class="m">${MO[day(o).getUTCMonth()]}</span>` : ""}
+      <span class="wd">${WD[wd(o)]}</span><span class="d">${dn(o)}</span>
+      <span class="dots">${"<i></i>".repeat(Math.min(5, Math.ceil(c / 4)))}</span>
+    </div>`).join("")}</div></div>` + presetChips();
+  const strip = root.querySelector(".strip");
+  strip.scrollLeft = V.a.scroll ?? Math.max(0, S.start * 72 - 72);
+  strip.onscroll = () => V.a.scroll = strip.scrollLeft;
+  const at = (e) => document.elementFromPoint(e.clientX, e.clientY)?.closest(".frame");
+  strip.onpointerdown = (e) => { const f = at(e); if (!f) return; V.a.anchor = +f.dataset.o; set(V.a.anchor, V.a.anchor); };
+  root.onpointermove = (e) => { const a = V.a.anchor; if (a == null) return; const f = at(e); if (f) { const o = +f.dataset.o; if (S.start !== Math.min(a, o) || S.end !== Math.max(a, o)) set(a, o); } };
+  document.onpointerup = () => V.a.anchor = null;
+  wireHeader(root); wirePresets(root);
+}};
+
+V.b = { name: "Sentence", q: "Read it as a sentence. Click the token for options, or type a period in plain words.", render(root) {
+  root.innerHTML = `<div class="sentence">Films playing <button class="tok" id="tok">${(named() ?? rangeText()).replace(/^This|^Next/, (m) => m.toLowerCase())}</button>
+    <button class="step" data-s="-1" ${S.start === 0 ? "disabled" : ""}>‹</button> <button class="step" data-s="1">›</button></div>
+    <div class="sub">${named() ? rangeText() + " · " : ""}${total()} screenings across ${len()} day${len() > 1 ? "s" : ""}</div>
+    <div class="typein"><input id="ti" placeholder="try: fri to sun · nov 12 · next 3 days · 14-20" /><span class="hint" id="hint"></span></div>`;
+  const tok = root.querySelector("#tok");
+  tok.onclick = (e) => {
+    e.stopPropagation(); document.querySelector(".menu")?.remove();
+    const m = document.createElement("div"); m.className = "menu";
+    const r = tok.getBoundingClientRect(); m.style.left = r.left + "px"; m.style.top = r.bottom + scrollY + 6 + "px";
+    m.innerHTML = PRESETS.map(([l, f]) => { const [a, b] = f(); return `<button data-p="${l}">${l}<small>${a === b ? short(a) : `${short(a).slice(4)} – ${short(b).slice(4)}`}</small></button>`; }).join("");
+    document.body.append(m); wirePresets(m);
+    document.addEventListener("click", () => m.remove(), { once: true });
+  };
+  const ti = root.querySelector("#ti"), hint = root.querySelector("#hint");
+  ti.oninput = () => { const r = parse(ti.value); hint.textContent = r ? `→ ${short(r[0])}${r[1] !== r[0] ? " – " + short(r[1]) : ""}` : ti.value ? "?" : ""; };
+  ti.onkeydown = (e) => { if (e.key === "Enter") { const r = parse(ti.value); if (r) { set(...r); } } };
+  wireHeader(root);
+}};
+function parse(t) {
+  t = t.trim().toLowerCase(); if (!t) return null;
+  const p = PRESETS.find(([l]) => l.toLowerCase() === t); if (p) return p[1]();
+  if (t === "weekend") return PRESETS[2][1]();
+  let m = t.match(/^next (\d+) days?$/); if (m) return [0, +m[1] - 1];
+  const one = (s) => {
+    s = s.trim();
+    const w = WD.findIndex((d) => s.startsWith(d.toLowerCase())); if (w >= 0) return nextWd(w);
+    const mm = s.match(/^(?:([a-z]{3})\w* )?(\d{1,2})$/); if (!mm) return null;
+    const mon = mm[1] ? MO.findIndex((x) => x.toLowerCase() === mm[1]) : null;
+    for (let o = 0; o < DAYS; o++) if (dn(o) === +mm[2] && (mon === null || day(o).getUTCMonth() === mon)) return o;
+    return null;
+  };
+  const parts = t.split(/\s*(?:to|until|–|-|→)\s*/);
+  const a = one(parts[0]); if (a === null) return null;
+  if (parts.length === 1) return [a, a];
+  let b = one(parts[1]); if (b === null) return null;
+  while (b < a && b + 7 < DAYS && !/\d/.test(parts[1])) b += 7;
+  return [a, b];
+}
+
+V.c = { name: "Brush", q: "Bars are screenings per day. Drag the window to move it, drag its edges to resize, drag empty space to draw a new one.", render(root) {
+  const W = 20, H = 90, max = Math.max(...counts);
+  const bars = counts.map((c, o) => `<rect class="bar ${o >= S.start && o <= S.end ? "in" : ""}" x="${o * W + 3}" y="${H - (c / max) * 70}" width="${W - 6}" height="${(c / max) * 70}" rx="2"/>`).join("");
+  const labels = counts.map((_, o) => wd(o) === 1 ? `<line class="wkline" x1="${o * W}" x2="${o * W}" y1="8" y2="${H + 4}"/><text x="${o * W + 2}" y="${H + 18}">${MO[day(o).getUTCMonth()]} ${dn(o)}</text>` : "").join("");
+  const x0 = S.start * W, x1 = (S.end + 1) * W;
+  root.innerHTML = header() + `<svg class="brush" viewBox="0 0 ${DAYS * W} ${H + 26}">${labels}${bars}
+    <rect class="win" x="${x0}" y="4" width="${x1 - x0}" height="${H}" rx="4"/>
+    <rect class="h" data-h="l" x="${x0 - 3}" y="${H / 2 - 14}" width="6" height="28" rx="3"/>
+    <rect class="h" data-h="r" x="${x1 - 3}" y="${H / 2 - 14}" width="6" height="28" rx="3"/></svg>` + presetChips();
+  const dayAt = (e) => { const r = root.querySelector("svg").getBoundingClientRect(); return clamp(Math.floor(((e.clientX - r.left) / r.width) * DAYS)); };
+  const D = V.c;
+  root.querySelector("svg").onpointerdown = (e) => {
+    e.preventDefault(); const o = dayAt(e); D.a0 = o; D.s0 = S.start; D.e0 = S.end;
+    D.mode = e.target.dataset.h ?? (e.target.classList.contains("win") ? "move" : "new");
+    if (D.mode === "new") set(o, o);
+  };
+  root.onpointermove = (e) => {
+    if (!D.mode) return; const o = dayAt(e), d = o - D.a0, { s0, e0, a0 } = D;
+    if (D.mode === "move") { const dd = Math.max(-s0, Math.min(DAYS - 1 - e0, d)); if (S.start !== s0 + dd) set(s0 + dd, e0 + dd); }
+    else if (D.mode === "l") { if (S.start !== Math.min(o, e0)) set(Math.min(o, e0), e0); }
+    else if (D.mode === "r") { if (S.end !== Math.max(o, s0)) set(s0, Math.max(o, s0)); }
+    else if (S.start !== Math.min(a0, o) || S.end !== Math.max(a0, o)) set(a0, o);
+  };
+  document.onpointerup = () => D.mode = null;
+  wireHeader(root); wirePresets(root);
+}};
+
+V.d = { name: "Week grid", q: "Click a start, hover to preview, click an end. Click a week label to take the whole week. Shade is screening volume.", render(root) {
+  const max = Math.max(...counts), pv = V.d.pending;
+  const hov = V.d.hover;
+  let html = `<div class="grid"><span></span>${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d) => `<span class="hd">${d}</span>`).join("")}`;
+  for (let w = 0; w < 6; w++) {
+    const mon = w * 7; // T0 is Monday
+    const lbl = w === 0 ? "This week" : w === 1 ? "Next week" : `${MO[day(mon).getUTCMonth()]} ${dn(mon)}`;
+    html += `<button class="wk" data-w="${mon}">${lbl}</button>`;
+    for (let i = 0; i < 7; i++) {
+      const o = mon + i, c = counts[o] ?? 0;
+      const inPrev = pv !== undefined && hov !== undefined && o >= Math.min(pv, hov) && o <= Math.max(pv, hov);
+      const sel = pv === undefined && o >= S.start && o <= S.end;
+      const edge = pv === o || (sel && (o === S.start || o === S.end) && len() > 1);
+      html += `<button class="cell ${sel ? "sel" : ""} ${inPrev ? "preview" : ""} ${edge ? "edge" : ""}" data-o="${o}" style="background:rgba(99,102,241,${0.04 + (c / max) * 0.22})">${dn(o) === 1 ? MO[day(o).getUTCMonth()] + " " : ""}${dn(o)}<span class="n">${c}</span></button>`;
+    }
+  }
+  root.innerHTML = header() + html + "</div>" + presetChips();
+  root.querySelectorAll(".cell").forEach((b) => {
+    const o = +b.dataset.o;
+    b.onclick = () => { if (V.d.pending === undefined) { V.d.pending = o; V.d.hover = o; render(); } else { const p = V.d.pending; V.d.pending = V.d.hover = undefined; set(p, o); } };
+    b.onmouseenter = () => { if (V.d.pending !== undefined && V.d.hover !== o) { V.d.hover = o; render(); } };
+  });
+  root.querySelectorAll(".wk").forEach((b) => b.onclick = () => { V.d.pending = undefined; set(+b.dataset.w, +b.dataset.w + 6); });
+  wireHeader(root); wirePresets(root);
+}};
+
+V.e = { name: "Marquee", q: "The period on a cinema letter board. Arrows, scroll wheel, or ↑↓ on a focused date nudge it. Length chips fix the span.", render(root) {
+  const tiles = (o) => `${WD[wd(o)]} ${MO[day(o).getUTCMonth()]} ${dn(o)}`.toUpperCase().split("").map((ch) => ch === " " ? `<span style="width:8px"></span>` : `<span class="tile">${ch}</span>`).join("");
+  const slot = (k) => `<div class="slot"><button class="arrow" data-k="${k}" data-d="-1">▲</button><div class="tiles" tabindex="0" data-k="${k}">${tiles(S[k])}</div><button class="arrow" data-k="${k}" data-d="1">▼</button></div>`;
+  const L = [["1 day", 1], ["Weekend", 3], ["Week", 7], ["2 weeks", 14]];
+  root.innerHTML = `<div class="marquee"><div class="bulbs"></div><div class="letters">${slot("start")}${len() > 1 ? `<span class="dash">→</span>${slot("end")}` : ""}</div>
+    <div class="mq-len">${L.map(([l, n]) => `<button class="${len() === n ? "on" : ""}" data-n="${n}">${l}</button>`).join("")}</div></div>
+    <div class="sub" style="margin-top:16px">${named() ?? ""}${named() ? " · " : ""}${total()} screenings</div>`;
+  const nudge = (k, d) => k === "start" ? set(S.start + d, Math.max(S.end + (len() > 1 ? 0 : d), S.start + d)) : set(S.start, Math.max(S.start, S.end + d));
+  root.querySelectorAll(".arrow").forEach((b) => b.onclick = () => nudge(b.dataset.k, +b.dataset.d));
+  root.querySelectorAll(".tiles").forEach((t) => {
+    t.onwheel = (e) => { e.preventDefault(); nudge(t.dataset.k, Math.sign(e.deltaY)); };
+    t.onkeydown = (e) => { if (e.key === "ArrowUp" || e.key === "ArrowDown") { e.preventDefault(); V.e.focus = t.dataset.k; nudge(t.dataset.k, e.key === "ArrowUp" ? -1 : 1); } };
+  });
+  root.querySelectorAll("[data-n]").forEach((b) => b.onclick = () => {
+    const n = +b.dataset.n; let s = S.start;
+    if (n === 3) s = wd(s) === 5 ? s : nextWd(5, s);
+    if (n === 7) s = s - ((wd(s) + 6) % 7);
+    set(s, s + n - 1);
+  });
+  if (V.e.focus) { root.querySelector(`.tiles[data-k="${V.e.focus}"]`)?.focus(); }
+}};
+
+// ---------- shell ----------
+const params = new URLSearchParams(location.search);
+let cur = V[params.get("v")] ? params.get("v") : "a";
+function render() {
+  const v = V[cur];
+  document.getElementById("q").textContent = `${cur.toUpperCase()} · ${v.name}. ${v.q}`;
+  const stage = document.getElementById("stage"); stage.onpointermove = null; document.onpointerup = null;
+  v.render(stage);
+  document.getElementById("state").textContent =
+    `variant  ${cur} (${v.name})\nstart    ${short(S.start)}\nend      ${short(S.end)}\nlength   ${len()} day(s)\nnamed    ${named() ?? "—"}\nshowings ${total()}`;
+  document.getElementById("bar").innerHTML = Object.entries(V).map(([k, x]) => `<button class="${k === cur ? "on" : ""}" data-v="${k}">${k.toUpperCase()} ${x.name}</button>`).join("");
+  document.querySelectorAll("#bar button").forEach((b) => b.onclick = () => { cur = b.dataset.v; params.set("v", cur); try { history.replaceState(null, "", "?" + params); } catch {} render(); });
+}
+render();
+</script>
+</body>
+</html>

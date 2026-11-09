@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Marquise brand integration mockup</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: var(--font-sans, Geist, system-ui, sans-serif); }
+  body.standalone { background: #0b0d10; color: #f1f3f5; padding: 32px; --font-mono: "Geist Mono", ui-monospace, monospace; }
+  h2 { font-size: 12px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: .08em; opacity: .7; margin: 28px 0 10px; }
+  h2:first-child { margin-top: 0; }
+  .note { font-size: 12px; opacity: .75; margin: -4px 0 10px; }
+
+  /* Browser chrome */
+  .window { border-radius: 12px; overflow: hidden; border: 1px solid #35414d; background: #fff; }
+  .tabs { background: #e9e9ee; padding: 8px 10px 0; display: flex; gap: 6px; }
+  .tab { background: #fff; border-radius: 8px 8px 0 0; padding: 7px 14px; font-size: 12px; color: #111; display: flex; gap: 8px; align-items: center; min-width: 150px; }
+  .tab.off { background: transparent; color: #666; }
+  .tab.dark { background: #2b2d31; color: #eee; }
+  .tabs.dark { background: #1e1f22; }
+
+  /* Interface, mirrors minimal.css: black on white, Geist, 13px */
+  .site { --line: #ddd; --indigo: #6366f1; --indigo-fill: #4f46e5; --lilac: #eef0ff; --amber: #e07a00; --amber-text: #a34f00;
+    color: #000; background: #fff; font-size: 13px; line-height: 1.5; padding: 0 24px 24px; }
+  .site a { color: #000; text-decoration: none; }
+  .nav { display: flex; align-items: center; gap: 24px; min-height: 64px; border-bottom: 1px solid var(--line); margin-bottom: 20px; }
+  .wordmark { display: flex; align-items: center; gap: 9px; font-size: 20px; font-weight: 600; letter-spacing: -0.7px; }
+  .wordmark img { width: 34px; }
+  .nav nav { display: flex; gap: 24px; margin-left: auto; }
+  .nav nav a { padding: 12px 0; }
+  .nav nav a.on { text-decoration: underline; text-underline-offset: 6px; }
+  /* Selected section: indigo text and underline. #4f46e5 keeps 13px text above 4.5:1. */
+  .brand .nav nav a.on { color: var(--indigo-fill); text-decoration-color: var(--indigo-fill); text-decoration-thickness: 2px; }
+  .fields { display: grid; grid-template-columns: 1fr 150px 150px; gap: 12px; }
+  .fields label { display: grid; gap: 4px; }
+  .input { border: 1px solid var(--line); border-radius: 3px; min-height: 40px; padding: 9px 12px; color: #777; }
+  .input.focus { color: #000; outline: 2px solid #000; outline-offset: 3px; }
+  /* No coloured outline on the search field; keyboard focus keeps the existing black ring. */
+  .brand .input.focus { outline: none; }
+  .shortcuts { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
+  .btn { border: 1px solid var(--line); border-radius: 3px; min-height: 40px; padding: 9px 12px; background: #fff; }
+  .btn.on { background: #e2e2e2; border-color: #777; box-shadow: inset 0 -2px #111; }
+  /* Active button is a solid fill. #4f46e5 keeps white 13px text above 4.5:1. */
+  .brand .btn.on { background: var(--indigo-fill); border-color: var(--indigo-fill); box-shadow: none; color: #fff; }
+  .range { position: relative; height: 28px; margin: 4px 0 18px; }
+  .range::before, .range::after { content: ""; position: absolute; top: 12px; height: 4px; border-radius: 2px; }
+  .range::before { left: 0; right: 0; background: #ddd; }
+  .range::after { left: 30%; width: 45%; background: #111; }
+  .brand .range::after { background: var(--indigo); }
+  .thumb { position: absolute; top: 6px; width: 16px; height: 16px; border-radius: 50%; background: #111; border: 2px solid #fff; box-shadow: 0 0 0 1px #111; }
+  .brand .thumb { background: var(--indigo); box-shadow: 0 0 0 1px var(--indigo); }
+  .check { display: flex; gap: 8px; align-items: center; margin-bottom: 18px; }
+  .check input { accent-color: #000; width: 16px; height: 16px; margin: 0; }
+  .brand .check input { accent-color: var(--indigo); }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .poster { aspect-ratio: 2 / 3; border-radius: 2px; }
+  .film { display: flex; justify-content: space-between; margin-top: 6px; }
+  .times { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+  .time { font-family: var(--font-mono); font-size: 12px; border: 1px solid var(--line); border-radius: 3px; padding: 2px 6px; }
+  .time.soon { border-color: var(--amber); box-shadow: inset 0 -2px var(--amber); color: var(--amber-text); }
+  .footer { display: flex; align-items: center; gap: 24px; margin-top: 28px; border-top: 1px solid var(--line); padding-top: 12px; color: #000; }
+  .footer .name { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+  .footer .name img { width: 22px; }
+  .footer span.link { color: #000; }
+
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .pair .label { font: 11px var(--font-mono); text-transform: uppercase; letter-spacing: .06em; opacity: .7; margin-bottom: 6px; }
+  .mini { border: 1px solid #35414d; border-radius: 10px; overflow: hidden; }
+  .mini .site { padding: 0 16px 16px; }
+  .sizes { display: flex; gap: 22px; align-items: end; padding: 18px; border-radius: 10px; border: 1px solid #35414d; background: #fff; color: #555; font: 10px var(--font-mono); flex-wrap: wrap; }
+  .sizes figure { margin: 0; text-align: center; }
+  .sizes figure div { display: grid; place-items: center; margin-bottom: 6px; }
+</style>
+</head>
+<body>
+
+<h2>Proposed: full page</h2>
+<div class="window">
+  <div class="tabs"><div class="tab"><img data-svg="fav" width="16" height="16" alt="" />Marquise</div><div class="tab off">New tab</div></div>
+  <div class="site brand">
+    <header class="nav">
+      <a class="wordmark" href="#"><img data-svg="mark" alt="" />Marquise</a>
+      <nav><a class="on" href="#">Screenings</a><a href="#">Movies</a><a href="#">Cinemas</a></nav>
+    </header>
+    <div class="fields">
+      <label>Movie title<div class="input focus">Past Li|</div></label>
+      <label>Start date<div class="input">10/30/2026</div></label>
+      <label>End date<div class="input">10/30/2026</div></label>
+    </div>
+    <div class="shortcuts"><span class="btn on">Today</span><span class="btn">Tomorrow</span><span class="btn">This weekend</span><span class="btn">▸ Filters</span></div>
+    <div class="range"><span class="thumb" style="left:calc(30% - 8px)"></span><span class="thumb" style="left:calc(75% - 8px)"></span></div>
+    <label class="check"><input type="checkbox" checked /> Original version only</label>
+    <div class="grid" id="films"></div>
+    <footer class="footer"><span class="name"><img data-svg="mono" alt="" />Marquise</span><span class="link">About</span><span class="link">Privacy</span><span class="link">Data sources</span></footer>
+  </div>
+</div>
+
+<h2>Before / after</h2>
+<p class="note">Only selected and active states change. Text, links, borders and buttons stay black on white.</p>
+<div class="pair">
+  <div><div class="label">Today</div><div class="mini" id="before"></div></div>
+  <div><div class="label">Proposed</div><div class="mini" id="after"></div></div>
+</div>
+
+<h2>Tab title and favicon</h2>
+<div class="pair" style="align-items:start">
+  <div class="window"><div class="tabs"><div class="tab">Marquise — Montréal movie showtimes</div></div></div>
+  <div class="window"><div class="tabs"><div class="tab"><img data-svg="fav" width="16" height="16" alt="" />Marquise</div><div class="tab off">Gmail</div></div></div>
+  <div class="window"><div class="tabs dark"><div class="tab dark"><img data-svg="favDark" width="16" height="16" alt="" />Marquise</div><div class="tab off" style="color:#999">Gmail</div></div></div>
+  <div class="sizes" id="sizes"></div>
+</div>
+
+<h2>Optional later: amber for "starting soon"</h2>
+<p class="note">The marquee light: only for showtimes starting within the hour. Amber text uses #a34f00 for 4.5:1.</p>
+<div class="mini"><div class="site brand" style="padding-top:16px">
+  <div class="film" style="margin:0"><b>Past Lives</b><span>Cinéma du Parc</span></div>
+  <div class="times"><span class="time soon">18:40 · in 25 min</span><span class="time">21:15</span></div>
+  <div class="film" style="margin-top:12px"><b>Perfect Days</b><span>Cinéma Moderne</span></div>
+  <div class="times"><span class="time">19:30</span><span class="time">21:50</span></div>
+</div></div>
+
+<script>
+if (window.self === window.top) document.body.classList.add("standalone");
+
+// Brand files from web/design/brand, inlined as data URIs so each copy keeps its own colours.
+const prism = (light, { end = 34, mid = 64, w = 88, lit = 0.18, gap = 0, square = false, faces = ["#a78bfa", "#6366f1"] } = {}) => {
+  const f = (n) => +n.toFixed(2);
+  const pt = (s, u, v) => [f(s * w * (1 - u)), f(-(end + (mid - end) * u) / 2 + (end + (mid - end) * u) * v)];
+  const poly = (s, v0, v1, fill) => `<polygon fill="${fill}" points="${[pt(s, 0, v0), pt(s, 1, v0), pt(s, 1, v1), pt(s, 0, v1)].map((p) => p.join(",")).join(" ")}"/>`;
+  const g = gap / mid, top = -mid / 2, bottom = mid / 2 + mid * (g + lit);
+  let [x, y, vw, vh] = [-w - 3, top - 3, 2 * w + 6, bottom - top + 6];
+  if (square) { const s = Math.max(vw, vh); x -= (s - vw) / 2; y -= (s - vh) / 2; vw = vh = s; }
+  const body = poly(-1, 0, 1, faces[0]) + poly(1, 0, 1, faces[1]) + poly(-1, 1 + g, 1 + g + lit, light) + poly(1, 1 + g, 1 + g + lit, light);
+  return "data:image/svg+xml," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${f(x)} ${f(y)} ${f(vw)} ${f(vh)}">${body}</svg>`);
+};
+const fav = { end: 44, mid: 80, w: 74, lit: 0.28, square: true };
+const SVG = {
+  mark: prism("#e07a00"),
+  mono: prism("#000", { gap: 5, faces: ["#000", "#000"] }),
+  fav: prism("#e07a00", fav),
+  favDark: prism("#fcd34d", fav),
+};
+const paint = (root = document) => root.querySelectorAll("img[data-svg]").forEach((img) => (img.src = SVG[img.dataset.svg]));
+
+// Poster placeholders: films carry their own colour, the UI stays neutral around them.
+const films = [["Dune: Part Two", "#c2410c", "#7c2d12"], ["Perfect Days", "#94a3b8", "#334155"], ["Past Lives", "#0f766e", "#1e293b"], ["Spirited Away", "#111", "#333"]];
+document.getElementById("films").innerHTML = films.map(([t, a, b], i) =>
+  `<div><div class="poster" style="background:linear-gradient(160deg,${a},${b})"></div><div class="film"><span>${t}</span><span>↗</span></div>` +
+  `<div class="times">${i === 2 ? '<span class="time soon">18:40</span>' : ""}<span class="time">19:30</span><span class="time">21:45</span></div></div>`).join("");
+
+// Before / after share the same markup; only the .brand class differs.
+const header = (brand) => `<div class="site ${brand ? "brand" : ""}">
+  <header class="nav"><a class="wordmark" href="#">${brand ? '<img data-svg="mark" alt="" />' : ""}Marquise</a><nav><a class="on" href="#">Screenings</a><a href="#">Movies</a></nav></header>
+  <div class="input focus" style="margin-bottom:12px">Past Li|</div>
+  <div class="shortcuts"><span class="btn on">Today</span><span class="btn">Tomorrow</span></div>
+  <div class="range"><span class="thumb" style="left:calc(30% - 8px)"></span><span class="thumb" style="left:calc(75% - 8px)"></span></div>
+  <label class="check"><input type="checkbox" checked /> Original version only</label>
+  <footer class="footer" style="margin-top:8px"><span class="name">${brand ? '<img data-svg="mono" alt="" />' : ""}Marquise</span><span class="link">About</span></footer></div>`;
+document.getElementById("before").innerHTML = header(false);
+document.getElementById("after").innerHTML = header(true);
+
+document.getElementById("sizes").innerHTML = [64, 32, 16].map((s) =>
+  `<figure><div style="width:${s}px;height:${s}px"><img data-svg="fav" width="${s}" height="${s}" alt="" /></div>${s}px</figure>`).join("") +
+  `<figure><div style="width:64px;height:64px;background:#1e1f22;border-radius:12px"><img data-svg="favDark" width="44" height="44" alt="" /></div>dark</figure>`;
+paint();
+</script>
+</body>
+</html>
