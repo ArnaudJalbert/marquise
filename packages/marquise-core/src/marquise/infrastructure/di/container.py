@@ -35,9 +35,6 @@ from marquise.application.use_cases.auth import (
     SetAccountRoleUseCase,
 )
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
-from marquise.application.use_cases.create_missing_movies import (
-    CreateMissingMoviesCommand,
-)
 from marquise.application.use_cases.create_screening import CreateScreeningUseCase
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.create_source import CreateSourceUseCase
@@ -68,7 +65,6 @@ from marquise.infrastructure.di.auth import (
     build_verify_access_token_query,
 )
 from marquise.infrastructure.di.import_use_cases import (
-    build_create_movies_use_case,
     build_create_screenings_use_case,
     build_fetch_screenings_use_case,
     build_import_screenings_use_case,
@@ -365,14 +361,6 @@ class Container:
         )
 
     @property
-    def _create_movies_use_case(self) -> CreateMissingMoviesCommand:
-        return build_create_movies_use_case(
-            self._pool_property,
-            self._schema,
-            self._settings_provider.settings.tmdb_api_key,
-        )
-
-    @property
     def refresh_movies_use_case(self) -> RefreshMoviesUseCase:
         """Build the explicit metadata refresh workflow."""
         return build_refresh_movies_use_case(
@@ -393,9 +381,10 @@ class Container:
     @property
     def _import_screenings_use_case(self) -> ImportScreeningsCommand:
         return build_import_screenings_use_case(
-            fetch_screenings_use_case=self._fetch_screenings_use_case,
-            create_movies_use_case=self._create_movies_use_case,
-            create_screenings_use_case=self._create_screenings_use_case,
+            self._pool_property,
+            self._schema,
+            self._settings_provider.settings.tmdb_api_key,
+            self._fetch_screenings_use_case,
         )
 
     # ------------------------------------------------------------------
@@ -546,11 +535,6 @@ class Container:
     def fetch_screenings_use_case(self) -> FetchScreeningsFromSourceQuery:
         """Public fetch-screenings query."""
         return self._fetch_screenings_use_case
-
-    @property
-    def create_movies_use_case(self) -> CreateMissingMoviesCommand:
-        """Public create-missing-movies command."""
-        return self._create_movies_use_case
 
     @property
     def create_screenings_use_case(self) -> CreateScreeningsCommand:

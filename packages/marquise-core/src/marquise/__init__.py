@@ -43,12 +43,8 @@ from marquise.application.metadata import (
     TitleFact,
 )
 from marquise.application.movie_workflows import (
-    EnrichMovieExecutor,
     EnrichMovieInputData,
     EnrichMovieOutputData,
-    MatchMovieExecutor,
-    MatchMovieInputData,
-    MatchMovieOutputData,
     MergeMoviesExecutor,
     MergeMoviesInputData,
     MergeMoviesOutputData,
@@ -84,9 +80,6 @@ from marquise.application.use_cases.auth import (
     SetAccountRoleUseCase,
 )
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
-from marquise.application.use_cases.create_missing_movies import (
-    CreateMissingMoviesCommand,
-)
 from marquise.application.use_cases.create_screening import CreateScreeningUseCase
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.create_source import CreateSourceUseCase
@@ -129,8 +122,6 @@ __all__ = [
     "MetadataRepository",
     "MovieMetadataValues",
     "MovieMetadataSnapshot",
-    "MatchMovieInputData",
-    "MatchMovieOutputData",
     "EnrichMovieInputData",
     "EnrichMovieOutputData",
     "RefreshMoviesInputData",
@@ -139,8 +130,6 @@ __all__ = [
     "MergeMoviesOutputData",
     "MovieWorkflowConflictError",
     "MovieMetadataRepository",
-    "MatchMovieExecutor",
-    "EnrichMovieExecutor",
     "RefreshMoviesExecutor",
     "MergeMoviesExecutor",
     "BrowseScreeningMoviesQuery",
@@ -160,7 +149,6 @@ __all__ = [
     "CinemaSourceAssignmentAlreadyExistsError",
     "CinemaSourceAssignmentNotFoundError",
     "CreateCinemaUseCase",
-    "CreateMissingMoviesCommand",
     "CreateScreeningUseCase",
     "CreateScreeningsCommand",
     "ImportScreeningsCommand",

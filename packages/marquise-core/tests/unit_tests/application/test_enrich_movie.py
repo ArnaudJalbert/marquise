@@ -1,5 +1,6 @@
 """Deterministic enrichment policy tests with atomic in-memory persistence."""
 
+from collections.abc import Callable
 from dataclasses import fields, replace
 from datetime import UTC, datetime
 from unittest.mock import Mock, create_autospec
@@ -20,16 +21,14 @@ from marquise.application.metadata import (
 )
 from marquise.application.movie_workflows import (
     EnrichMovieInputData,
+    EnrichMovieOutputData,
     MovieMetadataRepository,
     MovieMetadataSnapshot,
     MovieMetadataValues,
     MovieWorkflowConflictError,
     RefreshMoviesInputData,
 )
-from marquise.application.use_cases.enrich_movie import (
-    EnrichMovieUseCase,
-    _select_values,
-)
+from marquise.application.use_cases.enrich_movies import _enrich, _select_values
 from marquise.application.use_cases.refresh_movies import RefreshMoviesUseCase
 
 NOW = datetime(2026, 10, 30, tzinfo=UTC)
@@ -105,9 +104,20 @@ def metadata() -> Mock:
     return repository
 
 
-def use_case(movies: Mock, metadata: Mock) -> EnrichMovieUseCase:
-    """Build the use case with a fixed successful-write timestamp."""
-    return EnrichMovieUseCase(movies, metadata, lambda: NOW)
+class EnrichPolicy:
+    """Drive the enrichment policy shared by batch enrichment and refresh."""
+
+    def __init__(self, movies: Mock, metadata: Mock, clock: Callable) -> None:
+        self._dependencies = (movies, metadata, clock)
+
+    async def execute(self, request: EnrichMovieInputData) -> EnrichMovieOutputData:
+        """Apply the policy to one movie."""
+        return await _enrich(request, *self._dependencies)
+
+
+def use_case(movies: Mock, metadata: Mock) -> EnrichPolicy:
+    """Build the policy with a fixed successful-write timestamp."""
+    return EnrichPolicy(movies, metadata, lambda: NOW)
 
 
 @pytest.mark.asyncio
@@ -332,7 +342,7 @@ async def test_failure_preserves_state_and_can_retry(
             else RuntimeError("offline")
         )
     case = (
-        EnrichMovieUseCase(movies, metadata, lambda: datetime(2026, 10, 30))
+        EnrichPolicy(movies, metadata, lambda: datetime(2026, 10, 30))
         if stage == "clock"
         else use_case(movies, metadata)
     )

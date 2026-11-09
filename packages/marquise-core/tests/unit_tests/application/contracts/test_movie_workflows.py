@@ -6,12 +6,7 @@ from unittest.mock import create_autospec
 import pytest
 
 from marquise import (
-    EnrichMovieExecutor,
-    EnrichMovieInputData,
     EnrichMovieOutputData,
-    MatchMovieExecutor,
-    MatchMovieInputData,
-    MatchMovieOutputData,
     MergeMoviesExecutor,
     MergeMoviesInputData,
     MergeMoviesOutputData,
@@ -84,18 +79,8 @@ def test_identity_scope_required(provider: str, identifier: str) -> None:
         ProviderIdentity(provider, identifier)
 
 
-def test_matching_outcomes() -> None:
-    """Only confirmed matches carry IDs and failures cannot look like no-match."""
-    failure = MetadataFailure("unavailable", "Offline", True)
-    assert MatchMovieOutputData("unmatched").identity is None
-    assert MatchMovieOutputData("incomplete").identity is None
-    assert MatchMovieOutputData("failed", failure=failure).failure == failure
-    with pytest.raises(ValueError):
-        MatchMovieOutputData("matched")
-    with pytest.raises(ValueError):
-        MatchMovieOutputData("unmatched", ProviderIdentity("tmdb", "1"))
-    with pytest.raises(ValueError):
-        MatchMovieOutputData("unmatched", failure=failure)
+def test_enrichment_outcomes() -> None:
+    """A failed enrichment always carries its failure."""
     with pytest.raises(ValueError):
         EnrichMovieOutputData("1", "failed")
 
@@ -103,16 +88,7 @@ def test_matching_outcomes() -> None:
 @pytest.mark.asyncio
 async def test_delivery_execution_seams() -> None:
     """Thin callers use only facade DTOs and autospecced execute signatures."""
-    matcher = create_autospec(MatchMovieExecutor, instance=True, spec_set=True)
-    matcher.execute.return_value = MatchMovieOutputData("unmatched")
-    source = MatchMovieInputData("Original title", 1976, ("Brian De Palma",), 98)
-    assert (await matcher.execute(source)).status == "unmatched"
-    matcher.execute.assert_awaited_once_with(source)
-    assert source.title == "Original title"
-    enrichment = create_autospec(EnrichMovieExecutor, instance=True, spec_set=True)
-    request = EnrichMovieInputData("stable-id", ProviderIdentity("tmdb", "7340"))
-    enrichment.execute.return_value = EnrichMovieOutputData("stable-id", "enriched")
-    outcome = await enrichment.execute(request)
+    outcome = EnrichMovieOutputData("stable-id", "enriched")
     refresh = create_autospec(RefreshMoviesExecutor, instance=True, spec_set=True)
     refresh.execute.return_value = RefreshMoviesOutputData((outcome,))
     assert (await refresh.execute(RefreshMoviesInputData())).results == (outcome,)
@@ -122,7 +98,7 @@ async def test_delivery_execution_seams() -> None:
         "preview"
     )
     with pytest.raises(TypeError):
-        matcher.execute(source, "extra")
+        refresh.execute(RefreshMoviesInputData(), "extra")
 
 
 @pytest.mark.asyncio
@@ -161,12 +137,9 @@ def test_blank_workflow_inputs_are_rejected() -> None:
     from marquise.application.metadata import ProviderIdentity
     from marquise.application.movie_workflows import (
         EnrichMovieInputData,
-        MatchMovieInputData,
         RefreshMoviesInputData,
     )
 
-    with pytest.raises(ValueError):
-        MatchMovieInputData(" ")
     with pytest.raises(ValueError):
         EnrichMovieInputData(" ", ProviderIdentity("tmdb", "1"))
     with pytest.raises(ValueError):

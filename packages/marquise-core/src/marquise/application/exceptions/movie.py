@@ -13,6 +13,14 @@ class MovieIdentityConflictError(ApplicationError):
     """A title is already assigned to a different known movie."""
 
 
+class MovieMetadataUnavailableError(ApplicationError):
+    """The metadata provider could not answer, so the work can't be trusted."""
+
+
+class MovieNotLinkedError(ApplicationError):
+    """A screening has no stored movie, even after missing movies were created."""
+
+
 class MovieNotFoundError(ApplicationError):
     """Raised when a requested movie does not exist in the repository."""
 

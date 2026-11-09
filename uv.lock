@@ -586,7 +586,7 @@ requires-dist = [
 
 [[package]]
 name = "marquise-core"
-version = "0.2.46"
+version = "0.2.47"
 source = { editable = "packages/marquise-core" }
 dependencies = [
     { name = "asyncpg" },

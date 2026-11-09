@@ -1,7 +1,7 @@
 """Import a translated screening using a real database and a known TMDB movie."""
 
 from datetime import UTC, date, datetime
-from unittest.mock import AsyncMock, create_autospec
+from unittest.mock import AsyncMock
 
 import asyncpg
 import pytest
@@ -9,15 +9,7 @@ import pytest
 from marquise.application.queries.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
-from marquise.application.repositories.movie_identity_search import (
-    MovieIdentityCandidate,
-    MovieIdentitySearch,
-)
-from marquise.application.use_cases.create_missing_movies import (
-    CreateMissingMoviesCommand,
-)
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
-from marquise.application.use_cases.import_screenings import ImportScreeningsCommand
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
 from marquise.infrastructure.supabase.gateways.movie import SupabaseMovieGateway
@@ -27,6 +19,12 @@ from marquise.interface_adapters.repositories.supabase.movie_repository import (
 )
 from marquise.interface_adapters.repositories.supabase.screening_repository import (
     SupabaseScreeningRepository,
+)
+from support.movie_import import (
+    autospec_use_case,
+    build_match,
+    build_matcher,
+    import_command,
 )
 
 TEST_SCHEMA = "marquise-test"
@@ -56,7 +54,7 @@ async def test_import_links_translated_screening_to_known_movie(
             "Test Cinema",
         )
 
-    fetched = create_autospec(FetchScreeningsFromSourceQuery, instance=True)
+    fetched = autospec_use_case(FetchScreeningsFromSourceQuery)
     fetched.execute = AsyncMock(
         return_value=FetchScreeningsFromSourceQuery.OutputData(
             cinema_id="test-cinema",
@@ -75,16 +73,9 @@ async def test_import_links_translated_screening_to_known_movie(
             ),
         )
     )
-    tmdb = create_autospec(MovieIdentitySearch, instance=True)
-    tmdb.search.return_value = [
-        MovieIdentityCandidate(
-            provider="tmdb", id="777", title="Original Film", release_year=2025
-        )
-    ]
-    command = ImportScreeningsCommand(
-        fetched,
-        CreateMissingMoviesCommand(movies, tmdb),
-        CreateScreeningsCommand(screenings),
+    matcher = build_matcher(build_match("777"))
+    command = import_command(
+        fetched, movies, CreateScreeningsCommand(screenings), matcher
     )
 
     result = await command.execute(
@@ -92,7 +83,8 @@ async def test_import_links_translated_screening_to_known_movie(
     )
 
     assert result.imported_count == 1
-    tmdb.search.assert_awaited_once_with("Film traduit", 2025)
+    request = matcher.execute.await_args.args[0].movies[0]
+    assert (request.title, request.release_year) == ("Film traduit", 2025)
     saved_screenings = await screenings.search()
     assert saved_screenings.total == 1
     assert saved_screenings.items[0].movie.id == original.id

@@ -19,9 +19,6 @@ from marquise.application.repositories.source_registry_query import (
     ShowtimeRow,
     SourceRegistryQuery,
 )
-from marquise.application.use_cases.create_missing_movies import (
-    CreateMissingMoviesCommand,
-)
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.import_screenings import ImportScreeningsCommand
 from marquise.domain.entities import Cinema
@@ -47,6 +44,7 @@ from marquise.interface_adapters.repositories.supabase.movie_repository import (
 from marquise.interface_adapters.repositories.supabase.screening_repository import (
     SupabaseScreeningRepository,
 )
+from support.movie_import import import_command
 
 SCRIPTS = Path(__file__).resolve().parents[7] / "scripts"
 SCHEMA = '"marquise-test"'
@@ -113,13 +111,13 @@ async def import_chain(
     screenings = SupabaseScreeningRepository(
         SupabaseScreeningGateway(db_pool, "marquise-test")
     )
-    command = ImportScreeningsCommand(
+    command = import_command(
         FetchScreeningsFromSourceQuery(
             SupabaseCinemaRepository(cinema),
             SupabaseCinemaSourceAssignmentRepository(assignment),
             registry,
         ),
-        CreateMissingMoviesCommand(SupabaseMovieRepository(movies)),
+        SupabaseMovieRepository(movies),
         CreateScreeningsCommand(screenings),
     )
     return command, registry, screenings
