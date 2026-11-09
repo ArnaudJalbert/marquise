@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import type { BrowseClient } from "marquise-client";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import type { BrowseClient, ScreeningMovieQuery } from "marquise-client";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { MinimalExperience } from "./MinimalExperience";
 
 const cinemaPage = {
@@ -63,4 +63,49 @@ describe("MinimalExperience fixed-cinema pages", () => {
       ).not.toBeInTheDocument();
     },
   );
+});
+
+describe("MinimalExperience phone sheet", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("counts the movies matching the sheet's draft before it is applied", async () => {
+    /** Scenario: "Show N movies" reads the total for the draft selection, without navigating. */
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: true,
+      media: query,
+      addEventListener() {},
+      removeEventListener() {},
+    }));
+    const client = {
+      ...browseClient(),
+      fetchScreeningMoviesPage: vi.fn(async (query: ScreeningMovieQuery) => ({
+        items: [],
+        total: query.excludedCinemas?.length ? 2 : 7,
+        page: 1,
+        size: 20,
+        pages: 1,
+      })),
+    };
+    const navigate = vi.fn();
+    render(
+      <MinimalExperience
+        client={client}
+        href="/?cinema=-a"
+        navigate={navigate}
+        currentTime="2026-10-30T16:00:00Z"
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Filters (1 active)" }));
+    const sheet = screen.getByRole("dialog", { name: "Dates and filters" });
+    expect(await within(sheet).findByRole("button", { name: "Show 2 movies" })).toBeInTheDocument();
+
+    fireEvent.click(within(sheet).getByRole("button", { name: "Remove cinema filter" }));
+    expect(await within(sheet).findByRole("button", { name: "Show 7 movies" })).toBeInTheDocument();
+    expect(client.fetchScreeningMoviesPage).toHaveBeenLastCalledWith(
+      expect.objectContaining({ start: "2026-10-30", end: "2026-10-30", excludedCinemas: [] }),
+      expect.any(AbortSignal),
+    );
+    expect(navigate).not.toHaveBeenCalled();
+  });
 });

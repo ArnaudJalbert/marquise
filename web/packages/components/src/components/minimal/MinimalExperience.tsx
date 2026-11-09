@@ -146,6 +146,24 @@ function getTimeHours(filters: ActiveCatalogueSelection["filters"]): HourFilter 
   return { operator: time.operator, ranges: [{ start, end }] };
 }
 
+function getScreeningFilters(
+  selection: ActiveCatalogueSelection,
+  fixedCinemaId: string | undefined,
+): ScreeningFilters {
+  return {
+    title: selection.title,
+    cinemas: fixedCinemaId
+      ? [fixedCinemaId]
+      : selection.filters
+          .filter((filter) => filter.type === "cinema" && filter.operator === "is")
+          .map((filter) => filter.value),
+    excludedCinemas: selection.filters
+      .filter((filter) => filter.type === "cinema" && filter.operator === "is_not")
+      .map((filter) => filter.value),
+    hours: getTimeHours(selection.filters),
+  };
+}
+
 /** Production composition of the approved UI with injected, bounded API reads. */
 export function MinimalExperience({
   client,
@@ -194,19 +212,8 @@ export function MinimalExperience({
   const filterKey = selection.filters
     .map((filter) => `${filter.type}:${filter.operator}:${filter.value}`)
     .join("\0");
-  const filters = useMemo<ScreeningFilters>(
-    () => ({
-      title: selection.title,
-      cinemas: fixedCinemaId
-        ? [fixedCinemaId]
-        : selection.filters
-            .filter((filter) => filter.type === "cinema" && filter.operator === "is")
-            .map((filter) => filter.value),
-      excludedCinemas: selection.filters
-        .filter((filter) => filter.type === "cinema" && filter.operator === "is_not")
-        .map((filter) => filter.value),
-      hours: getTimeHours(selection.filters),
-    }),
+  const filters = useMemo(
+    () => getScreeningFilters(selection, fixedCinemaId),
     [selection.title, filterKey, fixedCinemaId],
   );
   const screenings = usePageResource(
@@ -219,6 +226,21 @@ export function MinimalExperience({
       [client, selection.start, selection.end, filters],
     ),
     isScreenings && selection.start <= selection.end,
+  );
+  const countMovies = useCallback(
+    async (draft: ActiveCatalogueSelection, signal: AbortSignal) =>
+      (
+        await client.fetchScreeningMoviesPage(
+          {
+            start: draft.start,
+            end: draft.end,
+            page: 1,
+            ...getScreeningFilters(draft, fixedCinemaId),
+          },
+          signal,
+        )
+      ).total,
+    [client, fixedCinemaId],
   );
   const loadDayCounts = useCallback<
     NonNullable<MinimalCatalogueProps["onLoadDayCounts"]>
@@ -362,6 +384,7 @@ export function MinimalExperience({
       screeningLanguages={screeningLanguages}
       selection={selection}
       onSelection={onSelection}
+      onCountMovies={countMovies}
       href={href}
       navigate={navigate}
       today={today}
