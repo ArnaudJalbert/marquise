@@ -1,6 +1,8 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
+  useCallback,
   useEffect,
+  useId,
   useRef,
   useState,
   useSyncExternalStore,
@@ -9,7 +11,9 @@ import {
   type PointerEvent,
   type Ref,
 } from "react";
+import { useResource } from "../discovery/use-resource";
 import { addDays, formatRangeDate } from "./catalogue-format";
+import type { CatalogueDayCount, MinimalCatalogueProps } from "./catalogue-types";
 import {
   anchorView,
   dayOfMonth,
@@ -163,20 +167,59 @@ function dragRange(
   return cell < anchor ? [cell, anchor] : [anchor, cell];
 }
 
+type LoadDayCounts = NonNullable<MinimalCatalogueProps["onLoadDayCounts"]>;
+
+/** Screening totals by date, or undefined while unknown, plus whether a load is pending. */
+interface DayVolume {
+  totals?: ReadonlyMap<string, number>;
+  loading: boolean;
+}
+
+const formatScreeningCount = (count: number) =>
+  count === 0 ? "No screenings" : count === 1 ? "1 screening" : `${count} screenings`;
+
+/** One request per visible horizon and loader; the loader's identity carries the filters. */
+function useDayVolume(
+  today: string,
+  view: StripView,
+  onLoadDayCounts: LoadDayCounts | undefined,
+): DayVolume {
+  const first = addDays(today, view.first);
+  const last = addDays(today, view.first + view.weeks * 7 - 1);
+  const counts = useResource(
+    useCallback(
+      async (signal: AbortSignal): Promise<readonly CatalogueDayCount[]> =>
+        onLoadDayCounts ? onLoadDayCounts(first, last, signal) : [],
+      [onLoadDayCounts, first, last],
+    ),
+    onLoadDayCounts !== undefined,
+  );
+  if (!onLoadDayCounts) return { loading: false };
+  return {
+    loading: counts.loading,
+    totals: counts.data
+      ? new Map(counts.data.map((day) => [day.date, day.screenings]))
+      : undefined,
+  };
+}
+
 function DayStrip({
   today,
   range,
   view,
+  volume,
   todayAsWeekday,
   onChange,
 }: {
   today: string;
   range: [number, number];
   view: StripView;
+  volume: DayVolume;
   /** Label today with its weekday, highlighted, where "Today" would not fit. */
   todayAsWeekday: boolean;
   onChange: (start: number, end: number) => void;
 }) {
+  const descriptionId = useId();
   const drag = useRef<Drag | null>(null);
   const keyboardAnchor = useRef<number | null>(null);
   const keyboardRange = useRef<string | null>(null);
@@ -214,12 +257,24 @@ function DayStrip({
   };
   const shownStart = Math.max(start, view.first);
   const shownEnd = Math.min(end, last);
+  const { totals } = volume;
+  // A cell counts the screenings of its days; a week cell sums its seven.
+  const sumCellScreenings = ([from, to]: [number, number]) => {
+    if (!totals) return undefined;
+    let sum = 0;
+    for (let day = from; day <= to; day += 1) sum += totals.get(addDays(today, day)) ?? 0;
+    return sum;
+  };
+  const cellTotals = cells.map((cell) => sumCellScreenings(toDays([cell, cell])));
+  // One scale across the drawn cells; an all-zero horizon draws no bars.
+  const busiest = Math.max(0, ...cellTotals.map((total) => total ?? 0));
 
   return (
     <div
       className="minimal-strip"
       role="group"
       aria-label="Choose dates"
+      aria-busy={volume.loading || undefined}
       style={{ "--strip-cells": cellCount } as CSSProperties}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
@@ -293,8 +348,9 @@ function DayStrip({
         setDraft(null);
       }}
     >
-      {cells.map((cell) => {
+      {cells.map((cell, index) => {
         const [from, to] = toDays([cell, cell]);
+        const total = cellTotals[index];
         const date = addDays(today, from);
         const endDate = addDays(today, to);
         const weekend = !weekLayout && (weekday(date) === 0 || weekday(date) === 6);
@@ -318,6 +374,7 @@ function DayStrip({
             aria-label={label}
             // A selection that covers part of a week shows as a partial fill.
             aria-pressed={from >= start && to <= end ? true : selected ? "mixed" : false}
+            aria-describedby={total === undefined ? undefined : `${descriptionId}-${cell}`}
             tabIndex={cell === focusCell ? 0 : -1}
             // Pointer taps commit on pointer up; this handles keyboard activation.
             onClick={(event) => {
@@ -372,6 +429,19 @@ function DayStrip({
             <span className="minimal-strip-date" aria-hidden>
               {weekLayout ? `${dayOfMonth(date)}-${dayOfMonth(endDate)}` : dayOfMonth(date)}
             </span>
+            {total !== undefined && (
+              <span id={`${descriptionId}-${cell}`} className="minimal-visually-hidden">
+                {formatScreeningCount(total)}
+              </span>
+            )}
+            {total !== undefined && total > 0 && (
+              <span
+                className="minimal-strip-volume"
+                aria-hidden
+                data-volume={total / busiest}
+                style={{ "--volume": total / busiest } as CSSProperties}
+              />
+            )}
           </button>
         );
       })}
@@ -398,12 +468,14 @@ export function PeriodPicker({
   end,
   today,
   onChange,
+  onLoadDayCounts,
   heading: Heading = "h1",
 }: {
   start: string;
   end: string;
   today: string;
   onChange: (start: string, end: string) => void;
+  onLoadDayCounts?: LoadDayCounts;
   heading?: "h1" | "h2";
 }) {
   const range: [number, number] = [daysBetween(today, start), daysBetween(today, end)];
@@ -415,6 +487,7 @@ export function PeriodPicker({
     setFitted(`${today}/${start}/${end}`);
     setView(fitView(view, ...range));
   }
+  const volume = useDayVolume(today, view, onLoadDayCounts);
   const { title, detail } = describePeriod(start, end, today);
   const previous = stepPeriod(start, end, today, -1);
   const next = stepPeriod(start, end, today, 1);
@@ -456,6 +529,7 @@ export function PeriodPicker({
         today={today}
         range={range}
         view={view}
+        volume={volume}
         todayAsWeekday={phone && view.weeks === 2}
         onChange={(from, to) => onChange(addDays(today, from), addDays(today, to))}
       />

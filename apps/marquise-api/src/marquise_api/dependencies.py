@@ -6,6 +6,7 @@ from fastapi import HTTPException, Request, status
 
 from marquise import (
     BrowseScreeningMoviesQuery,
+    CountScreeningDaysQuery,
     GetCinemaMoviesUseCase,
     GetCinemaScreeningsQuery,
     GetCinemaUseCase,
@@ -96,3 +97,8 @@ def get_screening_query(request: Request) -> GetScreeningQuery:
 def get_browse_screening_movies_query(request: Request) -> BrowseScreeningMoviesQuery:
     """Return the configured movie-first screening query."""
     return request.app.state.factory.browse_screening_movies_query
+
+
+def get_count_screening_days_query(request: Request) -> CountScreeningDaysQuery:
+    """Return the configured daily screening-count query."""
+    return request.app.state.factory.count_screening_days_query

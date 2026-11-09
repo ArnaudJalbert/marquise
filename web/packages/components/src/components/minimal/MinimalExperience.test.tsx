@@ -28,6 +28,7 @@ function browseClient() {
     fetchMovieMetadata: vi.fn(),
     fetchScreeningRangePage: vi.fn(),
     fetchUpcomingScreeningsPage: vi.fn(),
+    fetchScreeningDayCounts: vi.fn(async () => []),
   };
   return client satisfies BrowseClient;
 }

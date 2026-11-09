@@ -18,6 +18,7 @@ from fastapi_cache.backends.inmemory import InMemoryBackend
 from marquise import (
     BrowseScreeningMoviesQuery,
     CinemaNotFoundError,
+    CountScreeningDaysQuery,
     GetCinemaMoviesUseCase,
     GetCinemaScreeningsQuery,
     GetCinemaUseCase,
@@ -30,6 +31,7 @@ from marquise import (
     MovieNotFoundError,
     ScreeningNotFoundError,
     SearchScreeningsQuery,
+    TooManyScreeningDaysError,
 )
 from marquise_api.app import CACHE_PREFIX, create_app
 
@@ -1761,6 +1763,92 @@ def test_screening_movie_metadata_and_preview_response(
         data["items"][0]["screenings"][0]["ticket_url"]
         == "https://tickets.example/original"
     )
+
+
+def _day_count(day: date, screenings: int) -> SimpleNamespace:
+    return SimpleNamespace(date=day, screenings=screenings)
+
+
+def test_screening_day_counts_return_every_day_and_reach_the_query(
+    client: TestClient, factory: MagicMock
+) -> None:
+    """One request carries every filter and returns each day's total, zeros too."""
+    query = create_autospec(CountScreeningDaysQuery, instance=True)
+    factory.count_screening_days_query = query
+    query.execute.return_value = SimpleNamespace(
+        days=(_day_count(date(2026, 11, 1), 0), _day_count(date(2026, 11, 2), 7))
+    )
+    response = client.post(
+        "/v1/screening-day-counts?start=2026-11-01&end=2026-11-02"
+        "&title=Dune&cinema=c1&language=VO&exclude_cinema=c3",
+        json={
+            "hours": {
+                "operator": "is_not",
+                "ranges": [{"start": 0, "end": 17}, {"start": 21, "end": 24}],
+            }
+        },
+    )
+    assert response.status_code == 200
+    assert response.json() == {
+        "days": [
+            {"date": "2026-11-01", "screenings": 0},
+            {"date": "2026-11-02", "screenings": 7},
+        ]
+    }
+    query.execute.assert_awaited_once_with(
+        CountScreeningDaysQuery.InputData(
+            start=date(2026, 11, 1),
+            end=date(2026, 11, 2),
+            title="Dune",
+            cinemas=("c1",),
+            languages=("VO",),
+            hours=CountScreeningDaysQuery.HourFilter(
+                ranges=(
+                    CountScreeningDaysQuery.HourRange(start=0, end=17),
+                    CountScreeningDaysQuery.HourRange(start=21, end=24),
+                ),
+                excluded=True,
+            ),
+            excluded_cinemas=("c3",),
+        )
+    )
+
+
+@pytest.mark.parametrize(
+    "params,body",
+    [
+        ("start=2026-11-01", {}),
+        ("start=bad&end=2026-11-01", {}),
+        ("start=2026-11-02&end=2026-11-01", {}),
+        (
+            "start=2026-11-01&end=2026-11-01",
+            {"hours": {"operator": "is", "ranges": [{"start": 21, "end": 17}]}},
+        ),
+    ],
+)
+def test_screening_day_counts_reject_invalid_ranges_before_querying(
+    client: TestClient, factory: MagicMock, params: str, body: dict
+) -> None:
+    """A missing, malformed or inverted horizon, or a bad hour range, is a 422."""
+    query = create_autospec(CountScreeningDaysQuery, instance=True)
+    factory.count_screening_days_query = query
+    response = client.post(f"/v1/screening-day-counts?{params}", json=body)
+    assert response.status_code == 422
+    query.execute.assert_not_awaited()
+
+
+def test_screening_day_counts_map_an_oversized_horizon_to_422(
+    client: TestClient, factory: MagicMock
+) -> None:
+    """The query's horizon limit reaches clients as invalid input."""
+    query = create_autospec(CountScreeningDaysQuery, instance=True)
+    factory.count_screening_days_query = query
+    query.execute.side_effect = TooManyScreeningDaysError("too many days")
+    response = client.post(
+        "/v1/screening-day-counts?start=2026-11-01&end=2026-12-31", json={}
+    )
+    assert response.status_code == 422
+    assert response.json()["error_code"] == "invalid_input"
 
 
 def test_list_movies_preserves_opaque_slash_id(
