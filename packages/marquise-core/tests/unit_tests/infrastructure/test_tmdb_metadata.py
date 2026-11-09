@@ -162,3 +162,47 @@ async def test_page_limit_preserves_partial_rows_without_claiming_no_match() -> 
     assert not result.complete and result.failure is None
     assert result.items == ({"id": 1},)
     fetch.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("body", [b"not-json", b"[]", b'{"success": false}'])
+async def test_malformed_json_names_its_check_without_the_body(body: bytes) -> None:
+    """A malformed response names malformed_json and never repeats the body."""
+    source = TmdbMetadataHttpSource(
+        "private-test-key", fetch=AsyncMock(return_value=body)
+    )
+    with pytest.raises(TmdbMetadataError) as caught:
+        await source.get("movie/42")
+    failure = caught.value.failure
+    assert failure.reason == "malformed_json"
+    assert "malformed_json" in failure.message
+    assert body.decode() not in failure.message
+    assert "private-test-key" not in repr(failure)
+    assert "api.themoviedb.org" not in repr(failure)
+
+
+@pytest.mark.asyncio
+async def test_rejected_endpoint_names_its_check_without_the_path() -> None:
+    """A rejected endpoint names endpoint_check and never repeats the URL."""
+    source = TmdbMetadataHttpSource("private-test-key", fetch=AsyncMock())
+    with pytest.raises(TmdbMetadataError) as caught:
+        await source.get("https://evil.test/movie")
+    failure = caught.value.failure
+    assert failure.reason == "endpoint_check"
+    assert "endpoint_check" in failure.message
+    assert "evil.test" not in repr(failure)
+    assert "private-test-key" not in repr(failure)
+
+
+@pytest.mark.asyncio
+async def test_inconsistent_page_names_pagination_without_the_body() -> None:
+    """A page with drifting counts names pagination and never repeats the body."""
+    page = {"page": 2, "total_pages": 1, "total_results": 1, "results": [{"id": 1}]}
+    fetch = AsyncMock(return_value=json.dumps(page).encode())
+    source = TmdbMetadataHttpSource("private-test-key", fetch=fetch)
+    result = await source.pages("search/movie", {"query": "Twin Peaks"})
+    assert result.failure.kind == "invalid_data"
+    assert result.failure.reason == "pagination"
+    assert "pagination" in result.failure.message
+    assert "results" not in repr(result.failure)
+    assert "private-test-key" not in repr(result.failure)

@@ -63,7 +63,11 @@ class TmdbMetadataHttpSource:
             part in path for part in ("?", "#", "..", ":", "\\")
         ):
             raise TmdbMetadataError(
-                MetadataFailure("invalid_data", "Invalid TMDB endpoint")
+                MetadataFailure(
+                    "invalid_data",
+                    "Invalid TMDB response: endpoint_check",
+                    reason="endpoint_check",
+                )
             )
         query = urlencode({**(params or {}), "api_key": self._api_key})
         url = f"https://api.themoviedb.org/3/{path}?{query}"
@@ -87,7 +91,11 @@ class TmdbMetadataHttpSource:
         except (OSError, HTTPException):
             failure = MetadataFailure("unavailable", "TMDB request failed", True)
         except (ValueError, TypeError):
-            failure = MetadataFailure("invalid_data", "Invalid TMDB JSON")
+            failure = MetadataFailure(
+                "invalid_data",
+                "Invalid TMDB response: malformed_json",
+                reason="malformed_json",
+            )
         # Raise outside the handler so the original secret-bearing error is absent
         # even from the exception's context, not merely hidden when formatted.
         raise TmdbMetadataError(failure)
@@ -136,5 +144,9 @@ class TmdbMetadataHttpSource:
                 return MetadataBatch(
                     tuple(rows),
                     False,
-                    MetadataFailure("invalid_data", "Invalid TMDB pagination"),
+                    MetadataFailure(
+                        "invalid_data",
+                        "Invalid TMDB response: pagination",
+                        reason="pagination",
+                    ),
                 )

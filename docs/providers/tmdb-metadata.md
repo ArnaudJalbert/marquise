@@ -27,6 +27,13 @@ HTTP 429 and server/network failures are retryable facts; transport performs no
 retry. Credentials and provider error bodies never appear in failure messages or
 exception contexts. Redirects are rejected so keys cannot be forwarded.
 
+Every invalid_data failure names the check that rejected the response in its
+`reason`, a stable name from a fixed list: `pagination`, `malformed_json`,
+`endpoint_check` or `detail_mapping`. When the record is known, the failure's
+`identity` carries its TMDB ID and the message ends with it, such as
+`Invalid TMDB response: detail_mapping for tmdb 42`. Messages never contain the
+endpoint path, the URL, the API key or the response body.
+
 ## Locale and media provenance
 
 Canonical detail is requested as en-US. Translation title and synopsis come only

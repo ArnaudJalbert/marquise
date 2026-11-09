@@ -362,3 +362,60 @@ async def test_truncated_http_detail_returns_typed_partial_batch() -> None:
     assert not result.complete and result.failure.kind == "unavailable"
     assert result.failure.retryable and result.items[0].identity == MOVIE
     assert "fake-secret" not in repr(result)
+
+
+@pytest.mark.asyncio
+async def test_detail_mapping_failure_names_check_and_movie_identity() -> None:
+    """A malformed detail section names detail_mapping and the TMDB movie ID."""
+    data = payloads()
+    data["movie/1765072/release_dates"]["results"][0]["iso_3166_1"] = None
+    result = await adapter(data).movie_details(MOVIE)
+    assert result.failure.kind == "invalid_data"
+    assert result.failure.reason == "detail_mapping"
+    assert result.failure.identity == MOVIE
+    assert "detail_mapping" in result.failure.message
+    assert "1765072" in result.failure.message
+    assert "fake-secret" not in repr(result.failure)
+    assert "release_dates" not in repr(result.failure)
+
+
+@pytest.mark.asyncio
+async def test_malformed_detail_json_keeps_its_check_and_names_movie() -> None:
+    """A malformed detail body keeps malformed_json and adds the TMDB movie ID."""
+    data = payloads()
+    data["movie/1765072/credits"] = []
+    result = await adapter(data).movie_details(MOVIE)
+    assert result.failure.reason == "malformed_json"
+    assert result.failure.identity == MOVIE
+    assert "1765072" in result.failure.message
+
+
+@pytest.mark.asyncio
+async def test_search_row_mapping_failure_names_the_row_identity() -> None:
+    """A malformed search row names detail_mapping and that row's TMDB ID."""
+    data = payloads()
+    data["search/movie:1"]["results"][0]["title"] = 17
+    result = await adapter(data).search_movies("Anything")
+    assert result.failure.reason == "detail_mapping"
+    assert result.failure.identity == MOVIE
+    assert "1765072" in result.failure.message
+
+
+@pytest.mark.asyncio
+async def test_person_mapping_failure_names_the_person_identity() -> None:
+    """A malformed searched person names detail_mapping and that person's TMDB ID."""
+    data = payloads()
+    data["person/2001262"]["also_known_as"] = "not-a-list"
+    result = await adapter(data).search_people("Anyone")
+    assert result.failure.reason == "detail_mapping"
+    assert result.failure.identity == PERSON
+
+
+@pytest.mark.asyncio
+async def test_directed_credit_mapping_failure_names_the_person_identity() -> None:
+    """Malformed director credits name detail_mapping and the TMDB person ID."""
+    data = payloads()
+    data["person/2001262/movie_credits"]["crew"] = {}
+    result = await adapter(data).directed_movies(PERSON)
+    assert result.failure.reason == "detail_mapping"
+    assert result.failure.identity == PERSON
