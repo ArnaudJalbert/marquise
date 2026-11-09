@@ -4,16 +4,32 @@ from unittest.mock import create_autospec
 
 import pytest
 
-from marquise.application.exceptions.movie import MovieMetadataUnavailableError
-from marquise.application.metadata import ProviderIdentity
+from marquise.application.exceptions import (
+    MetadataFailure,
+    MetadataInvalidDataError,
+    MetadataNotFoundError,
+    MetadataRateLimitedError,
+    MetadataRequestRefusedError,
+    MetadataUnavailableError,
+    MovieMetadataUnavailableError,
+)
+from marquise.application.metadata import (
+    MetadataBatch,
+    MetadataMovie,
+    MetadataRepository,
+    ProviderIdentity,
+    TitleFact,
+)
 from marquise.application.movie_workflows import (
     MovieMetadataRepository,
     MovieMetadataSnapshot,
     MovieMetadataValues,
 )
 from marquise.application.repositories import MovieRepository
+from marquise.application.use_cases.match_movies import MatchMoviesUseCase
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
+from marquise.infrastructure.name_distance import RapidFuzzNameDistance
 from support.movie_import import (
     Outcome,
     build_match,
@@ -164,3 +180,109 @@ async def test_real_matcher_and_enricher_capture_selected_source_movie() -> None
     assert result.movies[0].title == "CINEMANIA: Julián"
     assert metadata_movies.update_metadata.await_count == 1
     assert metadata_movies.update_metadata.await_args.args[2] == "123"
+
+
+def _tmdb_movie(tmdb_id: str, title: str) -> MetadataMovie:
+    """Build one complete TMDB candidate."""
+    return MetadataMovie(
+        ProviderIdentity("tmdb", tmdb_id),
+        (TitleFact(title, "canonical"),),
+        release_year=2026,
+        duration_minutes=100,
+    )
+
+
+def _fake_tmdb(
+    results: dict[str, tuple[MetadataMovie, ...]],
+    bad: dict[str, MetadataFailure],
+) -> MetadataRepository:
+    """A TMDB source with canned searches and failing details for some IDs."""
+    known = {item.identity: item for items in results.values() for item in items}
+    provider = create_autospec(MetadataRepository, instance=True)
+    provider.search_movies.side_effect = lambda title, year=None: MetadataBatch(
+        results.get(title, ())
+    )
+    provider.search_people.return_value = MetadataBatch()
+    provider.directed_movies.return_value = MetadataBatch()
+
+    def details(identity: ProviderIdentity) -> MetadataBatch[MetadataMovie]:
+        if identity.id in bad:
+            return MetadataBatch(complete=False, failure=bad[identity.id])
+        return MetadataBatch((known[identity],))
+
+    provider.movie_details.side_effect = details
+    return provider
+
+
+async def _import_with_tmdb(
+    movies: MovieRepository, provider: MetadataRepository, *titles: str
+) -> None:
+    """Import the titles through the real matcher and the given TMDB source."""
+    matcher = MatchMoviesUseCase(provider, RapidFuzzNameDistance())
+    command = build_movie_import(movies, matcher)
+    await command.execute(
+        command.InputData(
+            movies=tuple(
+                command.build_movie_input(
+                    title=title, release_year=2026, duration_minutes=100
+                )
+                for title in titles
+            )
+        )
+    )
+
+
+def _created_tmdb_ids(movies: MovieRepository) -> dict[str, str | None]:
+    """Map each created movie title to the TMDB ID it was saved with."""
+    return {
+        call.args[0].title: call.args[0].tmdb_id
+        for call in movies.create_or_reuse.await_args_list
+    }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "failure_type", [MetadataInvalidDataError, MetadataNotFoundError]
+)
+async def test_bad_tmdb_data_skips_only_that_movie(
+    failure_type: type[MetadataFailure],
+) -> None:
+    """One movie with bad TMDB data is left unmatched and the rest still import."""
+    provider = _fake_tmdb(
+        {"Bad": (_tmdb_movie("1", "Bad"),), "Good": (_tmdb_movie("2", "Good"),)},
+        {"1": failure_type("bad")},
+    )
+    movies = _movies()
+    await _import_with_tmdb(movies, provider, "Bad", "Good")
+    assert _created_tmdb_ids(movies) == {"Bad": None, "Good": "2"}
+
+
+@pytest.mark.asyncio
+async def test_bad_tmdb_candidate_does_not_block_the_clear_match() -> None:
+    """A bad candidate in a title search is set aside and the clear match wins."""
+    provider = _fake_tmdb(
+        {"Film": (_tmdb_movie("1", "Film"), _tmdb_movie("2", "Film"))},
+        {"1": MetadataInvalidDataError("bad")},
+    )
+    movies = _movies()
+    await _import_with_tmdb(movies, provider, "Film")
+    assert _created_tmdb_ids(movies) == {"Film": "2"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "failure_type",
+    [MetadataUnavailableError, MetadataRequestRefusedError, MetadataRateLimitedError],
+)
+async def test_tmdb_outage_during_matching_stops_the_cinema(
+    failure_type: type[MetadataFailure],
+) -> None:
+    """An outage or rate limit stops the import before any movie is created."""
+    provider = _fake_tmdb(
+        {"Down": (_tmdb_movie("1", "Down"),), "Good": (_tmdb_movie("2", "Good"),)},
+        {"1": failure_type("down")},
+    )
+    movies = _movies()
+    with pytest.raises(MovieMetadataUnavailableError):
+        await _import_with_tmdb(movies, provider, "Good", "Down")
+    movies.create_or_reuse.assert_not_awaited()
