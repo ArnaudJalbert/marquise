@@ -76,6 +76,8 @@ export interface MinimalCatalogueProps {
   screeningLanguages: readonly string[];
   selection: ActiveCatalogueSelection;
   onSelection: (selection: ActiveCatalogueSelection) => void;
+  /** Counts the movies a draft selection would show, before it is applied. */
+  onCountMovies?: (selection: ActiveCatalogueSelection, signal: AbortSignal) => Promise<number>;
   href: string;
   navigate: (href: string) => void;
   today: string;

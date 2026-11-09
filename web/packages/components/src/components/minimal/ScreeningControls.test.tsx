@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { useState } from "react";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ActiveCatalogueSelection } from "./catalogue-types";
 import { ScreeningControls } from "./ScreeningControls";
 
@@ -161,4 +161,112 @@ it("focuses the bar's search field with slash while the bar is shown", () => {
   scrollHeader("past");
   fireEvent.keyDown(document.body, { key: "/" });
   expect(within(bar()).getByRole("searchbox", { name: "Search movies" })).toHaveFocus();
+});
+
+describe("on phones", () => {
+  beforeEach(() =>
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: query === "(max-width: 639px)",
+      media: query,
+      addEventListener() {},
+      removeEventListener() {},
+    })),
+  );
+
+  const sheet = () => screen.getByRole("dialog", { name: "Dates and filters" });
+
+  it("keeps ‹ period › in the bar and shows Filters (N) there once search scrolls away", () => {
+    /** Scenario: the phone bar holds the period; the search row and its Filters button scroll away. */
+    render(<Controls initial={{ filters: [{ type: "cinema", value: "a", operator: "is" }] }} />);
+    const row = within(bar());
+    expect(row.getByRole("button", { name: "Previous period" })).toBeInTheDocument();
+    expect(row.getByRole("button", { name: "Today" })).toHaveAttribute("aria-haspopup", "dialog");
+    expect(row.getByRole("button", { name: "Next period" })).toBeInTheDocument();
+    expect(row.queryByRole("button", { name: "Filters (1 active)" })).toBeNull();
+    expect(row.queryByRole("searchbox", { name: "Search movies" })).toBeNull();
+    expect(screen.getByRole("searchbox", { name: "Search movies" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Filters (1 active)" })).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Choose dates" })).toBeNull();
+    expect(screen.queryByRole("group", { name: "cinema filter" })).toBeNull();
+
+    scrollHeader("past");
+    expect(row.getByRole("button", { name: "Filters (1 active)" })).toBeInTheDocument();
+
+    fireEvent.click(row.getByRole("button", { name: "Next period" }));
+    expect(row.getByRole("button", { name: "Tomorrow" })).toBeInTheDocument();
+  });
+
+  it("edits a draft in the sheet and applies it with Show N movies", async () => {
+    /** Scenario: date and chip changes stay a draft until the visitor taps Show N movies. */
+    const onSelection = vi.fn();
+    const onCountMovies = vi.fn(async (draft: ActiveCatalogueSelection) =>
+      draft.filters.length ? 1 : 4,
+    );
+    render(
+      <ScreeningControls
+        selection={{ start: "2026-10-30", end: "2026-10-30", title: "", filters: [] }}
+        onSelection={onSelection}
+        onCountMovies={onCountMovies}
+        cinemas={cinemas}
+        today="2026-10-30"
+      />,
+    );
+    const title = within(bar()).getByRole("button", { name: "Today" });
+    fireEvent.click(title);
+    expect(title).toHaveAttribute("aria-expanded", "true");
+    expect(await within(sheet()).findByRole("button", { name: "Show 4 movies" })).toBeInTheDocument();
+
+    fireEvent.click(within(sheet()).getByRole("button", { name: "Saturday October 31st" }), { detail: 0 });
+    fireEvent.click(within(sheet()).getByText("+ Filter"));
+    fireEvent.click(within(sheet()).getByRole("button", { name: "Time" }));
+    expect(within(sheet()).getByRole("heading", { name: "Tomorrow" })).toBeInTheDocument();
+    expect(within(bar()).getByRole("button", { name: "Today" })).toBeInTheDocument();
+    expect(onSelection).not.toHaveBeenCalled();
+    expect(onCountMovies).toHaveBeenLastCalledWith(
+      expect.objectContaining({ start: "2026-10-31", end: "2026-10-31" }),
+      expect.any(AbortSignal),
+    );
+
+    fireEvent.click(await within(sheet()).findByRole("button", { name: "Show 1 movie" }));
+    expect(onSelection).toHaveBeenCalledOnce();
+    expect(onSelection).toHaveBeenCalledWith({
+      start: "2026-10-31",
+      end: "2026-10-31",
+      title: "",
+      filters: [{ type: "time", value: "matinee", operator: "is" }],
+    });
+    expect(screen.queryByRole("dialog", { name: "Dates and filters" })).toBeNull();
+    expect(title).toHaveFocus();
+    expect(title).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("cancels the draft when the visitor taps outside the sheet", () => {
+    /** Scenario: a tap on the backdrop discards the draft; reopening starts from the applied selection. */
+    const onSelection = vi.fn();
+    render(
+      <ScreeningControls
+        selection={{ start: "2026-10-30", end: "2026-10-30", title: "", filters: [] }}
+        onSelection={onSelection}
+        cinemas={cinemas}
+        today="2026-10-30"
+      />,
+    );
+    const filtersButton = screen.getByRole("button", { name: "Filters" });
+    fireEvent.click(filtersButton);
+    fireEvent.click(within(sheet()).getByText("+ Filter"));
+    fireEvent.click(within(sheet()).getByRole("button", { name: "Cinema" }));
+    expect(within(sheet()).getByRole("group", { name: "cinema filter" })).toBeInTheDocument();
+    expect(within(sheet()).getByRole("button", { name: "Show movies" })).toBeInTheDocument();
+
+    fireEvent.click(within(sheet()).getByRole("group", { name: "cinema filter" }));
+    expect(sheet()).toBeInTheDocument();
+    // A tap on the backdrop lands on the dialog element itself.
+    fireEvent.click(sheet());
+    expect(screen.queryByRole("dialog", { name: "Dates and filters" })).toBeNull();
+    expect(onSelection).not.toHaveBeenCalled();
+    expect(filtersButton).toHaveFocus();
+
+    fireEvent.click(filtersButton);
+    expect(within(sheet()).queryByRole("group", { name: "cinema filter" })).toBeNull();
+  });
 });
