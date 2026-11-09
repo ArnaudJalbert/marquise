@@ -162,6 +162,8 @@ class MovieImport:
     @dataclass(frozen=True, slots=True)
     class OutputData:
         movies: tuple["MovieImport.MovieData", ...]
+        skipped_movies: tuple[ImportScreeningsCommand.UnresolvedMovieData, ...] = ()
+        unmatched_movies: tuple[ImportScreeningsCommand.UnresolvedMovieData, ...] = ()
 
     @dataclass(frozen=True, slots=True)
     class InputData:
@@ -199,7 +201,7 @@ class MovieImport:
             self._matcher,
             self._enricher,
         )
-        await command.execute(
+        imported = await command.execute(
             command.InputData("cinema", date(2026, 10, 31), DAY.date())
         )
         screenings = create_screenings.execute.await_args.args[0].screenings
@@ -209,7 +211,9 @@ class MovieImport:
                     " ".join(movie.title.split()), screening.movie_id, movie.identifier
                 )
                 for movie, screening in zip(input_data.movies, screenings, strict=True)
-            )
+            ),
+            imported.skipped_movies,
+            imported.unmatched_movies,
         )
 
     @staticmethod

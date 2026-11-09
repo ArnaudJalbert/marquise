@@ -15,6 +15,7 @@ from marquise.application.exceptions import (
     MovieMetadataUnavailableError,
 )
 from marquise.application.metadata import (
+    MatchReason,
     MetadataBatch,
     MetadataMovie,
     MetadataRepository,
@@ -102,6 +103,18 @@ class MatchMoviesUseCase:
         identity: ProviderIdentity | None = None
         titles: tuple[str, ...] = ()
         release_year: int | None = None
+        failure: MetadataFailure | None = None
+
+        @property
+        def reason(self) -> MatchReason | None:
+            """Name why the movie has no identity, or None when it matched."""
+            if self.status == "unmatched":
+                return "no_match"
+            if self.status == "matched":
+                return None
+            if self.failure is None:
+                return "uncertain"
+            return type(self.failure).__name__
 
     @dataclass(frozen=True, slots=True)
     class OutputData:
@@ -347,6 +360,7 @@ class MatchMoviesUseCase:
                     f"Movie identity failed for '{input_data.title}': "
                     f"{type(outage).__name__}"
                 )
+            bad_data = failures[0] if failures else None
             if ranked:
                 winner_rank, winner_identity = min(
                     ranked, key=lambda pair: (pair[0], candidate_order[pair[1]])
@@ -382,7 +396,7 @@ class MatchMoviesUseCase:
                         ),
                         release_year=chosen.release_year,
                     )
-                return self.MovieMatch(input_data, "incomplete")
+                return self.MovieMatch(input_data, "incomplete", failure=bad_data)
             incomplete = (
                 bool(set_aside)
                 or not details_complete
@@ -393,7 +407,7 @@ class MatchMoviesUseCase:
             )
             status = "incomplete" if incomplete else "unmatched"
             logger.info("Movie identity %s for %s", status, input_data.title)
-            return self.MovieMatch(input_data, status)
+            return self.MovieMatch(input_data, status, failure=bad_data)
 
         await hydrate(
             await self._metadata.search_movies(title, source_year), director=False

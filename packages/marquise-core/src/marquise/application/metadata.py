@@ -12,6 +12,10 @@ from typing import Literal
 from marquise.application.exceptions.metadata_failure import MetadataFailure
 
 
+type MatchReason = str
+"""Stable name for why a movie has no identity, comparable across runs."""
+
+
 @dataclass(frozen=True, slots=True)
 class ProviderIdentity:
     """An opaque movie or person ID scoped to its provider."""

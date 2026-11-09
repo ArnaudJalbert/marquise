@@ -26,11 +26,13 @@ from marquise.application.movie_workflows import (
     MovieMetadataValues,
 )
 from marquise.application.repositories import MovieRepository
+from marquise.application.use_cases.import_screenings import ImportScreeningsCommand
 from marquise.application.use_cases.match_movies import MatchMoviesUseCase
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
 from marquise.infrastructure.name_distance import RapidFuzzNameDistance
 from support.movie_import import (
+    MovieImport,
     Outcome,
     build_match,
     build_matcher,
@@ -216,11 +218,11 @@ def _fake_tmdb(
 
 async def _import_with_tmdb(
     movies: MovieRepository, provider: MetadataRepository, *titles: str
-) -> None:
+) -> MovieImport.OutputData:
     """Import the titles through the real matcher and the given TMDB source."""
     matcher = MatchMoviesUseCase(provider, RapidFuzzNameDistance())
     command = build_movie_import(movies, matcher)
-    await command.execute(
+    return await command.execute(
         command.InputData(
             movies=tuple(
                 command.build_movie_input(
@@ -286,3 +288,46 @@ async def test_tmdb_outage_during_matching_stops_the_cinema(
     with pytest.raises(MovieMetadataUnavailableError):
         await _import_with_tmdb(movies, provider, "Good", "Down")
     movies.create_or_reuse.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_cinema_import_reports_skipped_and_unmatched_movies() -> None:
+    """Skipped and unmatched movies are reported apart, each with its reason."""
+    provider = _fake_tmdb(
+        {
+            "Good": (_tmdb_movie("1", "Good"),),
+            "Bad": (_tmdb_movie("2", "Bad"),),
+            "Gone": (_tmdb_movie("3", "Gone"),),
+        },
+        {
+            "2": MetadataFailure(
+                "invalid_data",
+                "Invalid TMDB response: detail_mapping for tmdb 2",
+                reason="detail_mapping",
+                identity=ProviderIdentity("tmdb", "2"),
+            ),
+            "3": MetadataFailure("not_found", "TMDB record not found"),
+        },
+    )
+    movies = _movies()
+    result = await _import_with_tmdb(movies, provider, "Good", "Bad", "Gone", "Lost")
+    unresolved = ImportScreeningsCommand.UnresolvedMovieData
+    assert result.skipped_movies == (
+        unresolved("Bad", "detail_mapping", "2"),
+        unresolved("Gone", "not_found", "3"),
+    )
+    assert result.unmatched_movies == (unresolved("Lost", "no_match"),)
+    assert _created_tmdb_ids(movies)["Good"] == "1"
+
+
+@pytest.mark.asyncio
+async def test_truncated_search_reports_the_movie_as_uncertain() -> None:
+    """A search that cannot be read in full skips the movie as uncertain."""
+    provider = _fake_tmdb({}, {})
+    provider.search_movies.side_effect = None
+    provider.search_movies.return_value = MetadataBatch((), False)
+    result = await _import_with_tmdb(_movies(), provider, "Partial")
+    assert result.skipped_movies == (
+        ImportScreeningsCommand.UnresolvedMovieData("Partial", "uncertain"),
+    )
+    assert result.unmatched_movies == ()

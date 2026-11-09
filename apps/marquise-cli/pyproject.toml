@@ -4,7 +4,7 @@ version = "0.1.18"
 description = "Marquise administration CLI"
 requires-python = ">=3.13"
 dependencies = [
-    "marquise-core>=0.2.20",
+    "marquise-core>=0.2.49",
     "questionary>=2.1.1",
     "rich>=15.0.0",
 ]

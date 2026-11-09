@@ -8,6 +8,7 @@ from datetime import date
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from marquise.application.metadata import MatchReason
     from marquise.application.queries.fetch_screenings_from_source import (
         FetchScreeningsFromSourceQuery,
     )
@@ -64,7 +65,29 @@ class ImportScreeningsCommand:
         rescheduled: bool = False
 
     @dataclass(frozen=True, slots=True)
+    class UnresolvedMovieData:
+        """A fetched movie imported without a TMDB identity, and why.
+
+        Attributes:
+            title: The raw title the cinema listed.
+            reason: A stable name from a fixed list, comparable across runs.
+            tmdb_id: The TMDB record involved, when one is known.
+        """
+
+        title: str
+        reason: MatchReason
+        tmdb_id: str | None = None
+
+    @dataclass(frozen=True, slots=True)
     class OutputData:
+        """What one cinema import did.
+
+        Attributes:
+            skipped_movies: Movies left without an identity because TMDB data
+                was bad or matching was uncertain.
+            unmatched_movies: Movies with no matching TMDB record.
+        """
+
         cinema_id: str
         cinema_name: str
         source_name: str
@@ -74,6 +97,8 @@ class ImportScreeningsCommand:
         updated_count: int
         skipped_count: int
         rescheduled_count: int = 0
+        skipped_movies: tuple[ImportScreeningsCommand.UnresolvedMovieData, ...] = ()
+        unmatched_movies: tuple[ImportScreeningsCommand.UnresolvedMovieData, ...] = ()
 
     def __init__(
         self,
@@ -118,7 +143,7 @@ class ImportScreeningsCommand:
         saved = await self._save_screenings(source_data, links)
         await self._enrich_stored_movies(stored_movies)
         logger.info("Imported %d screenings", saved.imported_count)
-        return self._build_output(source_data, saved)
+        return self._build_output(source_data, saved, matches)
 
     async def _fetch(
         self, cinema_id: str, start_date: date, end_date: date
@@ -321,8 +346,9 @@ class ImportScreeningsCommand:
         self,
         source_data: FetchScreeningsFromSourceQuery.OutputData,
         saved: CreateScreeningsCommand.OutputData,
+        matches: MatchMoviesUseCase.OutputData,
     ) -> OutputData:
-        """Reformat the saved screenings as this use case's output."""
+        """Reformat the saved screenings and unresolved movies as output."""
         return self.OutputData(
             cinema_id=source_data.cinema_id,
             cinema_name=source_data.cinema_name,
@@ -341,4 +367,23 @@ class ImportScreeningsCommand:
             updated_count=saved.updated_count,
             rescheduled_count=saved.rescheduled_count,
             skipped_count=saved.skipped_count,
+            skipped_movies=self._unresolved(matches, "incomplete"),
+            unmatched_movies=self._unresolved(matches, "unmatched"),
         )
+
+    def _unresolved(
+        self, matches: MatchMoviesUseCase.OutputData, status: str
+    ) -> tuple[UnresolvedMovieData, ...]:
+        """Reformat the matches with the given status for the report."""
+        unresolved = []
+        for match in matches.matches:
+            reason = match.reason
+            if match.status != status or reason is None:
+                continue
+            identity = match.failure.identity if match.failure else None
+            unresolved.append(
+                self.UnresolvedMovieData(
+                    match.source.title, reason, identity.id if identity else None
+                )
+            )
+        return tuple(unresolved)

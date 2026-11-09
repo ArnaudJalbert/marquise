@@ -48,6 +48,17 @@ internal error leaves that movie not enriched and is logged. Source
 metadata and the original screening mapping title remain available to callers.
 Provider facts never imply permission to assign a non-TMDB ID to tmdb_id.
 
+Each cinema import reports its incomplete movies as skipped and its unmatched
+movies as unmatched, with the raw title, the TMDB ID when one is known, and a
+reason from a fixed list (MatchReason): the failed TMDB check (`pagination`,
+`malformed_json`, `endpoint_check`, `detail_mapping`), `not_found`,
+`invalid_data` when no check is named, `uncertain` when no failure explains an
+incomplete match, and `no_match` for unmatched movies. `marquise import all`
+prints that report in the job log for each cinema with any, then once for the
+run, each as counts by reason followed by the skipped and unmatched lists. The
+job exits with an error only when a cinema fails outright, never because movies
+were skipped or unmatched.
+
 Movie.tmdb_id means confirmed TMDB identity. Movie.metadata_enriched_at is the
 last successful enrichment timestamp, defaulting to None for existing callers.
 A failed refresh preserves both existing values and the last successful stamp.
