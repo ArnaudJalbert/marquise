@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 from marquise.application.queries.browse_screening_movies import (
     BrowseScreeningMoviesQuery,
 )
+from marquise.application.queries.count_screening_days import CountScreeningDaysQuery
 from marquise.application.queries.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
@@ -72,6 +73,7 @@ from marquise.infrastructure.di.import_use_cases import (
 )
 from marquise.infrastructure.di.queries import (
     build_browse_screening_movies_query,
+    build_count_screening_days_query,
     build_get_cinema_screenings_query,
     build_get_movie_screenings_query,
     build_get_screening_query,
@@ -573,6 +575,11 @@ class Container:
     def browse_screening_movies_query(self) -> BrowseScreeningMoviesQuery:
         """Configured movie-first screening query."""
         return build_browse_screening_movies_query(self._pool_property, self._schema)
+
+    @property
+    def count_screening_days_query(self) -> CountScreeningDaysQuery:
+        """Configured daily screening-count query."""
+        return build_count_screening_days_query(self._pool_property, self._schema)
 
     @property
     def search_screenings_query(self) -> SearchScreeningsQuery:

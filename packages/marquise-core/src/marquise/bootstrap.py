@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 from marquise.application.queries.browse_screening_movies import (
     BrowseScreeningMoviesQuery,
 )
+from marquise.application.queries.count_screening_days import CountScreeningDaysQuery
 from marquise.application.queries.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
@@ -180,6 +181,11 @@ class MarquiseFactory:
     def browse_screening_movies_query(self) -> BrowseScreeningMoviesQuery:
         """Configured movie-first screening query."""
         return self._container.browse_screening_movies_query
+
+    @property
+    def count_screening_days_query(self) -> CountScreeningDaysQuery:
+        """Configured daily screening-count query."""
+        return self._container.count_screening_days_query
 
     @property
     def search_screenings_query(self) -> SearchScreeningsQuery:
