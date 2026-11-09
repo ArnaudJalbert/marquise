@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -178,6 +178,8 @@ interface DayVolume {
 const formatScreeningCount = (count: number) =>
   count === 0 ? "No screenings" : count === 1 ? "1 screening" : `${count} screenings`;
 
+const NO_VOLUME: DayVolume = { loading: false };
+
 /** One request per visible horizon and loader; the loader's identity carries the filters. */
 function useDayVolume(
   today: string,
@@ -194,7 +196,7 @@ function useDayVolume(
     ),
     onLoadDayCounts !== undefined,
   );
-  if (!onLoadDayCounts) return { loading: false };
+  if (!onLoadDayCounts) return NO_VOLUME;
   return {
     loading: counts.loading,
     totals: counts.data
@@ -203,20 +205,21 @@ function useDayVolume(
   };
 }
 
-function DayStrip({
+/** The draggable day strip. Without `volume`, cells draw no screening counts. */
+export function DayStrip({
   today,
   range,
   view,
-  volume,
-  todayAsWeekday,
+  volume = NO_VOLUME,
+  todayAsWeekday = false,
   onChange,
 }: {
   today: string;
   range: [number, number];
   view: StripView;
-  volume: DayVolume;
+  volume?: DayVolume;
   /** Label today with its weekday, highlighted, where "Today" would not fit. */
-  todayAsWeekday: boolean;
+  todayAsWeekday?: boolean;
   onChange: (start: number, end: number) => void;
 }) {
   const descriptionId = useId();
@@ -462,6 +465,82 @@ function DayStrip({
   );
 }
 
+/** Strip view for a period, refitted whenever the committed period changes. */
+export function usePeriodView(start: string, end: string, today: string) {
+  const range: [number, number] = [daysBetween(today, start), daysBetween(today, end)];
+  // A fresh strip opens on one week from today.
+  const [view, setView] = useState(() => fitView({ weeks: 1, first: 0 }, ...range));
+  const [fitted, setFitted] = useState(`${today}/${start}/${end}`);
+  // Refit the view whenever the committed period changes, wherever it came from.
+  if (fitted !== `${today}/${start}/${end}`) {
+    setFitted(`${today}/${start}/${end}`);
+    setView(fitView(view, ...range));
+  }
+  return { range, view, setView };
+}
+
+/**
+ * ‹ period title › that moves the period by its own length.
+ * With `onOpen`, the title is a button opening a dialog that `expanded` reports.
+ */
+export function PeriodStepper({
+  start,
+  end,
+  today,
+  onChange,
+  heading: Heading = "h1",
+  onOpen,
+  expanded,
+}: {
+  start: string;
+  end: string;
+  today: string;
+  onChange: (start: string, end: string) => void;
+  heading?: "h1" | "h2" | "strong";
+  onOpen?: (opener: HTMLButtonElement) => void;
+  expanded?: boolean;
+}) {
+  const { title } = describePeriod(start, end, today);
+  const previous = stepPeriod(start, end, today, -1);
+  const next = stepPeriod(start, end, today, 1);
+  return (
+    <div className="minimal-period-title">
+      <button
+        type="button"
+        aria-label="Previous period"
+        disabled={!previous}
+        onClick={() => previous && onChange(...previous)}
+      >
+        <ChevronLeft aria-hidden size={18} />
+      </button>
+      <Heading>
+        {onOpen ? (
+          <button
+            type="button"
+            className="minimal-period-open"
+            aria-haspopup="dialog"
+            aria-expanded={expanded}
+            onClick={(event) => onOpen(event.currentTarget)}
+          >
+            <span>{title}</span>
+            <ChevronDown aria-hidden size={16} />
+          </button>
+        ) : (
+          title
+        )}
+      </Heading>
+      <button
+        type="button"
+        aria-label="Next period"
+        disabled={!next}
+        onClick={() => next && onChange(...next)}
+      >
+        <ChevronRight aria-hidden size={18} />
+      </button>
+    </div>
+  );
+}
+
 /** Period title with stepping, zoom, and the draggable day strip. */
 export function PeriodPicker({
   start,
@@ -469,7 +548,7 @@ export function PeriodPicker({
   today,
   onChange,
   onLoadDayCounts,
-  heading: Heading = "h1",
+  heading = "h1",
 }: {
   start: string;
   end: string;
@@ -478,44 +557,22 @@ export function PeriodPicker({
   onLoadDayCounts?: LoadDayCounts;
   heading?: "h1" | "h2";
 }) {
-  const range: [number, number] = [daysBetween(today, start), daysBetween(today, end)];
-  // A fresh picker opens on one week from today.
-  const [view, setView] = useState(() => fitView({ weeks: 1, first: 0 }, ...range));
-  const [fitted, setFitted] = useState(`${today}/${start}/${end}`);
-  // Refit the view whenever the committed period changes, wherever it came from.
-  if (fitted !== `${today}/${start}/${end}`) {
-    setFitted(`${today}/${start}/${end}`);
-    setView(fitView(view, ...range));
-  }
+  const { range, view, setView } = usePeriodView(start, end, today);
   const volume = useDayVolume(today, view, onLoadDayCounts);
-  const { title, detail } = describePeriod(start, end, today);
-  const previous = stepPeriod(start, end, today, -1);
-  const next = stepPeriod(start, end, today, 1);
+  const { detail } = describePeriod(start, end, today);
   const phone = usePhoneLayout();
   const zoom = (weeks: WeekCount) => setView(anchorView(weeks, range[0]));
 
   return (
     <section className="minimal-period" aria-label="Dates">
       <div className="minimal-period-top">
-        <div className="minimal-period-title">
-          <button
-            type="button"
-            aria-label="Previous period"
-            disabled={!previous}
-            onClick={() => previous && onChange(...previous)}
-          >
-            <ChevronLeft aria-hidden size={18} />
-          </button>
-          <Heading>{title}</Heading>
-          <button
-            type="button"
-            aria-label="Next period"
-            disabled={!next}
-            onClick={() => next && onChange(...next)}
-          >
-            <ChevronRight aria-hidden size={18} />
-          </button>
-        </div>
+        <PeriodStepper
+          start={start}
+          end={end}
+          today={today}
+          heading={heading}
+          onChange={onChange}
+        />
         {phone ? (
           <ZoomChip weeks={view.weeks} onZoom={zoom} />
         ) : (
