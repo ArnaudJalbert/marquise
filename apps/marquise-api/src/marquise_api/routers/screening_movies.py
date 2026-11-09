@@ -1,14 +1,17 @@
-"""Bounded movie-first listing of upcoming screenings."""
+"""Bounded movie-first listing of upcoming screenings and its daily volume."""
 
 from datetime import date
 from math import ceil
-from typing import Literal, Self
+from typing import Annotated, Literal, Self
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from marquise import BrowseScreeningMoviesQuery
-from marquise_api.dependencies import get_browse_screening_movies_query
+from marquise import BrowseScreeningMoviesQuery, CountScreeningDaysQuery
+from marquise_api.dependencies import (
+    get_browse_screening_movies_query,
+    get_count_screening_days_query,
+)
 from marquise_api.openapi_responses import error_responses
 from marquise_api.rate_limit import current_rate_limit, limiter
 from marquise_api.schemas import MovieResponse, ScreeningResponse
@@ -64,6 +67,19 @@ class ScreeningMoviePage(BaseModel):
     pages: int
 
 
+class ScreeningDayCount(BaseModel):
+    """Matching screening occurrences on one Montréal date."""
+
+    date: date
+    screenings: int = Field(ge=0)
+
+
+class ScreeningDayCounts(BaseModel):
+    """One total for every date of the requested horizon, in order."""
+
+    days: list[ScreeningDayCount]
+
+
 @router.post(
     "/screening-movies",
     response_model=ScreeningMoviePage,
@@ -116,4 +132,75 @@ async def browse_screening_movies(
         total=result.total,
         page=page,
         pages=ceil(result.total / 24),
+    )
+
+
+class ScreeningDayCountParams(BaseModel):
+    """An inclusive Montréal horizon and the listing's query filters."""
+
+    start: date
+    end: date
+    title: str | None = Field(default=None, max_length=200)
+    cinema: list[str] = []
+    exclude_cinema: list[str] = []
+    language: list[str] = []
+
+    @model_validator(mode="after")
+    def _validate_order(self) -> Self:
+        if self.start > self.end:
+            raise ValueError("Invalid screening filter range")
+        return self
+
+
+@router.post(
+    "/screening-day-counts",
+    response_model=ScreeningDayCounts,
+    responses=error_responses(422, 429),
+)
+@limiter.limit(current_rate_limit)
+async def count_screening_days(
+    request: Request,
+    response: Response,
+    params: Annotated[ScreeningDayCountParams, Query()],
+    filters: ScreeningMovieFilters,
+    query: CountScreeningDaysQuery = Depends(get_count_screening_days_query),
+) -> ScreeningDayCounts:
+    """Count screenings per inclusive Montreal date with the listing's filters.
+
+    Every date up to 42 days is returned, zero included. Started screenings are
+    excluded, so this endpoint is uncached like the listing.
+    """
+    result = await query.execute(_to_count_input(params, filters))
+    return ScreeningDayCounts(
+        days=[
+            ScreeningDayCount(date=day.date, screenings=day.screenings)
+            for day in result.days
+        ]
+    )
+
+
+def _to_count_input(
+    params: ScreeningDayCountParams, filters: ScreeningMovieFilters
+) -> CountScreeningDaysQuery.InputData:
+    hours = None if filters.hours is None else _to_count_hours(filters.hours)
+    return CountScreeningDaysQuery.InputData(
+        start=params.start,
+        end=params.end,
+        title=params.title,
+        cinemas=tuple(params.cinema),
+        languages=tuple(params.language),
+        hours=hours,
+        excluded_cinemas=tuple(params.exclude_cinema),
+    )
+
+
+def _to_count_hours(
+    hour_filter: HourFilterRequest,
+) -> CountScreeningDaysQuery.HourFilter:
+    return CountScreeningDaysQuery.HourFilter(
+        ranges=tuple(
+            CountScreeningDaysQuery.HourRange(item.start, item.end)
+            for item in hour_filter.ranges
+        ),
+        excluded=hour_filter.operator == "is_not",
     )

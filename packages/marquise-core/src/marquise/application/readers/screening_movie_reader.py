@@ -1,17 +1,17 @@
-"""Movie-first read port for upcoming screening cards."""
+"""Movie-first read port for upcoming screening cards and their daily volume."""
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 
 from marquise.application.readers.screening_reader import ScreeningReader
 from marquise.application.repositories.page import Page
 
 
 class ScreeningMovieReader(ABC):
-    """Read distinct movies with their earliest qualifying screenings."""
+    """Read upcoming screenings under the listing filters, by movie or by day."""
 
     @dataclass(frozen=True, slots=True)
     class HourRange:
@@ -42,6 +42,26 @@ class ScreeningMovieReader(ABC):
         excluded_cinemas: tuple[str, ...] = ()
 
     @dataclass(frozen=True, slots=True)
+    class DayCountRequest:
+        """The listing's bounds and filters, without pagination."""
+
+        start: datetime
+        end: datetime
+        now: datetime
+        title: str | None = None
+        cinemas: tuple[str, ...] = ()
+        languages: tuple[str, ...] = ()
+        hours: ScreeningMovieReader.HourFilter | None = None
+        excluded_cinemas: tuple[str, ...] = ()
+
+    @dataclass(frozen=True, slots=True)
+    class DayCount:
+        """Matching screening occurrences on one Montréal date."""
+
+        date: date
+        screenings: int
+
+    @dataclass(frozen=True, slots=True)
     class MovieData:
         """Movie metadata and up to three qualifying screenings in order."""
 
@@ -59,4 +79,9 @@ class ScreeningMovieReader(ABC):
     @abstractmethod
     async def search(self, request: SearchRequest) -> Page[MovieData]:
         """Return a 24-movie page within inclusive bounds, strictly after now."""
+        ...
+
+    @abstractmethod
+    async def count_days(self, request: DayCountRequest) -> list[DayCount]:
+        """Count matching screenings per Montréal date, omitting empty dates."""
         ...

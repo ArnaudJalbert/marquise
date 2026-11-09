@@ -1,5 +1,8 @@
 import type {
   BrowseClient,
+  ScreeningDayCountApi,
+  ScreeningDayCountQuery,
+  ScreeningFilters,
   ScreeningMovieApi,
   ScreeningMovieQuery,
 } from "./browse-client";
@@ -115,16 +118,33 @@ export class HttpMarquiseClient
     const params = new URLSearchParams({ start: query.start });
     if (query.end) params.set("end", query.end);
     params.set("page", String(query.page));
-    if (query.title?.trim()) params.set("title", query.title.trim());
-    query.cinemas?.forEach((id) => params.append("cinema", id));
-    query.excludedCinemas?.forEach((id) => params.append("exclude_cinema", id));
-    query.languages?.forEach((language) =>
-      params.append("language", language),
-    );
-    return this.fetchJson(`/v1/screening-movies?${params}`, signal, {
+    return this.postScreeningFilters("/v1/screening-movies", params, query, signal);
+  }
+  async fetchScreeningDayCounts(
+    query: ScreeningDayCountQuery,
+    signal?: AbortSignal,
+  ): Promise<ScreeningDayCountApi[]> {
+    const params = new URLSearchParams({ start: query.start, end: query.end });
+    const result = await this.postScreeningFilters<{
+      days: ScreeningDayCountApi[];
+    }>("/v1/screening-day-counts", params, query, signal);
+    return result.days;
+  }
+  /** Both screening reads send identical filters: query parameters plus a JSON hours body. */
+  private postScreeningFilters<ResponseT>(
+    path: string,
+    params: URLSearchParams,
+    filters: ScreeningFilters,
+    signal?: AbortSignal,
+  ): Promise<ResponseT> {
+    if (filters.title?.trim()) params.set("title", filters.title.trim());
+    filters.cinemas?.forEach((id) => params.append("cinema", id));
+    filters.excludedCinemas?.forEach((id) => params.append("exclude_cinema", id));
+    filters.languages?.forEach((language) => params.append("language", language));
+    return this.fetchJson(`${path}?${params}`, signal, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(query.hours ? { hours: query.hours } : {}),
+      body: JSON.stringify(filters.hours ? { hours: filters.hours } : {}),
     });
   }
   async fetchMovieMetadata(

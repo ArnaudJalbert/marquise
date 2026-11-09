@@ -119,6 +119,9 @@ function clients() {
           },
         ]),
     ),
+    fetchScreeningDayCounts: vi.fn<BrowseClient["fetchScreeningDayCounts"]>(
+      async () => [],
+    ),
     fetchMoviePage: vi.fn<BrowseClient["fetchMoviePage"]>(async () =>
       page([{ ...movie, id: "catalogue-only", title: "Catalogue only" }]),
     ),
@@ -456,6 +459,57 @@ it("opens today's movie-first page without catalogue reads or poster fan-out", a
   expect(screen.getByText("About this section").closest("details")?.open).toBe(
     false,
   );
+});
+
+it("counts the visible week's screenings with the listing filters and reloads only when they change", async () => {
+  /** Scenario: one aggregate request per horizon and filter state feeds the day strip bars. */
+  history.replaceState(
+    null,
+    "",
+    "/?start=2026-11-01&end=2026-11-01&q=Dune&time=evening",
+  );
+  const client = clients();
+  client.fetchScreeningDayCounts.mockResolvedValue([
+    { date: "2026-11-01", screenings: 3 },
+    { date: "2026-11-02", screenings: 0 },
+  ]);
+  render(<App client={client} />);
+  expect(
+    await screen.findByRole("button", { description: "3 screenings" }),
+  ).toBe(screen.getByRole("button", { name: "Today, Sunday November 1st" }));
+  const filters = {
+    title: "Dune",
+    cinemas: [],
+    excludedCinemas: [],
+    hours: { operator: "is", ranges: [{ start: 17, end: 21 }] },
+  };
+  expect(client.fetchScreeningDayCounts).toHaveBeenCalledExactlyOnceWith(
+    { start: "2026-11-01", end: "2026-11-07", ...filters },
+    expect.any(AbortSignal),
+  );
+  expect(client.fetchScreeningMoviesPage).toHaveBeenLastCalledWith(
+    { start: "2026-11-01", end: "2026-11-01", page: 1, ...filters },
+    expect.any(AbortSignal),
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "Next period" }));
+  await waitFor(() =>
+    expect(client.fetchScreeningMoviesPage).toHaveBeenLastCalledWith(
+      expect.objectContaining({ start: "2026-11-02" }),
+      expect.any(AbortSignal),
+    ),
+  );
+  expect(client.fetchScreeningDayCounts).toHaveBeenCalledOnce();
+
+  fireEvent.click(screen.getByText("+ Filter"));
+  fireEvent.click(screen.getByRole("button", { name: "Cinema" }));
+  await waitFor(() =>
+    expect(client.fetchScreeningDayCounts).toHaveBeenLastCalledWith(
+      { start: "2026-11-01", end: "2026-11-07", ...filters, cinemas: ["c1"] },
+      expect.any(AbortSignal),
+    ),
+  );
+  expect(client.fetchScreeningDayCounts).toHaveBeenCalledTimes(2);
 });
 
 it("round-trips cinema and time chips through the URL", async () => {

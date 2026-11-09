@@ -1,6 +1,6 @@
 """Movie-first pagination against a disposable PostgreSQL database."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import asyncpg
 import pytest
@@ -231,3 +231,122 @@ async def test_hour_ranges_support_negation_in_montreal_time_and_cinema_exclusio
         )
     )
     assert unfiltered.total == 5
+
+
+@pytest.mark.asyncio
+async def test_day_counts_count_every_matching_screening_by_montreal_day(
+    db_pool: asyncpg.Pool,
+) -> None:
+    """Counts cover every screening past pagination, grouped by Montréal date."""
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            """INSERT INTO "marquise-test".cinemas(id,name)
+               VALUES ('c1','Cinema One'),('c2','Cinema Two')"""
+        )
+        await conn.executemany(
+            'INSERT INTO "marquise-test".movies(id,title) VALUES($1,$2)',
+            [(f"m{i:02}", f"Film {i}") for i in range(30)],
+        )
+        # 2026-11-03 is UTC-5 in Montreal. 30 movies exceed one 24-movie page,
+        # and m00 shows three times that day.
+        shows = [
+            (f"s{i:02}", f"m{i:02}", "c1", datetime(2026, 11, 3, 18), "VO")
+            for i in range(30)
+        ]
+        shows.extend(
+            [
+                ("m00-b", "m00", "c1", datetime(2026, 11, 3, 19), "VO"),
+                ("m00-c", "m00", "c1", datetime(2026, 11, 3, 20), "VO"),
+                ("started", "m01", "c1", datetime(2026, 11, 3, 14), "VO"),
+                ("local-23h30", "m01", "c1", datetime(2026, 11, 4, 4, 30), "VO"),
+                ("local-midnight", "m01", "c1", datetime(2026, 11, 4, 5), "VO"),
+                ("after-horizon", "m01", "c1", datetime(2026, 11, 6, 5), "VO"),
+            ]
+        )
+        await conn.executemany(
+            """INSERT INTO "marquise-test".screenings
+               (id,movie_id,cinema_id,showtime,language) VALUES($1,$2,$3,$4,$5)""",
+            shows,
+        )
+    reader = SupabaseScreeningMovieReader(
+        SupabaseScreeningMovieReadGateway(db_pool, "marquise-test")
+    )
+    start = datetime(2026, 11, 3, 5, tzinfo=UTC)
+    end = datetime(2026, 11, 6, 4, 59, 59, 999999, tzinfo=UTC)
+    now = datetime(2026, 11, 3, 15, tzinfo=UTC)
+
+    counts = await reader.count_days(
+        ScreeningMovieReader.DayCountRequest(start=start, end=end, now=now)
+    )
+
+    assert counts == [
+        ScreeningMovieReader.DayCount(date(2026, 11, 3), 33),
+        ScreeningMovieReader.DayCount(date(2026, 11, 4), 1),
+    ]
+    empty = await reader.count_days(
+        ScreeningMovieReader.DayCountRequest(
+            start=start, end=end, now=now, title="No such film"
+        )
+    )
+    assert empty == []
+
+
+@pytest.mark.asyncio
+async def test_day_counts_apply_the_listing_filters(db_pool: asyncpg.Pool) -> None:
+    """Search, cinemas, exclusions, languages and non-adjacent hours narrow counts."""
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            """INSERT INTO "marquise-test".cinemas(id,name)
+               VALUES ('c1','One'),('c2','Two'),('c3','Three')"""
+        )
+        await conn.execute(
+            """INSERT INTO "marquise-test".movies(id,title)
+               VALUES ('dune','Dune'),('other','Other')"""
+        )
+        # 2026-11-05 is UTC-5 in Montreal: 15:00 UTC is 10:00 local.
+        await conn.executemany(
+            """INSERT INTO "marquise-test".screenings
+               (id,movie_id,cinema_id,showtime,language) VALUES($1,$2,$3,$4,$5)""",
+            [
+                ("10h", "dune", "c1", datetime(2026, 11, 5, 15), "VO"),
+                ("10h-again", "dune", "c1", datetime(2026, 11, 5, 15, 30), "VO"),
+                ("18h-evening", "dune", "c1", datetime(2026, 11, 5, 23), "VO"),
+                ("22h-late", "dune", "c1", datetime(2026, 11, 6, 3), "VO"),
+                ("title", "other", "c1", datetime(2026, 11, 5, 16), "VO"),
+                ("language", "dune", "c1", datetime(2026, 11, 5, 16), "VF"),
+                ("cinema", "dune", "c2", datetime(2026, 11, 5, 16), "VO"),
+                ("excluded", "dune", "c3", datetime(2026, 11, 5, 16), "VO"),
+            ],
+        )
+    gateway = SupabaseScreeningMovieReadGateway(db_pool, "marquise-test")
+    now = datetime(2026, 11, 5, 5, tzinfo=UTC)
+    request = ScreeningMovieReader.DayCountRequest(
+        start=now,
+        end=datetime(2026, 11, 6, 4, 59, 59, 999999, tzinfo=UTC),
+        now=now,
+        title="dun",
+        cinemas=("c1", "c3"),
+        languages=("VO",),
+        hours=ScreeningMovieReader.HourFilter(
+            ranges=(
+                ScreeningMovieReader.HourRange(0, 17),
+                ScreeningMovieReader.HourRange(21, 24),
+            )
+        ),
+        excluded_cinemas=("c3",),
+    )
+
+    included = await gateway.count_days(request)
+    negated = await gateway.count_days(
+        ScreeningMovieReader.DayCountRequest(
+            start=request.start,
+            end=request.end,
+            now=now,
+            hours=ScreeningMovieReader.HourFilter(
+                ranges=request.hours.ranges, excluded=True
+            ),
+        )
+    )
+
+    assert included == [{"day": date(2026, 11, 5), "screenings": 3}]
+    assert negated == [{"day": date(2026, 11, 5), "screenings": 1}]

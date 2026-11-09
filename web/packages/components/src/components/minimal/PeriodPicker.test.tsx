@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
+import type { CatalogueDayCount } from "./catalogue-types";
 import { PeriodPicker } from "./PeriodPicker";
 
 // Tuesday November 3, 2026.
@@ -30,16 +31,24 @@ function stubViewport(phone: boolean) {
     });
 }
 
+type LoadDayCounts = (
+  start: string,
+  end: string,
+  signal: AbortSignal,
+) => Promise<readonly CatalogueDayCount[]>;
+
 function Harness({
-  start,
-  end = start,
   today: todayDate = today,
+  start = todayDate,
+  end = start,
   onChange,
+  onLoadDayCounts,
 }: {
-  start: string;
+  start?: string;
   end?: string;
   today?: string;
   onChange: (start: string, end: string) => void;
+  onLoadDayCounts?: LoadDayCounts;
 }) {
   const [period, setPeriod] = useState([start, end] as const);
   return (
@@ -47,6 +56,7 @@ function Harness({
       start={period[0]}
       end={period[1]}
       today={todayDate}
+      onLoadDayCounts={onLoadDayCounts}
       onChange={(nextStart, nextEnd) => {
         onChange(nextStart, nextEnd);
         setPeriod([nextStart, nextEnd]);
@@ -368,6 +378,119 @@ it("drops a cancelled drag", () => {
   expect(onChange).not.toHaveBeenCalled();
   expect(title()).toBe("Today");
   expect(selectedDays()).toEqual(["Today, Tuesday November 3rd"]);
+});
+
+/** Daily totals for consecutive dates from today. */
+const buildTotals = (...screenings: number[]): CatalogueDayCount[] =>
+  screenings.map((count, offset) => ({
+    date: `2026-11-${String(3 + offset).padStart(2, "0")}`,
+    screenings: count,
+  }));
+const readVolume = (name: string) =>
+  dayCell(name).querySelector("[data-volume]")?.getAttribute("data-volume");
+const loadCounts = (counts: CatalogueDayCount[]) =>
+  vi.fn<LoadDayCounts>(async () => counts);
+
+it("requests the visible week's totals once and draws bars on one scale", async () => {
+  /** Scenario: equal totals match, the busiest day is full height, and zero has no bar. */
+  const onLoadDayCounts = loadCounts(buildTotals(12, 6, 0, 6, 3, 0, 1));
+  render(<Harness onChange={vi.fn()} onLoadDayCounts={onLoadDayCounts} />);
+
+  expect(await screen.findByRole("button", { description: "12 screenings" })).toBe(
+    dayCell("Today, Tuesday November 3rd"),
+  );
+  expect(onLoadDayCounts).toHaveBeenCalledOnce();
+  expect(onLoadDayCounts.mock.calls[0]?.slice(0, 2)).toEqual(["2026-11-03", "2026-11-09"]);
+  expect(readVolume("Today, Tuesday November 3rd")).toBe("1");
+  expect(readVolume("Wednesday November 4th")).toBe("0.5");
+  expect(readVolume("Friday November 6th")).toBe("0.5");
+  expect(readVolume("Thursday November 5th")).toBeUndefined();
+  expect(dayCell("Thursday November 5th")).toHaveAccessibleDescription("No screenings");
+  expect(dayCell("Monday November 9th")).toHaveAccessibleDescription("1 screening");
+});
+
+it("renders an all-zero horizon without bars and keeps every day selectable", async () => {
+  /** Scenario: a horizon with nothing scheduled has no division error and still selects. */
+  const onChange = vi.fn();
+  render(<Harness onChange={onChange} onLoadDayCounts={loadCounts(buildTotals(0, 0, 0, 0, 0, 0, 0))} />);
+  const days = await screen.findAllByRole("button", { description: "No screenings" });
+  expect(days).toHaveLength(7);
+  expect(strip().querySelectorAll("[data-volume]")).toHaveLength(0);
+  fireEvent.click(dayCell("Friday November 6th"), { detail: 0 });
+  expect(onChange).toHaveBeenCalledExactlyOnceWith("2026-11-06", "2026-11-06");
+});
+
+it("reloads for a new visible horizon but not for a selection inside it", async () => {
+  /** Scenario: zooming changes the counted dates; moving the period within the view does not. */
+  const onLoadDayCounts = loadCounts(buildTotals(1));
+  render(<Harness onChange={vi.fn()} onLoadDayCounts={onLoadDayCounts} />);
+  await screen.findByRole("button", { description: "1 screening" });
+  dragOn(dayCell("Thursday November 5th"), 2, 4);
+  fireEvent.click(dayCell("Monday November 9th"), { detail: 0 });
+  await act(async () => {});
+  expect(onLoadDayCounts).toHaveBeenCalledOnce();
+  zoomTo(2);
+  await act(async () => {});
+  expect(onLoadDayCounts).toHaveBeenCalledTimes(2);
+  expect(onLoadDayCounts.mock.calls[1]?.slice(0, 2)).toEqual(["2026-11-03", "2026-11-16"]);
+});
+
+it("shows no counts while loading or after a failure, and the strip stays usable", async () => {
+  /** Scenario: pending and failed requests never look like zero screenings. */
+  const onChange = vi.fn();
+  const { rerender } = render(
+    <Harness onChange={onChange} onLoadDayCounts={() => new Promise(() => {})} />,
+  );
+  expect(strip()).toHaveAttribute("aria-busy", "true");
+  expect(dayCell("Friday November 6th")).not.toHaveAccessibleDescription();
+  fireEvent.click(dayCell("Friday November 6th"), { detail: 0 });
+  expect(onChange).toHaveBeenCalledExactlyOnceWith("2026-11-06", "2026-11-06");
+  rerender(
+    <Harness onChange={onChange} onLoadDayCounts={async () => Promise.reject(new Error("offline"))} />,
+  );
+  await act(async () => {});
+  expect(strip()).not.toHaveAttribute("aria-busy", "true");
+  expect(strip().querySelectorAll("[data-volume]")).toHaveLength(0);
+  expect(dayCell("Friday November 6th")).not.toHaveAccessibleDescription();
+});
+
+it("never shows counts from an older filter state or a superseded response", async () => {
+  /** Scenario: a slow response for old filters arrives after the new ones were requested. */
+  let resolveOld: (counts: CatalogueDayCount[]) => void = () => {};
+  const old = vi.fn<LoadDayCounts>(
+    (_start, _end, _signal) => new Promise((resolve) => (resolveOld = resolve)),
+  );
+  const current = loadCounts(buildTotals(4));
+  const { rerender } = render(<Harness onChange={vi.fn()} onLoadDayCounts={old} />);
+  rerender(<Harness onChange={vi.fn()} onLoadDayCounts={current} />);
+  expect(old.mock.calls[0]?.[2].aborted).toBe(true);
+  await screen.findByRole("button", { description: "4 screenings" });
+  await act(async () => resolveOld(buildTotals(99)));
+  expect(screen.queryByRole("button", { description: "99 screenings" })).toBeNull();
+  expect(dayCell("Today, Tuesday November 3rd")).toHaveAccessibleDescription("4 screenings");
+});
+
+it("sums each week block's visible days and scales bars across the drawn blocks", async () => {
+  /** Scenario: a block counts its seven days, a zero week has no bar, the busiest block is full height, and days outside the horizon never count. */
+  stubViewport(false);
+  const onLoadDayCounts = loadCounts([
+    { date: "2026-11-02", screenings: 50 },
+    ...buildTotals(1, 1, 1, 1, 1, 1, 1, ...Array(7).fill(0), 14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7),
+    { date: "2026-12-01", screenings: 50 },
+  ]);
+  render(<Harness onChange={vi.fn()} onLoadDayCounts={onLoadDayCounts} />);
+  zoomTo(4);
+  await screen.findByRole("button", { description: "14 screenings" });
+  expect(onLoadDayCounts).toHaveBeenLastCalledWith("2026-11-03", "2026-11-30", expect.anything());
+  expect(blockCells()).toHaveLength(4);
+  expect(block("November 3 to November 9")).toHaveAccessibleDescription("7 screenings");
+  expect(readVolume("November 3 to November 9")).toBe("0.5");
+  expect(block("November 10 to November 16")).toHaveAccessibleDescription("No screenings");
+  expect(readVolume("November 10 to November 16")).toBeUndefined();
+  expect(readVolume("November 17 to November 23")).toBe("1");
+  expect(block("November 24 to November 30")).toHaveAccessibleDescription("7 screenings");
+  expect(readVolume("November 24 to November 30")).toBe("0.5");
+  expect(strip().querySelectorAll("[data-volume]")).toHaveLength(3);
 });
 
 it("shows days up to three weeks and week blocks from four on desktop", () => {

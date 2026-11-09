@@ -82,6 +82,10 @@ pnpm --filter marquise-interface dev
   earliest upcoming show and ID, plus at most three qualifying screenings each.
   Catalogue pages contain 24 movies and accept an endpoint title search without
   screening constraints. Both expose authoritative totals and page counts.
+- The day strip's volume bars come from one `POST /v1/screening-day-counts`
+  request per visible horizon and filter state. It returns every visible day's
+  screening total, zeros included, under the listing's filters. Pending or
+  failed counts draw no bars rather than zeros.
 - Movie routes use `GET /v1/movies?ids=<encoded-id>&size=1` and the existing exact-ID
   screening endpoint for inclusive Montreal date windows. Metadata and booking
   URLs remain real. Missing posters, metadata, and booking links have plain

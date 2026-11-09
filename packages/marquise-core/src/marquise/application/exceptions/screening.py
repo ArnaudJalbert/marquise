@@ -41,3 +41,7 @@ class ScreeningImportRetryExhaustedError(ApplicationError):
 
 class ScreeningWriteBusyError(ApplicationError):
     """A duplicate could not obtain its committed result within the wait limit."""
+
+
+class TooManyScreeningDaysError(ApplicationError):
+    """Raised when a daily screening count spans more days than allowed."""
