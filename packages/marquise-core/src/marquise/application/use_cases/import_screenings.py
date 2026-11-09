@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from datetime import date
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from marquise.application.metadata import MatchReason
@@ -71,7 +71,8 @@ class ImportScreeningsCommand:
         Attributes:
             title: The raw title the cinema listed.
             reason: A stable name from a fixed list, comparable across runs.
-            tmdb_id: The TMDB record involved, when one is known.
+            tmdb_id: The TMDB record whose check failed, when one is known.
+                It is never a confirmed identity for the movie.
         """
 
         title: str
@@ -372,7 +373,9 @@ class ImportScreeningsCommand:
         )
 
     def _unresolved(
-        self, matches: MatchMoviesUseCase.OutputData, status: str
+        self,
+        matches: MatchMoviesUseCase.OutputData,
+        status: Literal["incomplete", "unmatched"],
     ) -> tuple[UnresolvedMovieData, ...]:
         """Reformat the matches with the given status for the report."""
         unresolved = []

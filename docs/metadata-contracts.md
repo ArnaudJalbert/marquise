@@ -49,7 +49,8 @@ metadata and the original screening mapping title remain available to callers.
 Provider facts never imply permission to assign a non-TMDB ID to tmdb_id.
 
 Each cinema import reports its incomplete movies as skipped and its unmatched
-movies as unmatched, with the raw title, the TMDB ID when one is known, and a
+movies as unmatched, with the raw title, the TMDB ID of the record that failed
+when one is known (never a confirmed identity for the movie), and a
 reason from a fixed list (MatchReason): the failed TMDB check (`pagination`,
 `malformed_json`, `endpoint_check`, `detail_mapping`), `not_found`,
 `invalid_data` when no check is named, `uncertain` when no failure explains an
