@@ -1,0 +1,189 @@
+<!doctype html>
+<!-- PROTOTYPE, throwaway. Chosen direction: zoomable brush, no presets. Question: does auto zoom (days view for <= 1 week, wider otherwise) feel right? -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<style>
+  :root { --indigo:#6366f1; --deep:#4f46e5; --ink:var(--foreground,#18181b); --mute:var(--muted-foreground,#71717a); --line:var(--border,#e4e4e7); --bg:var(--background,#fff); }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.4 ui-sans-serif,system-ui,-apple-system,sans-serif; color:var(--ink); padding:4px 0 8px; }
+  button { font:inherit; cursor:pointer; color:inherit; }
+  .q { color:var(--mute); margin:0 0 12px; font-size:13px; }
+  .q label { margin-left:8px; color:var(--ink); }
+  .vp { height:560px; overflow:auto; border:1px solid var(--line); border-radius:var(--radius,10px); }
+  #head { position:sticky; top:0; z-index:2; background:var(--bg); padding:16px 16px 12px; border-bottom:1px solid var(--line); user-select:none; }
+  #head.compact { padding:8px 12px; box-shadow:0 6px 16px #0002; }
+  .top { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .big { font-size:28px; font-weight:650; letter-spacing:-.02em; display:flex; align-items:center; gap:10px; }
+  .sub { color:var(--mute); font-size:13px; margin:2px 0 12px; }
+  .step { border:1px solid var(--line); background:transparent; border-radius:999px; width:32px; height:32px; display:grid; place-items:center; color:var(--mute); flex:none; }
+  .step:hover { color:var(--ink); border-color:var(--ink); }
+  .step:disabled { opacity:.3; pointer-events:none; }
+  .row { display:flex; align-items:center; gap:8px; }
+  .row .t { font-weight:650; white-space:nowrap; min-width:130px; }
+  .row .step { width:26px; height:26px; }
+  .row svg { flex:1; min-width:0; }
+  .seg { display:inline-flex; border:1px solid var(--line); border-radius:999px; padding:2px; gap:2px; flex:none; }
+  .seg button { border:0; background:none; border-radius:999px; padding:3px 10px; font-size:12px; color:var(--mute); }
+  .seg button.on { background:var(--ink); color:var(--bg); }
+  svg.brush { width:100%; height:auto; display:block; touch-action:none; }
+  svg .bar { fill:#a1a1aa; opacity:.55; }
+  svg .bar.in { fill:var(--indigo); opacity:1; }
+  svg .win { fill:#6366f122; stroke:var(--deep); stroke-width:1.5; cursor:grab; }
+  svg .h { fill:var(--deep); cursor:ew-resize; }
+  svg text { font-size:12px; fill:var(--mute); }
+  svg text.n { font-size:11px; }
+  svg text.big { font-size:17px; font-weight:650; fill:var(--ink); }
+  svg text.we { fill:var(--deep); }
+  svg .ln { stroke:var(--line); }
+  svg .today { stroke:#f59e0b; stroke-width:2; }
+  .res { padding:8px 16px 40px; min-height:700px; }
+  .res h4 { margin:18px 0 6px; font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--mute); }
+  .res .f { display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--line); font-size:14px; }
+  .res .f small { color:var(--mute); font-variant-numeric:tabular-nums; }
+  #state { margin-top:12px; font:12px/1.5 ui-monospace,monospace; border:1px dashed var(--line); border-radius:8px; padding:8px 12px; white-space:pre; color:var(--mute); }
+</style>
+</head>
+<body>
+<p class="q">Drag on the bars to draw a range, drag the window to move it, drag its edges to resize. ‹ › steps by the range length. Scroll the results for the sticky state.
+  <label><input type="checkbox" id="auto" checked /> auto zoom</label></p>
+<div class="vp" id="vp"><div id="head"></div><div class="res" id="res"></div></div>
+<div id="state"></div>
+<script>
+const N = 90, T0 = Date.UTC(2026, 10, 2, 12); // today = Mon Nov 2
+const day = (o) => new Date(T0 + o * 864e5);
+const WD = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"], MO = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const wd = (o) => day(o).getUTCDay(), dn = (o) => day(o).getUTCDate(), mo = (o) => MO[day(o).getUTCMonth()];
+const short = (o) => `${WD[wd(o)]} ${mo(o)} ${dn(o)}`;
+const counts = Array.from({ length: N }, (_, o) => {
+  const w = wd(o);
+  if (o < 35) return Math.max(1, Math.round([9, 4, 5, 6, 8, 14, 17][w] + Math.sin(o * 2.3) * 4));
+  if (o < 49) return [5, 6].includes(w) ? 3 + (o % 3) : o % 4 === 0 ? 1 : 0;
+  return [5, 6].includes(w) && o % 3 === 0 ? 2 : o === 60 ? 6 : 0;
+});
+const MAX = Math.max(...counts);
+const FILMS = ["Paris, Texas","In the Mood for Love","Perfect Days","Stalker","La Haine","Tampopo","Aftersun","Mon oncle","Close-Up","Chungking Express","Le Samouraï","Portrait of a Lady on Fire"];
+const CIN = ["Cinéma du Parc","Cinémathèque","Cinéma Moderne","Beaubien"];
+const S = { start: 4, end: 6 }, UI = { compact: false, zoom: 14, va: 0, auto: true };
+const len = () => S.end - S.start + 1, total = () => counts.slice(S.start, S.end + 1).reduce((a, b) => a + b, 0);
+const nextWd = (t, f = 0) => { let o = f; while (wd(o) !== t) o++; return o; };
+const clamp = (v) => Math.max(0, Math.min(N - 1, v));
+function named() {
+  const s = S.start, e = S.end, fri = nextWd(5), mon = nextWd(1, 1);
+  if (s === e) return s === 0 ? "Today" : s === 1 ? "Tomorrow" : short(s);
+  if (s === fri && e === fri + 2) return "This weekend";
+  if (s === fri + 7 && e === fri + 9) return "Next weekend";
+  if (s === mon && e === mon + 6) return "Next week";
+  if (wd(s) === 5 && e === s + 2) return `Weekend of ${mo(s)} ${dn(s)}`;
+  if (wd(s) === 1 && e === s + 6) return `Week of ${mo(s)} ${dn(s)}`;
+  return null;
+}
+const rangeText = () => S.start === S.end ? short(S.start) : `${short(S.start)} → ${short(S.end)}`;
+const title = () => named() ?? rangeText();
+
+// View: 2 wk pans by whole weeks to contain the range; wider zooms always start today.
+function view() { return UI.zoom === 14 ? [UI.va, UI.va + 13] : [0, UI.zoom - 1]; }
+function fitView() {
+  if (UI.auto) UI.zoom = len() <= 7 && S.end - Math.floor(S.start / 7) * 7 < 14 ? 14 : S.end < 42 ? 42 : 90;
+  if (UI.zoom === 14) { const [a, b] = view(); if (S.start < a || S.end > b) UI.va = Math.min(N - 14, Math.floor(S.start / 7) * 7); }
+  else if (S.end > UI.zoom - 1) UI.zoom = S.end < 42 ? 42 : 90;
+}
+function set(s, e, live = false) {
+  s = clamp(s); e = clamp(e); if (e < s) [s, e] = [e, s];
+  if (s === S.start && e === S.end) return;
+  S.start = s; S.end = e; if (!live) fitView(); render();
+}
+function shift(d) { const k = /week/i.test(named() ?? "") ? 7 : len(); if (S.start + d * k < 0 || S.end + d * k > N - 1) return; set(S.start + d * k, S.end + d * k); }
+
+function brush(id, H, lab) {
+  const [a, b] = view(), n = b - a + 1, W = 840 / n, days = n <= 14 && lab, top = days ? 0 : 0;
+  const VH = H + (lab ? (days ? 44 : 20) : 2);
+  let g = "";
+  for (let o = a; o <= b; o++) {
+    const x = (o - a) * W, c = counts[o], h = c ? Math.max(2, (c / MAX) * (H - (days ? 22 : 8))) : 1;
+    const line = n <= 42 ? wd(o) === 1 : dn(o) === 1;
+    if (line) g += `<line class="ln" x1="${x}" x2="${x}" y1="0" y2="${H}"/>`;
+    g += `<rect class="bar ${o >= S.start && o <= S.end ? "in" : ""}" x="${x + W * .15}" y="${H - h}" width="${W * .7}" height="${h}" rx="${Math.min(3, W * .2)}"/>`;
+    if (days) {
+      if (c) g += `<text class="n" x="${x + W / 2}" y="${H - h - 5}" text-anchor="middle">${c}</text>`;
+      const we = [0, 6].includes(wd(o)) ? "we" : "";
+      g += `<text class="${we}" x="${x + W / 2}" y="${H + 15}" text-anchor="middle">${o === 0 ? "Today" : WD[wd(o)]}</text>`;
+      g += `<text class="big" x="${x + W / 2}" y="${H + 36}" text-anchor="middle">${dn(o)}</text>`;
+      if (dn(o) === 1 || o === a) g += `<text x="${x + 2}" y="11">${mo(o)}</text>`;
+    } else if (lab && line) g += `<text x="${x + 3}" y="${H + 15}">${n <= 42 ? `${mo(o)} ${dn(o)}` : mo(o)}</text>`;
+  }
+  if (a === 0) g += `<line class="today" x1="1" x2="1" y1="0" y2="${H}"/>`;
+  const s = Math.max(S.start, a), e = Math.min(S.end, b);
+  if (s <= e) {
+    const x0 = (s - a) * W, x1 = (e - a + 1) * W, hh = Math.min(26, H - 6), wy = days ? 0 : 1;
+    g += `<rect class="win" x="${x0}" y="${wy}" width="${x1 - x0}" height="${(days ? VH : H) - 2}" rx="4"/>`;
+    g += `<rect class="h" data-h="l" x="${x0 - 3}" y="${(H - hh) / 2}" width="6" height="${hh}" rx="3"/><rect class="h" data-h="r" x="${x1 - 3}" y="${(H - hh) / 2}" width="6" height="${hh}" rx="3"/>`;
+  }
+  return `<svg class="brush" data-id="${id}" data-a="${a}" data-b="${b}" viewBox="0 0 840 ${VH}">${g}</svg>`;
+}
+let DRAG = null;
+function dayAt(e) {
+  const svg = document.querySelector(`svg[data-id="${DRAG.id}"]`), r = svg.getBoundingClientRect();
+  const a = +svg.dataset.a, n = +svg.dataset.b - a + 1;
+  return a + Math.floor(Math.max(0, Math.min(.999, (e.clientX - r.left) / r.width)) * n);
+}
+const seg = () => `<div class="seg">${[[14, "2 wk"], [42, "6 wk"], [90, "3 mo"]].map(([z, l]) => `<button data-z="${z}" class="${UI.zoom === z ? "on" : ""}">${l}</button>`).join("")}</div>`;
+const steps = (inner) => `<button class="step" data-s="-1" ${S.start === 0 ? "disabled" : ""}>‹</button>${inner}<button class="step" data-s="1">›</button>`;
+function head(c) {
+  if (c) return `<div class="row">${steps(`<span class="t">${title()}</span>`)}${brush("mini", 26, false)}${seg()}</div>`;
+  return `<div class="top"><div class="big">${steps(`<span>${title()}</span>`)}</div>${seg()}</div>
+    <div class="sub">${named() ? rangeText() + " · " : ""}${len()} day${len() > 1 ? "s" : ""} · ${total()} screenings</div>` + brush("main", 80, true);
+}
+function wire(root) {
+  root.querySelectorAll("[data-s]").forEach((b) => b.onclick = () => shift(+b.dataset.s));
+  root.querySelectorAll("[data-z]").forEach((b) => b.onclick = () => {
+    UI.zoom = +b.dataset.z; if (UI.zoom === 14) UI.va = Math.min(N - 14, Math.floor(S.start / 7) * 7);
+    if (UI.zoom === 14 && len() > 14) { S.end = S.start + 13; }
+    render();
+  });
+  root.querySelectorAll("svg.brush").forEach((svg) => svg.onpointerdown = (e) => {
+    e.preventDefault();
+    DRAG = { id: svg.dataset.id, s0: S.start, e0: S.end, mode: e.target.dataset.h ?? (e.target.classList.contains("win") ? "move" : "new") };
+    DRAG.a0 = dayAt(e); if (DRAG.mode === "new") set(DRAG.a0, DRAG.a0, true);
+  });
+}
+document.onpointermove = (e) => {
+  if (!DRAG) return;
+  const o = dayAt(e), { s0, e0, a0 } = DRAG; DRAG.moved ||= o !== a0;
+  if (DRAG.mode === "move") { const d = Math.max(-s0, Math.min(N - 1 - e0, o - a0)); set(s0 + d, e0 + d, true); }
+  else if (DRAG.mode === "l") set(Math.min(o, e0), e0, true);
+  else if (DRAG.mode === "r") set(s0, Math.max(o, s0), true);
+  else set(a0, o, true);
+};
+document.onpointerup = () => {
+  if (!DRAG) return;
+  const tap = !DRAG.moved && DRAG.mode !== "new"; const a0 = DRAG.a0; DRAG = null;
+  if (tap) { S.start = S.end = -1; set(a0, a0); } else { fitView(); render(); }
+};
+document.getElementById("auto").onchange = (e) => { UI.auto = e.target.checked; fitView(); render(); };
+
+function results() {
+  let h = "";
+  for (let o = S.start; o <= S.end; o++) {
+    h += `<h4>${short(o)} · ${counts[o]} screenings</h4>`;
+    if (!counts[o]) { h += `<div class="f"><span style="color:var(--mute)">Nothing published yet</span></div>`; continue; }
+    for (let i = 0; i < Math.min(4, counts[o]); i++) {
+      const k = (o * 5 + i * 7) % FILMS.length;
+      h += `<div class="f"><span>${FILMS[k]}</span><small>${CIN[(o + i) % 4]} · ${13 + ((k + i) % 9)}:${i % 2 ? "30" : "00"}</small></div>`;
+    }
+  }
+  return h;
+}
+function render() {
+  const h = document.getElementById("head");
+  h.className = UI.compact ? "compact" : ""; h.innerHTML = head(UI.compact); wire(h);
+  document.getElementById("res").innerHTML = results();
+  const [a, b] = view();
+  document.getElementById("state").textContent = `range  ${rangeText()} (${len()}d, ${total()} screenings)\nnamed  ${named() ?? "—"}\nzoom   ${UI.zoom}d, view ${short(a)} → ${short(b)} · auto ${UI.auto ? "on" : "off"} · ${UI.compact ? "sticky" : "hero"}`;
+}
+const vp = document.getElementById("vp");
+vp.onscroll = () => { const c = UI.compact ? vp.scrollTop > 20 : vp.scrollTop > 140; if (c !== UI.compact) { UI.compact = c; render(); } };
+render();
+</script>
+</body>
+</html>
