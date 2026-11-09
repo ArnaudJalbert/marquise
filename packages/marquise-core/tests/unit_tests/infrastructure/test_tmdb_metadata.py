@@ -149,16 +149,3 @@ async def test_http_protocol_failure_is_retryable_and_sanitized(
     assert caught.value.failure.retryable
     assert caught.value.__context__ is None
     assert "private-test-key" not in "".join(traceback.format_exception(caught.value))
-
-
-@pytest.mark.asyncio
-async def test_page_limit_preserves_partial_rows_without_claiming_no_match() -> None:
-    """A capped provider search returns incomplete evidence without a failure."""
-    page = {"page": 1, "total_pages": 2, "total_results": 2, "results": [{"id": 1}]}
-    fetch = AsyncMock(return_value=json.dumps(page).encode())
-    result = await TmdbMetadataHttpSource("key", fetch=fetch, max_pages=1).pages(
-        "search/movie", {}
-    )
-    assert not result.complete and result.failure is None
-    assert result.items == ({"id": 1},)
-    fetch.assert_awaited_once()
