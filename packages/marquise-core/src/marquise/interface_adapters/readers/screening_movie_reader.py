@@ -17,6 +17,12 @@ class ScreeningMovieReadGateway(Protocol):
         """Return 24 distinct movies with ordered previews and a true total."""
         ...
 
+    async def count_days(
+        self, request: ScreeningMovieReader.DayCountRequest
+    ) -> list[dict]:
+        """Return one ``day`` and ``screenings`` row per non-empty Montréal date."""
+        ...
+
 
 class SupabaseScreeningMovieReader(ScreeningMovieReader):
     """Adapt an injected gateway without database I/O of its own."""
@@ -50,3 +56,10 @@ class SupabaseScreeningMovieReader(ScreeningMovieReader):
             ],
             total=result.total,
         )
+
+    async def count_days(
+        self, request: ScreeningMovieReader.DayCountRequest
+    ) -> list[ScreeningMovieReader.DayCount]:
+        """Map daily screening totals."""
+        rows = await self._gateway.count_days(request)
+        return [self.DayCount(row["day"], row["screenings"]) for row in rows]

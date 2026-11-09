@@ -170,6 +170,54 @@ it("propagates API failure and cancellation without a sample-data fallback", asy
   );
 });
 
+it("requests every visible day's screening total in one call with the listing filters", async () => {
+  const days = [
+    { date: "2026-11-01", screenings: 0 },
+    { date: "2026-11-02", screenings: 7 },
+  ];
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockResolvedValue(new Response(JSON.stringify({ days })));
+  const client = new HttpMarquiseClient({ baseUrl: "https://api.example", fetch });
+  const controller = new AbortController();
+  expect(
+    await client.fetchScreeningDayCounts(
+      {
+        start: "2026-11-01",
+        end: "2026-11-02",
+        title: " Dune ",
+        cinemas: ["c1"],
+        excludedCinemas: ["c3"],
+        languages: ["VO"],
+        hours: { operator: "is_not", ranges: [{ start: 0, end: 17 }, { start: 21, end: 24 }] },
+      },
+      controller.signal,
+    ),
+  ).toEqual(days);
+  expect(fetch).toHaveBeenCalledExactlyOnceWith(
+    "https://api.example/v1/screening-day-counts?start=2026-11-01&end=2026-11-02" +
+      "&title=Dune&cinema=c1&exclude_cinema=c3&language=VO",
+    {
+      body: JSON.stringify({
+        hours: { operator: "is_not", ranges: [{ start: 0, end: 17 }, { start: 21, end: 24 }] },
+      }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+      signal: controller.signal,
+    },
+  );
+});
+
+it("surfaces a rejected day-count range instead of reporting zero", async () => {
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockResolvedValue(new Response(JSON.stringify({ detail: "Invalid" }), { status: 422 }));
+  const client = new HttpMarquiseClient({ baseUrl: "", fetch });
+  await expect(
+    client.fetchScreeningDayCounts({ start: "2026-11-02", end: "2026-11-01" }),
+  ).rejects.toBeInstanceOf(HttpMarquiseClientError);
+});
+
 it("resolves an exact opaque movie ID through the one-ID query, preserving slashes", async () => {
   const fetch = vi
     .fn<typeof globalThis.fetch>()

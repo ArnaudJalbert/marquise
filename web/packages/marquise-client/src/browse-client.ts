@@ -14,15 +14,28 @@ export interface HourFilter {
   /** Matched with OR before the operator is applied. */
   readonly ranges: readonly HourRange[];
 }
-export interface ScreeningMovieQuery {
-  start: string;
-  end?: string;
-  page: number;
+/** Non-date filters shared by the screening listing and its daily counts. */
+export interface ScreeningFilters {
   title?: string;
   cinemas?: readonly string[];
   languages?: readonly string[];
   hours?: HourFilter;
   excludedCinemas?: readonly string[];
+}
+export interface ScreeningMovieQuery extends ScreeningFilters {
+  start: string;
+  end?: string;
+  page: number;
+}
+/** An inclusive Montréal horizon of at most 42 days. */
+export interface ScreeningDayCountQuery extends ScreeningFilters {
+  start: string;
+  end: string;
+}
+/** Matching screening occurrences on one Montréal date. */
+export interface ScreeningDayCountApi {
+  date: string;
+  screenings: number;
 }
 /** Production browsing reads. Every listing call requests exactly one page. */
 export interface BrowseClient {
@@ -34,6 +47,11 @@ export interface BrowseClient {
     query: ScreeningMovieQuery,
     signal?: AbortSignal,
   ): Promise<Page<ScreeningMovieApi>>;
+  /** One total per horizon date, zero included, under the listing filters. */
+  fetchScreeningDayCounts(
+    query: ScreeningDayCountQuery,
+    signal?: AbortSignal,
+  ): Promise<ScreeningDayCountApi[]>;
   fetchMoviePage(
     page: number,
     signal?: AbortSignal,
