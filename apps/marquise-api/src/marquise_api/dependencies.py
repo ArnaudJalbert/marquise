@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import HTTPException, Request, status
+from fastapi import Request
 
 from marquise import (
     BrowseScreeningMoviesQuery,
@@ -17,31 +17,12 @@ from marquise import (
     ListMoviesUseCase,
     MarquiseFactory,
     SearchScreeningsQuery,
-    VerifyAccessTokenQuery,
-    WriteScreeningUseCase,
 )
 
 
 def get_factory(request: Request) -> MarquiseFactory:
     """Return initialized factory stored on application state."""
     return request.app.state.factory
-
-
-def get_verify_access_token_query(request: Request) -> VerifyAccessTokenQuery:
-    """Return the configured access-token query or report unavailable auth."""
-    try:
-        query = get_factory(request).verify_access_token_query
-    except RuntimeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Authentication is not configured",
-        ) from exc
-    if query is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Authentication is not configured",
-        )
-    return query
 
 
 def get_list_cinemas_use_case(request: Request) -> ListCinemasUseCase:
@@ -82,11 +63,6 @@ def get_movie_screenings_query(request: Request) -> GetMovieScreeningsQuery:
 def get_search_screenings_query(request: Request) -> SearchScreeningsQuery:
     """Return configured screening-search query."""
     return request.app.state.factory.search_screenings_query
-
-
-def get_write_screening_use_case(request: Request) -> WriteScreeningUseCase:
-    """Return configured audited, retry-safe screening write orchestration."""
-    return request.app.state.factory.write_screening_use_case
 
 
 def get_screening_query(request: Request) -> GetScreeningQuery:

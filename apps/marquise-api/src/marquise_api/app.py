@@ -1,4 +1,4 @@
-"""FastAPI application factory for public reads and protected screening writes.
+"""FastAPI application factory for public catalog reads.
 
 Environment variables
 ---------------------
@@ -118,8 +118,8 @@ def create_app(factory: MarquiseFactory | None = None) -> FastAPI:
     app = FastAPI(
         title="Marquise API",
         description="""
-Public read access and authenticated screening mutations for Montreal showtimes across
-multiple cinema chains and independent theatres.
+Public read access to Montreal showtimes across multiple cinema chains and
+independent theatres.
 
 ## Public reuse and source rights
 
@@ -135,60 +135,22 @@ See [Terms of use](https://marquise.mov/terms),
 Marquise is an independent personal project, not officially affiliated with
 Cineplex, TMDB, or the referenced cinemas, ticket providers, or source websites.
 
-## Authentication
+## Access
 
-The current read endpoints, including search, under ``/v1``, plus ``/health``
-and ``/ready``, are public. POST, PATCH, and DELETE mutations under
-``/v1/screenings`` require a verified Supabase bearer token with the canonical
-`editor` or `administrator` Marquise role. Both roles have identical global
-permissions, including permanent deletion.
-Missing/invalid credentials return 401 with `WWW-Authenticate: Bearer`; disallowed
-roles return 403; an unavailable or unconfigured verifier returns 503.
-
-## Audit and idempotency
-
-Every screening write requires `Idempotency-Key` (1 to 128 ASCII letters, digits,
-`.`, `_`, `:`, or `-`) and `X-Change-Reason` (nonblank, at most 500 characters,
-no control characters). Prefer a fresh UUID as the key for each intended action;
-reuse it only for retries. Keys belong to the verified account across write operations
-and successful keys do not expire. Reasons and metadata must contain no credentials.
-Free-text inputs cannot reliably detect every pasted secret.
-
-Equivalent validated requests replay the original successful response and POST
-Location even after later edits or deletion. Different operation, target, values,
-or reason returns 409 (`idempotency_conflict`). JSON ordering and equivalent timezone
-representations are equivalent; omitted PATCH values and explicit null are not.
-Authentication and authorization run on every retry. Concurrent duplicates execute
-once; acquisition waits at most five seconds, then returns 503 with `Retry-After: 1`.
-Failed transactions leave keys reusable.
-
-Application use cases construct audit history. Screening changes, orphaned Movie
-cleanup, audit, and replay results commit in one transaction. Audit failure rolls
-back the change. Nonempty PATCH is audited even when values are unchanged; empty
-PATCH stores a replay result without audit or invalidation. History has no public
-endpoint or automatic undo. Showtime Source imports are unchanged.
+Every endpoint under ``/v1``, including queries sent with POST, plus ``/health``
+and ``/ready``, is public and read-only. No endpoint takes credentials.
 
 ## Rate limiting
 
 Requests are limited per client IP to **3000 requests/minute** by default
 (configurable server-side via `MARQUISE_API_RATE_LIMIT`). Exceeding the
-limit returns `429 Too Many Requests`. Screening writes are limited before
-authentication: rejected credentials consume the limit, and throttled requests
-do not verify tokens or execute mutations. `/health` and `/ready` are exempt
+limit returns `429 Too Many Requests`. `/health` and `/ready` are exempt
 (they're intended for uptime monitors, not API clients).
 
 ## Caching
 
 Public read responses are cached in-memory for **1 hour** by default
-(configurable via `MARQUISE_API_CACHE_TTL_SECONDS`). Mutations are uncached.
-Successful creates, nonempty patches, and deletes clear the full public cache
-namespace, including movie and cinema reads. Empty PATCH and failed mutations
-do not invalidate. Invalidation is **instance-local** and **best-effort**: a
-postcommit failure is logged without credentials, but success is still returned
-without mutation retry or rollback. Successful replays retry invalidation for
-changed data without another mutation or audit record. Other instances are not
-cleared; freshness
-is bounded by cache expiry, not an unconditional immediate-read guarantee.
+(configurable via `MARQUISE_API_CACHE_TTL_SECONDS`).
 
 ## Errors
 
@@ -201,18 +163,15 @@ envelope:
 
 Prefer matching on `error_code` over parsing `detail`, whose wording may
 change without notice. See each endpoint's documented responses below for
-the specific `error_code` values it can return. Screening identity collisions
-and external-ID conflicts both use `conflict` (409). Missing screenings/parents
-use `not_found` (404); invalid requests use `invalid_input` (422); rate-limit errors
+the specific `error_code` values it can return. Missing resources use
+`not_found` (404); invalid requests use `invalid_input` (422); rate-limit errors
 use `rate_limit_exceeded` (429) and also retain the legacy `error` field.
 
 ## CORS
 
 Disabled by default (no cross-origin browser requests are permitted).
 Server operators can allow specific origins via `MARQUISE_API_CORS_ORIGINS`.
-Configured origins support GET, POST, PATCH, DELETE and bearer Authorization,
-Idempotency-Key, and X-Change-Reason preflight. CORS does not replace authentication
-or authorization.
+Configured origins support GET and POST.
 """,
         version="1.0.0",
         lifespan=lifespan,
@@ -275,7 +234,7 @@ or authorization.
             CORSMiddleware,
             allow_origins=cors_origins,
             allow_credentials=True,
-            allow_methods=["GET", "POST", "PATCH", "DELETE"],
+            allow_methods=["GET", "POST"],
             allow_headers=["*"],
         )
 
