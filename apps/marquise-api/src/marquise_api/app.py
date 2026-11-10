@@ -1,4 +1,4 @@
-"""FastAPI application factory for public reads and protected screening writes.
+"""FastAPI application factory for public catalog reads.
 
 Environment variables
 ---------------------
@@ -16,8 +16,8 @@ MARQUISE_API_RATE_LIMIT
 from __future__ import annotations
 
 import os
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator, Callable
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 
 from fastapi import APIRouter, Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -82,6 +82,169 @@ def _parse_cors_origins(raw: str | None) -> list[str]:
     return [origin.strip() for origin in raw.split(",") if origin.strip()]
 
 
+def _create_lifespan(
+    factory: MarquiseFactory | None,
+) -> Callable[[FastAPI], AbstractAsyncContextManager[None]]:
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        owned = await _set_factory(app, factory)
+        try:
+            yield
+        finally:
+            if owned is not None:
+                await owned.shutdown()
+
+    return lifespan
+
+
+async def _set_factory(
+    app: FastAPI, factory: MarquiseFactory | None
+) -> MarquiseFactory | None:
+    if factory is not None:
+        app.state.factory = factory
+        return None
+    owned = await create_factory()
+    app.state.factory = owned
+    return owned
+
+
+def _initialize_cache() -> None:
+    cache_ttl_seconds = int(
+        os.environ.get("MARQUISE_API_CACHE_TTL_SECONDS", DEFAULT_CACHE_TTL_SECONDS)
+    )
+    FastAPICache.reset()
+    FastAPICache.init(InMemoryBackend(), prefix=CACHE_PREFIX, expire=cache_ttl_seconds)
+
+
+def _configure_state(app: FastAPI, factory: MarquiseFactory | None) -> None:
+    if factory is not None:
+        app.state.factory = factory
+
+
+def _configure_rate_limiting(app: FastAPI) -> None:
+    limiter.reset()
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _adapt_rate_limit_response)
+    app.add_middleware(SlowAPIMiddleware)
+
+
+async def _adapt_rate_limit_response(request: Request, exc: Exception) -> Response:
+    assert isinstance(exc, RateLimitExceeded)
+    response = _rate_limit_exceeded_handler(request, exc)
+    return JSONResponse(
+        _build_rate_limit_body(request, exc),
+        status_code=429,
+        headers=_filter_rate_limit_headers(response),
+    )
+
+
+def _build_rate_limit_body(
+    request: Request, exc: RateLimitExceeded
+) -> dict[str, str | None]:
+    message = f"Rate limit exceeded: {exc.detail}"
+    return {
+        "error": message,
+        "detail": message,
+        "error_code": "rate_limit_exceeded",
+        "request_id": getattr(request.state, "request_id", None),
+    }
+
+
+def _filter_rate_limit_headers(response: Response) -> dict[str, str]:
+    return {
+        key: value for key, value in response.headers.items() if key != "content-length"
+    }
+
+
+def _configure_exception_handlers(app: FastAPI) -> None:
+    app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+    app.add_exception_handler(ApplicationError, application_error_handler)
+    app.add_exception_handler(RequestValidationError, request_validation_error_handler)
+    app.add_exception_handler(ValueError, value_error_handler)
+    app.add_exception_handler(Exception, unhandled_exception_handler)
+
+
+def _configure_cors(app: FastAPI) -> None:
+    origins = _get_configured_cors_origins()
+    if origins:
+        _add_cors_middleware(app, origins)
+
+
+def _get_configured_cors_origins() -> list[str]:
+    return _parse_cors_origins(
+        os.environ.get("MARQUISE_API_CORS_ORIGINS", DEFAULT_CORS_ORIGINS)
+    )
+
+
+def _add_cors_middleware(app: FastAPI, origins: list[str]) -> None:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST"],
+        allow_headers=["*"],
+    )
+
+
+def _configure_middleware(app: FastAPI) -> None:
+    # Add rate limiting before CORS so CORS wraps its 429 responses.
+    _configure_rate_limiting(app)
+    _configure_exception_handlers(app)
+    _configure_cors(app)
+
+
+def _configure_routes(app: FastAPI) -> None:
+    _configure_probe_routes(app)
+    _configure_api_routes(app)
+
+
+def _configure_probe_routes(app: FastAPI) -> None:
+    _configure_health_route(app)
+    _configure_readiness_route(app)
+
+
+@limiter.exempt
+async def health() -> dict[str, str]:
+    """Liveness probe."""
+    return {"status": "ok"}
+
+
+@limiter.exempt
+async def ready(factory: MarquiseFactory = Depends(get_factory)) -> JSONResponse:
+    """Readiness probe. Verifies the database pool can serve queries."""
+    if await factory.check_database_health():
+        return JSONResponse({"status": "ok"}, status_code=200)
+    return JSONResponse({"status": "unavailable"}, status_code=503)
+
+
+def _configure_health_route(app: FastAPI) -> None:
+    app.add_api_route("/health", health, methods=["GET"], tags=["meta"])
+
+
+def _configure_readiness_route(app: FastAPI) -> None:
+    app.add_api_route(
+        "/ready",
+        ready,
+        methods=["GET"],
+        tags=["meta"],
+        responses={
+            503: {
+                "description": "The database pool cannot currently serve queries.",
+                "content": {"application/json": {"example": {"status": "unavailable"}}},
+            }
+        },
+    )
+
+
+def _configure_api_routes(app: FastAPI) -> None:
+    v1_router = APIRouter(prefix="/v1")
+    v1_router.include_router(cinemas_router)
+    v1_router.include_router(movies_router)
+    v1_router.include_router(screenings_router)
+    v1_router.include_router(screening_movies_router)
+    app.include_router(v1_router)
+
+
 def create_app(factory: MarquiseFactory | None = None) -> FastAPI:
     """Build the FastAPI application.
 
@@ -94,32 +257,12 @@ def create_app(factory: MarquiseFactory | None = None) -> FastAPI:
         A configured FastAPI instance.
     """
     configure_logging()
-
-    cache_ttl_seconds = int(
-        os.environ.get("MARQUISE_API_CACHE_TTL_SECONDS", DEFAULT_CACHE_TTL_SECONDS)
-    )
-
-    FastAPICache.reset()
-    FastAPICache.init(InMemoryBackend(), prefix=CACHE_PREFIX, expire=cache_ttl_seconds)
-
-    @asynccontextmanager
-    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        if factory is None:
-            owned = await create_factory()
-            app.state.factory = owned
-            try:
-                yield
-            finally:
-                await owned.shutdown()
-        else:
-            app.state.factory = factory
-            yield
-
+    _initialize_cache()
     app = FastAPI(
         title="Marquise API",
         description="""
-Public read access and authenticated screening mutations for Montreal showtimes across
-multiple cinema chains and independent theatres.
+Public read access to Montreal showtimes across multiple cinema chains and
+independent theatres.
 
 ## Public reuse and source rights
 
@@ -135,60 +278,22 @@ See [Terms of use](https://marquise.mov/terms),
 Marquise is an independent personal project, not officially affiliated with
 Cineplex, TMDB, or the referenced cinemas, ticket providers, or source websites.
 
-## Authentication
+## Access
 
-The current read endpoints, including search, under ``/v1``, plus ``/health``
-and ``/ready``, are public. POST, PATCH, and DELETE mutations under
-``/v1/screenings`` require a verified Supabase bearer token with the canonical
-`editor` or `administrator` Marquise role. Both roles have identical global
-permissions, including permanent deletion.
-Missing/invalid credentials return 401 with `WWW-Authenticate: Bearer`; disallowed
-roles return 403; an unavailable or unconfigured verifier returns 503.
-
-## Audit and idempotency
-
-Every screening write requires `Idempotency-Key` (1 to 128 ASCII letters, digits,
-`.`, `_`, `:`, or `-`) and `X-Change-Reason` (nonblank, at most 500 characters,
-no control characters). Prefer a fresh UUID as the key for each intended action;
-reuse it only for retries. Keys belong to the verified account across write operations
-and successful keys do not expire. Reasons and metadata must contain no credentials.
-Free-text inputs cannot reliably detect every pasted secret.
-
-Equivalent validated requests replay the original successful response and POST
-Location even after later edits or deletion. Different operation, target, values,
-or reason returns 409 (`idempotency_conflict`). JSON ordering and equivalent timezone
-representations are equivalent; omitted PATCH values and explicit null are not.
-Authentication and authorization run on every retry. Concurrent duplicates execute
-once; acquisition waits at most five seconds, then returns 503 with `Retry-After: 1`.
-Failed transactions leave keys reusable.
-
-Application use cases construct audit history. Screening changes, orphaned Movie
-cleanup, audit, and replay results commit in one transaction. Audit failure rolls
-back the change. Nonempty PATCH is audited even when values are unchanged; empty
-PATCH stores a replay result without audit or invalidation. History has no public
-endpoint or automatic undo. Showtime Source imports are unchanged.
+Every endpoint under ``/v1``, including queries sent with POST, plus ``/health``
+and ``/ready``, is public and read-only. No endpoint takes credentials.
 
 ## Rate limiting
 
 Requests are limited per client IP to **3000 requests/minute** by default
 (configurable server-side via `MARQUISE_API_RATE_LIMIT`). Exceeding the
-limit returns `429 Too Many Requests`. Screening writes are limited before
-authentication: rejected credentials consume the limit, and throttled requests
-do not verify tokens or execute mutations. `/health` and `/ready` are exempt
+limit returns `429 Too Many Requests`. `/health` and `/ready` are exempt
 (they're intended for uptime monitors, not API clients).
 
 ## Caching
 
 Public read responses are cached in-memory for **1 hour** by default
-(configurable via `MARQUISE_API_CACHE_TTL_SECONDS`). Mutations are uncached.
-Successful creates, nonempty patches, and deletes clear the full public cache
-namespace, including movie and cinema reads. Empty PATCH and failed mutations
-do not invalidate. Invalidation is **instance-local** and **best-effort**: a
-postcommit failure is logged without credentials, but success is still returned
-without mutation retry or rollback. Successful replays retry invalidation for
-changed data without another mutation or audit record. Other instances are not
-cleared; freshness
-is bounded by cache expiry, not an unconditional immediate-read guarantee.
+(configurable via `MARQUISE_API_CACHE_TTL_SECONDS`).
 
 ## Errors
 
@@ -201,119 +306,24 @@ envelope:
 
 Prefer matching on `error_code` over parsing `detail`, whose wording may
 change without notice. See each endpoint's documented responses below for
-the specific `error_code` values it can return. Screening identity collisions
-and external-ID conflicts both use `conflict` (409). Missing screenings/parents
-use `not_found` (404); invalid requests use `invalid_input` (422); rate-limit errors
+the specific `error_code` values it can return. Missing resources use
+`not_found` (404); invalid requests use `invalid_input` (422); rate-limit errors
 use `rate_limit_exceeded` (429) and also retain the legacy `error` field.
 
 ## CORS
 
 Disabled by default (no cross-origin browser requests are permitted).
 Server operators can allow specific origins via `MARQUISE_API_CORS_ORIGINS`.
-Configured origins support GET, POST, PATCH, DELETE and bearer Authorization,
-Idempotency-Key, and X-Change-Reason preflight. CORS does not replace authentication
-or authorization.
+Configured origins support GET and POST.
 """,
         version="1.0.0",
-        lifespan=lifespan,
+        lifespan=_create_lifespan(factory),
     )
-
-    # When a factory is injected (e.g. in tests), make it available even if
-    # the lifespan startup is not run by the test client.
-    if factory is not None:
-        app.state.factory = factory
-
-    # Per-IP rate limiting. The limiter itself is a shared singleton (see
-    # rate_limit.py) so that router-level `@limiter.limit(...)` decorators,
-    # applied at import time, share its in-memory counters. Reset here so
-    # repeated create_app() calls (e.g. across tests) start from a clean
-    # slate. Registered before CORSMiddleware below so that CORS ends up as
-    # the outermost middleware (Starlette applies the last-registered
-    # middleware first) — otherwise 429 responses would be returned before
-    # CORS headers are attached, breaking browser clients.
-    async def _rate_limit_adapter(request: Request, exc: Exception) -> Response:
-        assert isinstance(exc, RateLimitExceeded)
-        response = _rate_limit_exceeded_handler(request, exc)
-        return JSONResponse(
-            {
-                "error": f"Rate limit exceeded: {exc.detail}",
-                "detail": f"Rate limit exceeded: {exc.detail}",
-                "error_code": "rate_limit_exceeded",
-                "request_id": getattr(request.state, "request_id", None),
-            },
-            status_code=429,
-            headers={
-                key: value
-                for key, value in response.headers.items()
-                if key != "content-length"
-            },
-        )
-
-    limiter.reset()
-    app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_adapter)
-    app.add_middleware(SlowAPIMiddleware)
-
-    # Global error-to-response mapping, in one place instead of per-router
-    # try/except (see exception_handlers.py for the status/error_code table).
-    # Register the Starlette base class rather than FastAPI's subclass so
-    # framework-generated routing errors (including 404 and 405) use the same
-    # documented response envelope as explicitly raised HTTP exceptions.
-    app.add_exception_handler(StarletteHTTPException, http_exception_handler)
-    app.add_exception_handler(ApplicationError, application_error_handler)
-    app.add_exception_handler(RequestValidationError, request_validation_error_handler)
-    app.add_exception_handler(ValueError, value_error_handler)
-    app.add_exception_handler(Exception, unhandled_exception_handler)
-
-    # CORS — restrictive by default (no origins allowed). Override via the
-    # MARQUISE_API_CORS_ORIGINS env var as a comma-separated list.
-    cors_origins = _parse_cors_origins(
-        os.environ.get("MARQUISE_API_CORS_ORIGINS", DEFAULT_CORS_ORIGINS)
-    )
-    if cors_origins:
-        app.add_middleware(
-            CORSMiddleware,
-            allow_origins=cors_origins,
-            allow_credentials=True,
-            allow_methods=["GET", "POST", "PATCH", "DELETE"],
-            allow_headers=["*"],
-        )
-
-    # Structured request logging — registered last (outermost) so it wraps
-    # the entire stack above (CORS, rate limiting, routing) and its logged
-    # duration reflects true end-to-end request time.
+    _configure_state(app, factory)
+    _configure_middleware(app)
+    # Registered last so request logging wraps the complete middleware stack.
     app.add_middleware(RequestLoggingMiddleware)
-
-    @app.get("/health", tags=["meta"])
-    @limiter.exempt
-    async def health() -> dict[str, str]:
-        """Liveness probe."""
-        return {"status": "ok"}
-
-    @app.get(
-        "/ready",
-        tags=["meta"],
-        responses={
-            503: {
-                "description": "The database pool cannot currently serve queries.",
-                "content": {"application/json": {"example": {"status": "unavailable"}}},
-            }
-        },
-    )
-    @limiter.exempt
-    async def ready(factory: MarquiseFactory = Depends(get_factory)) -> JSONResponse:
-        """Readiness probe — verifies the database pool can serve queries."""
-        if await factory.check_database_health():
-            return JSONResponse({"status": "ok"}, status_code=200)
-        return JSONResponse({"status": "unavailable"}, status_code=503)
-
-    v1_router = APIRouter(prefix="/v1")
-    v1_router.include_router(cinemas_router)
-    v1_router.include_router(movies_router)
-    v1_router.include_router(screenings_router)
-    v1_router.include_router(screening_movies_router)
-    app.include_router(v1_router)
-
+    _configure_routes(app)
     add_pagination(app)
 
     return app

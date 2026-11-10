@@ -14,25 +14,14 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import JSONResponse
 
 from marquise import (
-    AccountAlreadyExistsError,
-    AccountNotFoundError,
     ApplicationError,
-    AuthAdministrationError,
-    AuthenticationError,
-    AuthenticationServiceUnavailableError,
-    AuthorizationError,
     CinemaAlreadyExistsError,
     CinemaIdAlreadyExistsError,
     CinemaNotFoundError,
     CinemaSourceAssignmentAlreadyExistsError,
     CinemaSourceAssignmentNotFoundError,
     MovieNotFoundError,
-    ScreeningAlreadyExistsError,
-    ScreeningExternalIdConflictError,
-    ScreeningIdempotencyConflictError,
     ScreeningNotFoundError,
-    ScreeningWriteBusyError,
-    SelfDemotionError,
     SourceAlreadyExistsError,
     SourceNotFoundError,
     TooManyMovieIdsError,
@@ -46,13 +35,6 @@ logger = logging.getLogger(__name__)
 #: __all__ should have an explicit entry here; a subclass with no entry
 #: falls back to the constants below.
 _APPLICATION_ERROR_MAPPING: dict[type[ApplicationError], tuple[int, str]] = {
-    AccountAlreadyExistsError: (409, "conflict"),
-    AccountNotFoundError: (404, "not_found"),
-    AuthAdministrationError: (502, "auth_administration_error"),
-    AuthenticationError: (401, "authentication_error"),
-    AuthenticationServiceUnavailableError: (503, "service_unavailable"),
-    AuthorizationError: (403, "authorization_error"),
-    SelfDemotionError: (409, "conflict"),
     CinemaNotFoundError: (404, "not_found"),
     MovieNotFoundError: (404, "not_found"),
     ScreeningNotFoundError: (404, "not_found"),
@@ -61,10 +43,6 @@ _APPLICATION_ERROR_MAPPING: dict[type[ApplicationError], tuple[int, str]] = {
     TooManyMovieIdsError: (422, "invalid_input"),
     TooManyScreeningDaysError: (422, "invalid_input"),
     CinemaAlreadyExistsError: (409, "conflict"),
-    ScreeningAlreadyExistsError: (409, "conflict"),
-    ScreeningExternalIdConflictError: (409, "conflict"),
-    ScreeningIdempotencyConflictError: (409, "idempotency_conflict"),
-    ScreeningWriteBusyError: (503, "service_unavailable"),
     SourceAlreadyExistsError: (409, "conflict"),
     CinemaSourceAssignmentAlreadyExistsError: (409, "conflict"),
     # A generated ID collision is an internal retry condition, not a
@@ -75,8 +53,6 @@ _DEFAULT_APPLICATION_ERROR_STATUS = 400
 _DEFAULT_APPLICATION_ERROR_CODE = "application_error"
 
 _HTTP_ERROR_CODES: dict[int, str] = {
-    401: "authentication_error",
-    403: "authorization_error",
     404: "not_found",
     405: "method_not_allowed",
     503: "service_unavailable",
@@ -119,18 +95,30 @@ async def application_error_handler(request: Request, exc: Exception) -> JSONRes
         type(exc), (_DEFAULT_APPLICATION_ERROR_STATUS, _DEFAULT_APPLICATION_ERROR_CODE)
     )
     request_id = getattr(request.state, "request_id", None)
-    if status_code >= 500 and not isinstance(exc, ScreeningWriteBusyError):
+    _log_unexpected_application_error(exc, status_code, request_id)
+    return _build_application_error_response(exc, (status_code, error_code), request_id)
+
+
+def _log_unexpected_application_error(
+    exc: ApplicationError, status_code: int, request_id: str | None
+) -> None:
+    if status_code >= 500:
         logger.exception(
             "Unexpected application error",
             exc_info=exc,
             extra={"request_id": request_id},
         )
+
+
+def _build_application_error_response(
+    exc: ApplicationError,
+    error_details: tuple[int, str],
+    request_id: str | None,
+) -> JSONResponse:
+    status_code, error_code = error_details
     return JSONResponse(
         {"detail": str(exc), "error_code": error_code, "request_id": request_id},
         status_code=status_code,
-        headers={"Retry-After": "1"}
-        if isinstance(exc, ScreeningWriteBusyError)
-        else None,
     )
 
 

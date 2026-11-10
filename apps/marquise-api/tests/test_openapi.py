@@ -35,12 +35,10 @@ def test_openapi_schema_generation_succeeds(client: TestClient) -> None:
 
 
 def test_openapi_description_documents_public_reads(client: TestClient) -> None:
-    """Top-level description identifies current read endpoints as public."""
+    """Top-level description identifies every endpoint as public and read-only."""
     schema = client.get("/openapi.json").json()
 
-    assert "Authentication" in schema["info"]["description"]
-    assert "read endpoints" in schema["info"]["description"]
-    assert "public" in schema["info"]["description"]
+    assert "public and read-only" in schema["info"]["description"]
 
 
 @pytest.mark.parametrize(
