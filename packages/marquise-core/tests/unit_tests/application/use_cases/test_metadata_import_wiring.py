@@ -5,6 +5,7 @@ from unittest.mock import create_autospec
 import pytest
 
 from marquise.application.exceptions import (
+    MetadataDetailMappingError,
     MetadataFailure,
     MetadataInvalidDataError,
     MetadataNotFoundError,

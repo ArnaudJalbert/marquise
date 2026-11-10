@@ -11,7 +11,6 @@ from typing import Literal
 
 from marquise.application.exceptions.metadata_failure import MetadataFailure
 
-
 type MatchReason = str
 """Stable name for why a movie has no identity, comparable across runs.
 
