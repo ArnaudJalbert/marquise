@@ -59,7 +59,11 @@ jobs:
       - name: Check Fly import secrets
         run: |
           set -euo pipefail
-          if ! flyctl secrets list --app marquise-db | grep -q 'TMDB_API_KEY'; then
+          if ! secrets=$(flyctl secrets list --app marquise-db); then
+            echo "flyctl could not list secrets for marquise-db (error above)" >&2
+            exit 1
+          fi
+          if ! grep -q 'TMDB_API_KEY' <<<"$secrets"; then
             echo "TMDB_API_KEY must be configured as a Fly secret on marquise-db" >&2
             exit 1
           fi
