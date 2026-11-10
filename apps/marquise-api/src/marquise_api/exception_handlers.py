@@ -95,12 +95,27 @@ async def application_error_handler(request: Request, exc: Exception) -> JSONRes
         type(exc), (_DEFAULT_APPLICATION_ERROR_STATUS, _DEFAULT_APPLICATION_ERROR_CODE)
     )
     request_id = getattr(request.state, "request_id", None)
+    _log_unexpected_application_error(exc, status_code, request_id)
+    return _application_error_response(exc, error_code, request_id, status_code)
+
+
+def _log_unexpected_application_error(
+    exc: ApplicationError, status_code: int, request_id: str | None
+) -> None:
     if status_code >= 500:
         logger.exception(
             "Unexpected application error",
             exc_info=exc,
             extra={"request_id": request_id},
         )
+
+
+def _application_error_response(
+    exc: ApplicationError,
+    error_code: str,
+    request_id: str | None,
+    status_code: int,
+) -> JSONResponse:
     return JSONResponse(
         {"detail": str(exc), "error_code": error_code, "request_id": request_id},
         status_code=status_code,

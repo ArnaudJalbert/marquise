@@ -16,8 +16,8 @@ MARQUISE_API_RATE_LIMIT
 from __future__ import annotations
 
 import os
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator, Callable
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 
 from fastapi import APIRouter, Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -82,6 +82,146 @@ def _parse_cors_origins(raw: str | None) -> list[str]:
     return [origin.strip() for origin in raw.split(",") if origin.strip()]
 
 
+def _create_lifespan(
+    factory: MarquiseFactory | None,
+) -> Callable[[FastAPI], AbstractAsyncContextManager[None]]:
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        owned = await _set_factory(app, factory)
+        try:
+            yield
+        finally:
+            if owned is not None:
+                await owned.shutdown()
+
+    return lifespan
+
+
+async def _set_factory(
+    app: FastAPI, factory: MarquiseFactory | None
+) -> MarquiseFactory | None:
+    if factory is not None:
+        app.state.factory = factory
+        return None
+    owned = await create_factory()
+    app.state.factory = owned
+    return owned
+
+
+def _initialize_cache() -> None:
+    cache_ttl_seconds = int(
+        os.environ.get("MARQUISE_API_CACHE_TTL_SECONDS", DEFAULT_CACHE_TTL_SECONDS)
+    )
+    FastAPICache.reset()
+    FastAPICache.init(InMemoryBackend(), prefix=CACHE_PREFIX, expire=cache_ttl_seconds)
+
+
+def _configure_state(app: FastAPI, factory: MarquiseFactory | None) -> None:
+    if factory is not None:
+        app.state.factory = factory
+
+
+def _configure_rate_limiting(app: FastAPI) -> None:
+    limiter.reset()
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_adapter)
+    app.add_middleware(SlowAPIMiddleware)
+
+
+async def _rate_limit_adapter(request: Request, exc: Exception) -> Response:
+    assert isinstance(exc, RateLimitExceeded)
+    response = _rate_limit_exceeded_handler(request, exc)
+    return JSONResponse(
+        _rate_limit_body(request, exc),
+        status_code=429,
+        headers=_rate_limit_headers(response),
+    )
+
+
+def _rate_limit_body(request: Request, exc: RateLimitExceeded) -> dict[str, str | None]:
+    message = f"Rate limit exceeded: {exc.detail}"
+    return {
+        "error": message,
+        "detail": message,
+        "error_code": "rate_limit_exceeded",
+        "request_id": getattr(request.state, "request_id", None),
+    }
+
+
+def _rate_limit_headers(response: Response) -> dict[str, str]:
+    return {
+        key: value for key, value in response.headers.items() if key != "content-length"
+    }
+
+
+def _configure_exception_handlers(app: FastAPI) -> None:
+    app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+    app.add_exception_handler(ApplicationError, application_error_handler)
+    app.add_exception_handler(RequestValidationError, request_validation_error_handler)
+    app.add_exception_handler(ValueError, value_error_handler)
+    app.add_exception_handler(Exception, unhandled_exception_handler)
+
+
+def _configure_cors(app: FastAPI) -> None:
+    cors_origins = _parse_cors_origins(
+        os.environ.get("MARQUISE_API_CORS_ORIGINS", DEFAULT_CORS_ORIGINS)
+    )
+    if cors_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=cors_origins,
+            allow_credentials=True,
+            allow_methods=["GET", "POST"],
+            allow_headers=["*"],
+        )
+
+
+def _configure_middleware(app: FastAPI) -> None:
+    # Add rate limiting before CORS so CORS wraps its 429 responses.
+    _configure_rate_limiting(app)
+    _configure_exception_handlers(app)
+    _configure_cors(app)
+
+
+def _configure_routes(app: FastAPI) -> None:
+    _configure_probe_routes(app)
+    _configure_api_routes(app)
+
+
+def _configure_probe_routes(app: FastAPI) -> None:
+    @app.get("/health", tags=["meta"])
+    @limiter.exempt
+    async def health() -> dict[str, str]:
+        """Liveness probe."""
+        return {"status": "ok"}
+
+    @app.get(
+        "/ready",
+        tags=["meta"],
+        responses={
+            503: {
+                "description": "The database pool cannot currently serve queries.",
+                "content": {"application/json": {"example": {"status": "unavailable"}}},
+            }
+        },
+    )
+    @limiter.exempt
+    async def ready(factory: MarquiseFactory = Depends(get_factory)) -> JSONResponse:
+        """Readiness probe. Verifies the database pool can serve queries."""
+        if await factory.check_database_health():
+            return JSONResponse({"status": "ok"}, status_code=200)
+        return JSONResponse({"status": "unavailable"}, status_code=503)
+
+
+def _configure_api_routes(app: FastAPI) -> None:
+    v1_router = APIRouter(prefix="/v1")
+    v1_router.include_router(cinemas_router)
+    v1_router.include_router(movies_router)
+    v1_router.include_router(screenings_router)
+    v1_router.include_router(screening_movies_router)
+    app.include_router(v1_router)
+
+
 def create_app(factory: MarquiseFactory | None = None) -> FastAPI:
     """Build the FastAPI application.
 
@@ -94,27 +234,7 @@ def create_app(factory: MarquiseFactory | None = None) -> FastAPI:
         A configured FastAPI instance.
     """
     configure_logging()
-
-    cache_ttl_seconds = int(
-        os.environ.get("MARQUISE_API_CACHE_TTL_SECONDS", DEFAULT_CACHE_TTL_SECONDS)
-    )
-
-    FastAPICache.reset()
-    FastAPICache.init(InMemoryBackend(), prefix=CACHE_PREFIX, expire=cache_ttl_seconds)
-
-    @asynccontextmanager
-    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        if factory is None:
-            owned = await create_factory()
-            app.state.factory = owned
-            try:
-                yield
-            finally:
-                await owned.shutdown()
-        else:
-            app.state.factory = factory
-            yield
-
+    _initialize_cache()
     app = FastAPI(
         title="Marquise API",
         description="""
@@ -174,105 +294,13 @@ Server operators can allow specific origins via `MARQUISE_API_CORS_ORIGINS`.
 Configured origins support GET and POST.
 """,
         version="1.0.0",
-        lifespan=lifespan,
+        lifespan=_create_lifespan(factory),
     )
-
-    # When a factory is injected (e.g. in tests), make it available even if
-    # the lifespan startup is not run by the test client.
-    if factory is not None:
-        app.state.factory = factory
-
-    # Per-IP rate limiting. The limiter itself is a shared singleton (see
-    # rate_limit.py) so that router-level `@limiter.limit(...)` decorators,
-    # applied at import time, share its in-memory counters. Reset here so
-    # repeated create_app() calls (e.g. across tests) start from a clean
-    # slate. Registered before CORSMiddleware below so that CORS ends up as
-    # the outermost middleware (Starlette applies the last-registered
-    # middleware first) — otherwise 429 responses would be returned before
-    # CORS headers are attached, breaking browser clients.
-    async def _rate_limit_adapter(request: Request, exc: Exception) -> Response:
-        assert isinstance(exc, RateLimitExceeded)
-        response = _rate_limit_exceeded_handler(request, exc)
-        return JSONResponse(
-            {
-                "error": f"Rate limit exceeded: {exc.detail}",
-                "detail": f"Rate limit exceeded: {exc.detail}",
-                "error_code": "rate_limit_exceeded",
-                "request_id": getattr(request.state, "request_id", None),
-            },
-            status_code=429,
-            headers={
-                key: value
-                for key, value in response.headers.items()
-                if key != "content-length"
-            },
-        )
-
-    limiter.reset()
-    app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_adapter)
-    app.add_middleware(SlowAPIMiddleware)
-
-    # Global error-to-response mapping, in one place instead of per-router
-    # try/except (see exception_handlers.py for the status/error_code table).
-    # Register the Starlette base class rather than FastAPI's subclass so
-    # framework-generated routing errors (including 404 and 405) use the same
-    # documented response envelope as explicitly raised HTTP exceptions.
-    app.add_exception_handler(StarletteHTTPException, http_exception_handler)
-    app.add_exception_handler(ApplicationError, application_error_handler)
-    app.add_exception_handler(RequestValidationError, request_validation_error_handler)
-    app.add_exception_handler(ValueError, value_error_handler)
-    app.add_exception_handler(Exception, unhandled_exception_handler)
-
-    # CORS — restrictive by default (no origins allowed). Override via the
-    # MARQUISE_API_CORS_ORIGINS env var as a comma-separated list.
-    cors_origins = _parse_cors_origins(
-        os.environ.get("MARQUISE_API_CORS_ORIGINS", DEFAULT_CORS_ORIGINS)
-    )
-    if cors_origins:
-        app.add_middleware(
-            CORSMiddleware,
-            allow_origins=cors_origins,
-            allow_credentials=True,
-            allow_methods=["GET", "POST"],
-            allow_headers=["*"],
-        )
-
-    # Structured request logging — registered last (outermost) so it wraps
-    # the entire stack above (CORS, rate limiting, routing) and its logged
-    # duration reflects true end-to-end request time.
+    _configure_state(app, factory)
+    _configure_middleware(app)
+    # Registered last so request logging wraps the complete middleware stack.
     app.add_middleware(RequestLoggingMiddleware)
-
-    @app.get("/health", tags=["meta"])
-    @limiter.exempt
-    async def health() -> dict[str, str]:
-        """Liveness probe."""
-        return {"status": "ok"}
-
-    @app.get(
-        "/ready",
-        tags=["meta"],
-        responses={
-            503: {
-                "description": "The database pool cannot currently serve queries.",
-                "content": {"application/json": {"example": {"status": "unavailable"}}},
-            }
-        },
-    )
-    @limiter.exempt
-    async def ready(factory: MarquiseFactory = Depends(get_factory)) -> JSONResponse:
-        """Readiness probe — verifies the database pool can serve queries."""
-        if await factory.check_database_health():
-            return JSONResponse({"status": "ok"}, status_code=200)
-        return JSONResponse({"status": "unavailable"}, status_code=503)
-
-    v1_router = APIRouter(prefix="/v1")
-    v1_router.include_router(cinemas_router)
-    v1_router.include_router(movies_router)
-    v1_router.include_router(screenings_router)
-    v1_router.include_router(screening_movies_router)
-    app.include_router(v1_router)
-
+    _configure_routes(app)
     add_pagination(app)
 
     return app
