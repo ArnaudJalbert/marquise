@@ -68,6 +68,8 @@ async def test_import_screenings_delegates_to_import_use_case() -> None:
         "updated_count": 0,
         "rescheduled_count": 0,
         "skipped_count": 0,
+        "skipped_movies": (),
+        "unmatched_movies": (),
     }
     import_use_case.execute.assert_awaited_once_with(
         ImportScreeningsCommand.InputData(
@@ -285,3 +287,93 @@ def test_import_all_turns_red_when_a_cinema_fails() -> None:
     ):
         import_all(days=1)
     assert exit_info.value.code == 1
+
+
+def test_import_all_reports_skipped_and_unmatched_movies(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Each cinema and the whole run list skipped and unmatched movies by reason."""
+    unresolved = ImportScreeningsCommand.UnresolvedMovieData
+    factory = _make_factory(
+        [
+            SimpleNamespace(id="cin-1", name="Cinema One"),
+            SimpleNamespace(id="cin-2", name="Cinema Two"),
+        ],
+        import_side_effect=[
+            ImportScreeningsCommand.OutputData(
+                "cin-1",
+                "Cinema One",
+                "cineplex",
+                (),
+                3,
+                3,
+                0,
+                0,
+                skipped_movies=(
+                    unresolved("Twin Peaks", "MetadataDetailMappingError"),
+                ),
+                unmatched_movies=(unresolved("Mystery Night", "no_match"),),
+            ),
+            ImportScreeningsCommand.OutputData(
+                "cin-2",
+                "Cinema Two",
+                "cineplex",
+                (),
+                2,
+                2,
+                0,
+                0,
+                skipped_movies=(unresolved("SCENE TAM", "MetadataDetailMappingError"),),
+            ),
+        ],
+    )
+    with patch(
+        "marquise_cli.import_commands.all_command.MarquiseFactory",
+        return_value=factory,
+    ):
+        import_all(days=1)
+
+    output = capsys.readouterr().out
+    assert (
+        "\nMovies for Cinema One: MetadataDetailMappingError 1, no_match 1\n"
+        "  Skipped:\n"
+        "    Cinema One | Twin Peaks | MetadataDetailMappingError\n"
+        "  Unmatched:\n"
+        "    Cinema One | Mystery Night | no_match\n"
+    ) in output
+    assert (
+        "\nMovies for Cinema Two: MetadataDetailMappingError 1\n"
+        "  Skipped:\n"
+        "    Cinema Two | SCENE TAM | MetadataDetailMappingError\n"
+    ) in output
+    assert (
+        "\nMovies for the run: MetadataDetailMappingError 2, no_match 1\n"
+        "  Skipped:\n"
+        "    Cinema One | Twin Peaks | MetadataDetailMappingError\n"
+        "    Cinema Two | SCENE TAM | MetadataDetailMappingError\n"
+        "  Unmatched:\n"
+        "    Cinema One | Mystery Night | no_match\n"
+    ) in output
+
+
+def test_import_all_reports_a_run_with_every_movie_matched(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A run with nothing skipped or unmatched says so once."""
+    factory = _make_factory(
+        [SimpleNamespace(id="cin-1", name="Cinema One")],
+        import_side_effect=[
+            ImportScreeningsCommand.OutputData(
+                "cin-1", "Cinema One", "cineplex", (), 1, 1, 0, 0
+            )
+        ],
+    )
+    with patch(
+        "marquise_cli.import_commands.all_command.MarquiseFactory",
+        return_value=factory,
+    ):
+        import_all(days=1)
+
+    output = capsys.readouterr().out
+    assert "Movies for the run: none skipped or unmatched\n" in output
+    assert "Movies for Cinema One" not in output
