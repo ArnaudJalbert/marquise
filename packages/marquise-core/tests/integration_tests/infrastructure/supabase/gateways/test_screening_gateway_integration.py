@@ -591,3 +591,38 @@ async def test_delete_missing_returns_false(
 ) -> None:
     """Verify delete returns false when screening ID does not exist."""
     assert await screening_gateway.delete("scr-delete-missing") is False
+
+
+@pytest.mark.asyncio
+async def test_replace_keeps_provenance_when_external_id_is_masked_and_unchanged(
+    screening_gateway: SupabaseScreeningGateway,
+    gateway: SupabaseCinemaGateway,
+    movie_gateway: SupabaseMovieGateway,
+    source_definition_gateway: SupabaseSourceDefinitionGateway,
+) -> None:
+    """Replacing an unchanged external ID keeps the screening's source provenance."""
+    await _seed_parents(gateway, movie_gateway)
+    await source_definition_gateway.save(
+        name="cineplex", display_name="Cineplex", description=None
+    )
+    await screening_gateway.save(
+        screening_id="scr-provenance",
+        movie_id="mov-001",
+        cinema_id="cin-001",
+        showtime=datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC),
+        external_id="show-1",
+        source_name="cineplex",
+    )
+
+    replaced = await screening_gateway.replace(
+        screening_id="scr-provenance",
+        movie_id="mov-001",
+        cinema_id="cin-001",
+        showtime=datetime(2026, 6, 7, 20, 0, 0, tzinfo=UTC),
+        external_id="show-1",
+        fields=frozenset({"external_id", "showtime"}),
+    )
+
+    assert replaced is not None
+    assert replaced["external_id"] == "show-1"
+    assert replaced["source_name"] == "cineplex"
