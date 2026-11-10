@@ -18,6 +18,9 @@ from marquise.infrastructure.supabase.gateways.movie import (
 from marquise.infrastructure.supabase.gateways.screening import (
     SupabaseScreeningGateway,
 )
+from marquise.infrastructure.supabase.gateways.screening_reader import (
+    SupabaseScreeningReadGateway,
+)
 from marquise.infrastructure.supabase.gateways.source_definition import (
     SupabaseSourceDefinitionGateway,
 )
@@ -113,6 +116,7 @@ async def test_import_reschedules_idempotently_and_preserves_conflicts(
     gateway: SupabaseCinemaGateway,
     movie_gateway: SupabaseMovieGateway,
     source_definition_gateway: SupabaseSourceDefinitionGateway,
+    db_pool: asyncpg.Pool,
 ) -> None:
     """Import chain moves same-source showtimes and refuses source changes."""
     await _seed_parents(gateway, movie_gateway)
@@ -121,6 +125,7 @@ async def test_import_reschedules_idempotently_and_preserves_conflicts(
             name=name, display_name=name, description=None
         )
     command = CreateScreeningsCommand(SupabaseScreeningRepository(screening_gateway))
+    reader = SupabaseScreeningReadGateway(db_pool, "marquise-test")
 
     def row(
         showtime: datetime, source_name: str = "cineplex"
@@ -138,7 +143,7 @@ async def test_import_reschedules_idempotently_and_preserves_conflicts(
     first = await command.execute(
         command.InputData((row(datetime(2026, 6, 7, 17, tzinfo=UTC)),))
     )
-    initial_rows = await screening_gateway.search(cinema_id="cin-001")
+    initial_rows = await reader.search(cinema_id="cin-001")
     initial_id = initial_rows.rows[0]["id"]
     moved = await command.execute(
         command.InputData((row(datetime(2026, 6, 7, 17, 15, tzinfo=UTC)),))
@@ -156,7 +161,7 @@ async def test_import_reschedules_idempotently_and_preserves_conflicts(
     assert moved.rescheduled_count == 1
     assert repeated.updated_count == 1
     assert refused.skipped_count == 1
-    rows = await screening_gateway.search(cinema_id="cin-001")
+    rows = await reader.search(cinema_id="cin-001")
     assert [(r["id"], r["showtime"]) for r in rows.rows] == [
         (initial_id, datetime(2026, 6, 7, 17, 15))
     ]
@@ -169,118 +174,6 @@ async def test_find_by_id_missing(
     """Verify find_by_id returns None for a non-existent ID."""
     found = await screening_gateway.find_by_id("scr-missing")
     assert found is None
-
-
-@pytest.mark.asyncio
-async def test_search_by_cinema_and_date_range(
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
-) -> None:
-    """Verify screenings can be found within a date range for a cinema."""
-    await _seed_parents(gateway, movie_gateway)
-    await screening_gateway.save(
-        screening_id="scr-003",
-        movie_id="mov-001",
-        cinema_id="cin-003",
-        showtime=datetime(2026, 6, 7, 19, 0, 0, tzinfo=UTC),
-    )
-    await screening_gateway.save(
-        screening_id="scr-004",
-        movie_id="mov-002",
-        cinema_id="cin-003",
-        showtime=datetime(2026, 6, 8, 20, 0, 0, tzinfo=UTC),
-    )
-    await screening_gateway.save(
-        screening_id="scr-005",
-        movie_id="mov-003",
-        cinema_id="cin-003",
-        showtime=datetime(2026, 6, 10, 21, 0, 0, tzinfo=UTC),
-    )
-
-    page = await screening_gateway.search(
-        cinema_id="cin-003",
-        start_date=datetime(2026, 6, 7, 0, 0, 0, tzinfo=UTC),
-        end_date=datetime(2026, 6, 8, 23, 59, 59, tzinfo=UTC),
-    )
-    assert page.total == 2
-    assert len(page.rows) == 2
-    assert page.rows[0]["id"] == "scr-003"
-    assert page.rows[1]["id"] == "scr-004"
-
-
-@pytest.mark.asyncio
-async def test_search_by_cinema_and_date_range_empty(
-    screening_gateway: SupabaseScreeningGateway,
-) -> None:
-    """Verify search returns an empty page when no match."""
-    page = await screening_gateway.search(
-        cinema_id="cin-empty",
-        start_date=datetime(2026, 1, 1, 0, 0, 0, tzinfo=UTC),
-        end_date=datetime(2026, 1, 31, 23, 59, 59, tzinfo=UTC),
-    )
-    assert page.rows == []
-    assert page.total == 0
-
-
-@pytest.mark.asyncio
-async def test_search_by_cinema_and_date_range_with_limit_and_offset(
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
-) -> None:
-    """Verify limit/offset return the correct slice while total reflects all rows."""
-    await _seed_parents(gateway, movie_gateway)
-    for i, day in enumerate((7, 8, 10)):
-        await screening_gateway.save(
-            screening_id=f"scr-page-{i}",
-            movie_id="mov-001",
-            cinema_id="cin-003",
-            showtime=datetime(2026, 6, day, 19, 0, 0, tzinfo=UTC),
-        )
-
-    page = await screening_gateway.search(
-        cinema_id="cin-003",
-        start_date=datetime(2026, 6, 1, 0, 0, 0, tzinfo=UTC),
-        end_date=datetime(2026, 6, 30, 23, 59, 59, tzinfo=UTC),
-        limit=2,
-        offset=1,
-    )
-
-    assert page.total == 3
-    assert [row["id"] for row in page.rows] == ["scr-page-1", "scr-page-2"]
-
-
-@pytest.mark.asyncio
-async def test_search_by_cinema_and_date_range_offset_past_total(
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
-) -> None:
-    """An offset beyond the result set returns no rows but the true total.
-
-    Exercises the fallback COUNT(*) path: when LIMIT/OFFSET returns zero
-    rows, there is no row to read a windowed total off, so the gateway must
-    fall back to a separate count query.
-    """
-    await _seed_parents(gateway, movie_gateway)
-    await screening_gateway.save(
-        screening_id="scr-past-0",
-        movie_id="mov-001",
-        cinema_id="cin-003",
-        showtime=datetime(2026, 6, 7, 19, 0, 0, tzinfo=UTC),
-    )
-
-    page = await screening_gateway.search(
-        cinema_id="cin-003",
-        start_date=datetime(2026, 6, 1, 0, 0, 0, tzinfo=UTC),
-        end_date=datetime(2026, 6, 30, 23, 59, 59, tzinfo=UTC),
-        limit=10,
-        offset=100,
-    )
-
-    assert page.rows == []
-    assert page.total == 1
 
 
 @pytest.mark.asyncio
@@ -345,43 +238,6 @@ async def test_save_raises_gateway_error_on_external_id_conflict(
 
 
 @pytest.mark.asyncio
-async def test_update_translates_external_id_conflict_without_changing_rows(
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
-) -> None:
-    """Updating an existing row with another row's ID leaves both rows intact."""
-    await _seed_parents(gateway, movie_gateway)
-    showtime = datetime(2026, 6, 12, 21, tzinfo=UTC)
-    for screening_id, movie_id, external_id in (
-        ("owner", "mov-001", "494935"),
-        ("target", "mov-002", "old-id"),
-    ):
-        await screening_gateway.save(
-            screening_id=screening_id,
-            movie_id=movie_id,
-            cinema_id="cin-004",
-            showtime=showtime,
-            external_id=external_id,
-            room="Old room",
-        )
-    owner_before = await screening_gateway.find_by_id("owner")
-    target_before = await screening_gateway.find_by_id("target")
-
-    with pytest.raises(ScreeningExternalIdConflictGatewayError, match="494935"):
-        await screening_gateway.update(
-            cinema_id="cin-004",
-            movie_id="mov-002",
-            showtime=showtime,
-            external_id="494935",
-            room="New room",
-        )
-
-    assert await screening_gateway.find_by_id("owner") == owner_before
-    assert await screening_gateway.find_by_id("target") == target_before
-
-
-@pytest.mark.asyncio
 @pytest.mark.parametrize("existing_target", [False, True])
 async def test_import_skips_external_id_conflict_and_preserves_existing_data(
     screening_gateway: SupabaseScreeningGateway,
@@ -442,11 +298,21 @@ async def test_import_skips_external_id_conflict_and_preserves_existing_data(
     assert result.screenings[0].movie_title == "Movie C"
     assert await screening_gateway.find_by_id("owner") == owner_before
     assert await screening_gateway.find_by_id("target") == target_before
-    page = await screening_gateway.search(movie_id="mov-002")
-    assert page.total == int(existing_target)
-    page = await screening_gateway.search(movie_id="mov-003")
-    assert page.total == 1
-    assert page.rows[0]["external_id"] == "unrelated-id"
+    target = await screening_gateway.read_import_candidates(
+        cinema_id="cin-004",
+        movie_id="mov-002",
+        showtime=showtime,
+        external_id="494935",
+    )
+    assert len(target) == 1 + int(existing_target)
+    unrelated = await screening_gateway.read_import_candidates(
+        cinema_id="cin-004",
+        movie_id="mov-003",
+        showtime=showtime,
+        external_id="unrelated-id",
+    )
+    assert len(unrelated) == 1
+    assert unrelated[0]["external_id"] == "unrelated-id"
 
 
 @pytest.mark.asyncio
@@ -455,11 +321,13 @@ async def test_import_accepts_shared_external_id_across_cinemas(
     screening_gateway: SupabaseScreeningGateway,
     gateway: SupabaseCinemaGateway,
     movie_gateway: SupabaseMovieGateway,
+    db_pool: asyncpg.Pool,
     external_id: str | None,
 ) -> None:
     """Different cinemas import shared or absent IDs and reimport without duplicates."""
     await _seed_parents(gateway, movie_gateway)
     command = CreateScreeningsCommand(SupabaseScreeningRepository(screening_gateway))
+    reader = SupabaseScreeningReadGateway(db_pool, "marquise-test")
     showtime = datetime(2026, 10, 7, 17, tzinfo=UTC)
     request = command.InputData(
         screenings=(
@@ -486,7 +354,7 @@ async def test_import_accepts_shared_external_id_across_cinemas(
     result = await command.execute(request)
     assert result.total_count == result.imported_count == 2
     assert result.updated_count == result.skipped_count == 0
-    before = await screening_gateway.search()
+    before = await reader.search()
 
     request = replace(
         request,
@@ -498,14 +366,15 @@ async def test_import_accepts_shared_external_id_across_cinemas(
     result = await command.execute(request)
     assert result.total_count == result.updated_count == 2
     assert result.imported_count == result.skipped_count == 0
-    after = await screening_gateway.search()
+    after = await reader.search()
     assert after.total == 2
     assert [row["id"] for row in after.rows] == [row["id"] for row in before.rows]
-    assert [row["external_id"] for row in after.rows] == [external_id, external_id]
+    stored = [await screening_gateway.find_by_id(row["id"]) for row in after.rows]
+    assert [row["external_id"] for row in stored] == [external_id, external_id]
     owner_before = next(row for row in before.rows if row["cinema_id"] == "cin-001")
-    owner = await screening_gateway.search(cinema_id="cin-001")
+    owner = await reader.search(cinema_id="cin-001")
     assert owner.rows == [owner_before]
-    target = await screening_gateway.search(cinema_id="cin-004")
+    target = await reader.search(cinema_id="cin-004")
     assert target.rows[0]["room"] == "New room"
 
 
@@ -535,187 +404,6 @@ async def test_save_does_not_misclassify_primary_key_conflict(
         )
 
     assert raised.value.constraint_name == "screenings_pkey"
-
-
-@pytest.mark.asyncio
-async def test_update_preserves_unspecified_metadata(
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
-) -> None:
-    """A normal update changes supplied metadata and preserves unspecified fields."""
-    await _seed_parents(gateway, movie_gateway)
-    showtime = datetime(2026, 6, 12, 21, tzinfo=UTC)
-    await screening_gateway.save(
-        screening_id="existing",
-        movie_id="mov-001",
-        cinema_id="cin-004",
-        showtime=showtime,
-        external_id="existing-id",
-        ticket_url="https://example.com/old-ticket",
-        room="Old room",
-        language="French",
-    )
-
-    updated = await screening_gateway.update(
-        cinema_id="cin-004",
-        movie_id="mov-001",
-        showtime=showtime,
-        room="New room",
-    )
-
-    assert updated is not None
-    assert updated["id"] == "existing"
-    assert updated["external_id"] == "existing-id"
-    assert updated["ticket_url"] == "https://example.com/old-ticket"
-    assert updated["room"] == "New room"
-    assert updated["language"] == "French"
-
-
-@pytest.mark.asyncio
-async def test_search_by_movie_id(
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
-) -> None:
-    """Verify search filters by exact movie_id."""
-    await _seed_parents(gateway, movie_gateway)
-    await screening_gateway.save(
-        screening_id="scr-search-001",
-        movie_id="mov-001",
-        cinema_id="cin-003",
-        showtime=datetime(2026, 6, 7, 19, 0, 0, tzinfo=UTC),
-    )
-    await screening_gateway.save(
-        screening_id="scr-search-002",
-        movie_id="mov-002",
-        cinema_id="cin-003",
-        showtime=datetime(2026, 6, 8, 20, 0, 0, tzinfo=UTC),
-    )
-
-    page = await screening_gateway.search(movie_id="mov-001")
-
-    assert page.total == 1
-    assert page.rows[0]["id"] == "scr-search-001"
-
-
-@pytest.mark.asyncio
-async def test_search_by_movie_title(
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
-) -> None:
-    """Verify search filters by a case-insensitive movie title substring."""
-    await _seed_parents(gateway, movie_gateway)
-    await screening_gateway.save(
-        screening_id="scr-search-003",
-        movie_id="mov-001",
-        cinema_id="cin-003",
-        showtime=datetime(2026, 6, 7, 19, 0, 0, tzinfo=UTC),
-    )
-
-    page = await screening_gateway.search(movie_title="movie a")
-
-    assert page.total == 1
-    assert page.rows[0]["id"] == "scr-search-003"
-
-
-@pytest.mark.asyncio
-async def test_search_by_cinema_id_and_date_range(
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
-) -> None:
-    """Verify search filters by cinema_id combined with a date range."""
-    await _seed_parents(gateway, movie_gateway)
-    await screening_gateway.save(
-        screening_id="scr-search-004",
-        movie_id="mov-001",
-        cinema_id="cin-003",
-        showtime=datetime(2026, 6, 7, 19, 0, 0, tzinfo=UTC),
-    )
-    await screening_gateway.save(
-        screening_id="scr-search-005",
-        movie_id="mov-002",
-        cinema_id="cin-003",
-        showtime=datetime(2026, 6, 10, 21, 0, 0, tzinfo=UTC),
-    )
-
-    page = await screening_gateway.search(
-        cinema_id="cin-003",
-        start_date=datetime(2026, 6, 7, 0, 0, 0, tzinfo=UTC),
-        end_date=datetime(2026, 6, 8, 23, 59, 59, tzinfo=UTC),
-    )
-
-    assert page.total == 1
-    assert page.rows[0]["id"] == "scr-search-004"
-
-
-@pytest.mark.asyncio
-async def test_search_by_language(
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
-) -> None:
-    """Verify search filters by exact language."""
-    await _seed_parents(gateway, movie_gateway)
-    await screening_gateway.save(
-        screening_id="scr-search-006",
-        movie_id="mov-001",
-        cinema_id="cin-003",
-        showtime=datetime(2026, 6, 7, 19, 0, 0, tzinfo=UTC),
-        language="V.O.",
-    )
-    await screening_gateway.save(
-        screening_id="scr-search-007",
-        movie_id="mov-002",
-        cinema_id="cin-003",
-        showtime=datetime(2026, 6, 8, 20, 0, 0, tzinfo=UTC),
-        language="V.F.",
-    )
-
-    page = await screening_gateway.search(language="V.O.")
-
-    assert page.total == 1
-    assert page.rows[0]["id"] == "scr-search-006"
-
-
-@pytest.mark.asyncio
-async def test_search_with_no_filters_returns_all(
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
-) -> None:
-    """Verify search with no filters returns every screening, paginated."""
-    await _seed_parents(gateway, movie_gateway)
-    await screening_gateway.save(
-        screening_id="scr-search-008",
-        movie_id="mov-001",
-        cinema_id="cin-003",
-        showtime=datetime(2026, 6, 7, 19, 0, 0, tzinfo=UTC),
-    )
-    await screening_gateway.save(
-        screening_id="scr-search-009",
-        movie_id="mov-002",
-        cinema_id="cin-004",
-        showtime=datetime(2026, 6, 8, 20, 0, 0, tzinfo=UTC),
-    )
-
-    page = await screening_gateway.search(limit=1, offset=0)
-
-    assert page.total >= 2
-    assert len(page.rows) == 1
-
-
-@pytest.mark.asyncio
-async def test_search_empty(
-    screening_gateway: SupabaseScreeningGateway,
-) -> None:
-    """Verify search returns an empty page when no screening matches."""
-    page = await screening_gateway.search(movie_title="nonexistent-movie-xyz")
-
-    assert page.rows == []
-    assert page.total == 0
 
 
 @pytest.mark.asyncio
