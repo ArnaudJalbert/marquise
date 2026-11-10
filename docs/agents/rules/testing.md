@@ -13,7 +13,7 @@ Everything through interface adapters is unit-testable with zero external I/O. I
 | `interface_adapters/` | `unit_tests/interface_adapters/` | Gateway `Protocol`s via `create_autospec` |
 | `infrastructure/supabase/gateways/` | `integration_tests/infrastructure/supabase/` | Real disposable database |
 | `infrastructure/` unit coverage | `unit_tests/infrastructure/` | Fakes, fixtures or stubbed fetchers |
-| Selected `infrastructure/sources/`, `infrastructure/auth/` HTTP clients | `integration_tests/infrastructure/sources/`, `integration_tests/infrastructure/auth/` | Loopback HTTP server |
+| Selected `infrastructure/sources/` HTTP clients | `integration_tests/infrastructure/sources/` | Loopback HTTP server |
 | `apps/marquise-api/` | `apps/marquise-api/tests/` | `MarquiseFactory` |
 | `apps/marquise-cli/` | `apps/marquise-cli/tests/` | `MarquiseFactory` |
 

@@ -22,19 +22,11 @@ from marquise.application.queries.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
 from marquise.application.queries.search_screenings import SearchScreeningsQuery
-from marquise.application.queries.verify_access_token import VerifyAccessTokenQuery
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
-from marquise.application.use_cases.auth import (
-    AuthenticateAdministratorUseCase,
-    InviteAccountUseCase,
-    SetAccountRoleUseCase,
-)
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
-from marquise.application.use_cases.create_screening import CreateScreeningUseCase
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
-from marquise.application.use_cases.delete_screening import DeleteScreeningUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
 from marquise.application.use_cases.get_cinema import GetCinemaUseCase
 from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
@@ -51,8 +43,6 @@ from marquise.application.use_cases.merge_movies import MergeMoviesUseCase
 from marquise.application.use_cases.refresh_movies import RefreshMoviesUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
-from marquise.application.use_cases.update_screening import UpdateScreeningUseCase
-from marquise.application.use_cases.write_screening import WriteScreeningUseCase
 from marquise.infrastructure.di.container import Container
 
 
@@ -72,28 +62,6 @@ class MarquiseFactory:
 
     def __init__(self) -> None:
         self._container = Container()
-
-    @property
-    def verify_access_token_query(self) -> VerifyAccessTokenQuery:
-        """Configured access-token verification query."""
-        return self._container.verify_access_token_query
-
-    @property
-    def authenticate_administrator_use_case(
-        self,
-    ) -> AuthenticateAdministratorUseCase:
-        """Configured Administrator authentication use case."""
-        return self._container.authenticate_administrator_use_case
-
-    @property
-    def invite_account_use_case(self) -> InviteAccountUseCase:
-        """Configured account invitation use case."""
-        return self._container.invite_account_use_case
-
-    @property
-    def set_account_role_use_case(self) -> SetAccountRoleUseCase:
-        """Configured account role-change use case."""
-        return self._container.set_account_role_use_case
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -196,26 +164,6 @@ class MarquiseFactory:
     def get_screening_query(self) -> GetScreeningQuery:
         """Configured query for retrieving one screening."""
         return self._container.get_screening_query
-
-    @property
-    def write_screening_use_case(self) -> WriteScreeningUseCase:
-        """Configured audited, retry-safe screening mutation orchestration."""
-        return self._container.write_screening_use_case
-
-    @property
-    def create_screening_use_case(self) -> CreateScreeningUseCase:
-        """Configured use case for creating one screening."""
-        return self._container.create_screening_use_case
-
-    @property
-    def update_screening_use_case(self) -> UpdateScreeningUseCase:
-        """Configured use case for updating one screening."""
-        return self._container.update_screening_use_case
-
-    @property
-    def delete_screening_use_case(self) -> DeleteScreeningUseCase:
-        """Configured use case for deleting one screening."""
-        return self._container.delete_screening_use_case
 
     @property
     def list_cinema_source_assignments_query(

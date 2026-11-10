@@ -5,9 +5,6 @@ Central registry for application lifecycle and supported configured use cases.
 
 from __future__ import annotations
 
-from functools import cached_property
-from uuid import uuid4
-
 import asyncpg
 from dotenv import load_dotenv
 
@@ -27,19 +24,11 @@ from marquise.application.queries.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
 from marquise.application.queries.search_screenings import SearchScreeningsQuery
-from marquise.application.queries.verify_access_token import VerifyAccessTokenQuery
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
-from marquise.application.use_cases.auth import (
-    AuthenticateAdministratorUseCase,
-    InviteAccountUseCase,
-    SetAccountRoleUseCase,
-)
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
-from marquise.application.use_cases.create_screening import CreateScreeningUseCase
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
-from marquise.application.use_cases.delete_screening import DeleteScreeningUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
 from marquise.application.use_cases.get_cinema import GetCinemaUseCase
 from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
@@ -56,14 +45,6 @@ from marquise.application.use_cases.merge_movies import MergeMoviesUseCase
 from marquise.application.use_cases.refresh_movies import RefreshMoviesUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
-from marquise.application.use_cases.update_screening import UpdateScreeningUseCase
-from marquise.application.use_cases.write_screening import WriteScreeningUseCase
-from marquise.infrastructure.di.auth import (
-    build_authenticate_administrator_use_case,
-    build_invite_account_use_case,
-    build_set_account_role_use_case,
-    build_verify_access_token_query,
-)
 from marquise.infrastructure.di.import_use_cases import (
     build_create_screenings_use_case,
     build_fetch_screenings_use_case,
@@ -80,7 +61,6 @@ from marquise.infrastructure.di.queries import (
     build_list_cinema_source_assignments_query,
     build_search_screenings_query,
 )
-from marquise.infrastructure.di.screening_write import build_write_screening_use_case
 from marquise.infrastructure.di.source_management import (
     build_assign_source_use_case,
     build_create_source_use_case,
@@ -143,9 +123,6 @@ class Container:
             result = await container.list_cinemas_use_case.execute(...)
         finally:
             await container.shutdown()
-
-    For auth-only commands (no database needed) the ``initialize`` / ``shutdown``
-    steps can be skipped.
     """
 
     def __init__(self) -> None:
@@ -204,39 +181,6 @@ class Container:
     @property
     def _schema(self) -> str:
         return self._settings.schema
-
-    # ------------------------------------------------------------------
-    # Authentication (no database lifecycle required)
-    # ------------------------------------------------------------------
-
-    @cached_property
-    def _verify_access_token_query(self) -> VerifyAccessTokenQuery:
-        return build_verify_access_token_query(self._settings.supabase_url)
-
-    @property
-    def _authenticate_administrator_use_case(
-        self,
-    ) -> AuthenticateAdministratorUseCase:
-        return build_authenticate_administrator_use_case(
-            self._settings.supabase_url,
-            self._settings.supabase_publishable_key,
-        )
-
-    @property
-    def _invite_account_use_case(self) -> InviteAccountUseCase:
-        return build_invite_account_use_case(
-            self._settings.supabase_url,
-            self._settings.supabase_publishable_key,
-            self._settings.supabase_service_role_key,
-        )
-
-    @property
-    def _set_account_role_use_case(self) -> SetAccountRoleUseCase:
-        return build_set_account_role_use_case(
-            self._settings.supabase_url,
-            self._settings.supabase_publishable_key,
-            self._settings.supabase_service_role_key,
-        )
 
     # ------------------------------------------------------------------
     # Database
@@ -423,55 +367,12 @@ class Container:
         return build_get_screening_query(self._pool_property, self._schema)
 
     @property
-    def _create_screening_use_case(self) -> CreateScreeningUseCase:
-        return CreateScreeningUseCase(
-            screening_repository=self._screening_repository,
-            movie_repository=self._movie_repository,
-            cinema_repository=self._cinema_repository,
-            id_factory=lambda: str(uuid4()),
-        )
-
-    @property
-    def _update_screening_use_case(self) -> UpdateScreeningUseCase:
-        return UpdateScreeningUseCase(
-            screening_repository=self._screening_repository,
-            movie_repository=self._movie_repository,
-            cinema_repository=self._cinema_repository,
-        )
-
-    @property
-    def _delete_screening_use_case(self) -> DeleteScreeningUseCase:
-        return DeleteScreeningUseCase(screening_repository=self._screening_repository)
-
-    @property
     def _get_movie_screenings_query(self) -> GetMovieScreeningsQuery:
         return build_get_movie_screenings_query(self._pool_property, self._schema)
 
     # ------------------------------------------------------------------
     # Public use cases
     # ------------------------------------------------------------------
-
-    @property
-    def verify_access_token_query(self) -> VerifyAccessTokenQuery:
-        """Public configured access-token verification query."""
-        return self._verify_access_token_query
-
-    @property
-    def authenticate_administrator_use_case(
-        self,
-    ) -> AuthenticateAdministratorUseCase:
-        """Public configured Administrator authentication use case."""
-        return self._authenticate_administrator_use_case
-
-    @property
-    def invite_account_use_case(self) -> InviteAccountUseCase:
-        """Public configured account invitation use case."""
-        return self._invite_account_use_case
-
-    @property
-    def set_account_role_use_case(self) -> SetAccountRoleUseCase:
-        """Public configured account role-change use case."""
-        return self._set_account_role_use_case
 
     @property
     def create_cinema_use_case(self) -> CreateCinemaUseCase:
@@ -590,26 +491,6 @@ class Container:
     def get_screening_query(self) -> GetScreeningQuery:
         """Public get-screening query (no authentication required)."""
         return self._get_screening_query
-
-    @property
-    def write_screening_use_case(self) -> WriteScreeningUseCase:
-        """Configured audited screening writes with atomic retry protection."""
-        return build_write_screening_use_case(self._pool_property, self._schema)
-
-    @property
-    def create_screening_use_case(self) -> CreateScreeningUseCase:
-        """Public create-screening use case."""
-        return self._create_screening_use_case
-
-    @property
-    def update_screening_use_case(self) -> UpdateScreeningUseCase:
-        """Public update-screening use case."""
-        return self._update_screening_use_case
-
-    @property
-    def delete_screening_use_case(self) -> DeleteScreeningUseCase:
-        """Public delete-screening use case."""
-        return self._delete_screening_use_case
 
     @property
     def get_movie_screenings_query(self) -> GetMovieScreeningsQuery:
