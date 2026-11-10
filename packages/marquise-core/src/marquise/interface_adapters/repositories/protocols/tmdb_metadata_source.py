@@ -2,14 +2,15 @@
 
 from typing import Protocol
 
-from marquise.application.metadata import MetadataBatch, MetadataFailure
+from marquise.application.exceptions import MetadataFailure
+from marquise.application.metadata import MetadataBatch
 
 
 class TmdbMetadataError(Exception):
     """Sanitized provider failure crossing the transport boundary."""
 
     def __init__(self, failure: MetadataFailure) -> None:
-        super().__init__(failure.message)
+        super().__init__(str(failure))
         self.failure = failure
 
 

@@ -5,10 +5,16 @@ from unittest.mock import Mock, create_autospec
 
 import pytest
 
-from marquise.application.exceptions.movie import MovieMetadataUnavailableError
+from marquise.application.exceptions import (
+    MetadataFailure,
+    MetadataInvalidDataError,
+    MetadataNotFoundError,
+    MetadataRateLimitedError,
+    MetadataUnavailableError,
+    MovieMetadataUnavailableError,
+)
 from marquise.application.metadata import (
     MetadataBatch,
-    MetadataFailure,
     MetadataMovie,
     MetadataRepository,
     ProviderIdentity,
@@ -55,9 +61,9 @@ def use_case(movie_repository: Mock, provider: Mock) -> EnrichMoviesUseCase:
     )
 
 
-def _fail_with(provider: Mock, kind: str) -> None:
+def _fail_with(provider: Mock, failure_type: type[MetadataFailure]) -> None:
     provider.movie_details.side_effect = lambda identity: MetadataBatch(
-        (), complete=False, failure=MetadataFailure(kind, "nope")
+        (), complete=False, failure=failure_type("nope")
     )
 
 
@@ -96,24 +102,32 @@ async def test_movie_with_no_known_identity_is_left_out(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("kind", ["unavailable", "rate_limited"])
+@pytest.mark.parametrize(
+    "failure_type", [MetadataUnavailableError, MetadataRateLimitedError]
+)
 async def test_outage_raises(
-    use_case: EnrichMoviesUseCase, provider: Mock, kind: str
+    use_case: EnrichMoviesUseCase,
+    provider: Mock,
+    failure_type: type[MetadataFailure],
 ) -> None:
     """TMDB being down stops the batch."""
-    _fail_with(provider, kind)
+    _fail_with(provider, failure_type)
 
     with pytest.raises(MovieMetadataUnavailableError):
         await use_case.execute(use_case.InputData((MovieInput("one", "7"),)))
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("kind", ["invalid_data", "not_found"])
+@pytest.mark.parametrize(
+    "failure_type", [MetadataInvalidDataError, MetadataNotFoundError]
+)
 async def test_bad_data_skips_only_that_movie(
-    use_case: EnrichMoviesUseCase, provider: Mock, kind: str
+    use_case: EnrichMoviesUseCase,
+    provider: Mock,
+    failure_type: type[MetadataFailure],
 ) -> None:
     """Bad data for one movie is not an outage, so the batch carries on."""
-    _fail_with(provider, kind)
+    _fail_with(provider, failure_type)
 
     output = await use_case.execute(
         use_case.InputData((MovieInput("one", "7"), MovieInput("two", "8")))

@@ -9,6 +9,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Literal
 
+from marquise.application.exceptions.metadata_failure import MetadataFailure
+
 
 @dataclass(frozen=True, slots=True)
 class ProviderIdentity:
@@ -21,15 +23,6 @@ class ProviderIdentity:
         """Reject identities whose scope or identifier is missing."""
         if not self.provider.strip() or not self.id.strip():
             raise ValueError("Provider and ID must be nonempty")
-
-
-@dataclass(frozen=True, slots=True)
-class MetadataFailure:
-    """Retrieval failure, distinct from an exhaustive empty result."""
-
-    kind: Literal["unavailable", "rate_limited", "not_found", "invalid_data"]
-    message: str
-    retryable: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -138,5 +131,5 @@ class MetadataRepository(ABC):
     async def movie_details(
         self, identity: ProviderIdentity
     ) -> MetadataBatch[MetadataMovie]:
-        """Return zero or one movie; missing detail is a not_found failure."""
+        """Return zero or one movie; missing detail is a MetadataNotFoundError."""
         ...
