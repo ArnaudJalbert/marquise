@@ -243,6 +243,7 @@ async def test_import_skips_external_id_conflict_and_preserves_existing_data(
     screening_gateway: SupabaseScreeningGateway,
     gateway: SupabaseCinemaGateway,
     movie_gateway: SupabaseMovieGateway,
+    db_pool: asyncpg.Pool,
     existing_target: bool,
 ) -> None:
     """Real command/repository/gateway chain skips collisions and imports other rows."""
@@ -298,13 +299,12 @@ async def test_import_skips_external_id_conflict_and_preserves_existing_data(
     assert result.screenings[0].movie_title == "Movie C"
     assert await screening_gateway.find_by_id("owner") == owner_before
     assert await screening_gateway.find_by_id("target") == target_before
-    target = await screening_gateway.read_import_candidates(
-        cinema_id="cin-004",
-        movie_id="mov-002",
-        showtime=showtime,
-        external_id="494935",
+    stored_mov_002 = await SupabaseScreeningReadGateway(
+        db_pool, "marquise-test"
+    ).search(movie_id="mov-002")
+    assert [row["id"] for row in stored_mov_002.rows] == (
+        ["target"] if existing_target else []
     )
-    assert len(target) == 1 + int(existing_target)
     unrelated = await screening_gateway.read_import_candidates(
         cinema_id="cin-004",
         movie_id="mov-003",

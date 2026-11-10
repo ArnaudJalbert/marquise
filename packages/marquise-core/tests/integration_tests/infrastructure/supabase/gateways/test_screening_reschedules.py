@@ -617,6 +617,61 @@ async def test_manual_reparent_cannot_transfer_cinema_scoped_ownership(
 
 
 @pytest.mark.asyncio
+async def test_external_id_change_without_source_witness_clears_provenance(
+    import_chain: tuple[
+        ImportScreeningsCommand, MagicMock, SupabaseScreeningRepository
+    ],
+    screening_gateway: SupabaseScreeningGateway,
+) -> None:
+    """Changing the native ID in the same cinema drops cineplex ownership."""
+    _, _, repository = import_chain
+    await screening_gateway.save(
+        "owner",
+        "digger",
+        "cin-001",
+        local("2026-10-07T13:00"),
+        "shared",
+        source_name="cineplex",
+    )
+    before = await repository.find_by_id(ScreeningId("owner"))
+
+    changed = await repository.replace(
+        replace(before, external_id="replacement"),
+        fields=frozenset({"external_id"}),
+    )
+
+    assert changed.id == before.id
+    assert changed.external_id == "replacement"
+    assert changed.source_name is None
+
+
+@pytest.mark.asyncio
+async def test_same_cinema_replace_keeps_provenance_when_native_id_is_unchanged(
+    import_chain: tuple[
+        ImportScreeningsCommand, MagicMock, SupabaseScreeningRepository
+    ],
+    screening_gateway: SupabaseScreeningGateway,
+) -> None:
+    """Restating the current cinema without changing the native ID keeps ownership."""
+    _, _, repository = import_chain
+    await screening_gateway.save(
+        "owner",
+        "digger",
+        "cin-001",
+        local("2026-10-07T13:00"),
+        "shared",
+        source_name="cineplex",
+    )
+    before = await repository.find_by_id(ScreeningId("owner"))
+
+    changed = await repository.replace(before, fields=frozenset({"cinema_id"}))
+
+    assert changed.id == before.id
+    assert changed.external_id == "shared"
+    assert changed.source_name == "cineplex"
+
+
+@pytest.mark.asyncio
 async def test_failed_reschedule_preserves_old_values(
     import_chain: tuple[
         ImportScreeningsCommand, MagicMock, SupabaseScreeningRepository
