@@ -11,6 +11,13 @@ from typing import Literal
 
 from marquise.application.exceptions.metadata_failure import MetadataFailure
 
+type MatchReason = str
+"""Stable name for why a movie has no identity, comparable across runs.
+
+It is uncertain, no_match, or the failure class name, such as
+MetadataNotFoundError or MetadataDetailMappingError.
+"""
+
 
 @dataclass(frozen=True, slots=True)
 class ProviderIdentity:

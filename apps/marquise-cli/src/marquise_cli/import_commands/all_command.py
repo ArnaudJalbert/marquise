@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from collections import Counter
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -36,6 +37,9 @@ class CinemaImportResult:
         skipped_screenings_count: Number of individual screenings skipped
             due to an external_id collision (0 unless imported).
         detail: Optional human-readable detail (e.g. an error or skip reason).
+        skipped_movies: Movies imported without an identity for bad TMDB data
+            or an uncertain match.
+        unmatched_movies: Movies with no matching TMDB record.
     """
 
     cinema_name: str
@@ -45,6 +49,8 @@ class CinemaImportResult:
     rescheduled_count: int = 0
     skipped_screenings_count: int = 0
     detail: str | None = None
+    skipped_movies: tuple[ImportScreeningsCommand.UnresolvedMovieData, ...] = ()
+    unmatched_movies: tuple[ImportScreeningsCommand.UnresolvedMovieData, ...] = ()
 
 
 async def _run_bounded_cinema_import(
@@ -123,6 +129,8 @@ async def run_import_all(
                     updated_count=output.updated_count,
                     rescheduled_count=output.rescheduled_count,
                     skipped_screenings_count=output.skipped_count,
+                    skipped_movies=output.skipped_movies,
+                    unmatched_movies=output.unmatched_movies,
                 )
 
         semaphore = asyncio.Semaphore(2)
@@ -154,6 +162,35 @@ def _print_totals(
     )
 
 
+def _print_movie_report(heading: str, results: list[CinemaImportResult]) -> None:
+    """Print counts by reason, then each skipped and unmatched movie."""
+    sections = {
+        "Skipped": [
+            (result.cinema_name, movie)
+            for result in results
+            for movie in result.skipped_movies
+        ],
+        "Unmatched": [
+            (result.cinema_name, movie)
+            for result in results
+            for movie in result.unmatched_movies
+        ],
+    }
+    counts = Counter(
+        movie.reason for movies in sections.values() for _, movie in movies
+    )
+    if not counts:
+        print(f"\nMovies for {heading}: none skipped or unmatched")
+        return
+    totals = ", ".join(f"{reason} {count}" for reason, count in sorted(counts.items()))
+    print(f"\nMovies for {heading}: {totals}")
+    for label, movies in sections.items():
+        if movies:
+            print(f"  {label}:")
+        for cinema_name, movie in movies:
+            print(f"    {cinema_name} | {movie.title} | {movie.reason}")
+
+
 def _print_results(results: list[CinemaImportResult]) -> int:
     """Print bulk-import results and return failure count."""
     imported = [result for result in results if result.status == "imported"]
@@ -181,6 +218,10 @@ def _print_results(results: list[CinemaImportResult]) -> int:
     for result in failed:
         print(f"  [failed]  {result.cinema_name}: {result.detail}", file=sys.stderr)
 
+    for result in imported:
+        if result.skipped_movies or result.unmatched_movies:
+            _print_movie_report(result.cinema_name, [result])
+    _print_movie_report("the run", imported)
     _print_totals(imported, skipped, failed)
     return len(failed)
 
