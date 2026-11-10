@@ -5,15 +5,13 @@ from unittest.mock import Mock, create_autospec
 
 import pytest
 
-from marquise.application.exceptions.movie import (
-    MovieMetadataUnavailableError,
-    MovieNotLinkedError,
-)
+from marquise.application.exceptions.movie import MovieNotLinkedError
 from marquise.application.queries.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
 from marquise.application.repositories import MovieRepository
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
+from marquise.application.use_cases.enrich_movies import EnrichMoviesUseCase
 from marquise.application.use_cases.import_screenings import ImportScreeningsCommand
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
@@ -210,16 +208,17 @@ async def test_import_maps_create_results_into_its_own_screening_data(
 
 
 @pytest.mark.asyncio
-async def test_enrichment_outage_fails_the_import_after_saving_screenings(
+async def test_movies_left_not_enriched_do_not_fail_the_import(
     command: ImportScreeningsCommand, create_screenings: Mock, enricher: Mock
 ) -> None:
-    """An outage while enriching can't lose screenings that were already saved."""
-    enricher.execute.side_effect = MovieMetadataUnavailableError("offline")
+    """A movie enrichment could not finish is left as it is; the import goes on."""
+    enricher.execute.return_value = EnrichMoviesUseCase.OutputData((), ("movie-1",))
 
-    with pytest.raises(MovieMetadataUnavailableError):
-        await command.execute(_input())
+    result = await command.execute(_input())
 
     create_screenings.execute.assert_awaited_once()
+    enricher.execute.assert_awaited_once()
+    assert result.cinema_id == _input().cinema_id
 
 
 @pytest.mark.asyncio

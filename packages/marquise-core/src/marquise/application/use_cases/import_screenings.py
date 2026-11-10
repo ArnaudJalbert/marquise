@@ -97,8 +97,8 @@ class ImportScreeningsCommand:
         """Import a cinema's screenings and the movies behind them.
 
         Missing movies are created, then looked up again, so every screening
-        links through a query. Screenings are saved before enrichment, so a
-        provider outage during enrichment fails the import without losing them.
+        links through a query. Enrichment never fails the import: a movie it
+        cannot enrich is left not enriched.
         Running it again is safe, because stored movies and screenings are reused.
 
         Args:

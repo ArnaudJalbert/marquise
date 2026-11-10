@@ -6,15 +6,11 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import datetime
-from typing import Literal
 from urllib.parse import urlsplit
 
 from marquise.application.exceptions import (
-    MetadataFailure,
     MetadataInvalidDataError,
     MetadataNotFoundError,
-    MetadataUnavailableError,
-    MovieMetadataUnavailableError,
 )
 from marquise.application.metadata import (
     MetadataMovie,
@@ -30,8 +26,6 @@ from marquise.application.movie_workflows import (
 )
 
 logger = logging.getLogger(__name__)
-
-_SINGLE_MOVIE_FAILURES = (MetadataInvalidDataError, MetadataNotFoundError)
 
 
 def _text(value: str | None) -> str | None:
@@ -131,61 +125,58 @@ async def _enrich(
     *,
     refresh: bool = False,
 ) -> EnrichMovieOutputData:
+    snapshot = await movies.get(request.movie_id)
+    if snapshot is None:
+        return _not_enriched(request.movie_id, MetadataNotFoundError("Movie not found"))
+    if request.identity.provider != "tmdb":
+        return _not_enriched(
+            request.movie_id,
+            MetadataInvalidDataError("Only TMDB identities can be persisted"),
+        )
+    if snapshot.tmdb_id not in (None, request.identity.id):
+        raise MovieWorkflowConflictError("Confirmed identity conflicts with movie")
+    if (
+        snapshot.metadata_enriched_at is not None
+        and snapshot.values.tmdb_vote_count is not None
+        and not refresh
+    ):
+        return EnrichMovieOutputData(request.movie_id, "unchanged")
+    batch = await metadata.movie_details(request.identity)
+    if batch.failure is not None:
+        return _not_enriched(request.movie_id, batch.failure)
+    if not batch.complete or len(batch.items) != 1:
+        return _not_enriched(
+            request.movie_id,
+            MetadataInvalidDataError("Expected one complete movie detail"),
+        )
+    movie = batch.items[0]
+    if movie.identity != request.identity:
+        return _not_enriched(
+            request.movie_id,
+            MetadataInvalidDataError(
+                "Metadata identity differs from confirmed identity"
+            ),
+        )
+    values = _select_values(movie)
+    enriched_at = clock()
+    if enriched_at.tzinfo is None or enriched_at.utcoffset() is None:
+        raise ValueError("Enrichment clock must return a timezone-aware timestamp")
     try:
-        snapshot = await movies.get(request.movie_id)
-        if snapshot is None:
-            return _failed(request.movie_id, MetadataNotFoundError("Movie not found"))
-        if request.identity.provider != "tmdb":
-            return _failed(
-                request.movie_id,
-                MetadataInvalidDataError("Only TMDB identities can be persisted"),
-            )
-        if snapshot.tmdb_id not in (None, request.identity.id):
-            raise MovieWorkflowConflictError("Confirmed identity conflicts with movie")
-        if (
-            snapshot.metadata_enriched_at is not None
-            and snapshot.values.tmdb_vote_count is not None
-            and not refresh
-        ):
-            return EnrichMovieOutputData(request.movie_id, "unchanged")
-        batch = await metadata.movie_details(request.identity)
-        if batch.failure is not None:
-            return _failed(request.movie_id, batch.failure)
-        if not batch.complete or len(batch.items) != 1:
-            return _failed(
-                request.movie_id,
-                MetadataInvalidDataError("Expected one complete movie detail"),
-            )
-        movie = batch.items[0]
-        if movie.identity != request.identity:
-            raise ValueError("Metadata identity differs from confirmed identity")
-        values = _select_values(movie)
-        enriched_at = clock()
-        if enriched_at.tzinfo is None or enriched_at.utcoffset() is None:
-            raise ValueError("Enrichment clock must return a timezone-aware timestamp")
-        try:
-            await movies.update_metadata(
-                snapshot, values, request.identity.id, enriched_at
-            )
-        except MovieWorkflowConflictError:
-            # Another film owns the title, e.g. a remake: disambiguate by year.
-            year = values.release_year or snapshot.values.release_year
-            if values.title is None or year is None:
-                raise
-            values = replace(values, title=f"{values.title} ({year})")
-            await movies.update_metadata(
-                snapshot, values, request.identity.id, enriched_at
-            )
-        return EnrichMovieOutputData(request.movie_id, "enriched")
-    except (ValueError, MovieWorkflowConflictError) as error:
-        return _failed(request.movie_id, MetadataInvalidDataError(str(error)))
-    except Exception as error:
-        # Repository failures must not abort cinema imports or stamp enrichment.
-        return _failed(request.movie_id, MetadataUnavailableError(str(error)))
+        await movies.update_metadata(snapshot, values, request.identity.id, enriched_at)
+    except MovieWorkflowConflictError:
+        # Another film owns the title, e.g. a remake: disambiguate by year.
+        year = values.release_year or snapshot.values.release_year
+        if values.title is None or year is None:
+            raise
+        values = replace(values, title=f"{values.title} ({year})")
+        await movies.update_metadata(snapshot, values, request.identity.id, enriched_at)
+    return EnrichMovieOutputData(request.movie_id, "enriched")
 
 
-def _failed(movie_id: str, failure: MetadataFailure) -> EnrichMovieOutputData:
-    return EnrichMovieOutputData(movie_id, "failed", failure)
+def _not_enriched(movie_id: str, failure: Exception) -> EnrichMovieOutputData:
+    """Log why one movie is left not enriched; it never stops the caller."""
+    logger.warning("Movie %s not enriched: %s", movie_id, type(failure).__name__)
+    return EnrichMovieOutputData(movie_id, "not_enriched", failure)
 
 
 class EnrichMoviesUseCase:
@@ -218,14 +209,7 @@ class EnrichMoviesUseCase:
     @dataclass(frozen=True, slots=True)
     class OutputData:
         enriched_ids: tuple[str, ...]
-        skipped_ids: tuple[str, ...]
-
-    @dataclass(frozen=True, slots=True)
-    class MovieResult:
-        """What enrichment did to one movie."""
-
-        movie_id: str
-        status: Literal["enriched", "unchanged", "skipped"]
+        not_enriched_ids: tuple[str, ...]
 
     def __init__(
         self,
@@ -245,11 +229,9 @@ class EnrichMoviesUseCase:
             input_data: The movies to enrich.
 
         Returns:
-            The IDs enriched, and the IDs skipped for bad data. A movie with no
+            The IDs enriched, and the IDs left not enriched for any failure
+            or internal error, which never stops the caller. A movie with no
             known identity is in neither.
-
-        Raises:
-            MovieMetadataUnavailableError: If the provider could not answer.
         """
         results = [
             await self._enrich_one(movie.movie_id, movie.tmdb_id)
@@ -258,16 +240,26 @@ class EnrichMoviesUseCase:
         logger.info("Enrichment finished for %d movies", len(results))
         return self._build_output(results)
 
-    async def _enrich_one(self, movie_id: str, tmdb_id: str | None) -> MovieResult:
+    async def _enrich_one(
+        self, movie_id: str, tmdb_id: str | None
+    ) -> EnrichMovieOutputData:
+        """Enrich one movie, leaving it not enriched on any error."""
+        try:
+            return await self._enrich_known(movie_id, tmdb_id)
+        except Exception as error:
+            return _not_enriched(movie_id, error)
+
+    async def _enrich_known(
+        self, movie_id: str, tmdb_id: str | None
+    ) -> EnrichMovieOutputData:
         """Enrich one movie. A movie with no known identity is left as it is."""
         known_tmdb_id = await self._find_known_tmdb_id(movie_id, tmdb_id)
         if known_tmdb_id is None:
-            return self.MovieResult(movie_id, "unchanged")
+            return EnrichMovieOutputData(movie_id, "unchanged")
         request = EnrichMovieInputData(
             movie_id, ProviderIdentity("tmdb", known_tmdb_id)
         )
-        result = await _enrich(request, self._movies, self._metadata, self._clock)
-        return self._check_result(result)
+        return await _enrich(request, self._movies, self._metadata, self._clock)
 
     async def _find_known_tmdb_id(
         self, movie_id: str, tmdb_id: str | None
@@ -278,31 +270,14 @@ class EnrichMoviesUseCase:
         snapshot = await self._movies.get(movie_id)
         return None if snapshot is None else snapshot.tmdb_id
 
-    def _check_result(self, result: EnrichMovieOutputData) -> MovieResult:
-        """Raise on an outage. Bad data for one movie only skips that movie."""
-        if result.failure is None:
-            status = "enriched" if result.status == "enriched" else "unchanged"
-            return self.MovieResult(result.movie_id, status)
-        if isinstance(result.failure, _SINGLE_MOVIE_FAILURES):
-            return self._skip(result.movie_id, type(result.failure).__name__)
-        raise MovieMetadataUnavailableError(
-            f"Movie enrichment failed for '{result.movie_id}': "
-            f"{type(result.failure).__name__}"
-        )
-
-    def _skip(self, movie_id: str, reason: str) -> MovieResult:
-        """Record a movie skipped for bad data, which is not an outage."""
-        logger.warning("Skipped enrichment for %s: %s", movie_id, reason)
-        return self.MovieResult(movie_id, "skipped")
-
     @staticmethod
-    def _build_output(results: list[MovieResult]) -> OutputData:
-        """Keep the IDs that were enriched and the IDs that were skipped."""
+    def _build_output(results: list[EnrichMovieOutputData]) -> OutputData:
+        """Keep the IDs that were enriched and the IDs left not enriched."""
         return EnrichMoviesUseCase.OutputData(
             enriched_ids=tuple(
                 result.movie_id for result in results if result.status == "enriched"
             ),
-            skipped_ids=tuple(
-                result.movie_id for result in results if result.status == "skipped"
+            not_enriched_ids=tuple(
+                result.movie_id for result in results if result.status == "not_enriched"
             ),
         )

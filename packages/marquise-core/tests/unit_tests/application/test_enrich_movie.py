@@ -325,35 +325,26 @@ async def test_stamped_movie_with_null_vote_count_backfills_once(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("stage", ["get", "provider", "write", "collision", "clock"])
+@pytest.mark.parametrize("stage", ["collision", "clock"])
 async def test_failure_preserves_state_and_can_retry(
     movies: Mock, metadata: Mock, stage: str
 ) -> None:
-    """Read, write and validation failures leave enrichment pending."""
+    """Internal errors raise and leave enrichment pending for a retry."""
     before = await movies.get(REQUEST.movie_id)
     method = {
-        "get": movies.get,
-        "provider": metadata.movie_details,
-        "write": movies.update_metadata,
         "collision": movies.update_metadata,
     }.get(stage)
-    original = method.side_effect if method is not None else None
     if method is not None:
-        method.side_effect = (
-            MovieWorkflowConflictError("collision")
-            if stage == "collision"
-            else RuntimeError("offline")
-        )
+        method.side_effect = MovieWorkflowConflictError("collision")
     case = (
         EnrichPolicy(movies, metadata, lambda: datetime(2026, 10, 30))
         if stage == "clock"
         else use_case(movies, metadata)
     )
-    result = await case.execute(REQUEST)
-    assert result.status == "failed"
-    assert result.failure is not None
+    with pytest.raises((MovieWorkflowConflictError, ValueError)):
+        await case.execute(REQUEST)
     if method is not None:
-        method.side_effect = original
+        method.side_effect = None
     assert await movies.get(REQUEST.movie_id) == before
     assert (await use_case(movies, metadata).execute(REQUEST)).status == "enriched"
 
@@ -379,7 +370,7 @@ async def test_invalid_or_incomplete_detail_never_writes(
 ) -> None:
     """Incomplete, mismatched and failed details cannot stamp success."""
     metadata.movie_details.return_value = batch
-    assert (await use_case(movies, metadata).execute(REQUEST)).status == "failed"
+    assert (await use_case(movies, metadata).execute(REQUEST)).status == "not_enriched"
     movies.update_metadata.assert_not_awaited()
     assert (await movies.get(REQUEST.movie_id)).metadata_enriched_at is None
 
@@ -392,11 +383,12 @@ async def test_identity_conflict_and_other_provider_do_not_write(
     case = use_case(movies, metadata)
     assert (
         await case.execute(replace(REQUEST, identity=ProviderIdentity("other", "123")))
-    ).status == "failed"
+    ).status == "not_enriched"
     before = await movies.get(REQUEST.movie_id)
     movies.get.side_effect = None
     movies.get.return_value = replace(before, tmdb_id="different")
-    assert (await case.execute(REQUEST)).status == "failed"
+    with pytest.raises(MovieWorkflowConflictError):
+        await case.execute(REQUEST)
     metadata.movie_details.assert_not_awaited()
     movies.update_metadata.assert_not_awaited()
 
@@ -418,40 +410,41 @@ async def test_missing_movie_and_unconfirmed_refresh(
     """Missing and unconfirmed movies report failures without provider lookup."""
     assert (
         await use_case(movies, metadata).execute(replace(REQUEST, movie_id="missing"))
-    ).status == "failed"
+    ).status == "not_enriched"
     refresh = RefreshMoviesUseCase(movies, metadata, lambda: NOW)
     for movie_id in ("missing", REQUEST.movie_id):
         assert (await refresh.execute(RefreshMoviesInputData(movie_id))).results[
             0
-        ].status == "failed"
+        ].status == "not_enriched"
     metadata.movie_details.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_refresh_all_continues_after_failure_in_stable_order(
+async def test_refresh_lists_internal_error_and_continues(
     movies: Mock, metadata: Mock
 ) -> None:
-    """Bulk refresh continues after a failure in stable ID order."""
+    """One movie's internal enrichment error is listed, not fatal to the refresh."""
     before = await movies.get(REQUEST.movie_id)
-    first = replace(before, movie_id="a", tmdb_id="1", metadata_enriched_at=NOW)
-    second = replace(before, movie_id="b", tmdb_id="2", metadata_enriched_at=NOW)
-    movies.list_tmdb_movies.return_value = (second, first)
+    first = replace(before, movie_id="a", tmdb_id="1")
+    second = replace(before, movie_id="b", tmdb_id="2")
     movies.list_tmdb_movies.side_effect = None
+    movies.list_tmdb_movies.return_value = (second, first)
     movies.get.side_effect = {"a": first, "b": second}.get
-    movies.update_metadata.side_effect = None
-    metadata.movie_details.side_effect = [
-        RuntimeError("offline"),
-        MetadataBatch((MetadataMovie(ProviderIdentity("tmdb", "2"), ()),)),
+    movies.update_metadata.side_effect = [
+        MovieWorkflowConflictError("taken"),
+        second,
     ]
+    metadata.movie_details.side_effect = lambda identity: MetadataBatch(
+        (MetadataMovie(identity, ()),)
+    )
     result = await RefreshMoviesUseCase(movies, metadata, lambda: NOW).execute(
         RefreshMoviesInputData()
     )
-    assert [(item.movie_id, item.status) for item in result.results] == [
-        ("a", "failed"),
-        ("b", "enriched"),
-    ]
-    assert movies.update_metadata.call_args.args[0] == second
-    assert first.metadata_enriched_at == NOW
+    failed, enriched = result.results
+    assert (failed.movie_id, failed.status) == ("a", "not_enriched")
+    assert type(failed.failure) is MovieWorkflowConflictError
+    assert str(failed.failure) == "taken"
+    assert enriched == EnrichMovieOutputData("b", "enriched")
 
 
 @pytest.mark.asyncio
@@ -462,42 +455,6 @@ async def test_refresh_empty_set(movies: Mock, metadata: Mock) -> None:
             RefreshMoviesInputData()
         )
     ).results == ()
-    metadata.movie_details.assert_not_awaited()
-    movies.update_metadata.assert_not_awaited()
-
-
-@pytest.mark.asyncio
-async def test_real_fake_skips_import_and_retains_success_on_refresh_failure(
-    movies: Mock,
-    metadata: Mock,
-) -> None:
-    """A completed fake write suppresses imports and survives a failed refresh."""
-    case = use_case(movies, metadata)
-    assert (await case.execute(REQUEST)).status == "enriched"
-    saved = await movies.get(REQUEST.movie_id)
-    assert (await case.execute(REQUEST)).status == "unchanged"
-    metadata.movie_details.assert_awaited_once()
-    metadata.movie_details.side_effect = RuntimeError("offline")
-    result = await RefreshMoviesUseCase(movies, metadata, lambda: NOW).execute(
-        RefreshMoviesInputData(REQUEST.movie_id)
-    )
-    assert result.results[0].status == "failed"
-    assert await movies.get(REQUEST.movie_id) == saved
-    movies.update_metadata.assert_awaited_once()
-
-
-@pytest.mark.asyncio
-async def test_single_refresh_read_failure_is_a_failed_result(
-    movies: Mock,
-    metadata: Mock,
-) -> None:
-    """A failed single-movie read produces an outcome rather than aborting refresh."""
-    movies.get.side_effect = RuntimeError("offline")
-    result = await RefreshMoviesUseCase(movies, metadata, lambda: NOW).execute(
-        RefreshMoviesInputData(REQUEST.movie_id)
-    )
-    assert result.results[0].status == "failed"
-    assert result.results[0].retryable
     metadata.movie_details.assert_not_awaited()
     movies.update_metadata.assert_not_awaited()
 

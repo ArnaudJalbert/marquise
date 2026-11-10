@@ -52,7 +52,7 @@ async def test_refresh_all_reports_partial_failure(
             EnrichMovieOutputData("movie-001", "enriched"),
             EnrichMovieOutputData(
                 "movie-002",
-                "failed",
+                "not_enriched",
                 MetadataRateLimitedError("TMDB HTTP 429"),
             ),
             EnrichMovieOutputData("movie-003", "unchanged"),
@@ -125,7 +125,7 @@ async def test_single_target_failure(
     """Unknown, unconfirmed and unavailable targets retain explicit typed failure."""
     executor = create_autospec(RefreshMoviesExecutor, instance=True, spec_set=True)
     executor.execute.return_value = RefreshMoviesOutputData(
-        (EnrichMovieOutputData("movie-001", "failed", failure),)
+        (EnrichMovieOutputData("movie-001", "not_enriched", failure),)
     )
 
     assert await run_refresh_movies(executor, movie_id="movie-001") == 1
