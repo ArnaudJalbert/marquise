@@ -19,7 +19,7 @@ from marquise import (
     MarquiseFactory,
 )
 from marquise_cli.helpers import run_spinner
-from marquise_cli.import_commands import run_import_all
+from marquise_cli.import_commands import import_all, run_import_all
 from marquise_cli.import_commands.cinema_command import (
     _import_screenings,
     run_import_cinema,
@@ -251,3 +251,37 @@ async def test_run_import_all_limits_active_cinema_pipelines() -> None:
 
     assert len(results) == 4
     assert maximum == 2
+
+
+def test_import_all_stays_green_when_only_movies_are_skipped() -> None:
+    """Movies skipped inside an imported cinema do not fail the scheduled job."""
+    factory = _make_factory(
+        [SimpleNamespace(id="cin-1", name="Cinema One")],
+        import_side_effect=[
+            ImportScreeningsCommand.OutputData(
+                "cin-1", "Cinema One", "cineplex", (), 2, 2, 0, 0
+            )
+        ],
+    )
+    with patch(
+        "marquise_cli.import_commands.all_command.MarquiseFactory",
+        return_value=factory,
+    ):
+        import_all(days=1)
+
+
+def test_import_all_turns_red_when_a_cinema_fails() -> None:
+    """A cinema that fails outright makes the scheduled job exit with an error."""
+    factory = _make_factory(
+        [SimpleNamespace(id="cin-1", name="Cinema One")],
+        import_side_effect=RuntimeError("TMDB unavailable"),
+    )
+    with (
+        patch(
+            "marquise_cli.import_commands.all_command.MarquiseFactory",
+            return_value=factory,
+        ),
+        pytest.raises(SystemExit) as exit_info,
+    ):
+        import_all(days=1)
+    assert exit_info.value.code == 1

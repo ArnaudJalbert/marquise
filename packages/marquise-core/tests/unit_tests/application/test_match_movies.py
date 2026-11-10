@@ -7,7 +7,11 @@ import pytest
 
 from marquise.application.exceptions import (
     MetadataFailure,
+    MetadataInvalidDataError,
+    MetadataNotFoundError,
     MetadataRateLimitedError,
+    MetadataRequestRefusedError,
+    MetadataUnavailableError,
     MovieMetadataUnavailableError,
 )
 from marquise.application.metadata import (
@@ -579,3 +583,107 @@ def test_movie_input_rejects_wrong_types(fields: dict) -> None:
     """Input is the one place types are checked."""
     with pytest.raises(TypeError):
         MovieInput(**fields)
+
+
+def _failing_details(
+    repo: MetadataRepository, bad: ProviderIdentity, failure: MetadataFailure
+) -> None:
+    """Make one candidate's detail lookup fail while the others succeed."""
+    good = repo.movie_details.side_effect
+
+    def details(identity: ProviderIdentity) -> MetadataBatch[MetadataMovie]:
+        if identity == bad:
+            return MetadataBatch(complete=False, failure=failure)
+        return good(identity)
+
+    repo.movie_details.side_effect = details
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "failure_type", [MetadataInvalidDataError, MetadataNotFoundError]
+)
+async def test_bad_candidate_data_skips_only_that_movie(
+    failure_type: type[MetadataFailure],
+) -> None:
+    """Bad data for the only candidate leaves the movie uncertain, not failed."""
+    candidate = movie()
+    repo = repository((candidate,))
+    _failing_details(repo, candidate.identity, failure_type("bad"))
+    result = await MatchOneMovie(repo, RapidFuzzNameDistance()).execute(
+        MovieInput("Film", 2026, (), 100)
+    )
+    assert result.status == "incomplete"
+    assert result.identity is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "failure_type",
+    [MetadataUnavailableError, MetadataRequestRefusedError, MetadataRateLimitedError],
+)
+async def test_outage_during_candidate_details_still_fails(
+    failure_type: type[MetadataFailure],
+) -> None:
+    """An outage or rate limit on a detail lookup still stops matching."""
+    candidate = movie()
+    repo = repository((candidate,))
+    _failing_details(repo, candidate.identity, failure_type("down"))
+    with pytest.raises(MovieMetadataUnavailableError):
+        await MatchOneMovie(repo, RapidFuzzNameDistance()).execute(
+            MovieInput("Film", 2026, (), 100)
+        )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "failure_type", [MetadataInvalidDataError, MetadataNotFoundError]
+)
+@pytest.mark.parametrize("directors", [(), ("Director Name",)])
+async def test_bad_candidate_does_not_block_a_clear_match(
+    failure_type: type[MetadataFailure], directors: tuple[str, ...]
+) -> None:
+    """A candidate with bad data is set aside and the clear match still wins."""
+    facts = tuple(person(name) for name in directors)
+    bad = movie(directors=facts, identity="bad")
+    winner = movie(directors=facts)
+    repo = repository((bad, winner))
+    _failing_details(repo, bad.identity, failure_type("bad"))
+    result = await MatchOneMovie(repo, RapidFuzzNameDistance()).execute(
+        MovieInput("Film", 2026, directors, 100)
+    )
+    assert result.status == "matched"
+    assert result.identity == winner.identity
+
+
+@pytest.mark.asyncio
+async def test_no_winner_after_bad_candidate_is_skipped_not_matched() -> None:
+    """With a bad candidate and no eligible other, the movie stays uncertain."""
+    bad = movie(identity="bad")
+    other = movie("Unrelated", 1990, 60, identity="other")
+    repo = repository((bad, other))
+    _failing_details(repo, bad.identity, MetadataInvalidDataError("bad"))
+    result = await MatchOneMovie(repo, RapidFuzzNameDistance()).execute(
+        MovieInput("Film", 2026, (), 100)
+    )
+    assert result.status == "incomplete"
+    assert result.identity is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "failure_type", [MetadataInvalidDataError, MetadataNotFoundError]
+)
+async def test_bad_search_data_skips_only_that_movie(
+    failure_type: type[MetadataFailure],
+) -> None:
+    """A search answering with bad data leaves the movie uncertain."""
+    repo = repository(())
+    repo.search_movies.return_value = MetadataBatch(
+        complete=False, failure=failure_type("bad")
+    )
+    result = await MatchOneMovie(repo, RapidFuzzNameDistance()).execute(
+        MovieInput("Film", 2026, ("Director Name",), 100)
+    )
+    assert result.status == "incomplete"
+    assert result.identity is None
