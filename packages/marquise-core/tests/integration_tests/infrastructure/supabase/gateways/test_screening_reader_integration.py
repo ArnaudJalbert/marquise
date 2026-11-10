@@ -93,6 +93,46 @@ async def test_search_filters_by_language(
 
 
 @pytest.mark.asyncio
+async def test_search_filters_by_movie_id_and_cinema_id(
+    reader: SupabaseScreeningReadGateway,
+    screening_gateway: SupabaseScreeningGateway,
+    gateway: SupabaseCinemaGateway,
+    movie_gateway: SupabaseMovieGateway,
+) -> None:
+    """Movie and cinema ID filters return only screenings that match them."""
+    await _seed_parents(gateway, movie_gateway)
+    await gateway.save(cinema_id="cin-002", name="Cinema Two", address=None, city=None)
+    showtime = datetime(2026, 6, 7, 19, 0, tzinfo=UTC)
+    await screening_gateway.save(
+        screening_id="scr-dune-one",
+        movie_id="mov-001",
+        cinema_id="cin-001",
+        showtime=showtime,
+    )
+    await screening_gateway.save(
+        screening_id="scr-other-one",
+        movie_id="mov-002",
+        cinema_id="cin-001",
+        showtime=showtime,
+    )
+    await screening_gateway.save(
+        screening_id="scr-dune-two",
+        movie_id="mov-001",
+        cinema_id="cin-002",
+        showtime=showtime,
+    )
+
+    by_movie = await reader.search(movie_id="mov-001")
+    by_cinema = await reader.search(cinema_id="cin-002")
+
+    assert sorted(row["id"] for row in by_movie.rows) == [
+        "scr-dune-one",
+        "scr-dune-two",
+    ]
+    assert [row["id"] for row in by_cinema.rows] == ["scr-dune-two"]
+
+
+@pytest.mark.asyncio
 async def test_search_date_bounds_are_inclusive(
     reader: SupabaseScreeningReadGateway,
     screening_gateway: SupabaseScreeningGateway,
