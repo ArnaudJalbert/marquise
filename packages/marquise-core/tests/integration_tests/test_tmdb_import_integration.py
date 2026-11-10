@@ -46,7 +46,7 @@ async def test_import_links_translated_screening_to_known_movie(
         poster_url="original-poster",
         tmdb_id="777",
     )
-    await movies.save(original)
+    await movies.create_or_reuse(original)
     async with db_pool.acquire() as conn:
         await conn.execute(
             f'INSERT INTO "{TEST_SCHEMA}".cinemas (id, name) VALUES ($1, $2)',

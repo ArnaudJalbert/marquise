@@ -91,17 +91,6 @@ class SupabaseSourceDefinitionRepository(SourceDefinitionRepository):
         """
         return await self._gateway.delete(name=str(name))
 
-    async def exists_by_name(self, name: SourceName) -> bool:
-        """Check whether a source definition exists with the given name.
-
-        Args:
-            name: The source name to check for.
-
-        Returns:
-            True if a source with that name exists.
-        """
-        return await self._gateway.exists_by_name(name=str(name))
-
     @staticmethod
     def _to_entity(data: dict) -> SourceDefinition:
         """Map a raw gateway dict to a SourceDefinition domain entity.
