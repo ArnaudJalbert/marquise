@@ -13,7 +13,7 @@ This is the operating procedure for the policy work in [#415](https://github.com
 | Application/error output | Fly publishes a fixed seven-day application-log retention period | Check for separately exported copies before claiming seven days covers all copies |
 | External images | Web responses set `Referrer-Policy: no-referrer` | Image hosts still receive connection information, including IP addresses |
 | Contact email | Arnaud confirms the alias forwards to his personal Gmail; the domain is managed through Squarespace | Identify the actual forwarding service; a domain registrar is not necessarily the email forwarder |
-| Authentication and edit history | Supabase authentication and account-linked audit/replay records exist in code | Confirm active human accounts, project region, retention requirements, and backup arrangements |
+| Authentication and edit history | Login and manual editing are removed from the application; the account-linked records and the two write tables are planned for deletion in the same release, with no new archive | Confirm the live deletion completes; provider backups may retain copies until their own expiry |
 | Catalog database | A Fly database is prepared; repository documentation does not establish API cutover | Confirm the live connection destination without recording credentials |
 
 Fly states that its own proxy log store does not retain inbound client IPs. This does not mean application/error output cannot contain an address. Its platform processing also extends beyond the selected Machine region. Keep those distinctions in disclosures. [Fly security questionnaire, COMPLIANCE-12 and COMPLIANCE-23](https://fly.io/legal/security-questionnaire/).
@@ -24,7 +24,7 @@ Read-only Fly machine inspection on 2026-11-01 found the API and interface Machi
 
 - Support email: Arnaud adopted deletion when no longer needed, without a fixed period. When closing a support request, review the message and attachments for any remaining request, dispute, or legal purpose. Delete them from the Gmail mailbox when none remains. If preservation is necessary, record the reason and review it when that purpose ends. Do not promise a 90-day timer, immediate erasure of provider backups, or deletion of unrelated personal email. This PR does not access or clean the mailbox.
 - Application output on Fly: rely on its published platform expiry, with no additional log export configured by this work. If an export is added, record its purpose, destination, access, and expiry before using it. Do not claim an export does not exist merely because this PR does not add one.
-- Account, edit-history, and replay data: inventory these separately. Successful replay keys currently do not expire. Do not silently delete or anonymize records in a way that breaks audit attribution, retries, or legal preservation. Choose and implement a justified schedule in a focused change before promising one publicly.
+- Account, edit-history, and replay data: login and manual editing are removed from the application. The account-linked records and the two write tables are planned for deletion in the same release, with no new archive. Do not promise immediate erasure from provider backups or claim the live deletion is already complete before it is verified.
 - Case records: keep only what is necessary for a request, complaint, or incident. Store real records in an access-controlled location outside Git, research notes, issue comments, and chat. Never put a requester's documents, message contents, IPs, or account tokens in a public or broadly shared tracker.
 
 The preceding inventory is intentionally explicit about unimplemented purge rules. Documentation is not evidence of a completed mailbox cleanup, an enabled timer, or a provider agreement.
@@ -76,7 +76,7 @@ Known owner-supplied facts: personal hobby, no business or organization, free an
 
 Prepared scope question for the owner to review and send if desired:
 
-> I personally maintain a free, non-commercial Montréal showtime guide and public API as a hobby, without a business or organization. It does not sell tickets or offer visitor accounts. Hosting processes technical request information; support reaches my personal email; authorized editing has account-linked records. Does this activity fall within your enterprise scope, and which facts determine that conclusion?
+> I personally maintain a free, non-commercial Montréal showtime guide and public API as a hobby, without a business or organization. It does not sell tickets or offer visitor accounts. Hosting processes technical request information; support reaches my personal email. Manual editing and its account-linked change history are removed from the application and scheduled for deletion in the same release, with no new archive. Does this activity fall within your enterprise scope, and which facts determine that conclusion?
 
 This inquiry has not been sent. Do not contact a regulator or lawyer on the owner's behalf without authorization.
 

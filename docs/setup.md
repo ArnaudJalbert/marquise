@@ -1,10 +1,10 @@
 # Database setup
 
-Bootstrap the PostgreSQL schema (Supabase or a disposable database), apply migrations, and configure Supabase Auth.
+Bootstrap the PostgreSQL schema (Supabase or a disposable database) and apply migrations.
 
 Private Fly catalog preparation is documented in
-[Fly PostgreSQL setup and recovery](fly-postgres.md). Supabase Auth and the
-retained Supabase catalog remain separate from that new database.
+[Fly PostgreSQL setup and recovery](fly-postgres.md). The retained Supabase
+catalog remains separate from that new database.
 
 Env vars → [CONTRIBUTING.md](../CONTRIBUTING.md#environment-variables).
 
@@ -151,102 +151,6 @@ writers and back up their data; `ALTER TABLE marquise.movies DROP COLUMN
 tmdb_rating, DROP COLUMN tmdb_vote_count` permanently deletes stored scores.
 The bootstrap scripts create both columns for fresh databases but do not alter
 existing tables.
-
-## Auth
-
-[`supabase/config.toml`](../supabase/config.toml) is source of truth. Why Marquise
-authorizes with JWT claims: [ADR 0001](adr/0001-supabase-jwt-claims-for-authorization.md).
-
-### Push the Auth configuration
-
-`supabase config push` does not patch only the keys in `supabase/config.toml`.
-Missing keys take Supabase CLI defaults and can overwrite remote settings, so the
-file keeps every remote value that must not change: project URL, redirect URLs,
-email confirmation and OTP policy, TOTP MFA, and `storage.vector.enabled = false`
-(vector buckets need a paid plan).
-
-1. Inspect `supabase/config.toml`. Expected Auth policy: public sign-up disabled,
-   anonymous sign-ins disabled, JWT expiry `900` seconds.
-2. Run `supabase projects list` and confirm the intended project name and ref.
-3. Push with an explicit ref: `supabase config push --project-ref <project-ref>`.
-   A bare `supabase config push` is safe only when the local project is linked to
-   the intended project.
-4. Read every diff and approve only expected changes. A normal push updates Auth
-   and leaves API, database and Storage up to date.
-5. In the Auth dashboard, confirm public sign-up off, anonymous sign-ins off and
-   JWT expiry 900 seconds.
-
-On an unexpected diff, stop before approving. Copy the current remote values for
-every setting that must stay unchanged into `supabase/config.toml`, then push
-again with the explicit ref. If an incomplete file was already pushed, restore
-these values in the file and push: `auth.site_url = "http://localhost:3000"`,
-empty `auth.additional_redirect_urls`, email confirmations with one-minute
-frequency and eight-character OTPs, TOTP enrollment and verification, and
-`storage.vector.enabled = false`. Repeat the dashboard check.
-
-Project credentials, database URLs and service-role keys stay out of
-`supabase/config.toml`; see the secrets section below.
-
-### Accounts and roles
-
-Invited humans receive Supabase's account-setup email and choose a password.
-Their `app_metadata.marquise_role` is `member`, `editor`, or `administrator`.
-Leave Supabase's reserved JWT `role` unchanged. Role changes apply after token
-refresh or next sign-in.
-
-### Project settings and secrets
-
-Set `SUPABASE_URL` for API JWT verification. The API discovers signing keys at
-the project's Auth JWKS endpoint and does not need a service-role key. Supabase
-project must use asymmetric JWT signing keys; legacy HS256 projects do not
-publish verification keys.
-
-CLI account administration requires `SUPABASE_URL`,
-`SUPABASE_PUBLISHABLE_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`. It uses
-`MARQUISE_EMAIL` and `MARQUISE_PASSWORD` only when both are configured;
-otherwise it prompts for Administrator credentials. The service-role key and
-Administrator password are never CLI arguments.
-
-Keep project URL, publishable key, database connection string, and service-role
-key in secret manager. URL and publishable key can reach public clients;
-database and service-role credentials stay server-side. Never commit values or
-put service-role key in `.env.example`.
-
-GitHub Actions integration tests run against a disposable `postgres:17` service
-and need no secrets. Whether scheduled imports need the Supabase Auth secrets the
-workflow passes is tracked in #458.
-
-## Screening audit and replay storage
-
-Before deploying audited writes, run the updated production schema script through
-the approved schema-change process, first against an isolated database and staging.
-The two additive tables, `screening_write_audit` and `screening_write_results`, are
-required even for empty PATCH. Applying SQL to production is a separate authorized
-step, not part of code deployment. Both schema scripts can be run again safely.
-
-These tables have row-level security enabled with no client policies. Public,
-`anon`, and `authenticated` table privileges are revoked. The backend needs a
-trusted database role permitted to write these tables; maintainers inspect history
-through restricted database access. Do not grant public read or write policies.
-History/results have no resource cascade references and survive Screening or Movie
-deletion. Successful keys have no expiry; plan storage capacity accordingly.
-
-Audit construction belongs in application use cases. Infrastructure implements
-locking and commit/rollback. The same connection holds the Screening change,
-optional orphaned Movie cleanup, audit record, and successful replay result. Imports
-continue through their existing unaudited path. An audit record is history, not an
-automatic restore operation.
-
-Clients must send `Idempotency-Key` and `X-Change-Reason` with every POST/PATCH/DELETE.
-Prefer a fresh UUID as the key for each intended action. Reuse it for retries,
-including after a lost response or retryable 503 (`Retry-After: 1`). Reusing successful intent with
-changed values or reason returns 409. Authentication is checked again on replay.
-Never place credentials in keys, reasons, ticket URLs, or other metadata. Raw
-requests and authorization headers are not copied into history; arbitrary free
-text cannot reliably detect every pasted secret.
-
-Verify the isolated database and staging checks in #253 before approved production
-deployment. Nothing in this document authorizes a live schema change or deployment.
 
 ## Integration tests
 

@@ -50,8 +50,8 @@ Marquise is a `uv` workspace (`[tool.uv.workspace] members = ["packages/*", "app
 | Member | Role | Console script |
 |--------|------|----------------|
 | `packages/marquise-core` | Domain library (importable as `marquise`) | — |
-| `apps/marquise-api` | Public reads and authenticated screening FastAPI REST API | `marquise-api` |
-| `apps/marquise-cli` | argparse administration CLI (`cinema`, `source`, `import`, `movie`, `auth`) | `marquise` |
+| `apps/marquise-api` | Public read-only screening FastAPI REST API | `marquise-api` |
+| `apps/marquise-cli` | argparse administration CLI (`cinema`, `source`, `import`, `movie`) | `marquise` |
 
 Root `pyproject.toml` is **virtual** — no `[project]`/`[build-system]` table. It
 holds workspace config, the shared `dev` dependency group, and shared `ruff`/`ty`
@@ -87,12 +87,6 @@ Package roles and dependency rules: [web rules](docs/agents/rules/web.md).
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `DATABASE_URL` | Yes | PostgreSQL connection string |
-| `SUPABASE_URL` | Protected API routes and account CLI | HTTPS Supabase project URL; userinfo, query strings, and fragments are rejected |
-| `MARQUISE_AUTH_ALLOW_LOCAL_HTTP` | No | Set exactly `1` for local development HTTP using a literal loopback IP (`127.0.0.1` or `::1`); hostnames and remote HTTP remain forbidden |
-| `SUPABASE_PUBLISHABLE_KEY` | Account CLI only | Password authentication for Administrator verification |
-| `SUPABASE_SERVICE_ROLE_KEY` | Account CLI only | Privileged invitation and role metadata updates |
-| `MARQUISE_EMAIL` | No | Configured CLI Administrator email; prompts when either credential is absent |
-| `MARQUISE_PASSWORD` | No | Configured CLI Administrator password; prompts when either credential is absent |
 | `CINEPLEX_API_KEY` | No | Cineplex API subscription key |
 | `TMDB_API_KEY` | Imports | TMDB API key for matching movies during import; imports fail if it is absent |
 | `DATABASE_SCHEMA` | No | Schema name (default: `marquise`) |
@@ -279,13 +273,6 @@ Branch and commit conventions: [review and delivery rules](docs/agents/rules/rev
 
 - [AGENTS.md](AGENTS.md): rule index and guide index
 - [Pull request template](.github/PULL_REQUEST_TEMPLATE.md)
-
-### Authentication transport
-
-GoTrue credential-bearing requests reject redirects, including same-origin redirects.
-Configure the final HTTPS endpoint directly. TLS certificate verification remains enabled.
-The configured JWKS URL also requires HTTPS (or the explicit loopback development opt-in).
-This does not configure inbound API HTTPS; enforce that at the deployment proxy.
 
 ## Isolated local integration stack
 

@@ -4,7 +4,7 @@ Issue [#341](https://github.com/ArnaudJalbert/marquise/issues/341) prepares an
 empty catalog with the schema merged in PR #330. Import jobs are covered by
 [#342](https://github.com/ArnaudJalbert/marquise/issues/342), and import review
 and API cutover by [#343](https://github.com/ArnaudJalbert/marquise/issues/343).
-The API, nightly imports, and Supabase Auth still use their existing configuration.
+The API and nightly imports still use their existing configuration.
 
 ## Resources and cost
 
@@ -131,8 +131,8 @@ PY
 
 The source is read in a read-only repeatable-read transaction. The destination
 bootstrap, empty-table check, inserts, and verification commit in one transaction.
-All seven destination tables are locked through commit. Any preexisting
-configuration, Movie, Screening, audit, or idempotency row causes refusal.
+All five destination tables are locked through commit. Any preexisting
+configuration, Movie, or Screening row causes refusal.
 Successful output reports exact verified configuration counts and zero excluded
 rows. Foreign keys enforce the assignments. No source writes, catalog copy,
 overwrite, or deletion occur. Repeating a completed transfer fails safely.
@@ -159,10 +159,8 @@ The transfer compared all configuration values and preserved the original IDs:
 | `cinema_source_assignments` | 14 | 14 |
 | `movies` | 73 | 0 |
 | `screenings` | 294 | 0 |
-| `screening_write_audit` | 0 | 0 |
-| `screening_write_results` | 0 | 0 |
 
-There were zero dangling assignments. Comparing every row in all seven source
+There were zero dangling assignments. Comparing every row in all five source
 tables before and after confirmed that Supabase was unchanged. These are setup
 counts, not a live status report. No catalog ingestion or API cutover was run.
 
@@ -275,10 +273,10 @@ Do not create a new volume or initialize a new cluster over the old data directo
 If the volume is lost, provision a replacement with the fresh-setup procedure,
 reuse the stored credentials or coordinate their replacement, transfer Cinema
 and source configuration from the retained Supabase database, then reimport and
-review the catalog through #342/#343. Post-transfer configuration changes and
-authenticated writes on Fly cannot be recovered from the retained Supabase copy.
+review the catalog through #342/#343. Post-transfer configuration changes
+cannot be recovered from the retained Supabase copy.
 
-Supabase remains intact for Auth and the old catalog. It is a fallback copy,
+Supabase remains intact for the old catalog. It is a fallback copy,
 not a synchronized replica or backup of subsequent Fly writes. API/import
 cutover and fallback secret changes belong to #343. Until that cutover, stopping
 the new database does not change the serving catalog.
