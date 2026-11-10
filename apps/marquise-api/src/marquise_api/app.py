@@ -163,17 +163,25 @@ def _configure_exception_handlers(app: FastAPI) -> None:
 
 
 def _configure_cors(app: FastAPI) -> None:
-    cors_origins = _parse_cors_origins(
+    origins = _configured_cors_origins()
+    if origins:
+        _add_cors_middleware(app, origins)
+
+
+def _configured_cors_origins() -> list[str]:
+    return _parse_cors_origins(
         os.environ.get("MARQUISE_API_CORS_ORIGINS", DEFAULT_CORS_ORIGINS)
     )
-    if cors_origins:
-        app.add_middleware(
-            CORSMiddleware,
-            allow_origins=cors_origins,
-            allow_credentials=True,
-            allow_methods=["GET", "POST"],
-            allow_headers=["*"],
-        )
+
+
+def _add_cors_middleware(app: FastAPI, origins: list[str]) -> None:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST"],
+        allow_headers=["*"],
+    )
 
 
 def _configure_middleware(app: FastAPI) -> None:
@@ -189,14 +197,37 @@ def _configure_routes(app: FastAPI) -> None:
 
 
 def _configure_probe_routes(app: FastAPI) -> None:
-    @app.get("/health", tags=["meta"])
-    @limiter.exempt
-    async def health() -> dict[str, str]:
-        """Liveness probe."""
-        return {"status": "ok"}
+    _configure_health_route(app)
+    _configure_readiness_route(app)
 
-    @app.get(
+
+@limiter.exempt
+async def health() -> dict[str, str]:
+    """Liveness probe."""
+    return {"status": "ok"}
+
+
+@limiter.exempt
+async def ready(factory: MarquiseFactory = Depends(get_factory)) -> JSONResponse:
+    """Readiness probe. Verifies the database pool can serve queries."""
+    return _readiness_response(await factory.check_database_health())
+
+
+def _readiness_response(is_healthy: bool) -> JSONResponse:
+    if is_healthy:
+        return JSONResponse({"status": "ok"}, status_code=200)
+    return JSONResponse({"status": "unavailable"}, status_code=503)
+
+
+def _configure_health_route(app: FastAPI) -> None:
+    app.add_api_route("/health", health, methods=["GET"], tags=["meta"])
+
+
+def _configure_readiness_route(app: FastAPI) -> None:
+    app.add_api_route(
         "/ready",
+        ready,
+        methods=["GET"],
         tags=["meta"],
         responses={
             503: {
@@ -205,12 +236,6 @@ def _configure_probe_routes(app: FastAPI) -> None:
             }
         },
     )
-    @limiter.exempt
-    async def ready(factory: MarquiseFactory = Depends(get_factory)) -> JSONResponse:
-        """Readiness probe. Verifies the database pool can serve queries."""
-        if await factory.check_database_health():
-            return JSONResponse({"status": "ok"}, status_code=200)
-        return JSONResponse({"status": "unavailable"}, status_code=503)
 
 
 def _configure_api_routes(app: FastAPI) -> None:
