@@ -97,39 +97,6 @@ class ScreeningGateway(Protocol):
         """
         ...
 
-    async def update(
-        self,
-        cinema_id: str,
-        movie_id: str,
-        showtime: datetime,
-        external_id: str | None = None,
-        source_name: str | None = None,
-        ticket_url: str | None = None,
-        room: str | None = None,
-        language: str | None = None,
-    ) -> dict | None:
-        """Update optional fields on an existing screening.
-
-        Matches by (cinema_id, movie_id, showtime).
-
-        Args:
-            cinema_id: The cinema hosting the screening.
-            movie_id: The movie being screened.
-            showtime: The date and time of the screening.
-            external_id: Source-native deduplication key (optional).
-            ticket_url: Link to purchase tickets (optional).
-            room: Room or auditorium name (optional).
-            language: Language or subtitle version (optional).
-
-        Returns:
-            The updated row as a dict, or None if no matching row exists.
-
-        Raises:
-            ScreeningExternalIdConflictGatewayError: If the external ID
-                belongs to another screening.
-        """
-        ...
-
     async def replace(
         self,
         screening_id: str,
@@ -186,40 +153,6 @@ class ScreeningGateway(Protocol):
 
         Returns:
             A dict representing the row, or None.
-        """
-        ...
-
-    async def search(
-        self,
-        movie_id: str | None = None,
-        movie_title: str | None = None,
-        cinema_id: str | None = None,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
-        language: str | None = None,
-        limit: int | None = None,
-        offset: int = 0,
-    ) -> GatewayPage:
-        """Find screenings matching any combination of filters, paginated.
-
-        All filters are optional and combinable. Omitting a filter means it
-        is not applied.
-
-        Args:
-            movie_id: Filter by exact movie ID.
-            movie_title: Filter by movie title substring (case-insensitive).
-            cinema_id: Filter by exact cinema ID.
-            start_date: Start of the showtime range (inclusive).
-            end_date: End of the showtime range (inclusive).
-            language: Filter by exact language/subtitle version.
-            limit: Max number of rows to return. If None, all matching rows
-                are returned unbounded.
-            offset: Number of matching rows to skip before returning results.
-
-        Returns:
-            A ``GatewayPage`` with the matching rows (joined with movie and
-            cinema data) and the total count of rows matching the filters,
-            ignoring ``limit``/``offset``.
         """
         ...
 

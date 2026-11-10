@@ -14,6 +14,9 @@ from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
 from marquise.infrastructure.supabase.gateways.movie import SupabaseMovieGateway
 from marquise.infrastructure.supabase.gateways.screening import SupabaseScreeningGateway
+from marquise.infrastructure.supabase.gateways.screening_reader import (
+    SupabaseScreeningReadGateway,
+)
 from marquise.interface_adapters.repositories.supabase.movie_repository import (
     SupabaseMovieRepository,
 )
@@ -85,9 +88,9 @@ async def test_import_links_translated_screening_to_known_movie(
     assert result.imported_count == 1
     request = matcher.execute.await_args.args[0].movies[0]
     assert (request.title, request.release_year) == ("Film traduit", 2025)
-    saved_screenings = await screenings.search()
+    saved_screenings = await SupabaseScreeningReadGateway(db_pool, TEST_SCHEMA).search()
     assert saved_screenings.total == 1
-    assert saved_screenings.items[0].movie.id == original.id
+    assert saved_screenings.rows[0]["movie_id"] == str(original.id)
     assert await movies.find_by_tmdb_id("777") == original
     async with db_pool.acquire() as conn:
         assert await conn.fetchval(f'SELECT count(*) FROM "{TEST_SCHEMA}".movies') == 1

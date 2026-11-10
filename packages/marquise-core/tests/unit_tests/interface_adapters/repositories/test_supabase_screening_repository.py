@@ -147,7 +147,7 @@ async def test_save(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("operation", ["save", "update", "replace"])
+@pytest.mark.parametrize("operation", ["save", "replace"])
 async def test_translates_external_id_conflict(
     sample_screening: Screening,
     operation: str,
@@ -173,19 +173,17 @@ async def test_translates_external_id_conflict(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("operation", ["save", "update"])
 async def test_unrelated_gateway_error_is_not_a_duplicate(
     sample_screening: Screening,
-    operation: str,
 ) -> None:
     """Unrelated gateway failures propagate instead of triggering duplicate handling."""
     mock_gateway = create_autospec(ScreeningGateway, instance=True)
     error = GatewayError("Database unavailable")
-    getattr(mock_gateway, operation).side_effect = error
+    mock_gateway.save.side_effect = error
     repo = SupabaseScreeningRepository(gateway=mock_gateway)
 
     with pytest.raises(GatewayError, match="Database unavailable") as raised:
-        await getattr(repo, operation)(sample_screening)
+        await repo.save(sample_screening)
 
     assert raised.value is error
 
@@ -309,74 +307,6 @@ async def test_to_entity_populates_release_year() -> None:
 
     assert result is not None
     assert result.movie.release_year == 2026
-
-
-@pytest.mark.asyncio
-async def test_search_with_all_filters(gateway_dict: dict) -> None:
-    """Test search converts value objects to strings and maps the result."""
-    mock_gateway = create_autospec(ScreeningGateway, instance=True)
-    mock_gateway.search.return_value = GatewayPage(rows=[gateway_dict], total=1)
-
-    repo = SupabaseScreeningRepository(gateway=mock_gateway)
-    start = datetime(2026, 6, 7, tzinfo=UTC)
-    end = datetime(2026, 6, 7, 23, 59, 59, tzinfo=UTC)
-    result = await repo.search(
-        movie_id=MovieId(value="mov-456"),
-        movie_title="Test",
-        cinema_id=CinemaId(value="cin-789"),
-        start_date=start,
-        end_date=end,
-        language="V.O.",
-        limit=10,
-        offset=0,
-    )
-
-    assert len(result.items) == 1
-    assert result.total == 1
-    mock_gateway.search.assert_awaited_once_with(
-        movie_id="mov-456",
-        movie_title="Test",
-        cinema_id="cin-789",
-        start_date=start,
-        end_date=end,
-        language="V.O.",
-        limit=10,
-        offset=0,
-    )
-
-
-@pytest.mark.asyncio
-async def test_search_with_no_filters(gateway_dict: dict) -> None:
-    """Test search passes None through for every omitted filter."""
-    mock_gateway = create_autospec(ScreeningGateway, instance=True)
-    mock_gateway.search.return_value = GatewayPage(rows=[gateway_dict], total=1)
-
-    repo = SupabaseScreeningRepository(gateway=mock_gateway)
-    await repo.search()
-
-    mock_gateway.search.assert_awaited_once_with(
-        movie_id=None,
-        movie_title=None,
-        cinema_id=None,
-        start_date=None,
-        end_date=None,
-        language=None,
-        limit=None,
-        offset=0,
-    )
-
-
-@pytest.mark.asyncio
-async def test_search_empty() -> None:
-    """Test search returns an empty page."""
-    mock_gateway = create_autospec(ScreeningGateway, instance=True)
-    mock_gateway.search.return_value = GatewayPage(rows=[], total=0)
-
-    repo = SupabaseScreeningRepository(gateway=mock_gateway)
-    result = await repo.search(movie_title="nonexistent")
-
-    assert result.items == []
-    assert result.total == 0
 
 
 @pytest.mark.asyncio
