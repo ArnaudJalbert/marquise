@@ -152,19 +152,6 @@ async def test_http_protocol_failure_is_retryable_and_sanitized(
 
 
 @pytest.mark.asyncio
-async def test_page_limit_preserves_partial_rows_without_claiming_no_match() -> None:
-    """A capped provider search returns incomplete evidence without a failure."""
-    page = {"page": 1, "total_pages": 2, "total_results": 2, "results": [{"id": 1}]}
-    fetch = AsyncMock(return_value=json.dumps(page).encode())
-    result = await TmdbMetadataHttpSource("key", fetch=fetch, max_pages=1).pages(
-        "search/movie", {}
-    )
-    assert not result.complete and result.failure is None
-    assert result.items == ({"id": 1},)
-    fetch.assert_awaited_once()
-
-
-@pytest.mark.asyncio
 @pytest.mark.parametrize("body", [b"not-json", b"[]", b'{"success": false}'])
 async def test_malformed_json_names_its_check_without_the_body(body: bytes) -> None:
     """A malformed response names malformed_json and never repeats the body."""

@@ -102,7 +102,7 @@ def build_metadata_workflows(
         SupabaseMovieMetadataGateway(pool, schema),
         SupabaseMovieMergeGateway(pool, schema),
     )
-    metadata = TmdbMetadataAdapter(TmdbMetadataHttpSource(tmdb_api_key, max_pages=3))
+    metadata = TmdbMetadataAdapter(TmdbMetadataHttpSource(tmdb_api_key))
     matcher = MatchMoviesUseCase(metadata, RapidFuzzNameDistance())
     return (
         movies,
@@ -116,7 +116,7 @@ def build_refresh_movies_use_case(
 ) -> RefreshMoviesUseCase:
     """Compose the explicit refresh workflow."""
     movies, _, _ = build_metadata_workflows(pool, schema, tmdb_api_key)
-    metadata = TmdbMetadataAdapter(TmdbMetadataHttpSource(tmdb_api_key, max_pages=3))
+    metadata = TmdbMetadataAdapter(TmdbMetadataHttpSource(tmdb_api_key))
     return RefreshMoviesUseCase(movies, metadata, lambda: datetime.now(UTC))
 
 
