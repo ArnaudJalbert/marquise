@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import cast
 
 import pytest
@@ -204,58 +203,6 @@ def test_movie_allows_none_duration() -> None:
         duration_minutes=None,
     )
     assert movie.duration_minutes is None
-
-
-def test_is_recent_returns_true_for_recent_movie() -> None:
-    """Verify is_recent returns True for a movie released within the last year."""
-    movie = Movie(
-        id=MovieId(value="mov-123"),
-        title="Recent Movie",
-        release_year=datetime.now().year,
-        directors=("Director",),
-    )
-    assert movie.is_recent()
-
-
-def test_is_recent_returns_false_for_old_movie() -> None:
-    """Verify is_recent returns False for a movie older than one year."""
-    movie = Movie(
-        id=MovieId(value="mov-123"),
-        title="Old Movie",
-        release_year=datetime.now().year - 5,
-        directors=("Director",),
-    )
-    assert not movie.is_recent()
-
-
-def test_is_recent_with_custom_years() -> None:
-    """Verify is_recent accepts a custom lookback window."""
-    movie = Movie(
-        id=MovieId(value="mov-123"),
-        title="Barely Recent",
-        release_year=datetime.now().year - 2,
-        directors=("Director",),
-    )
-    assert movie.is_recent(years=2)
-
-    old_movie = Movie(
-        id=MovieId(value="mov-456"),
-        title="Not Recent",
-        release_year=datetime.now().year - 3,
-        directors=("Director",),
-    )
-    assert not old_movie.is_recent(years=2)
-
-
-def test_is_recent_returns_false_when_release_year_unknown() -> None:
-    """Verify is_recent returns False when release_year is None."""
-    movie = Movie(
-        id=MovieId(value="mov-123"),
-        title="Unknown Release",
-        release_year=None,
-        directors=("Director",),
-    )
-    assert not movie.is_recent()
 
 
 def test_movie_accepts_none_directors() -> None:

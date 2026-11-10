@@ -25,17 +25,5 @@ class DateValue:
         if self.value.tzinfo is None:
             raise ValueError("datetime must be timezone-aware")
 
-    @classmethod
-    def from_datetime(cls, dt: datetime) -> DateValue:
-        """Create a DateValue from a datetime instance.
-
-        Args:
-            dt: The datetime to wrap (must be timezone-aware).
-
-        Returns:
-            A new DateValue instance.
-        """
-        return cls(value=dt)
-
     def __str__(self) -> str:
         return self.value.isoformat()
