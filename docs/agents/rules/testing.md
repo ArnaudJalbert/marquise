@@ -36,6 +36,7 @@ Each package has a `tests/new_tests/` folder. All new tests go there, in every p
 - Delete old tests in batches, once their behavior is covered by a new test. Do not add new tests to old folders.
 - CI runs both folders until the old ones are gone. The core unit step lists `new_tests/` next to `unit_tests/`. The API and CLI steps run their whole `tests/` folder, so they pick up `new_tests/` automatically.
 - New tests follow the rules in this file: public interfaces only, `create_autospec` for collaborators, scenario docstrings.
+- Temporary exemption: SQL-level integration tests stay in `packages/marquise-core/tests/integration_tests/`, which runs nightly, and do not go to `new_tests/`. Remove this line when those tests move to the root `integration_tests/` (#548).
 
 ## Coverage
 

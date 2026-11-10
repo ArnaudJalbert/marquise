@@ -10,6 +10,9 @@ import pytest
 from marquise.infrastructure.supabase.gateways.cinema import SupabaseCinemaGateway
 from marquise.infrastructure.supabase.gateways.movie import SupabaseMovieGateway
 from marquise.infrastructure.supabase.gateways.screening import SupabaseScreeningGateway
+from marquise.infrastructure.supabase.gateways.screening_reader import (
+    SupabaseScreeningReadGateway,
+)
 from marquise.interface_adapters.repositories.protocols.screening import (
     ScreeningExternalIdConflictGatewayError,
 )
@@ -42,7 +45,8 @@ async def test_external_id_migration_preserves_rows_and_refuses_unsafe_rollback(
             await screening.save(
                 "target", "nitassinan", "cinematheque", showtime, "14384"
             )
-            assert (await screening.search()).total == 2
+            reader = SupabaseScreeningReadGateway(db_pool, schema)
+            assert (await reader.search()).total == 2
             await screening.delete("target")
             # Historical global constraint, as installed before #285.
             await conn.execute(

@@ -175,46 +175,6 @@ class SupabaseScreeningRepository(ScreeningRepository):
             raise ScreeningWriteConflictError(str(exc)) from exc
         return self._to_entity(row)
 
-    async def update(self, screening: Screening) -> Screening | None:
-        """Update optional fields on an existing screening.
-
-        Args:
-            screening: The screening with updated optional fields.
-
-        Returns:
-            The updated screening entity, or None if no match exists.
-
-        Raises:
-            ScreeningExternalIdConflictError: If the external ID belongs
-                to a different screening.
-        """
-        try:
-            data = await self._gateway.update(
-                cinema_id=str(screening.cinema.id),
-                movie_id=str(screening.movie.id),
-                showtime=screening.showtime.value,
-                external_id=screening.external_id,
-                source_name=screening.source_name,
-                ticket_url=screening.ticket_url,
-                room=screening.room,
-                language=screening.language,
-            )
-        except ScreeningExternalIdConflictGatewayError as exc:
-            raise ScreeningExternalIdConflictError(str(exc)) from exc
-        if data is None:
-            return None
-        return Screening(
-            id=ScreeningId(value=data["id"]),
-            movie=screening.movie,
-            cinema=screening.cinema,
-            showtime=Showtime(value=_parse_datetime(data["showtime"])),
-            external_id=data.get("external_id"),
-            source_name=data.get("source_name"),
-            ticket_url=data.get("ticket_url"),
-            room=data.get("room"),
-            language=data.get("language"),
-        )
-
     async def replace(
         self, screening: Screening, *, fields: frozenset[str]
     ) -> Screening:
@@ -286,50 +246,6 @@ class SupabaseScreeningRepository(ScreeningRepository):
                 f"A screening with ID '{screening_id}' was not found"
             )
         return self._to_entity(data)
-
-    async def search(
-        self,
-        movie_id: MovieId | None = None,
-        movie_title: str | None = None,
-        cinema_id: CinemaId | None = None,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
-        language: str | None = None,
-        limit: int | None = None,
-        offset: int = 0,
-    ) -> Page[Screening]:
-        """Find screenings matching any combination of filters, paginated.
-
-        Args:
-            movie_id: Filter by exact movie ID.
-            movie_title: Filter by movie title substring (case-insensitive).
-            cinema_id: Filter by exact cinema ID.
-            start_date: Start of the showtime range (inclusive).
-            end_date: End of the showtime range (inclusive).
-            language: Filter by exact language/subtitle version.
-            limit: Max number of screenings to return. If None, all matching
-                screenings are returned unbounded.
-            offset: Number of matching screenings to skip before returning
-                results.
-
-        Returns:
-            A ``Page[Screening]`` with the matching screenings and the total
-            count matching the filters.
-        """
-        gateway_page = await self._gateway.search(
-            movie_id=str(movie_id) if movie_id is not None else None,
-            movie_title=movie_title,
-            cinema_id=str(cinema_id) if cinema_id is not None else None,
-            start_date=start_date,
-            end_date=end_date,
-            language=language,
-            limit=limit,
-            offset=offset,
-        )
-        return Page(
-            items=[self._to_entity(row) for row in gateway_page.rows],
-            total=gateway_page.total,
-        )
 
     async def find_distinct_movies_by_cinema(
         self,
