@@ -96,7 +96,7 @@ async def application_error_handler(request: Request, exc: Exception) -> JSONRes
     )
     request_id = getattr(request.state, "request_id", None)
     _log_unexpected_application_error(exc, status_code, request_id)
-    return _application_error_response(exc, error_code, request_id, status_code)
+    return _application_error_response(exc, (status_code, error_code), request_id)
 
 
 def _log_unexpected_application_error(
@@ -112,10 +112,10 @@ def _log_unexpected_application_error(
 
 def _application_error_response(
     exc: ApplicationError,
-    error_code: str,
+    error_details: tuple[int, str],
     request_id: str | None,
-    status_code: int,
 ) -> JSONResponse:
+    status_code, error_code = error_details
     return JSONResponse(
         {"detail": str(exc), "error_code": error_code, "request_id": request_id},
         status_code=status_code,
