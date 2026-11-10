@@ -20,7 +20,7 @@ The GitHub Project's `Status` field is the workflow contract. It controls ticket
 
 Idea, spec, and ticket labels describe what an issue represents. They can sit beside type and area labels, and they do not change Project `Status` or authorize implementation.
 
-Specs are parent issues. Create each work ticket as a direct child of its spec using GitHub's native sub-issue relationship. Do not create or assign milestones when creating specs or tickets. Labels classify issues and do not establish parentage.
+Specs are parent issues. Create each work ticket as a direct child of its spec using GitHub's native sub-issue relationship. Milestones are long-term goals, like sprints. Specs and tickets may join one. When a spec has a milestone, give its tickets the same one. A milestone does not establish parentage. Labels classify issues and do not establish parentage.
 
 ## Workflow status
 
