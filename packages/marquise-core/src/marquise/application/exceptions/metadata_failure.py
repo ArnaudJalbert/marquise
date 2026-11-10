@@ -2,12 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from marquise.application.exceptions.base import ApplicationError
-
-if TYPE_CHECKING:
-    from marquise.application.metadata import ProviderIdentity
 
 
 # The established public name of the batch failure; subclasses carry Error.
@@ -18,14 +13,12 @@ class MetadataFailure(ApplicationError):  # noqa: N818
 
     Attributes:
         message: Sanitized diagnostic text, free of credentials, URLs and bodies.
-        identity: The provider record involved, when one is known.
     """
 
-    def __init__(self, message: str, identity: ProviderIdentity | None = None) -> None:
-        """Keep the sanitized message and the record involved, if known."""
+    def __init__(self, message: str) -> None:
+        """Keep the sanitized message."""
         super().__init__(message)
         self.message = message
-        self.identity = identity
 
 
 class MetadataUnavailableError(MetadataFailure):

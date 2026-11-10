@@ -24,16 +24,15 @@ retrieval. Other candidate details are still inspected. A missing detail is a
 not_found failure, never a complete empty result. Missing optional values remain
 None or empty tuples; zero runtime is preserved for use cases to assess.
 HTTP 429 and server/network failures become rate limited and unavailable
-failures; other refused requests become MetadataRequestRefusedError. Transport performs no
-retry. Credentials and provider error bodies never appear in failure messages or
+failures; other refused requests become MetadataRequestRefusedError. Transport
+performs no retry. Credentials and provider error bodies never appear in failure messages or
 exception contexts. Redirects are rejected so keys cannot be forwarded.
 
 Every invalid_data failure names the check that rejected the response with its
 class, from a fixed list: `MetadataPaginationError`, `MetadataMalformedJsonError`,
-`MetadataEndpointCheckError` or `MetadataDetailMappingError`. When the record is known,
-the failure's `identity` carries its TMDB ID and the message ends with it, such as
-`Invalid TMDB response: detail_mapping for tmdb 42`. Messages never contain the
-endpoint path, the URL, the API key or the response body.
+`MetadataEndpointCheckError` or `MetadataDetailMappingError`, and a message such
+as `Invalid TMDB response: detail_mapping`. Messages never contain the endpoint
+path, the URL, the API key or the response body.
 
 ## Locale and media provenance
 

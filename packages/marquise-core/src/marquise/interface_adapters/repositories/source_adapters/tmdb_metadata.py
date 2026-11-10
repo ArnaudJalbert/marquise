@@ -92,26 +92,8 @@ def _base(row: dict) -> MetadataMovie:
     )
 
 
-def _row_identity(row: dict) -> ProviderIdentity | None:
-    try:
-        return _id(row["id"])
-    except (KeyError, TypeError, ValueError):
-        return None
-
-
-def _with_identity(
-    failure: MetadataFailure, identity: ProviderIdentity | None
-) -> MetadataFailure:
-    """Name the record involved, keeping an identity a deeper check already set."""
-    if identity is None or failure.identity is not None:
-        return failure
-    message = f"{failure.message} for {identity.provider} {identity.id}"
-    return type(failure)(message, identity)
-
-
-def _invalid(identity: ProviderIdentity | None = None) -> MetadataFailure:
-    failure = MetadataDetailMappingError("Invalid TMDB response: detail_mapping")
-    return _with_identity(failure, identity)
+def _invalid() -> MetadataFailure:
+    return MetadataDetailMappingError("Invalid TMDB response: detail_mapping")
 
 
 class TmdbMetadataAdapter(MetadataRepository):
@@ -139,9 +121,9 @@ class TmdbMetadataAdapter(MetadataRepository):
             try:
                 people.append(await self._person(row))
             except TmdbMetadataError as error:
-                failure = failure or _with_identity(error.failure, _row_identity(row))
+                failure = failure or error.failure
             except (KeyError, TypeError, ValueError, AttributeError):
-                failure = failure or _invalid(_row_identity(row))
+                failure = failure or _invalid()
         return MetadataBatch(tuple(people), batch.complete and failure is None, failure)
 
     async def directed_movies(
@@ -153,9 +135,9 @@ class TmdbMetadataAdapter(MetadataRepository):
             rows = _rows(data, "crew")
             directed = tuple(row for row in rows if row["job"] == "Director")
         except TmdbMetadataError as error:
-            return MetadataBatch((), False, _with_identity(error.failure, person))
+            return MetadataBatch((), False, error.failure)
         except (KeyError, TypeError, ValueError, AttributeError):
-            return MetadataBatch((), False, _invalid(person))
+            return MetadataBatch((), False, _invalid())
         return self._movie_summaries(MetadataBatch(directed))
 
     @staticmethod
@@ -169,7 +151,7 @@ class TmdbMetadataAdapter(MetadataRepository):
             try:
                 movies.append(_base(row))
             except (KeyError, TypeError, ValueError, AttributeError):
-                failure = failure or _invalid(_row_identity(row))
+                failure = failure or _invalid()
         return MetadataBatch(tuple(movies), batch.complete and failure is None, failure)
 
     async def _person(self, row: dict) -> PersonFact:
@@ -295,9 +277,9 @@ class TmdbMetadataAdapter(MetadataRepository):
             movie = replace(movie, certifications=tuple(certifications))
             return MetadataBatch((movie,))
         except TmdbMetadataError as error:
-            failure = _with_identity(error.failure, identity)
+            failure = error.failure
         except (KeyError, TypeError, ValueError, AttributeError):
-            failure = _invalid(identity)
+            failure = _invalid()
         return MetadataBatch((movie,) if movie else (), False, failure)
 
     @staticmethod
