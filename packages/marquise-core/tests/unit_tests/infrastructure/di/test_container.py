@@ -22,18 +22,6 @@ def test_pool_property_raises_before_initialize() -> None:
         _ = container._pool_property  # type: ignore[misc]
 
 
-def test_auth_query_does_not_require_database_configuration(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Auth composition is available without opening or configuring a database."""
-    monkeypatch.setenv("SUPABASE_URL", "https://project.supabase.co")
-    monkeypatch.delenv("DATABASE_URL", raising=False)
-
-    container = Container()
-
-    assert container.verify_access_token_query is not None
-
-
 @pytest.mark.asyncio
 async def test_database_initialization_still_requires_database_url(
     monkeypatch: pytest.MonkeyPatch,
@@ -305,20 +293,3 @@ async def test_get_screening_query_after_initialize() -> None:
         assert query.screening_reader._gateway._pool is mock_database.pool
         assert query.screening_reader._gateway._schema == "marquise"
         await container.shutdown()
-
-
-def test_auth_query_is_reused_within_container(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Repeated access retains the verifier and its JWKS client cache."""
-    monkeypatch.setenv("SUPABASE_URL", "https://project.supabase.co")
-    container = Container()
-
-    with patch(
-        "marquise.infrastructure.di.container.build_verify_access_token_query"
-    ) as build_query:
-        first = container.verify_access_token_query
-        second = container.verify_access_token_query
-
-    assert first is second
-    build_query.assert_called_once_with("https://project.supabase.co")

@@ -32,7 +32,7 @@ Read the matching file before the work it names. How rules are written and added
 | Guide | Read when |
 |---|---|
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Setting up, running commands, checking CI |
-| [docs/setup.md](docs/setup.md) | Database schema, migrations, Supabase Auth |
+| [docs/setup.md](docs/setup.md) | Database schema, migrations |
 | [docs/sources.md](docs/sources.md) | Scrapers, source adapters, the source registry |
 | [docs/metadata-contracts.md](docs/metadata-contracts.md), [docs/providers/tmdb-metadata.md](docs/providers/tmdb-metadata.md) | Movie metadata and TMDB |
 | [docs/merge-movies.md](docs/merge-movies.md) | Merging duplicate movies |

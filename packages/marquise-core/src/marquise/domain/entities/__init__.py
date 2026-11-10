@@ -1,6 +1,5 @@
 """Domain entities for Marquise."""
 
-from .account import Account
 from .cinema import Cinema
 from .cinema_source_assignment import CinemaSourceAssignment
 from .movie import Movie
@@ -13,5 +12,4 @@ __all__ = [
     "Movie",
     "Screening",
     "SourceDefinition",
-    "Account",
 ]

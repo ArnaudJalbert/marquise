@@ -15,10 +15,6 @@ class ScreeningExternalIdConflictError(ApplicationError):
     """Raised when an external ID belongs to a different screening."""
 
 
-class ScreeningIdempotencyConflictError(ApplicationError):
-    """A successful key was reused for a different intended request."""
-
-
 class ScreeningNotFoundError(ApplicationError):
     """Raised when a requested screening does not exist in the repository."""
 
@@ -37,10 +33,6 @@ class ScreeningWriteConflictError(ApplicationError):
 
 class ScreeningImportRetryExhaustedError(ApplicationError):
     """An import could not commit after bounded fresh-state attempts."""
-
-
-class ScreeningWriteBusyError(ApplicationError):
-    """A duplicate could not obtain its committed result within the wait limit."""
 
 
 class TooManyScreeningDaysError(ApplicationError):

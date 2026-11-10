@@ -1,6 +1,6 @@
 [project]
 name = "marquise-cli"
-version = "0.1.19"
+version = "0.1.20"
 description = "Marquise administration CLI"
 requires-python = ">=3.13"
 dependencies = [
