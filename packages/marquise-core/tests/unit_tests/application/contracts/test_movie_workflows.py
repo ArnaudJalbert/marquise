@@ -85,7 +85,9 @@ def test_only_outages_and_rate_limits_are_retryable(
     failure: MetadataFailure, retryable: bool
 ) -> None:
     """A refresh may succeed later only after an outage or a rate limit."""
-    assert EnrichMovieOutputData("movie", "failed", failure).retryable is retryable
+    assert (
+        EnrichMovieOutputData("movie", "not_enriched", failure).retryable is retryable
+    )
 
 
 def test_partial_batch_preserves_facts() -> None:
@@ -104,9 +106,9 @@ def test_identity_scope_required(provider: str, identifier: str) -> None:
 
 
 def test_enrichment_outcomes() -> None:
-    """A failed enrichment always carries its failure."""
+    """A movie left not enriched always carries its failure."""
     with pytest.raises(ValueError):
-        EnrichMovieOutputData("1", "failed")
+        EnrichMovieOutputData("1", "not_enriched")
 
 
 @pytest.mark.asyncio
