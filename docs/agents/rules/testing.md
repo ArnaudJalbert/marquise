@@ -28,6 +28,15 @@ Paths are under `packages/marquise-core/tests/` unless stated. Adapter tests are
 - `assert_awaited_once()` and `assert_not_awaited()` for async mocks.
 - Run each app suite in its own pytest invocation.
 
+## Transition
+
+Each package has a `tests/new_tests/` folder. All new tests go there, in every package: `packages/marquise-core/tests/new_tests/`, `apps/marquise-api/tests/new_tests/`, `apps/marquise-cli/tests/new_tests/`.
+
+- Old tests stay in place and keep running until their behavior has a test under `new_tests/`.
+- Delete old tests in batches, once their behavior is covered by a new test. Do not add new tests to old folders.
+- CI runs both folders until the old ones are gone. The core unit step lists `new_tests/` next to `unit_tests/`. The API and CLI steps run their whole `tests/` folder, so they pick up `new_tests/` automatically.
+- New tests follow the rules in this file: public interfaces only, `create_autospec` for collaborators, scenario docstrings.
+
 ## Coverage
 
 70% minimum for core. Target 100% for `domain/` and `application/`. **Enforced:** `fail_under` in `packages/marquise-core/pyproject.toml` and `--cov-fail-under` in `.github/workflows/quality.yml`.
