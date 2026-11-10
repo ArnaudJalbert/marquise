@@ -124,21 +124,23 @@ def _configure_state(app: FastAPI, factory: MarquiseFactory | None) -> None:
 def _configure_rate_limiting(app: FastAPI) -> None:
     limiter.reset()
     app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_adapter)
+    app.add_exception_handler(RateLimitExceeded, _adapt_rate_limit_response)
     app.add_middleware(SlowAPIMiddleware)
 
 
-async def _rate_limit_adapter(request: Request, exc: Exception) -> Response:
+async def _adapt_rate_limit_response(request: Request, exc: Exception) -> Response:
     assert isinstance(exc, RateLimitExceeded)
     response = _rate_limit_exceeded_handler(request, exc)
     return JSONResponse(
-        _rate_limit_body(request, exc),
+        _build_rate_limit_body(request, exc),
         status_code=429,
-        headers=_rate_limit_headers(response),
+        headers=_filter_rate_limit_headers(response),
     )
 
 
-def _rate_limit_body(request: Request, exc: RateLimitExceeded) -> dict[str, str | None]:
+def _build_rate_limit_body(
+    request: Request, exc: RateLimitExceeded
+) -> dict[str, str | None]:
     message = f"Rate limit exceeded: {exc.detail}"
     return {
         "error": message,
@@ -148,7 +150,7 @@ def _rate_limit_body(request: Request, exc: RateLimitExceeded) -> dict[str, str 
     }
 
 
-def _rate_limit_headers(response: Response) -> dict[str, str]:
+def _filter_rate_limit_headers(response: Response) -> dict[str, str]:
     return {
         key: value for key, value in response.headers.items() if key != "content-length"
     }
@@ -163,12 +165,12 @@ def _configure_exception_handlers(app: FastAPI) -> None:
 
 
 def _configure_cors(app: FastAPI) -> None:
-    origins = _configured_cors_origins()
+    origins = _get_configured_cors_origins()
     if origins:
         _add_cors_middleware(app, origins)
 
 
-def _configured_cors_origins() -> list[str]:
+def _get_configured_cors_origins() -> list[str]:
     return _parse_cors_origins(
         os.environ.get("MARQUISE_API_CORS_ORIGINS", DEFAULT_CORS_ORIGINS)
     )
@@ -210,11 +212,7 @@ async def health() -> dict[str, str]:
 @limiter.exempt
 async def ready(factory: MarquiseFactory = Depends(get_factory)) -> JSONResponse:
     """Readiness probe. Verifies the database pool can serve queries."""
-    return _readiness_response(await factory.check_database_health())
-
-
-def _readiness_response(is_healthy: bool) -> JSONResponse:
-    if is_healthy:
+    if await factory.check_database_health():
         return JSONResponse({"status": "ok"}, status_code=200)
     return JSONResponse({"status": "unavailable"}, status_code=503)
 
