@@ -23,10 +23,8 @@ class CreateMoviesCommand:
 
     @dataclass(frozen=True, slots=True)
     class MovieInput:
-        title: str
         saved_title: str
         key: str
-        source_identifier: str | None = None
         tmdb_id: str | None = None
         release_year: int | None = None
         description: str | None = None
@@ -41,12 +39,11 @@ class CreateMoviesCommand:
         origin_countries: tuple[str, ...] | None = None
 
         def __post_init__(self) -> None:
-            for field in ("title", "saved_title", "key"):
+            for field in ("saved_title", "key"):
                 if not isinstance(getattr(self, field), str):
                     raise TypeError(f"{field} must be a string")
             self._check_optional(
                 str,
-                "source_identifier",
                 "tmdb_id",
                 "description",
                 "poster_url",
