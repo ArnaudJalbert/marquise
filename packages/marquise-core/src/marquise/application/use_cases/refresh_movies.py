@@ -3,11 +3,12 @@
 from collections.abc import Callable
 from datetime import datetime
 
-from marquise.application.metadata import (
-    MetadataFailure,
-    MetadataRepository,
-    ProviderIdentity,
+from marquise.application.exceptions import (
+    MetadataInvalidDataError,
+    MetadataNotFoundError,
+    MetadataUnavailableError,
 )
+from marquise.application.metadata import MetadataRepository, ProviderIdentity
 from marquise.application.movie_workflows import (
     EnrichMovieInputData,
     EnrichMovieOutputData,
@@ -54,7 +55,7 @@ class RefreshMoviesUseCase:
                         EnrichMovieOutputData(
                             input_data.movie_id,
                             "failed",
-                            MetadataFailure("unavailable", str(error), retryable=True),
+                            MetadataUnavailableError(str(error)),
                         ),
                     )
                 )
@@ -66,7 +67,7 @@ class RefreshMoviesUseCase:
                     EnrichMovieOutputData(
                         input_data.movie_id,
                         "failed",
-                        MetadataFailure("not_found", "Movie not found"),
+                        MetadataNotFoundError("Movie not found"),
                     ),
                 )
             )
@@ -76,8 +77,8 @@ class RefreshMoviesUseCase:
                     EnrichMovieOutputData(
                         snapshot.movie_id,
                         "failed",
-                        MetadataFailure(
-                            "invalid_data", "Movie has no confirmed TMDB identity"
+                        MetadataInvalidDataError(
+                            "Movie has no confirmed TMDB identity"
                         ),
                     )
                 )

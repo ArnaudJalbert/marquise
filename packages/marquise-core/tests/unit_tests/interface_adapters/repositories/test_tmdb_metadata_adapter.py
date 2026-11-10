@@ -9,6 +9,12 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 
+from marquise.application.exceptions import (
+    MetadataDetailMappingError,
+    MetadataInvalidDataError,
+    MetadataMalformedJsonError,
+    MetadataUnavailableError,
+)
 from marquise.application.metadata import ProviderIdentity
 from marquise.infrastructure.sources.tmdb_metadata import TmdbMetadataHttpSource
 from marquise.interface_adapters.repositories.protocols.tmdb_metadata_source import (
@@ -265,7 +271,7 @@ async def test_interrupted_search_beyond_three_pages_is_incomplete() -> None:
     data = {**payloads(), **_search_pages(5)}
     data["search/movie:4"] = IncompleteRead(b"fake-secret", 100)
     result = await adapter(data).search_movies("Film")
-    assert not result.complete and result.failure.kind == "unavailable"
+    assert not result.complete and isinstance(result.failure, MetadataUnavailableError)
     assert [movie.identity.id for movie in result.items] == ["1", "2", "3"]
     assert "fake-secret" not in repr(result)
 
@@ -277,7 +283,7 @@ async def test_failed_later_page_preserves_partial_facts() -> None:
     data["search/movie:1"].update(total_pages=2, total_results=2)
     data["search/movie:2"] = OSError("fake-secret")
     result = await adapter(data).search_movies("Anything")
-    assert not result.complete and result.failure.kind == "unavailable"
+    assert not result.complete and isinstance(result.failure, MetadataUnavailableError)
     assert result.items[0].identity == MOVIE
     assert "fake-secret" not in repr(result)
 
@@ -309,7 +315,7 @@ async def test_malformed_facts_are_typed_incomplete(
     data = payloads()
     data[endpoint][field] = value
     result = await adapter(data).movie_details(MOVIE)
-    assert not result.complete and result.failure.kind == "invalid_data"
+    assert not result.complete and isinstance(result.failure, MetadataInvalidDataError)
 
 
 @pytest.mark.asyncio
@@ -319,7 +325,7 @@ async def test_failed_details_keep_already_mapped_facts() -> None:
     data["movie/1765072/credits"] = OSError("secret")
     result = await adapter(data).movie_details(MOVIE)
     assert not result.complete and result.items[0].localized[0].locale == "fr-CA"
-    assert result.failure.kind == "unavailable"
+    assert isinstance(result.failure, MetadataUnavailableError)
 
 
 @pytest.mark.asyncio
@@ -328,7 +334,7 @@ async def test_adapter_uses_autospecced_gateway_and_rejects_foreign_identity() -
     source = create_autospec(TmdbMetadataSource, instance=True)
     repository = TmdbMetadataAdapter(source)
     result = await repository.movie_details(ProviderIdentity("other", "1765072"))
-    assert not result.complete and result.failure.kind == "invalid_data"
+    assert not result.complete and isinstance(result.failure, MetadataInvalidDataError)
     source.get.assert_not_awaited()
 
 
@@ -368,7 +374,7 @@ async def test_people_pagination_and_partial_alias_failure() -> None:
     }
     data["person/17"] = OSError("private")
     result = await adapter(data).search_people("Kaushik")
-    assert not result.complete and result.failure.kind == "unavailable"
+    assert not result.complete and isinstance(result.failure, MetadataUnavailableError)
     assert [p.identity for p in result.items] == [PERSON]
 
 
@@ -392,6 +398,54 @@ async def test_truncated_http_detail_returns_typed_partial_batch() -> None:
     data = payloads()
     data["movie/1765072/credits"] = IncompleteRead(b"fake-secret", 100)
     result = await adapter(data).movie_details(MOVIE)
-    assert not result.complete and result.failure.kind == "unavailable"
-    assert result.failure.retryable and result.items[0].identity == MOVIE
+    assert not result.complete and isinstance(result.failure, MetadataUnavailableError)
+    assert result.items[0].identity == MOVIE
     assert "fake-secret" not in repr(result)
+
+
+@pytest.mark.asyncio
+async def test_detail_mapping_failure_names_its_check() -> None:
+    """A malformed detail section is a detail mapping failure without secrets."""
+    data = payloads()
+    data["movie/1765072/release_dates"]["results"][0]["iso_3166_1"] = None
+    result = await adapter(data).movie_details(MOVIE)
+    assert type(result.failure) is MetadataDetailMappingError
+    assert "detail_mapping" in str(result.failure)
+    assert "fake-secret" not in repr(result.failure)
+    assert "release_dates" not in repr(result.failure)
+
+
+@pytest.mark.asyncio
+async def test_malformed_detail_json_keeps_its_check() -> None:
+    """A malformed detail body stays a malformed JSON failure."""
+    data = payloads()
+    data["movie/1765072/credits"] = []
+    result = await adapter(data).movie_details(MOVIE)
+    assert type(result.failure) is MetadataMalformedJsonError
+
+
+@pytest.mark.asyncio
+async def test_search_row_mapping_failure_names_its_check() -> None:
+    """A malformed search row is a detail mapping failure."""
+    data = payloads()
+    data["search/movie:1"]["results"][0]["title"] = 17
+    result = await adapter(data).search_movies("Anything")
+    assert type(result.failure) is MetadataDetailMappingError
+
+
+@pytest.mark.asyncio
+async def test_person_mapping_failure_names_its_check() -> None:
+    """A malformed searched person is a detail mapping failure."""
+    data = payloads()
+    data["person/2001262"]["also_known_as"] = "not-a-list"
+    result = await adapter(data).search_people("Anyone")
+    assert type(result.failure) is MetadataDetailMappingError
+
+
+@pytest.mark.asyncio
+async def test_directed_credit_mapping_failure_names_its_check() -> None:
+    """Malformed director credits are a detail mapping failure."""
+    data = payloads()
+    data["person/2001262/movie_credits"]["crew"] = {}
+    result = await adapter(data).directed_movies(PERSON)
+    assert type(result.failure) is MetadataDetailMappingError

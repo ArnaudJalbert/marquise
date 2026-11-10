@@ -10,6 +10,17 @@ from urllib.request import Request
 
 import pytest
 
+from marquise.application.exceptions import (
+    MetadataEndpointCheckError,
+    MetadataFailure,
+    MetadataInvalidDataError,
+    MetadataMalformedJsonError,
+    MetadataNotFoundError,
+    MetadataPaginationError,
+    MetadataRateLimitedError,
+    MetadataRequestRefusedError,
+    MetadataUnavailableError,
+)
 from marquise.infrastructure.sources.tmdb_metadata import (
     TmdbMetadataHttpSource,
     _NoRedirect,
@@ -21,17 +32,17 @@ from marquise.interface_adapters.repositories.protocols.tmdb_metadata_source imp
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "status,kind,retryable",
+    "status,failure_type",
     [
-        (404, "not_found", False),
-        (429, "rate_limited", True),
-        (503, "unavailable", True),
-        (401, "unavailable", False),
-        (302, "unavailable", False),
+        (404, MetadataNotFoundError),
+        (429, MetadataRateLimitedError),
+        (503, MetadataUnavailableError),
+        (401, MetadataRequestRefusedError),
+        (302, MetadataRequestRefusedError),
     ],
 )
 async def test_http_failure_is_typed_and_redacts_context(
-    status: int, kind: str, retryable: bool
+    status: int, failure_type: type[MetadataFailure]
 ) -> None:
     """HTTP status survives, while URLs, keys and bodies stay out of diagnostics."""
     secret = "private-test-key"
@@ -39,8 +50,7 @@ async def test_http_failure_is_typed_and_redacts_context(
     source = TmdbMetadataHttpSource(secret, fetch=AsyncMock(side_effect=error))
     with pytest.raises(TmdbMetadataError) as caught:
         await source.get("movie/42")
-    assert caught.value.failure.kind == kind
-    assert caught.value.failure.retryable is retryable
+    assert type(caught.value.failure) is failure_type
     assert caught.value.__context__ is None
     assert secret not in "".join(traceback.format_exception(caught.value))
     assert secret not in repr(caught.value.failure)
@@ -62,8 +72,7 @@ async def test_invalid_json_is_not_successful_absence(body: bytes) -> None:
     source = TmdbMetadataHttpSource("key", fetch=AsyncMock(return_value=body))
     with pytest.raises(TmdbMetadataError) as caught:
         await source.get("movie/42")
-    assert caught.value.failure.kind == "invalid_data"
-    assert not caught.value.failure.retryable
+    assert isinstance(caught.value.failure, MetadataInvalidDataError)
     assert "secret" not in str(caught.value)
 
 
@@ -71,8 +80,9 @@ async def test_invalid_json_is_not_successful_absence(body: bytes) -> None:
 async def test_missing_credentials_and_bad_endpoint_make_no_request() -> None:
     """Missing keys and invalid paths fail before sending credentials."""
     fetch = AsyncMock()
-    with pytest.raises(TmdbMetadataError):
+    with pytest.raises(TmdbMetadataError) as caught:
         await TmdbMetadataHttpSource("", fetch=fetch).get("movie/42")
+    assert type(caught.value.failure) is MetadataRequestRefusedError
     with pytest.raises(TmdbMetadataError):
         await TmdbMetadataHttpSource("key", fetch=fetch).get("https://evil.test")
     fetch.assert_not_awaited()
@@ -116,7 +126,7 @@ async def test_invalid_pagination_retains_rows_and_incompleteness(second: dict) 
         side_effect=[json.dumps(first).encode(), json.dumps(second).encode()]
     )
     result = await TmdbMetadataHttpSource("key", fetch=fetch).pages("search/movie", {})
-    assert not result.complete and result.failure.kind == "invalid_data"
+    assert not result.complete and isinstance(result.failure, MetadataInvalidDataError)
     assert result.items[0] == {"id": 1}
 
 
@@ -137,7 +147,7 @@ async def test_complete_empty_search_is_distinct_from_failure() -> None:
     "error",
     [IncompleteRead(b"private-test-key", 100), BadStatusLine("private-test-key")],
 )
-async def test_http_protocol_failure_is_retryable_and_sanitized(
+async def test_http_protocol_failure_is_unavailable_and_sanitized(
     error: IncompleteRead | BadStatusLine,
 ) -> None:
     """Truncated bodies and malformed HTTP status cannot escape the failure port."""
@@ -145,7 +155,49 @@ async def test_http_protocol_failure_is_retryable_and_sanitized(
     source = TmdbMetadataHttpSource("private-test-key", fetch=fetch)
     with pytest.raises(TmdbMetadataError) as caught:
         await source.get("movie/42")
-    assert caught.value.failure.kind == "unavailable"
-    assert caught.value.failure.retryable
+    assert type(caught.value.failure) is MetadataUnavailableError
     assert caught.value.__context__ is None
     assert "private-test-key" not in "".join(traceback.format_exception(caught.value))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("body", [b"not-json", b"[]", b'{"success": false}'])
+async def test_malformed_json_names_its_check_without_the_body(body: bytes) -> None:
+    """A malformed response names malformed_json and never repeats the body."""
+    source = TmdbMetadataHttpSource(
+        "private-test-key", fetch=AsyncMock(return_value=body)
+    )
+    with pytest.raises(TmdbMetadataError) as caught:
+        await source.get("movie/42")
+    failure = caught.value.failure
+    assert type(failure) is MetadataMalformedJsonError
+    assert "malformed_json" in str(failure)
+    assert body.decode() not in str(failure)
+    assert "private-test-key" not in repr(failure)
+    assert "api.themoviedb.org" not in repr(failure)
+
+
+@pytest.mark.asyncio
+async def test_rejected_endpoint_names_its_check_without_the_path() -> None:
+    """A rejected endpoint names endpoint_check and never repeats the URL."""
+    source = TmdbMetadataHttpSource("private-test-key", fetch=AsyncMock())
+    with pytest.raises(TmdbMetadataError) as caught:
+        await source.get("https://evil.test/movie")
+    failure = caught.value.failure
+    assert type(failure) is MetadataEndpointCheckError
+    assert "endpoint_check" in str(failure)
+    assert "evil.test" not in repr(failure)
+    assert "private-test-key" not in repr(failure)
+
+
+@pytest.mark.asyncio
+async def test_inconsistent_page_names_pagination_without_the_body() -> None:
+    """A page with drifting counts names pagination and never repeats the body."""
+    page = {"page": 2, "total_pages": 1, "total_results": 1, "results": [{"id": 1}]}
+    fetch = AsyncMock(return_value=json.dumps(page).encode())
+    source = TmdbMetadataHttpSource("private-test-key", fetch=fetch)
+    result = await source.pages("search/movie", {"query": "Twin Peaks"})
+    assert type(result.failure) is MetadataPaginationError
+    assert "pagination" in str(result.failure)
+    assert "results" not in repr(result.failure)
+    assert "private-test-key" not in repr(result.failure)

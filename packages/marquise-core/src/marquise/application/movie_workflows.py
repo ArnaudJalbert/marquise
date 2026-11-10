@@ -11,9 +11,14 @@ from datetime import datetime
 from typing import Literal, Protocol
 
 from marquise.application.exceptions import (
+    MetadataFailure,
+    MetadataRateLimitedError,
+    MetadataUnavailableError,
+)
+from marquise.application.exceptions import (
     MovieWorkflowConflictError as MovieWorkflowConflictError,
 )
-from marquise.application.metadata import MetadataFailure, ProviderIdentity
+from marquise.application.metadata import ProviderIdentity
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -78,6 +83,13 @@ class EnrichMovieOutputData:
         """Keep provider failures distinct from successful outcomes."""
         if (self.status == "failed") != (self.failure is not None):
             raise ValueError("Only failed results carry a failure")
+
+    @property
+    def retryable(self) -> bool:
+        """Whether refreshing again later may succeed: an outage or rate limit."""
+        return isinstance(
+            self.failure, (MetadataUnavailableError, MetadataRateLimitedError)
+        )
 
 
 @dataclass(frozen=True, slots=True)
