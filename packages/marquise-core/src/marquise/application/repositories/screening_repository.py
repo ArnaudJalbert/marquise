@@ -7,7 +7,7 @@ from datetime import datetime
 
 from marquise.application.repositories.page import Page
 from marquise.domain.entities import Movie, Screening
-from marquise.domain.value_objects import CinemaId, MovieId, ScreeningId
+from marquise.domain.value_objects import CinemaId, ScreeningId
 
 
 class ScreeningRepository(ABC):
@@ -64,25 +64,6 @@ class ScreeningRepository(ABC):
         ...
 
     @abstractmethod
-    async def update(self, screening: Screening) -> Screening | None:
-        """Update optional fields on an existing screening.
-
-        Matches by (cinema_id, movie_id, showtime).  Fields set to None
-        are left unchanged.
-
-        Args:
-            screening: The screening with updated optional fields.
-
-        Returns:
-            The updated screening entity, or None if no matching row exists.
-
-        Raises:
-            ScreeningExternalIdConflictError: If the external ID belongs
-                to a different screening.
-        """
-        ...
-
-    @abstractmethod
     async def replace(
         self, screening: Screening, *, fields: frozenset[str]
     ) -> Screening:
@@ -132,41 +113,6 @@ class ScreeningRepository(ABC):
 
         Raises:
             ScreeningNotFoundError: If no screening with the given ID exists.
-        """
-        ...
-
-    @abstractmethod
-    async def search(
-        self,
-        movie_id: MovieId | None = None,
-        movie_title: str | None = None,
-        cinema_id: CinemaId | None = None,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
-        language: str | None = None,
-        limit: int | None = None,
-        offset: int = 0,
-    ) -> Page[Screening]:
-        """Find screenings matching any combination of filters, paginated.
-
-        All filters are optional and combinable. Omitting a filter means it
-        is not applied.
-
-        Args:
-            movie_id: Filter by exact movie ID.
-            movie_title: Filter by movie title substring (case-insensitive).
-            cinema_id: Filter by exact cinema ID.
-            start_date: Start of the showtime range (inclusive).
-            end_date: End of the showtime range (inclusive).
-            language: Filter by exact language/subtitle version.
-            limit: Max number of screenings to return. If None, all matching
-                screenings are returned unbounded.
-            offset: Number of matching screenings to skip before returning
-                results.
-
-        Returns:
-            A ``Page[Screening]`` with the matching screenings and the total
-            count matching the filters, ignoring ``limit``/``offset``.
         """
         ...
 

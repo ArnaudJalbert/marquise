@@ -8,7 +8,7 @@ from marquise.application.exceptions.screening import ScreeningWriteConflictErro
 from marquise.application.repositories.page import Page
 from marquise.application.repositories.screening_repository import ScreeningRepository
 from marquise.domain.entities import Movie, Screening
-from marquise.domain.value_objects import CinemaId, MovieId, ScreeningId
+from marquise.domain.value_objects import CinemaId, ScreeningId
 
 
 class MemoryScreeningRepository(ScreeningRepository):
@@ -80,10 +80,6 @@ class MemoryScreeningRepository(ScreeningRepository):
         """Unused by import tests."""
         raise NotImplementedError
 
-    async def update(self, screening: Screening) -> Screening | None:
-        """Unused by import tests."""
-        raise NotImplementedError
-
     async def replace(
         self, screening: Screening, *, fields: frozenset[str]
     ) -> Screening:
@@ -97,20 +93,6 @@ class MemoryScreeningRepository(ScreeningRepository):
     async def find_by_id(self, screening_id: ScreeningId) -> Screening:
         """Return a detached stored entity."""
         return deepcopy(self.rows[screening_id])
-
-    async def search(
-        self,
-        movie_id: MovieId | None = None,
-        movie_title: str | None = None,
-        cinema_id: CinemaId | None = None,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
-        language: str | None = None,
-        limit: int | None = None,
-        offset: int = 0,
-    ) -> Page[Screening]:
-        """Unused by import tests."""
-        raise NotImplementedError
 
     async def find_distinct_movies_by_cinema(
         self,
