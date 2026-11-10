@@ -6,7 +6,6 @@ from datetime import datetime
 from marquise.application.exceptions import (
     MetadataInvalidDataError,
     MetadataNotFoundError,
-    MetadataUnavailableError,
 )
 from marquise.application.metadata import MetadataRepository, ProviderIdentity
 from marquise.application.movie_workflows import (
@@ -42,49 +41,36 @@ class RefreshMoviesUseCase:
         """Refresh confirmed identities and report each movie's outcome.
 
         Failure to enumerate movies propagates, since no per-movie result can
-        represent an unknown set. Individual retrieval/write failures are results.
+        represent an unknown set. Any failure or internal error for one movie
+        leaves it not enriched and is listed, so it never stops the refresh.
         """
         if input_data.movie_id is None:
             snapshots = await self._movies.list_tmdb_movies()
         else:
-            try:
-                snapshot = await self._movies.get(input_data.movie_id)
-            except Exception as error:
-                return RefreshMoviesOutputData(
-                    (
-                        EnrichMovieOutputData(
-                            input_data.movie_id,
-                            "failed",
-                            MetadataUnavailableError(str(error)),
-                        ),
-                    )
-                )
+            snapshot = await self._movies.get(input_data.movie_id)
             snapshots = (snapshot,) if snapshot is not None else ()
         results: list[EnrichMovieOutputData] = []
         if input_data.movie_id is not None and not snapshots:
             return RefreshMoviesOutputData(
                 (
-                    EnrichMovieOutputData(
-                        input_data.movie_id,
-                        "failed",
-                        MetadataNotFoundError("Movie not found"),
+                    self._not_enriched(
+                        input_data.movie_id, MetadataNotFoundError("Movie not found")
                     ),
                 )
             )
         for snapshot in sorted(snapshots, key=lambda item: item.movie_id):
             if not snapshot.tmdb_id:
                 results.append(
-                    EnrichMovieOutputData(
+                    self._not_enriched(
                         snapshot.movie_id,
-                        "failed",
                         MetadataInvalidDataError(
                             "Movie has no confirmed TMDB identity"
                         ),
                     )
                 )
                 continue
-            results.append(
-                await _enrich(
+            try:
+                result = await _enrich(
                     EnrichMovieInputData(
                         snapshot.movie_id, ProviderIdentity("tmdb", snapshot.tmdb_id)
                     ),
@@ -93,5 +79,12 @@ class RefreshMoviesUseCase:
                     self._clock,
                     refresh=True,
                 )
-            )
+            except Exception as error:
+                result = self._not_enriched(snapshot.movie_id, error)
+            results.append(result)
         return RefreshMoviesOutputData(tuple(results))
+
+    @staticmethod
+    def _not_enriched(movie_id: str, failure: Exception) -> EnrichMovieOutputData:
+        """List one movie as not enriched; it never stops the refresh."""
+        return EnrichMovieOutputData(movie_id, "not_enriched", failure)

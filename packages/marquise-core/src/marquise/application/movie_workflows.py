@@ -11,7 +11,6 @@ from datetime import datetime
 from typing import Literal, Protocol
 
 from marquise.application.exceptions import (
-    MetadataFailure,
     MetadataRateLimitedError,
     MetadataUnavailableError,
 )
@@ -73,16 +72,21 @@ class EnrichMovieInputData:
 
 @dataclass(frozen=True, slots=True)
 class EnrichMovieOutputData:
-    """Failure leaves existing fields and last successful enrichment intact."""
+    """A movie left not enriched keeps its fields and last successful enrichment.
+
+    Attributes:
+        failure: Why the movie was not enriched: a metadata failure or an
+            internal error.
+    """
 
     movie_id: str
-    status: Literal["enriched", "unchanged", "failed"]
-    failure: MetadataFailure | None = None
+    status: Literal["enriched", "unchanged", "not_enriched"]
+    failure: Exception | None = None
 
     def __post_init__(self) -> None:
-        """Keep provider failures distinct from successful outcomes."""
-        if (self.status == "failed") != (self.failure is not None):
-            raise ValueError("Only failed results carry a failure")
+        """Only a movie left not enriched carries a failure."""
+        if (self.status == "not_enriched") != (self.failure is not None):
+            raise ValueError("Only not enriched results carry a failure")
 
     @property
     def retryable(self) -> bool:

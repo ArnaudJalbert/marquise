@@ -1,4 +1,4 @@
-"""Batch enrichment: which failures stop the batch, and which skip one movie."""
+"""Batch enrichment: any failure leaves only that movie not enriched."""
 
 from datetime import UTC, datetime
 from unittest.mock import Mock, create_autospec
@@ -11,7 +11,6 @@ from marquise.application.exceptions import (
     MetadataNotFoundError,
     MetadataRateLimitedError,
     MetadataUnavailableError,
-    MovieMetadataUnavailableError,
 )
 from marquise.application.metadata import (
     MetadataBatch,
@@ -23,6 +22,7 @@ from marquise.application.movie_workflows import (
     MovieMetadataRepository,
     MovieMetadataSnapshot,
     MovieMetadataValues,
+    MovieWorkflowConflictError,
 )
 from marquise.application.use_cases.enrich_movies import EnrichMoviesUseCase
 
@@ -74,7 +74,7 @@ async def test_enriches_with_the_identity_from_matching(
     """A confirmed identity is used, and the movie is reported as enriched."""
     output = await use_case.execute(use_case.InputData((MovieInput("one", "7"),)))
 
-    assert output == use_case.OutputData(enriched_ids=("one",), skipped_ids=())
+    assert output == use_case.OutputData(enriched_ids=("one",), not_enriched_ids=())
     provider.movie_details.assert_awaited_once_with(ProviderIdentity("tmdb", "7"))
 
 
@@ -97,43 +97,92 @@ async def test_movie_with_no_known_identity_is_left_out(
     """No identity anywhere is an accepted outcome, reported as neither."""
     output = await use_case.execute(use_case.InputData((MovieInput("one"),)))
 
-    assert output == use_case.OutputData(enriched_ids=(), skipped_ids=())
+    assert output == use_case.OutputData(enriched_ids=(), not_enriched_ids=())
     provider.movie_details.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "failure_type", [MetadataUnavailableError, MetadataRateLimitedError]
+    "failure_type",
+    [
+        MetadataUnavailableError,
+        MetadataRateLimitedError,
+        MetadataInvalidDataError,
+        MetadataNotFoundError,
+    ],
 )
-async def test_outage_raises(
+async def test_failure_leaves_only_that_movie_not_enriched(
     use_case: EnrichMoviesUseCase,
     provider: Mock,
     failure_type: type[MetadataFailure],
 ) -> None:
-    """TMDB being down stops the batch."""
-    _fail_with(provider, failure_type)
-
-    with pytest.raises(MovieMetadataUnavailableError):
-        await use_case.execute(use_case.InputData((MovieInput("one", "7"),)))
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "failure_type", [MetadataInvalidDataError, MetadataNotFoundError]
-)
-async def test_bad_data_skips_only_that_movie(
-    use_case: EnrichMoviesUseCase,
-    provider: Mock,
-    failure_type: type[MetadataFailure],
-) -> None:
-    """Bad data for one movie is not an outage, so the batch carries on."""
+    """An outage or bad data leaves the movie not enriched; the batch carries on."""
     _fail_with(provider, failure_type)
 
     output = await use_case.execute(
         use_case.InputData((MovieInput("one", "7"), MovieInput("two", "8")))
     )
 
-    assert output == use_case.OutputData(enriched_ids=(), skipped_ids=("one", "two"))
+    assert output == use_case.OutputData(
+        enriched_ids=(), not_enriched_ids=("one", "two")
+    )
+
+
+@pytest.mark.asyncio
+async def test_mismatched_detail_identity_leaves_the_movie_not_enriched(
+    use_case: EnrichMoviesUseCase, provider: Mock
+) -> None:
+    """TMDB answering with a different record is bad data, not a bug."""
+    provider.movie_details.side_effect = lambda identity: MetadataBatch(
+        (MetadataMovie(ProviderIdentity("tmdb", "other"), ()),)
+    )
+
+    output = await use_case.execute(use_case.InputData((MovieInput("one", "7"),)))
+
+    assert output == use_case.OutputData(enriched_ids=(), not_enriched_ids=("one",))
+
+
+@pytest.mark.asyncio
+async def test_identity_conflict_leaves_the_movie_not_enriched(
+    use_case: EnrichMoviesUseCase, movie_repository: Mock
+) -> None:
+    """A stored movie owned by another TMDB ID is left not enriched."""
+    movie_repository.get.side_effect = lambda movie_id: _snapshot(movie_id, "9")
+
+    output = await use_case.execute(use_case.InputData((MovieInput("one", "7"),)))
+
+    assert output == use_case.OutputData(enriched_ids=(), not_enriched_ids=("one",))
+
+
+@pytest.mark.asyncio
+async def test_unresolved_write_conflict_leaves_the_movie_not_enriched(
+    use_case: EnrichMoviesUseCase, movie_repository: Mock
+) -> None:
+    """A write conflict that cannot be disambiguated leaves the movie as it is."""
+    movie_repository.update_metadata.side_effect = MovieWorkflowConflictError("taken")
+
+    output = await use_case.execute(
+        use_case.InputData((MovieInput("one", "7"), MovieInput("two", "8")))
+    )
+
+    assert output == use_case.OutputData(
+        enriched_ids=(), not_enriched_ids=("one", "two")
+    )
+
+
+@pytest.mark.asyncio
+async def test_naive_clock_leaves_the_movie_not_enriched(
+    movie_repository: Mock, provider: Mock
+) -> None:
+    """A bug in the injected clock leaves the movie not enriched, never written."""
+    use_case = EnrichMoviesUseCase(
+        movie_repository, provider, lambda: datetime(2026, 10, 31)
+    )
+
+    output = await use_case.execute(use_case.InputData((MovieInput("one", "7"),)))
+
+    assert output == use_case.OutputData(enriched_ids=(), not_enriched_ids=("one",))
+    movie_repository.update_metadata.assert_not_awaited()
 
 
 @pytest.mark.parametrize("fields", [{"movie_id": 1}, {"movie_id": "one", "tmdb_id": 7}])
