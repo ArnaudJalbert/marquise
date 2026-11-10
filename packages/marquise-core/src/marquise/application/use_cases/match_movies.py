@@ -323,9 +323,9 @@ class MatchMoviesUseCase:
                     director_remaining -= 1
                 else:
                     title_remaining -= 1
-                if details.failure is not None:
-                    failures.append(details.failure)
-                    if not isinstance(details.failure, _OUTAGE_FAILURES):
+                if (failure := details.failure) is not None:
+                    failures.append(failure)
+                    if not isinstance(failure, _OUTAGE_FAILURES):
                         set_aside.add(item.identity)
                         continue
                 details_complete = details_complete and details.complete

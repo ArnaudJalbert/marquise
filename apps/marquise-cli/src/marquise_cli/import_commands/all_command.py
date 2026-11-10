@@ -188,8 +188,7 @@ def _print_movie_report(heading: str, results: list[CinemaImportResult]) -> None
         if movies:
             print(f"  {label}:")
         for cinema_name, movie in movies:
-            tmdb = f"tmdb {movie.tmdb_id}" if movie.tmdb_id else "-"
-            print(f"    {cinema_name} | {movie.title} | {tmdb} | {movie.reason}")
+            print(f"    {cinema_name} | {movie.title} | {movie.reason}")
 
 
 def _print_results(results: list[CinemaImportResult]) -> int:

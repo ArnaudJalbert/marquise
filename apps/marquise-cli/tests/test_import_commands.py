@@ -310,7 +310,7 @@ def test_import_all_reports_skipped_and_unmatched_movies(
                 0,
                 0,
                 skipped_movies=(
-                    unresolved("Twin Peaks", "MetadataDetailMappingError", "1923"),
+                    unresolved("Twin Peaks", "MetadataDetailMappingError"),
                 ),
                 unmatched_movies=(unresolved("Mystery Night", "no_match"),),
             ),
@@ -323,9 +323,7 @@ def test_import_all_reports_skipped_and_unmatched_movies(
                 2,
                 0,
                 0,
-                skipped_movies=(
-                    unresolved("SCENE TAM", "MetadataDetailMappingError", "77"),
-                ),
+                skipped_movies=(unresolved("SCENE TAM", "MetadataDetailMappingError"),),
             ),
         ],
     )
@@ -339,22 +337,22 @@ def test_import_all_reports_skipped_and_unmatched_movies(
     assert (
         "\nMovies for Cinema One: MetadataDetailMappingError 1, no_match 1\n"
         "  Skipped:\n"
-        "    Cinema One | Twin Peaks | tmdb 1923 | MetadataDetailMappingError\n"
+        "    Cinema One | Twin Peaks | MetadataDetailMappingError\n"
         "  Unmatched:\n"
-        "    Cinema One | Mystery Night | - | no_match\n"
+        "    Cinema One | Mystery Night | no_match\n"
     ) in output
     assert (
         "\nMovies for Cinema Two: MetadataDetailMappingError 1\n"
         "  Skipped:\n"
-        "    Cinema Two | SCENE TAM | tmdb 77 | MetadataDetailMappingError\n"
+        "    Cinema Two | SCENE TAM | MetadataDetailMappingError\n"
     ) in output
     assert (
         "\nMovies for the run: MetadataDetailMappingError 2, no_match 1\n"
         "  Skipped:\n"
-        "    Cinema One | Twin Peaks | tmdb 1923 | MetadataDetailMappingError\n"
-        "    Cinema Two | SCENE TAM | tmdb 77 | MetadataDetailMappingError\n"
+        "    Cinema One | Twin Peaks | MetadataDetailMappingError\n"
+        "    Cinema Two | SCENE TAM | MetadataDetailMappingError\n"
         "  Unmatched:\n"
-        "    Cinema One | Mystery Night | - | no_match\n"
+        "    Cinema One | Mystery Night | no_match\n"
     ) in output
 
 

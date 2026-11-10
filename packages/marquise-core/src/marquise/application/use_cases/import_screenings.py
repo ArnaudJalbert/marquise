@@ -71,13 +71,10 @@ class ImportScreeningsCommand:
         Attributes:
             title: The raw title the cinema listed.
             reason: A stable name from a fixed list, comparable across runs.
-            tmdb_id: The TMDB record whose check failed, when one is known.
-                It is never a confirmed identity for the movie.
         """
 
         title: str
         reason: MatchReason
-        tmdb_id: str | None = None
 
     @dataclass(frozen=True, slots=True)
     class OutputData:
@@ -383,10 +380,5 @@ class ImportScreeningsCommand:
             reason = match.reason
             if match.status != status or reason is None:
                 continue
-            identity = match.failure.identity if match.failure else None
-            unresolved.append(
-                self.UnresolvedMovieData(
-                    match.source.title, reason, identity.id if identity else None
-                )
-            )
+            unresolved.append(self.UnresolvedMovieData(match.source.title, reason))
         return tuple(unresolved)

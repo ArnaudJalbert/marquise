@@ -49,15 +49,13 @@ metadata and the original screening mapping title remain available to callers.
 Provider facts never imply permission to assign a non-TMDB ID to tmdb_id.
 
 Each cinema import reports its incomplete movies as skipped and its unmatched
-movies as unmatched, with the raw title, the TMDB ID of the record that failed
-when one is known (never a confirmed identity for the movie), and a
-reason from a fixed list (MatchReason): the failure class name for the failed
-TMDB check (`MetadataPaginationError`, `MetadataMalformedJsonError`,
+movies as unmatched, with the raw title and a reason from a fixed list
+(MatchReason): the failure class name for the failed TMDB check
+(`MetadataPaginationError`, `MetadataMalformedJsonError`,
 `MetadataEndpointCheckError`, `MetadataDetailMappingError`),
 `MetadataNotFoundError`, `MetadataInvalidDataError` when no check is named,
 `uncertain` when no failure explains an incomplete match, and `no_match` for
-unmatched movies. `marquise import all`
-prints that report in the job log for each cinema with any, then once for the
+unmatched movies. `marquise import all` prints that report in the job log for each cinema with any, then once for the
 run, each as counts by reason followed by the skipped and unmatched lists. The
 job exits with an error only when a cinema fails outright, never because movies
 were skipped or unmatched.

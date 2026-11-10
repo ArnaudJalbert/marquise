@@ -300,21 +300,16 @@ async def test_cinema_import_reports_skipped_and_unmatched_movies() -> None:
             "Gone": (_tmdb_movie("3", "Gone"),),
         },
         {
-            "2": MetadataFailure(
-                "invalid_data",
-                "Invalid TMDB response: detail_mapping for tmdb 2",
-                reason="detail_mapping",
-                identity=ProviderIdentity("tmdb", "2"),
-            ),
-            "3": MetadataFailure("not_found", "TMDB record not found"),
+            "2": MetadataDetailMappingError("Invalid TMDB response: detail_mapping"),
+            "3": MetadataNotFoundError("TMDB record not found"),
         },
     )
     movies = _movies()
     result = await _import_with_tmdb(movies, provider, "Good", "Bad", "Gone", "Lost")
     unresolved = ImportScreeningsCommand.UnresolvedMovieData
     assert result.skipped_movies == (
-        unresolved("Bad", "MetadataDetailMappingError", "2"),
-        unresolved("Gone", "MetadataNotFoundError", "3"),
+        unresolved("Bad", "MetadataDetailMappingError"),
+        unresolved("Gone", "MetadataNotFoundError"),
     )
     assert result.unmatched_movies == (unresolved("Lost", "no_match"),)
     assert _created_tmdb_ids(movies)["Good"] == "1"
