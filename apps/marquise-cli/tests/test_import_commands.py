@@ -309,7 +309,9 @@ def test_import_all_reports_skipped_and_unmatched_movies(
                 3,
                 0,
                 0,
-                skipped_movies=(unresolved("Twin Peaks", "detail_mapping", "1923"),),
+                skipped_movies=(
+                    unresolved("Twin Peaks", "MetadataDetailMappingError", "1923"),
+                ),
                 unmatched_movies=(unresolved("Mystery Night", "no_match"),),
             ),
             ImportScreeningsCommand.OutputData(
@@ -321,7 +323,9 @@ def test_import_all_reports_skipped_and_unmatched_movies(
                 2,
                 0,
                 0,
-                skipped_movies=(unresolved("SCENE TAM", "detail_mapping", "77"),),
+                skipped_movies=(
+                    unresolved("SCENE TAM", "MetadataDetailMappingError", "77"),
+                ),
             ),
         ],
     )
@@ -333,22 +337,22 @@ def test_import_all_reports_skipped_and_unmatched_movies(
 
     output = capsys.readouterr().out
     assert (
-        "\nMovies for Cinema One: detail_mapping 1, no_match 1\n"
+        "\nMovies for Cinema One: MetadataDetailMappingError 1, no_match 1\n"
         "  Skipped:\n"
-        "    Cinema One | Twin Peaks | tmdb 1923 | detail_mapping\n"
+        "    Cinema One | Twin Peaks | tmdb 1923 | MetadataDetailMappingError\n"
         "  Unmatched:\n"
         "    Cinema One | Mystery Night | - | no_match\n"
     ) in output
     assert (
-        "\nMovies for Cinema Two: detail_mapping 1\n"
+        "\nMovies for Cinema Two: MetadataDetailMappingError 1\n"
         "  Skipped:\n"
-        "    Cinema Two | SCENE TAM | tmdb 77 | detail_mapping\n"
+        "    Cinema Two | SCENE TAM | tmdb 77 | MetadataDetailMappingError\n"
     ) in output
     assert (
-        "\nMovies for the run: detail_mapping 2, no_match 1\n"
+        "\nMovies for the run: MetadataDetailMappingError 2, no_match 1\n"
         "  Skipped:\n"
-        "    Cinema One | Twin Peaks | tmdb 1923 | detail_mapping\n"
-        "    Cinema Two | SCENE TAM | tmdb 77 | detail_mapping\n"
+        "    Cinema One | Twin Peaks | tmdb 1923 | MetadataDetailMappingError\n"
+        "    Cinema Two | SCENE TAM | tmdb 77 | MetadataDetailMappingError\n"
         "  Unmatched:\n"
         "    Cinema One | Mystery Night | - | no_match\n"
     ) in output

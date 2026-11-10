@@ -313,8 +313,8 @@ async def test_cinema_import_reports_skipped_and_unmatched_movies() -> None:
     result = await _import_with_tmdb(movies, provider, "Good", "Bad", "Gone", "Lost")
     unresolved = ImportScreeningsCommand.UnresolvedMovieData
     assert result.skipped_movies == (
-        unresolved("Bad", "detail_mapping", "2"),
-        unresolved("Gone", "not_found", "3"),
+        unresolved("Bad", "MetadataDetailMappingError", "2"),
+        unresolved("Gone", "MetadataNotFoundError", "3"),
     )
     assert result.unmatched_movies == (unresolved("Lost", "no_match"),)
     assert _created_tmdb_ids(movies)["Good"] == "1"
