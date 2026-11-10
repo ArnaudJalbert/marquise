@@ -237,6 +237,39 @@ async def test_search_paginates_and_retains_provider_order_and_filters() -> None
     assert all(p["primary_release_year"] == ["2026"] for p in search_calls)
 
 
+def _search_pages(count: int) -> dict:
+    """Return one movie per search page, across ``count`` consistent pages."""
+    return {
+        f"search/movie:{page}": {
+            "page": page,
+            "total_pages": count,
+            "total_results": count,
+            "results": [{"id": page, "title": f"Film {page}"}],
+        }
+        for page in range(1, count + 1)
+    }
+
+
+@pytest.mark.asyncio
+async def test_search_reads_every_page_beyond_three() -> None:
+    """A five-page search returns movies from every page, not just the first three."""
+    data = {**payloads(), **_search_pages(5)}
+    result = await adapter(data).search_movies("Film")
+    assert result.complete and result.failure is None
+    assert [movie.identity.id for movie in result.items] == ["1", "2", "3", "4", "5"]
+
+
+@pytest.mark.asyncio
+async def test_interrupted_search_beyond_three_pages_is_incomplete() -> None:
+    """A fourth page that fails mid-read is incomplete, never a complete result."""
+    data = {**payloads(), **_search_pages(5)}
+    data["search/movie:4"] = IncompleteRead(b"fake-secret", 100)
+    result = await adapter(data).search_movies("Film")
+    assert not result.complete and result.failure.kind == "unavailable"
+    assert [movie.identity.id for movie in result.items] == ["1", "2", "3"]
+    assert "fake-secret" not in repr(result)
+
+
 @pytest.mark.asyncio
 async def test_failed_later_page_preserves_partial_facts() -> None:
     """A failed second page never masquerades as exhaustive search absence."""
