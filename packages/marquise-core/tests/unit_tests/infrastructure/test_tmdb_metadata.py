@@ -171,8 +171,8 @@ async def test_malformed_json_names_its_check_without_the_body(body: bytes) -> N
         await source.get("movie/42")
     failure = caught.value.failure
     assert type(failure) is MetadataMalformedJsonError
-    assert "malformed_json" in failure.message
-    assert body.decode() not in failure.message
+    assert "malformed_json" in str(failure)
+    assert body.decode() not in str(failure)
     assert "private-test-key" not in repr(failure)
     assert "api.themoviedb.org" not in repr(failure)
 
@@ -185,7 +185,7 @@ async def test_rejected_endpoint_names_its_check_without_the_path() -> None:
         await source.get("https://evil.test/movie")
     failure = caught.value.failure
     assert type(failure) is MetadataEndpointCheckError
-    assert "endpoint_check" in failure.message
+    assert "endpoint_check" in str(failure)
     assert "evil.test" not in repr(failure)
     assert "private-test-key" not in repr(failure)
 
@@ -198,6 +198,6 @@ async def test_inconsistent_page_names_pagination_without_the_body() -> None:
     source = TmdbMetadataHttpSource("private-test-key", fetch=fetch)
     result = await source.pages("search/movie", {"query": "Twin Peaks"})
     assert type(result.failure) is MetadataPaginationError
-    assert "pagination" in result.failure.message
+    assert "pagination" in str(result.failure)
     assert "results" not in repr(result.failure)
     assert "private-test-key" not in repr(result.failure)

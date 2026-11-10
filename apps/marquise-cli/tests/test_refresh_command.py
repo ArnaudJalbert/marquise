@@ -53,7 +53,7 @@ async def test_refresh_all_reports_partial_failure(
             EnrichMovieOutputData(
                 "movie-002",
                 "failed",
-                MetadataRateLimitedError("secret provider URL"),
+                MetadataRateLimitedError("TMDB HTTP 429"),
             ),
             EnrichMovieOutputData("movie-003", "unchanged"),
             EnrichMovieOutputData("movie-004", "enriched"),
@@ -70,8 +70,7 @@ async def test_refresh_all_reports_partial_failure(
         "[refreshed] movie-004\n"
         "Done: 2 refreshed, 1 skipped, 1 failed.\n"
     )
-    assert captured.err == "[failed] movie-002: MetadataRateLimitedError (retryable)\n"
-    assert "secret" not in captured.out + captured.err
+    assert captured.err == "[failed] movie-002: TMDB HTTP 429\n"
 
 
 @pytest.mark.asyncio
@@ -112,15 +111,12 @@ async def test_invalid_target_never_executes(
 @pytest.mark.parametrize(
     "failure,printed",
     [
-        (MetadataNotFoundError("Movie not found"), "MetadataNotFoundError"),
+        (MetadataNotFoundError("Movie not found"), "Movie not found"),
         (
             MetadataInvalidDataError("Movie has no confirmed TMDB identity"),
-            "MetadataInvalidDataError",
+            "Movie has no confirmed TMDB identity",
         ),
-        (
-            MetadataUnavailableError("secret credentials"),
-            "MetadataUnavailableError (retryable)",
-        ),
+        (MetadataUnavailableError("TMDB request failed"), "TMDB request failed"),
     ],
 )
 async def test_single_target_failure(

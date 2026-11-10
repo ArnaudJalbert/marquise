@@ -410,7 +410,7 @@ async def test_detail_mapping_failure_names_its_check() -> None:
     data["movie/1765072/release_dates"]["results"][0]["iso_3166_1"] = None
     result = await adapter(data).movie_details(MOVIE)
     assert type(result.failure) is MetadataDetailMappingError
-    assert "detail_mapping" in result.failure.message
+    assert "detail_mapping" in str(result.failure)
     assert "fake-secret" not in repr(result.failure)
     assert "release_dates" not in repr(result.failure)
 

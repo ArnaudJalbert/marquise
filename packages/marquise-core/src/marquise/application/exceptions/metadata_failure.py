@@ -9,16 +9,9 @@ from marquise.application.exceptions.base import ApplicationError
 class MetadataFailure(ApplicationError):  # noqa: N818
     """Retrieval failure, distinct from an exhaustive empty result.
 
-    Use a subclass. Its type tells callers what failed.
-
-    Attributes:
-        message: Sanitized diagnostic text, free of credentials, URLs and bodies.
+    Use a subclass. Its type tells callers what failed. Its message is
+    sanitized text, free of credentials, URLs and bodies.
     """
-
-    def __init__(self, message: str) -> None:
-        """Keep the sanitized message."""
-        super().__init__(message)
-        self.message = message
 
 
 class MetadataUnavailableError(MetadataFailure):
