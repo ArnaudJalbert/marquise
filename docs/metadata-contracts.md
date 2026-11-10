@@ -38,7 +38,12 @@ unavailable, refused, rate limited, not found and invalid data failures. The use
 case, not the failure, decides retryability: only outages and rate limits retry.
 
 Match outcomes distinguish matched, unmatched, failed and incomplete. Only matched
-carries an identity. No unmatched result authorizes metadata replacement. Source
+carries an identity. No unmatched result authorizes metadata replacement.
+During matching only unavailable and rate_limited stop the cinema. A candidate
+whose details are not_found or invalid_data is set aside; a clear match among
+the other candidates still wins, otherwise the movie is incomplete and imports
+without an identity. A search that fails with not_found or invalid_data leaves
+that movie incomplete too. Source
 metadata and the original screening mapping title remain available to callers.
 Provider facts never imply permission to assign a non-TMDB ID to tmdb_id.
 

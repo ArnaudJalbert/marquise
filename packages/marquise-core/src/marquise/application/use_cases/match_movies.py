@@ -9,6 +9,9 @@ from typing import Literal, Protocol
 
 from marquise.application.exceptions import (
     MetadataFailure,
+    MetadataRateLimitedError,
+    MetadataRequestRefusedError,
+    MetadataUnavailableError,
     MovieMetadataUnavailableError,
 )
 from marquise.application.metadata import (
@@ -23,6 +26,12 @@ from marquise.domain.entities import Movie
 logger = logging.getLogger(__name__)
 
 _MAX_CANDIDATE_DETAILS = 5
+# Only these stop the cinema. Bad data or a missing record skips one movie.
+_OUTAGE_FAILURES = (
+    MetadataUnavailableError,
+    MetadataRequestRefusedError,
+    MetadataRateLimitedError,
+)
 
 
 class NameDistance(Protocol):
@@ -234,6 +243,10 @@ class MatchMoviesUseCase:
         (all relevant candidates hydrated, every page seen) before its winner is
         accepted; a truncated strategy defers to the other strategies and, when
         nothing resolves, reports incomplete rather than unmatched.
+
+        A candidate whose details are bad data or missing is set aside. A
+        clear match among the others still wins; otherwise the movie is
+        incomplete. Only an outage or rate limit raises.
         """
         title = Movie.search_title(
             (input_data.identity_title or "").strip() or input_data.title
@@ -243,6 +256,7 @@ class MatchMoviesUseCase:
         candidates: dict[ProviderIdentity, MetadataMovie] = {}
         candidate_order: dict[ProviderIdentity, int] = {}
         director_candidates: set[ProviderIdentity] = set()
+        set_aside: set[ProviderIdentity] = set()
         details_complete = True
         failures: list[MetadataFailure] = []
         title_complete = True
@@ -264,7 +278,7 @@ class MatchMoviesUseCase:
                 title_complete = title_complete and batch.complete
             if batch.failure is not None:
                 failures.append(batch.failure)
-            seen = set(candidates)
+            seen = set(candidates) | set_aside
             pending: list[tuple[int, MetadataMovie]] = []
             for index, item in enumerate(batch.items):
                 candidate_order.setdefault(item.identity, len(candidate_order))
@@ -292,9 +306,16 @@ class MatchMoviesUseCase:
                         title_budget_exhausted = True
                     break
                 details = await self._metadata.movie_details(item.identity)
-                details_complete = details_complete and details.complete
+                if director:
+                    director_remaining -= 1
+                else:
+                    title_remaining -= 1
                 if details.failure is not None:
                     failures.append(details.failure)
+                    if not isinstance(details.failure, _OUTAGE_FAILURES):
+                        set_aside.add(item.identity)
+                        continue
+                details_complete = details_complete and details.complete
                 hydrated = next(
                     (
                         detail
@@ -306,9 +327,6 @@ class MatchMoviesUseCase:
                 candidates[item.identity] = hydrated
                 if director:
                     director_candidates.add(item.identity)
-                    director_remaining -= 1
-                else:
-                    title_remaining -= 1
 
         def decide() -> MatchMoviesUseCase.MovieMatch:
             ranked = [
@@ -316,10 +334,18 @@ class MatchMoviesUseCase:
                 for identity, movie in candidates.items()
                 if (rank := self._rank(input_data, normalized_title, movie)) is not None
             ]
-            if failures:
+            outage = next(
+                (
+                    failure
+                    for failure in failures
+                    if isinstance(failure, _OUTAGE_FAILURES)
+                ),
+                None,
+            )
+            if outage is not None:
                 raise MovieMetadataUnavailableError(
                     f"Movie identity failed for '{input_data.title}': "
-                    f"{type(failures[0]).__name__}"
+                    f"{type(outage).__name__}"
                 )
             if ranked:
                 winner_rank, winner_identity = min(
@@ -329,7 +355,7 @@ class MatchMoviesUseCase:
                     winner_rank == (0, 0, 0, 0)
                     and bool(input_data.directors)
                     and all(
-                        identity in candidates
+                        identity in candidates or identity in set_aside
                         for identity, order in candidate_order.items()
                         if order < candidate_order[winner_identity]
                     )
@@ -358,7 +384,8 @@ class MatchMoviesUseCase:
                     )
                 return self.MovieMatch(input_data, "incomplete")
             incomplete = (
-                not details_complete
+                bool(set_aside)
+                or not details_complete
                 or not title_complete
                 or title_budget_exhausted
                 or not director_complete
