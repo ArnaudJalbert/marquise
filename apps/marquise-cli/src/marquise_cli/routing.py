@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 from collections.abc import Callable, Sequence
 
-from marquise_cli.auth_commands import invite, set_role
 from marquise_cli.cinema_commands import create, delete, list_cinemas, update
 from marquise_cli.import_commands import import_all, import_cinema
 from marquise_cli.metadata_commands import merge_apply, merge_preview, refresh
@@ -18,8 +17,6 @@ from marquise_cli.source_commands import (
 )
 
 Handler = Callable[..., int | None]
-
-_ROLES = ("member", "editor", "administrator")
 
 
 def _positive_int(value: str) -> int:
@@ -152,28 +149,6 @@ def create_parser() -> argparse.ArgumentParser:
     apply.add_argument("survivor_id")
     apply.add_argument("duplicate_ids", nargs="+")
     apply.add_argument("--preview-file", required=True)
-
-    auth = groups.add_parser("auth", help="Manage authenticated accounts")
-    auth_commands = auth.add_subparsers(required=True, title="commands")
-    invite_command = _command(
-        auth_commands,
-        "invite",
-        invite,
-        "Invite a human account.",
-        ("email", "role"),
-    )
-    invite_command.add_argument("email", help="Account email")
-    invite_command.add_argument("--role", required=True, choices=_ROLES)
-
-    set_role_command = _command(
-        auth_commands,
-        "set-role",
-        set_role,
-        "Set a human account role.",
-        ("email", "role"),
-    )
-    set_role_command.add_argument("email", help="Account email")
-    set_role_command.add_argument("--role", required=True, choices=_ROLES)
 
     return parser
 

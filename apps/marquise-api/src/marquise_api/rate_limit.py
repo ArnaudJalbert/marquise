@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import os
 
-from fastapi import Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -47,18 +46,3 @@ limiter = Limiter(
     default_limits=[current_rate_limit],
     headers_enabled=True,
 )
-
-
-async def enforce_rate_limit(request: Request) -> None:
-    """Check the decorated endpoint's limit before authentication dependencies.
-
-    SlowAPI's endpoint wrapper otherwise runs only after FastAPI dependencies.
-    Reuse its check and completion flag so the wrapper still supplies response
-    headers without charging the request twice. These are SlowAPI internals;
-    the HTTP regressions guard this integration when upgrading the dependency.
-    """
-    if not getattr(request.state, "_rate_limiting_complete", False):
-        limiter._check_request_limit(
-            request, request.scope["endpoint"], in_middleware=False
-        )
-        request.state._rate_limiting_complete = True

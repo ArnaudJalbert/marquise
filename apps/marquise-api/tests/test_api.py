@@ -1043,8 +1043,6 @@ def test_cors_preflight_when_configured(
     assert set(response.headers["access-control-allow-methods"].split(", ")) == {
         "GET",
         "POST",
-        "PATCH",
-        "DELETE",
     }
 
 

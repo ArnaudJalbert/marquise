@@ -1,4 +1,4 @@
-"""Public screening reads and authenticated screening mutation endpoints."""
+"""Public screening read endpoints."""
 
 from __future__ import annotations
 
@@ -10,143 +10,13 @@ from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi_cache.decorator import cache
 from fastapi_pagination import Page, Params
 
-from marquise import (
-    GetScreeningQuery,
-    SearchScreeningsQuery,
-    WriteScreeningUseCase,
-)
-from marquise_api.auth import get_screening_write_context, require_editor
-from marquise_api.cache import invalidate_public_cache
-from marquise_api.dependencies import (
-    get_screening_query,
-    get_search_screenings_query,
-    get_write_screening_use_case,
-)
+from marquise import GetScreeningQuery, SearchScreeningsQuery
+from marquise_api.dependencies import get_screening_query, get_search_screenings_query
 from marquise_api.openapi_responses import error_responses
-from marquise_api.rate_limit import current_rate_limit, enforce_rate_limit, limiter
+from marquise_api.rate_limit import current_rate_limit, limiter
 from marquise_api.schemas import ScreeningResponse
-from marquise_api.schemas.screening import (
-    CreateScreeningRequest,
-    UpdateScreeningRequest,
-)
 
 router = APIRouter(tags=["screenings"])
-
-
-@router.post(
-    "/screenings",
-    status_code=201,
-    response_model=ScreeningResponse,
-    responses={
-        **error_responses(401, 403, 404, 409, 422, 429, 503),
-        201: {
-            "description": "Persisted screening (without external_id).",
-            "headers": {
-                "Location": {
-                    "description": "Relative URL of the created screening detail.",
-                    "schema": {"type": "string"},
-                }
-            },
-        },
-    },
-    dependencies=[Depends(enforce_rate_limit), Depends(require_editor)],
-)
-@limiter.limit(current_rate_limit)
-async def create_screening(
-    request: Request,
-    response: Response,
-    body: CreateScreeningRequest,
-    context: WriteScreeningUseCase.Context = Depends(get_screening_write_context),
-    use_case: WriteScreeningUseCase = Depends(get_write_screening_use_case),
-) -> ScreeningResponse:
-    """Create a screening as an Editor or Administrator using existing movie/cinema IDs.
-
-    Showtime must be timezone-aware; optional metadata may be omitted or null.
-    The response is persisted data and is uncached. Successful writes clear the
-    full instance-local public cache on a best-effort basis; failures to clear
-    do not roll back or retry the committed write. Other instances rely on expiry.
-    """
-    output = await use_case.execute(
-        WriteScreeningUseCase.InputData(
-            context=context,
-            mutation=WriteScreeningUseCase.CreateInput(**body.model_dump()),
-        )
-    )
-    if output.changed:
-        await invalidate_public_cache(request)
-    response.headers["Location"] = f"/v1/screenings/{output.screening_id}"
-    return ScreeningResponse.model_validate(output.screening)
-
-
-@router.patch(
-    "/screenings/{screening_id}",
-    response_model=ScreeningResponse,
-    responses=error_responses(401, 403, 404, 409, 422, 429, 503),
-    dependencies=[Depends(enforce_rate_limit), Depends(require_editor)],
-)
-@limiter.limit(current_rate_limit)
-async def update_screening(
-    request: Request,
-    response: Response,
-    screening_id: str,
-    body: UpdateScreeningRequest,
-    context: WriteScreeningUseCase.Context = Depends(get_screening_write_context),
-    use_case: WriteScreeningUseCase = Depends(get_write_screening_use_case),
-) -> ScreeningResponse:
-    """Edit supplied fields as an Editor or Administrator, including movie/cinema/time.
-
-    Omitted fields stay unchanged; null clears only optional metadata. Empty
-    PATCH returns the existing screening (or 404) without cache invalidation.
-    The persisted response is uncached. Nonempty successful edits clear the full
-    instance-local public cache, best-effort; failures to clear never retry or
-    roll back the write. Other instances rely on expiry.
-    """
-    output = await use_case.execute(
-        WriteScreeningUseCase.InputData(
-            context=context,
-            mutation=WriteScreeningUseCase.UpdateInput(
-                screening_id=screening_id, **body.model_dump(exclude_unset=True)
-            ),
-        )
-    )
-    if output.changed:
-        await invalidate_public_cache(request)
-    return ScreeningResponse.model_validate(output.screening)
-
-
-@router.delete(
-    "/screenings/{screening_id}",
-    status_code=204,
-    responses=error_responses(401, 403, 404, 409, 422, 429, 503),
-    dependencies=[Depends(enforce_rate_limit), Depends(require_editor)],
-)
-@limiter.limit(current_rate_limit)
-async def delete_screening(
-    request: Request,
-    response: Response,
-    screening_id: str,
-    context: WriteScreeningUseCase.Context = Depends(get_screening_write_context),
-    use_case: WriteScreeningUseCase = Depends(get_write_screening_use_case),
-) -> Response:
-    """Permanently delete a screening and atomically remove its movie if orphaned.
-
-    Editors and Administrators have identical global deletion permissions.
-    A missing screening with a new key returns 404; a retry of a committed key
-    returns its original 204. The response is uncached. Success clears the full
-    instance-local public cache, best-effort;
-    failure to clear never retries or rolls back deletion. Other instances rely
-    on expiry.
-    """
-    output = await use_case.execute(
-        WriteScreeningUseCase.InputData(
-            context=context,
-            mutation=WriteScreeningUseCase.DeleteInput(screening_id=screening_id),
-        )
-    )
-    if output.changed:
-        await invalidate_public_cache(request)
-    response.status_code = 204
-    return response
 
 
 def _search_screenings_key_builder(
