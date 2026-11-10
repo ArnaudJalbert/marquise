@@ -131,8 +131,8 @@ PY
 
 The source is read in a read-only repeatable-read transaction. The destination
 bootstrap, empty-table check, inserts, and verification commit in one transaction.
-All seven destination tables are locked through commit. Any preexisting
-configuration, Movie, Screening, audit, or idempotency row causes refusal.
+All five destination tables are locked through commit. Any preexisting
+configuration, Movie, or Screening row causes refusal.
 Successful output reports exact verified configuration counts and zero excluded
 rows. Foreign keys enforce the assignments. No source writes, catalog copy,
 overwrite, or deletion occur. Repeating a completed transfer fails safely.
@@ -159,10 +159,8 @@ The transfer compared all configuration values and preserved the original IDs:
 | `cinema_source_assignments` | 14 | 14 |
 | `movies` | 73 | 0 |
 | `screenings` | 294 | 0 |
-| `screening_write_audit` | 0 | 0 |
-| `screening_write_results` | 0 | 0 |
 
-There were zero dangling assignments. Comparing every row in all seven source
+There were zero dangling assignments. Comparing every row in all five source
 tables before and after confirmed that Supabase was unchanged. These are setup
 counts, not a live status report. No catalog ingestion or API cutover was run.
 

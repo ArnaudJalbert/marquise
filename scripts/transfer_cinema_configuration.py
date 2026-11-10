@@ -18,7 +18,7 @@ CONFIGURATION = {
     "source_definitions": ("name", "display_name", "description"),
     "cinema_source_assignments": ("cinema_id", "source_name"),
 }
-EXCLUDED = ("movies", "screenings", "screening_write_audit", "screening_write_results")
+EXCLUDED = ("movies", "screenings")
 
 
 class TransferError(Exception):

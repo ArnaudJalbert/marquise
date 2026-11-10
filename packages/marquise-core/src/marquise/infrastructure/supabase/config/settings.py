@@ -19,6 +19,3 @@ class Settings:
     cineplex_api_key: str = field(default="", repr=False)
     tmdb_api_key: str = field(default="", repr=False)
     schema: str = "marquise"
-    supabase_url: str = ""
-    supabase_publishable_key: str = field(default="", repr=False)
-    supabase_service_role_key: str = field(default="", repr=False)
