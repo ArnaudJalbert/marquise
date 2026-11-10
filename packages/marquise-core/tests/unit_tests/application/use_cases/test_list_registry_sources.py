@@ -6,18 +6,15 @@ from unittest.mock import create_autospec
 
 import pytest
 
-from marquise.application.repositories import RegistrySourceEntry, SourceRegistryQuery
+from marquise.application.repositories import SourceRegistryQuery
 from marquise.application.use_cases import ListRegistrySourcesUseCase
 
 
 @pytest.mark.asyncio
 async def test_list_registry_sources_returns_all() -> None:
-    """Verify list_registry_sources returns all entries from the registry."""
+    """Verify list_registry_sources returns every registry name, sorted."""
     mock_registry = create_autospec(SourceRegistryQuery, instance=True)
-    mock_registry.list_available.return_value = {
-        "cinemacinema": RegistrySourceEntry(name="cinemacinema"),
-        "cineplex": RegistrySourceEntry(name="cineplex"),
-    }
+    mock_registry.list_available.return_value = ["cineplex", "cinemacinema"]
 
     use_case = ListRegistrySourcesUseCase(registry=mock_registry)
     request = ListRegistrySourcesUseCase.InputData()
@@ -34,7 +31,7 @@ async def test_list_registry_sources_returns_all() -> None:
 async def test_list_registry_sources_returns_empty() -> None:
     """Verify list_registry_sources returns empty list when registry is empty."""
     mock_registry = create_autospec(SourceRegistryQuery, instance=True)
-    mock_registry.list_available.return_value = {}
+    mock_registry.list_available.return_value = []
 
     use_case = ListRegistrySourcesUseCase(registry=mock_registry)
     request = ListRegistrySourcesUseCase.InputData()
