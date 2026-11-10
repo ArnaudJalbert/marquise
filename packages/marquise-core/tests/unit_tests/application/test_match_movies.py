@@ -5,10 +5,13 @@ from unittest.mock import create_autospec
 
 import pytest
 
-from marquise.application.exceptions.movie import MovieMetadataUnavailableError
+from marquise.application.exceptions import (
+    MetadataFailure,
+    MetadataRateLimitedError,
+    MovieMetadataUnavailableError,
+)
 from marquise.application.metadata import (
     MetadataBatch,
-    MetadataFailure,
     MetadataMovie,
     MetadataRepository,
     PersonFact,
@@ -274,9 +277,7 @@ async def test_provider_equivalence_and_search_noise(provider: str) -> None:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("has_candidate", [False, True])
-@pytest.mark.parametrize(
-    "failure", [None, MetadataFailure("rate_limited", "retry", True)]
-)
+@pytest.mark.parametrize("failure", [None, MetadataRateLimitedError("retry", True)])
 async def test_partial_discovery(
     has_candidate: bool, failure: MetadataFailure | None
 ) -> None:

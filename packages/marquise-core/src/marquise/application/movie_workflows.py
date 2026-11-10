@@ -10,10 +10,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal, Protocol
 
+from marquise.application.exceptions import MetadataFailure
 from marquise.application.exceptions import (
     MovieWorkflowConflictError as MovieWorkflowConflictError,
 )
-from marquise.application.metadata import MetadataFailure, ProviderIdentity
+from marquise.application.metadata import ProviderIdentity
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

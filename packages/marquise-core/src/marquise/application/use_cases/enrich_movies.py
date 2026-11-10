@@ -9,9 +9,14 @@ from datetime import datetime
 from typing import Literal
 from urllib.parse import urlsplit
 
-from marquise.application.exceptions.movie import MovieMetadataUnavailableError
-from marquise.application.metadata import (
+from marquise.application.exceptions import (
     MetadataFailure,
+    MetadataInvalidDataError,
+    MetadataNotFoundError,
+    MetadataUnavailableError,
+    MovieMetadataUnavailableError,
+)
+from marquise.application.metadata import (
     MetadataMovie,
     MetadataRepository,
     ProviderIdentity,
@@ -26,7 +31,7 @@ from marquise.application.movie_workflows import (
 
 logger = logging.getLogger(__name__)
 
-_SINGLE_MOVIE_FAILURES = frozenset({"invalid_data", "not_found"})
+_SINGLE_MOVIE_FAILURES = (MetadataInvalidDataError, MetadataNotFoundError)
 
 
 def _text(value: str | None) -> str | None:
@@ -129,15 +134,11 @@ async def _enrich(
     try:
         snapshot = await movies.get(request.movie_id)
         if snapshot is None:
-            return _failed(
-                request.movie_id, MetadataFailure("not_found", "Movie not found")
-            )
+            return _failed(request.movie_id, MetadataNotFoundError("Movie not found"))
         if request.identity.provider != "tmdb":
             return _failed(
                 request.movie_id,
-                MetadataFailure(
-                    "invalid_data", "Only TMDB identities can be persisted"
-                ),
+                MetadataInvalidDataError("Only TMDB identities can be persisted"),
             )
         if snapshot.tmdb_id not in (None, request.identity.id):
             raise MovieWorkflowConflictError("Confirmed identity conflicts with movie")
@@ -153,7 +154,7 @@ async def _enrich(
         if not batch.complete or len(batch.items) != 1:
             return _failed(
                 request.movie_id,
-                MetadataFailure("invalid_data", "Expected one complete movie detail"),
+                MetadataInvalidDataError("Expected one complete movie detail"),
             )
         movie = batch.items[0]
         if movie.identity != request.identity:
@@ -177,11 +178,11 @@ async def _enrich(
             )
         return EnrichMovieOutputData(request.movie_id, "enriched")
     except (ValueError, MovieWorkflowConflictError) as error:
-        return _failed(request.movie_id, MetadataFailure("invalid_data", str(error)))
+        return _failed(request.movie_id, MetadataInvalidDataError(str(error)))
     except Exception as error:
         # Repository failures must not abort cinema imports or stamp enrichment.
         return _failed(
-            request.movie_id, MetadataFailure("unavailable", str(error), retryable=True)
+            request.movie_id, MetadataUnavailableError(str(error), retryable=True)
         )
 
 
@@ -284,10 +285,10 @@ class EnrichMoviesUseCase:
         if result.failure is None:
             status = "enriched" if result.status == "enriched" else "unchanged"
             return self.MovieResult(result.movie_id, status)
-        if result.failure.kind in _SINGLE_MOVIE_FAILURES:
-            return self._skip(result.movie_id, result.failure.kind)
+        if isinstance(result.failure, _SINGLE_MOVIE_FAILURES):
+            return self._skip(result.movie_id, result.failure.code)
         raise MovieMetadataUnavailableError(
-            f"Movie enrichment failed for '{result.movie_id}': {result.failure.kind}"
+            f"Movie enrichment failed for '{result.movie_id}': {result.failure.code}"
         )
 
     def _skip(self, movie_id: str, reason: str) -> MovieResult:

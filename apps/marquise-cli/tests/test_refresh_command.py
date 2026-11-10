@@ -8,6 +8,10 @@ from marquise import (
     ApplicationError,
     EnrichMovieOutputData,
     MetadataFailure,
+    MetadataInvalidDataError,
+    MetadataNotFoundError,
+    MetadataRateLimitedError,
+    MetadataUnavailableError,
     MovieNotFoundError,
     RefreshMoviesExecutor,
     RefreshMoviesInputData,
@@ -49,7 +53,7 @@ async def test_refresh_all_reports_partial_failure(
             EnrichMovieOutputData(
                 "movie-002",
                 "failed",
-                MetadataFailure("rate_limited", "secret provider URL", retryable=True),
+                MetadataRateLimitedError("secret provider URL", retryable=True),
             ),
             EnrichMovieOutputData("movie-003", "unchanged"),
             EnrichMovieOutputData("movie-004", "enriched"),
@@ -106,15 +110,18 @@ async def test_invalid_target_never_executes(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "failure",
+    "failure,label",
     [
-        MetadataFailure("not_found", "Movie not found"),
-        MetadataFailure("invalid_data", "Movie has no confirmed TMDB identity"),
-        MetadataFailure("unavailable", "secret credentials", retryable=True),
+        (MetadataNotFoundError("Movie not found"), "not_found"),
+        (
+            MetadataInvalidDataError("Movie has no confirmed TMDB identity"),
+            "invalid_data",
+        ),
+        (MetadataUnavailableError("secret credentials", retryable=True), "unavailable"),
     ],
 )
 async def test_single_target_failure(
-    failure: MetadataFailure, capsys: pytest.CaptureFixture[str]
+    failure: MetadataFailure, label: str, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Unknown, unconfirmed and unavailable targets retain explicit typed failure."""
     executor = create_autospec(RefreshMoviesExecutor, instance=True, spec_set=True)
@@ -127,7 +134,7 @@ async def test_single_target_failure(
     executor.execute.assert_awaited_once_with(RefreshMoviesInputData("movie-001"))
     captured = capsys.readouterr()
     retry = " (retryable)" if failure.retryable else ""
-    assert captured.err == f"[failed] movie-001: {failure.kind}{retry}\n"
+    assert captured.err == f"[failed] movie-001: {label}{retry}\n"
     assert captured.out == "Done: 0 refreshed, 0 skipped, 1 failed.\n"
 
 

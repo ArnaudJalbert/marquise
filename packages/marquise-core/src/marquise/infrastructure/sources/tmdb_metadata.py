@@ -9,7 +9,14 @@ from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
-from marquise.application.metadata import MetadataBatch, MetadataFailure
+from marquise.application.exceptions import (
+    MetadataFailure,
+    MetadataInvalidDataError,
+    MetadataNotFoundError,
+    MetadataRateLimitedError,
+    MetadataUnavailableError,
+)
+from marquise.application.metadata import MetadataBatch
 from marquise.interface_adapters.repositories.protocols.tmdb_metadata_source import (
     TmdbMetadataError,
 )
@@ -55,14 +62,13 @@ class TmdbMetadataHttpSource:
         """Retrieve an endpoint with typed failures and no secret in diagnostics."""
         if not self._api_key.strip():
             raise TmdbMetadataError(
-                MetadataFailure("unavailable", "TMDB API key is not configured")
+                MetadataUnavailableError("TMDB API key is not configured")
             )
         if not path.startswith(("movie/", "person/", "search/")) or any(
             part in path for part in ("?", "#", "..", ":", "\\")
         ):
             raise TmdbMetadataError(
-                MetadataFailure(
-                    "invalid_data",
+                MetadataInvalidDataError(
                     "Invalid TMDB response: endpoint_check",
                     reason="endpoint_check",
                 )
@@ -76,21 +82,20 @@ class TmdbMetadataHttpSource:
             return data
         except HTTPError as error:
             status = error.code
-            kind = (
-                "rate_limited"
+            failure_type: type[MetadataFailure] = (
+                MetadataRateLimitedError
                 if status == 429
-                else "not_found"
+                else MetadataNotFoundError
                 if status == 404
-                else "unavailable"
+                else MetadataUnavailableError
             )
-            failure = MetadataFailure(
-                kind, f"TMDB HTTP {status}", status == 429 or status >= 500
+            failure = failure_type(
+                f"TMDB HTTP {status}", status == 429 or status >= 500
             )
         except (OSError, HTTPException):
-            failure = MetadataFailure("unavailable", "TMDB request failed", True)
+            failure = MetadataUnavailableError("TMDB request failed", True)
         except (ValueError, TypeError):
-            failure = MetadataFailure(
-                "invalid_data",
+            failure = MetadataInvalidDataError(
                 "Invalid TMDB response: malformed_json",
                 reason="malformed_json",
             )
@@ -140,8 +145,7 @@ class TmdbMetadataHttpSource:
                 return MetadataBatch(
                     tuple(rows),
                     False,
-                    MetadataFailure(
-                        "invalid_data",
+                    MetadataInvalidDataError(
                         "Invalid TMDB response: pagination",
                         reason="pagination",
                     ),

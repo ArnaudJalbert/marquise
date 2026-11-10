@@ -11,8 +11,9 @@ from marquise import (
     MergeMoviesInputData,
     MergeMoviesOutputData,
     MetadataBatch,
-    MetadataFailure,
     MetadataMovie,
+    MetadataNotFoundError,
+    MetadataRateLimitedError,
     MetadataRepository,
     MovieMetadataRepository,
     MovieMetadataSnapshot,
@@ -35,7 +36,7 @@ def metadata_repository() -> MetadataRepository:
     repository.search_people.return_value = MetadataBatch()
     repository.directed_movies.return_value = MetadataBatch()
     repository.movie_details.return_value = MetadataBatch(
-        complete=False, failure=MetadataFailure("not_found", "Missing movie")
+        complete=False, failure=MetadataNotFoundError("Missing movie")
     )
     return repository
 
@@ -61,12 +62,12 @@ async def test_empty_and_failed_retrieval(
     empty = await metadata_repository.search_movies("Unknown")
     failed = await metadata_repository.movie_details(ProviderIdentity("tmdb", "0"))
     assert empty.complete and empty.failure is None and empty.items == ()
-    assert not failed.complete and failed.failure.kind == "not_found"
+    assert not failed.complete and isinstance(failed.failure, MetadataNotFoundError)
 
 
 def test_partial_batch_preserves_facts() -> None:
     """A failed later page retains ordered earlier facts but cannot be complete."""
-    failure = MetadataFailure("rate_limited", "Later page failed", True)
+    failure = MetadataRateLimitedError("Later page failed", True)
     assert MetadataBatch(("first",), False, failure).items == ("first",)
     with pytest.raises(ValueError, match="incomplete"):
         MetadataBatch(failure=failure)

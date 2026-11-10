@@ -9,6 +9,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Literal
 
+from marquise.application.exceptions.metadata_failure import MetadataFailure
+
 
 @dataclass(frozen=True, slots=True)
 class ProviderIdentity:
@@ -21,31 +23,6 @@ class ProviderIdentity:
         """Reject identities whose scope or identifier is missing."""
         if not self.provider.strip() or not self.id.strip():
             raise ValueError("Provider and ID must be nonempty")
-
-
-type MetadataFailureReason = Literal[
-    "pagination", "malformed_json", "endpoint_check", "detail_mapping"
-]
-"""Stable name of the provider check that rejected a response."""
-
-
-@dataclass(frozen=True, slots=True)
-class MetadataFailure:
-    """Retrieval failure, distinct from an exhaustive empty result.
-
-    Attributes:
-        kind: How callers should treat the failure.
-        message: Sanitized diagnostic text, free of credentials, URLs and bodies.
-        retryable: Whether repeating the request may succeed.
-        reason: The failed check when a provider response was rejected.
-        identity: The provider record involved, when one is known.
-    """
-
-    kind: Literal["unavailable", "rate_limited", "not_found", "invalid_data"]
-    message: str
-    retryable: bool = False
-    reason: MetadataFailureReason | None = None
-    identity: ProviderIdentity | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -154,5 +131,5 @@ class MetadataRepository(ABC):
     async def movie_details(
         self, identity: ProviderIdentity
     ) -> MetadataBatch[MetadataMovie]:
-        """Return zero or one movie; missing detail is a not_found failure."""
+        """Return zero or one movie; missing detail is a MetadataNotFoundError."""
         ...

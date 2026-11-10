@@ -33,7 +33,7 @@ MetadataBatch completeness covers the requested operation, including its pages
 and requested facts, not the provider's entire catalogue. Missing optional facts
 are empty tuples or None. Unknown/zero runtime remains raw evidence for policy
 to assess. Failed pages may retain partial facts but cannot claim completeness.
-An empty complete batch is genuine absence. MetadataFailure distinguishes
+An empty complete batch is genuine absence. MetadataFailure subclasses distinguish
 unavailable, rate_limited, not_found and invalid_data, with retryability explicit.
 
 Match outcomes distinguish matched, unmatched, failed and incomplete. Only matched

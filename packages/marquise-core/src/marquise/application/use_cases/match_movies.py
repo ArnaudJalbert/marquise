@@ -7,10 +7,12 @@ import unicodedata
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
-from marquise.application.exceptions.movie import MovieMetadataUnavailableError
+from marquise.application.exceptions import (
+    MetadataFailure,
+    MovieMetadataUnavailableError,
+)
 from marquise.application.metadata import (
     MetadataBatch,
-    MetadataFailure,
     MetadataMovie,
     MetadataRepository,
     PersonFact,
@@ -317,7 +319,7 @@ class MatchMoviesUseCase:
             if failures:
                 raise MovieMetadataUnavailableError(
                     f"Movie identity failed for '{input_data.title}': "
-                    f"{failures[0].kind}"
+                    f"{failures[0].code}"
                 )
             if ranked:
                 winner_rank, winner_identity = min(

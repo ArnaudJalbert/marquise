@@ -2,7 +2,8 @@
 
 from typing import Protocol
 
-from marquise.application.metadata import MetadataBatch, MetadataFailure
+from marquise.application.exceptions import MetadataFailure
+from marquise.application.metadata import MetadataBatch
 
 
 class TmdbMetadataError(Exception):

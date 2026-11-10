@@ -5,10 +5,10 @@ from datetime import date
 from typing import Literal
 from urllib.parse import quote
 
+from marquise.application.exceptions import MetadataFailure, MetadataInvalidDataError
 from marquise.application.metadata import (
     LocalizedMovieMetadata,
     MetadataBatch,
-    MetadataFailure,
     MetadataMovie,
     MetadataRepository,
     MovieCertification,
@@ -113,8 +113,7 @@ def _with_identity(
 
 
 def _invalid(identity: ProviderIdentity | None = None) -> MetadataFailure:
-    failure = MetadataFailure(
-        "invalid_data",
+    failure = MetadataInvalidDataError(
         "Invalid TMDB response: detail_mapping",
         reason="detail_mapping",
     )

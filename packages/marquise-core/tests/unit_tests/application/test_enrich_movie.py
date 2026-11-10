@@ -7,10 +7,13 @@ from unittest.mock import Mock, create_autospec
 
 import pytest
 
+from marquise.application.exceptions import (
+    MetadataRateLimitedError,
+    MetadataUnavailableError,
+)
 from marquise.application.metadata import (
     LocalizedMovieMetadata,
     MetadataBatch,
-    MetadataFailure,
     MetadataMovie,
     MetadataRepository,
     MovieCertification,
@@ -360,7 +363,7 @@ async def test_failure_preserves_state_and_can_retry(
     "batch",
     [
         MetadataBatch(
-            (), complete=False, failure=MetadataFailure("rate_limited", "Wait", True)
+            (), complete=False, failure=MetadataRateLimitedError("Wait", True)
         ),
         MetadataBatch((), complete=False),
         MetadataBatch(()),
@@ -369,7 +372,7 @@ async def test_failure_preserves_state_and_can_retry(
         MetadataBatch(
             (MetadataMovie(IDENTITY, ()),),
             complete=False,
-            failure=MetadataFailure("unavailable", "Partial", True),
+            failure=MetadataUnavailableError("Partial", True),
         ),
     ],
 )

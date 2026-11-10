@@ -15,6 +15,13 @@ from marquise.application.exceptions.cinema import (
     CinemaIdAlreadyExistsError,
     CinemaNotFoundError,
 )
+from marquise.application.exceptions.metadata_failure import (
+    MetadataFailure,
+    MetadataInvalidDataError,
+    MetadataNotFoundError,
+    MetadataRateLimitedError,
+    MetadataUnavailableError,
+)
 from marquise.application.exceptions.movie import (
     MovieIdentityConflictError,
     MovieMetadataUnavailableError,
@@ -52,6 +59,11 @@ __all__ = [
     "CinemaNotFoundError",
     "CinemaSourceAssignmentAlreadyExistsError",
     "CinemaSourceAssignmentNotFoundError",
+    "MetadataFailure",
+    "MetadataInvalidDataError",
+    "MetadataNotFoundError",
+    "MetadataRateLimitedError",
+    "MetadataUnavailableError",
     "MovieIdentityConflictError",
     "MovieMetadataUnavailableError",
     "MovieNotFoundError",

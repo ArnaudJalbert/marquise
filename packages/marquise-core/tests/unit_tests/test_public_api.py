@@ -12,6 +12,10 @@ import marquise
 EXPECTED_PUBLIC_SURFACE: set[str] = {
     "ProviderIdentity",
     "MetadataFailure",
+    "MetadataUnavailableError",
+    "MetadataRateLimitedError",
+    "MetadataNotFoundError",
+    "MetadataInvalidDataError",
     "PersonFact",
     "TitleFact",
     "LocalizedMovieMetadata",
