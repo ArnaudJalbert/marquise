@@ -5,7 +5,7 @@ from datetime import date
 from typing import Literal
 from urllib.parse import quote
 
-from marquise.application.exceptions import MetadataFailure, MetadataInvalidDataError
+from marquise.application.exceptions import MetadataDetailMappingError, MetadataFailure
 from marquise.application.metadata import (
     LocalizedMovieMetadata,
     MetadataBatch,
@@ -105,18 +105,12 @@ def _with_identity(
     """Name the record involved, keeping an identity a deeper check already set."""
     if identity is None or failure.identity is not None:
         return failure
-    return replace(
-        failure,
-        message=f"{failure.message} for {identity.provider} {identity.id}",
-        identity=identity,
-    )
+    message = f"{failure.message} for {identity.provider} {identity.id}"
+    return type(failure)(message, identity)
 
 
 def _invalid(identity: ProviderIdentity | None = None) -> MetadataFailure:
-    failure = MetadataInvalidDataError(
-        "Invalid TMDB response: detail_mapping",
-        reason="detail_mapping",
-    )
+    failure = MetadataDetailMappingError("Invalid TMDB response: detail_mapping")
     return _with_identity(failure, identity)
 
 

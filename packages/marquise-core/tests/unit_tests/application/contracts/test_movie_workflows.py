@@ -24,6 +24,12 @@ from marquise import (
     RefreshMoviesOutputData,
     TitleFact,
 )
+from marquise.application.exceptions import (
+    MetadataDetailMappingError,
+    MetadataFailure,
+    MetadataRequestRefusedError,
+    MetadataUnavailableError,
+)
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
 
@@ -65,9 +71,26 @@ async def test_empty_and_failed_retrieval(
     assert not failed.complete and isinstance(failed.failure, MetadataNotFoundError)
 
 
+@pytest.mark.parametrize(
+    "failure,retryable",
+    [
+        (MetadataUnavailableError("down"), True),
+        (MetadataRateLimitedError("later"), True),
+        (MetadataRequestRefusedError("bad key"), False),
+        (MetadataNotFoundError("gone"), False),
+        (MetadataDetailMappingError("bad record"), False),
+    ],
+)
+def test_only_outages_and_rate_limits_are_retryable(
+    failure: MetadataFailure, retryable: bool
+) -> None:
+    """A refresh may succeed later only after an outage or a rate limit."""
+    assert EnrichMovieOutputData("movie", "failed", failure).retryable is retryable
+
+
 def test_partial_batch_preserves_facts() -> None:
     """A failed later page retains ordered earlier facts but cannot be complete."""
-    failure = MetadataRateLimitedError("Later page failed", True)
+    failure = MetadataRateLimitedError("Later page failed")
     assert MetadataBatch(("first",), False, failure).items == ("first",)
     with pytest.raises(ValueError, match="incomplete"):
         MetadataBatch(failure=failure)

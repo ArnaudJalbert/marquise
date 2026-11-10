@@ -362,9 +362,7 @@ async def test_failure_preserves_state_and_can_retry(
 @pytest.mark.parametrize(
     "batch",
     [
-        MetadataBatch(
-            (), complete=False, failure=MetadataRateLimitedError("Wait", True)
-        ),
+        MetadataBatch((), complete=False, failure=MetadataRateLimitedError("Wait")),
         MetadataBatch((), complete=False),
         MetadataBatch(()),
         MetadataBatch((MetadataMovie(IDENTITY, ()), MetadataMovie(IDENTITY, ()))),
@@ -372,7 +370,7 @@ async def test_failure_preserves_state_and_can_retry(
         MetadataBatch(
             (MetadataMovie(IDENTITY, ()),),
             complete=False,
-            failure=MetadataUnavailableError("Partial", True),
+            failure=MetadataUnavailableError("Partial"),
         ),
     ],
 )
@@ -499,7 +497,7 @@ async def test_single_refresh_read_failure_is_a_failed_result(
         RefreshMoviesInputData(REQUEST.movie_id)
     )
     assert result.results[0].status == "failed"
-    assert result.results[0].failure.retryable
+    assert result.results[0].retryable
     metadata.movie_details.assert_not_awaited()
     movies.update_metadata.assert_not_awaited()
 

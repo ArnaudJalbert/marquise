@@ -277,7 +277,7 @@ async def test_provider_equivalence_and_search_noise(provider: str) -> None:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("has_candidate", [False, True])
-@pytest.mark.parametrize("failure", [None, MetadataRateLimitedError("retry", True)])
+@pytest.mark.parametrize("failure", [None, MetadataRateLimitedError("retry")])
 async def test_partial_discovery(
     has_candidate: bool, failure: MetadataFailure | None
 ) -> None:

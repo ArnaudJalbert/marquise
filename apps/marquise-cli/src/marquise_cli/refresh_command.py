@@ -27,8 +27,8 @@ def _print_results(output: RefreshMoviesOutputData) -> int:
             assert failure is not None  # Enforced by the public result DTO.
             # Provider messages may include request URLs or credentials.
             print(
-                f"[failed] {result.movie_id}: {failure.code}"
-                + (" (retryable)" if failure.retryable else ""),
+                f"[failed] {result.movie_id}: {failure.label}"
+                + (" (retryable)" if result.retryable else ""),
                 file=sys.stderr,
             )
     print(f"Done: {refreshed} refreshed, {skipped} skipped, {failed} failed.")

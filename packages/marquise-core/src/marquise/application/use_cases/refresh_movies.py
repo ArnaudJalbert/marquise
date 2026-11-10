@@ -55,7 +55,7 @@ class RefreshMoviesUseCase:
                         EnrichMovieOutputData(
                             input_data.movie_id,
                             "failed",
-                            MetadataUnavailableError(str(error), retryable=True),
+                            MetadataUnavailableError(str(error)),
                         ),
                     )
                 )

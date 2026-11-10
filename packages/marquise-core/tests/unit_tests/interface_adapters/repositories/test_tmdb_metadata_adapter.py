@@ -10,7 +10,9 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 
 from marquise.application.exceptions import (
+    MetadataDetailMappingError,
     MetadataInvalidDataError,
+    MetadataMalformedJsonError,
     MetadataUnavailableError,
 )
 from marquise.application.metadata import ProviderIdentity
@@ -397,7 +399,7 @@ async def test_truncated_http_detail_returns_typed_partial_batch() -> None:
     data["movie/1765072/credits"] = IncompleteRead(b"fake-secret", 100)
     result = await adapter(data).movie_details(MOVIE)
     assert not result.complete and isinstance(result.failure, MetadataUnavailableError)
-    assert result.failure.retryable and result.items[0].identity == MOVIE
+    assert result.items[0].identity == MOVIE
     assert "fake-secret" not in repr(result)
 
 
@@ -407,8 +409,7 @@ async def test_detail_mapping_failure_names_check_and_movie_identity() -> None:
     data = payloads()
     data["movie/1765072/release_dates"]["results"][0]["iso_3166_1"] = None
     result = await adapter(data).movie_details(MOVIE)
-    assert isinstance(result.failure, MetadataInvalidDataError)
-    assert result.failure.reason == "detail_mapping"
+    assert type(result.failure) is MetadataDetailMappingError
     assert result.failure.identity == MOVIE
     assert "detail_mapping" in result.failure.message
     assert "1765072" in result.failure.message
@@ -422,7 +423,7 @@ async def test_malformed_detail_json_keeps_its_check_and_names_movie() -> None:
     data = payloads()
     data["movie/1765072/credits"] = []
     result = await adapter(data).movie_details(MOVIE)
-    assert result.failure.reason == "malformed_json"
+    assert type(result.failure) is MetadataMalformedJsonError
     assert result.failure.identity == MOVIE
     assert "1765072" in result.failure.message
 
@@ -433,7 +434,7 @@ async def test_search_row_mapping_failure_names_the_row_identity() -> None:
     data = payloads()
     data["search/movie:1"]["results"][0]["title"] = 17
     result = await adapter(data).search_movies("Anything")
-    assert result.failure.reason == "detail_mapping"
+    assert type(result.failure) is MetadataDetailMappingError
     assert result.failure.identity == MOVIE
     assert "1765072" in result.failure.message
 
@@ -444,7 +445,7 @@ async def test_person_mapping_failure_names_the_person_identity() -> None:
     data = payloads()
     data["person/2001262"]["also_known_as"] = "not-a-list"
     result = await adapter(data).search_people("Anyone")
-    assert result.failure.reason == "detail_mapping"
+    assert type(result.failure) is MetadataDetailMappingError
     assert result.failure.identity == PERSON
 
 
@@ -454,5 +455,5 @@ async def test_directed_credit_mapping_failure_names_the_person_identity() -> No
     data = payloads()
     data["person/2001262/movie_credits"]["crew"] = {}
     result = await adapter(data).directed_movies(PERSON)
-    assert result.failure.reason == "detail_mapping"
+    assert type(result.failure) is MetadataDetailMappingError
     assert result.failure.identity == PERSON

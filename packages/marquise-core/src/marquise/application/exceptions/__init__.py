@@ -16,10 +16,15 @@ from marquise.application.exceptions.cinema import (
     CinemaNotFoundError,
 )
 from marquise.application.exceptions.metadata_failure import (
+    MetadataDetailMappingError,
+    MetadataEndpointCheckError,
     MetadataFailure,
     MetadataInvalidDataError,
+    MetadataMalformedJsonError,
     MetadataNotFoundError,
+    MetadataPaginationError,
     MetadataRateLimitedError,
+    MetadataRequestRefusedError,
     MetadataUnavailableError,
 )
 from marquise.application.exceptions.movie import (
@@ -59,10 +64,15 @@ __all__ = [
     "CinemaNotFoundError",
     "CinemaSourceAssignmentAlreadyExistsError",
     "CinemaSourceAssignmentNotFoundError",
+    "MetadataDetailMappingError",
+    "MetadataEndpointCheckError",
     "MetadataFailure",
     "MetadataInvalidDataError",
+    "MetadataMalformedJsonError",
     "MetadataNotFoundError",
+    "MetadataPaginationError",
     "MetadataRateLimitedError",
+    "MetadataRequestRefusedError",
     "MetadataUnavailableError",
     "MovieIdentityConflictError",
     "MovieMetadataUnavailableError",

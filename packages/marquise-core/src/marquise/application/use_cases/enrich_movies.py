@@ -181,9 +181,7 @@ async def _enrich(
         return _failed(request.movie_id, MetadataInvalidDataError(str(error)))
     except Exception as error:
         # Repository failures must not abort cinema imports or stamp enrichment.
-        return _failed(
-            request.movie_id, MetadataUnavailableError(str(error), retryable=True)
-        )
+        return _failed(request.movie_id, MetadataUnavailableError(str(error)))
 
 
 def _failed(movie_id: str, failure: MetadataFailure) -> EnrichMovieOutputData:
@@ -286,9 +284,9 @@ class EnrichMoviesUseCase:
             status = "enriched" if result.status == "enriched" else "unchanged"
             return self.MovieResult(result.movie_id, status)
         if isinstance(result.failure, _SINGLE_MOVIE_FAILURES):
-            return self._skip(result.movie_id, result.failure.code)
+            return self._skip(result.movie_id, result.failure.label)
         raise MovieMetadataUnavailableError(
-            f"Movie enrichment failed for '{result.movie_id}': {result.failure.code}"
+            f"Movie enrichment failed for '{result.movie_id}': {result.failure.label}"
         )
 
     def _skip(self, movie_id: str, reason: str) -> MovieResult:
