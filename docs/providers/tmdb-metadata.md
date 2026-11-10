@@ -1,8 +1,7 @@
 # TMDB metadata retrieval
 
 Issue #350 consumes the application-owned contracts from #358. Parent #349 owns
-policy. Imports, refresh and merge use this path; the older TmdbSearchAdapter and
-TmdbSource are unreferenced (#457).
+policy. Imports, refresh and merge use this path.
 
 Construct TmdbMetadataHttpSource with a key and inject it into TmdbMetadataAdapter.
 The adapter implements MetadataRepository; neither class selects a match or
