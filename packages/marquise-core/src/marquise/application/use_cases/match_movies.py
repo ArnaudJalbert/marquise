@@ -319,7 +319,7 @@ class MatchMoviesUseCase:
             if failures:
                 raise MovieMetadataUnavailableError(
                     f"Movie identity failed for '{input_data.title}': "
-                    f"{failures[0].label}"
+                    f"{type(failures[0]).__name__}"
                 )
             if ranked:
                 winner_rank, winner_identity = min(

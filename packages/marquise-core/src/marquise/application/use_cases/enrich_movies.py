@@ -284,9 +284,10 @@ class EnrichMoviesUseCase:
             status = "enriched" if result.status == "enriched" else "unchanged"
             return self.MovieResult(result.movie_id, status)
         if isinstance(result.failure, _SINGLE_MOVIE_FAILURES):
-            return self._skip(result.movie_id, result.failure.label)
+            return self._skip(result.movie_id, type(result.failure).__name__)
         raise MovieMetadataUnavailableError(
-            f"Movie enrichment failed for '{result.movie_id}': {result.failure.label}"
+            f"Movie enrichment failed for '{result.movie_id}': "
+            f"{type(result.failure).__name__}"
         )
 
     def _skip(self, movie_id: str, reason: str) -> MovieResult:

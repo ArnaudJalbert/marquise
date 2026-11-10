@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from typing import TYPE_CHECKING
 
 from marquise.application.exceptions.base import ApplicationError
@@ -27,12 +26,6 @@ class MetadataFailure(ApplicationError):  # noqa: N818
         super().__init__(message)
         self.message = message
         self.identity = identity
-
-    @property
-    def label(self) -> str:
-        """The class name in snake case without its affixes, e.g. rate_limited."""
-        name = type(self).__name__.removeprefix("Metadata").removesuffix("Error")
-        return "_".join(word.lower() for word in re.findall("[A-Z][a-z]*", name))
 
 
 class MetadataUnavailableError(MetadataFailure):

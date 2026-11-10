@@ -70,7 +70,7 @@ async def test_refresh_all_reports_partial_failure(
         "[refreshed] movie-004\n"
         "Done: 2 refreshed, 1 skipped, 1 failed.\n"
     )
-    assert captured.err == "[failed] movie-002: rate_limited (retryable)\n"
+    assert captured.err == "[failed] movie-002: MetadataRateLimitedError (retryable)\n"
     assert "secret" not in captured.out + captured.err
 
 
@@ -112,12 +112,15 @@ async def test_invalid_target_never_executes(
 @pytest.mark.parametrize(
     "failure,printed",
     [
-        (MetadataNotFoundError("Movie not found"), "not_found"),
+        (MetadataNotFoundError("Movie not found"), "MetadataNotFoundError"),
         (
             MetadataInvalidDataError("Movie has no confirmed TMDB identity"),
-            "invalid_data",
+            "MetadataInvalidDataError",
         ),
-        (MetadataUnavailableError("secret credentials"), "unavailable (retryable)"),
+        (
+            MetadataUnavailableError("secret credentials"),
+            "MetadataUnavailableError (retryable)",
+        ),
     ],
 )
 async def test_single_target_failure(
