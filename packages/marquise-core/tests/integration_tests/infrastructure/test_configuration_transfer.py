@@ -68,11 +68,6 @@ async def seed_source(conn: asyncpg.Connection) -> None:
             VALUES ('old-movie', 'Old catalog', '123');
         INSERT INTO marquise.screenings (id, movie_id, cinema_id, showtime)
             VALUES ('old-screening', 'old-movie', 'cinema-original-id', '2026-10-30');
-        INSERT INTO marquise.screening_write_results VALUES
-            ('account', 'key', 'fingerprint', '{}');
-        INSERT INTO marquise.screening_write_audit
-            (account, idempotency_key, operation, target_id, recorded_at, reason)
-            VALUES ('account', 'key', 'create', 'old-screening', now(), 'Old history');
     """)
 
 
@@ -98,8 +93,6 @@ async def test_transfer_preserves_configuration_and_excludes_catalog(
         for table in (
             "movies",
             "screenings",
-            "screening_write_audit",
-            "screening_write_results",
         ):
             assert await target.fetchval(f"SELECT count(*) FROM marquise.{table}") == 0
             assert await source.fetchval(f"SELECT count(*) FROM marquise.{table}") == 1
@@ -121,9 +114,7 @@ async def test_transfer_preserves_configuration_and_excludes_catalog(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "table", ["movies", "screening_write_audit", "source_definitions"]
-)
+@pytest.mark.parametrize("table", ["movies", "source_definitions"])
 async def test_transfer_refuses_existing_destination_data(
     databases: tuple[str, str], table: str
 ) -> None:
@@ -136,16 +127,12 @@ async def test_transfer_refuses_existing_destination_data(
         await target.execute("""
             TRUNCATE marquise.screenings, marquise.movies,
                 marquise.cinema_source_assignments, marquise.cinemas,
-                marquise.source_definitions, marquise.screening_write_audit,
-                marquise.screening_write_results
+                marquise.source_definitions
         """)
         statements = {
             "movies": "INSERT INTO marquise.movies (id, title) VALUES ('keep', 'Keep')",
             "source_definitions": "INSERT INTO marquise.source_definitions "
             "VALUES ('keep', 'Keep', NULL)",
-            "screening_write_audit": "INSERT INTO marquise.screening_write_audit "
-            "(account, idempotency_key, operation, target_id, recorded_at, reason) "
-            "VALUES ('keep', 'keep', 'create', 'keep', now(), 'Keep')",
         }
         await target.execute(statements[table])
         code, output = await run_transfer(*databases)

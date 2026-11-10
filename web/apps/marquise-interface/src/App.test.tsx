@@ -1114,14 +1114,15 @@ it("explains public API use without granting third-party content rights", () => 
   expect(screen.getByRole("link", { name: "source credits" }).getAttribute("href")).toBe("/about");
 });
 
-it("discloses server logs, editor records, forwarded email, and the privacy contact", () => {
+it("discloses server logs, no accounts or editing, forwarded email, and the privacy contact", () => {
   history.replaceState(null, "", "/privacy");
   render(<App client={clients()} />);
   expect(screen.getByText(/Routine web-server access logs are disabled/)).toBeTruthy();
   expect(screen.getByText(/separate request-completion log/)).toBeTruthy();
   expect(screen.getByRole("link", { name: "published logging policy" }).getAttribute("href")).toBe("https://fly.io/legal/security-questionnaire/");
   expect(screen.getByText(/outside Québec/)).toBeTruthy();
-  expect(screen.getByRole("heading", { name: "Authorized editors" })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "No accounts or editing" })).toBeTruthy();
+  expect(screen.getByText(/does not offer visitor accounts, login, or manual editing/)).toBeTruthy();
   expect(screen.getByText(/personal Gmail inbox/)).toBeTruthy();
   expect(screen.getByRole("link", { name: "Google's privacy policy" }).getAttribute("href")).toBe("https://policies.google.com/privacy");
   expect(screen.getByText(/Arnaud Jalbert is responsible/)).toBeTruthy();

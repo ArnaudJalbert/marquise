@@ -102,9 +102,6 @@ class SettingsProvider:
             cineplex_api_key=os.environ.get("CINEPLEX_API_KEY", ""),
             tmdb_api_key=os.environ.get("TMDB_API_KEY", ""),
             schema=os.environ.get("DATABASE_SCHEMA", "marquise"),
-            supabase_url=os.environ.get("SUPABASE_URL", ""),
-            supabase_publishable_key=os.environ.get("SUPABASE_PUBLISHABLE_KEY", ""),
-            supabase_service_role_key=os.environ.get("SUPABASE_SERVICE_ROLE_KEY", ""),
         )
 
     @property

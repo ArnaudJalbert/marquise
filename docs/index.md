@@ -2,7 +2,7 @@
 
 Montreal cinema showtimes — aggregated, normalized, and queryable.
 
-Marquise fetches showtime data from theater chains and independent cinemas across Montreal, normalizes it into PostgreSQL, and exposes it through a CLI, a REST API with public reads and authenticated screening writes, and a web interface.
+Marquise fetches showtime data from theater chains and independent cinemas across Montreal, normalizes it into PostgreSQL, and exposes it through a CLI, a public read-only REST API, and a web interface.
 
 Live API: [api.marquise.mov/docs](https://api.marquise.mov/docs)
 
