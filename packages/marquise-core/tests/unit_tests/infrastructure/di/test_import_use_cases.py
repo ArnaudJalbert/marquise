@@ -16,6 +16,7 @@ from marquise.infrastructure.di.import_use_cases import (
     build_create_screenings_use_case,
     build_fetch_screenings_use_case,
     build_find_stored_movies_query,
+    build_import_screenings_use_case,
 )
 
 
@@ -46,6 +47,16 @@ def test_movie_builders_wire_supplied_pool_and_schema() -> None:
     assert isinstance(query, FindStoredMoviesQuery)
     assert command._movie_repository._gateway._pool is pool
     assert query._movie_repository._gateway._table == '"test_schema".movies'
+    pool.acquire.assert_not_called()
+
+
+def test_import_builder_does_not_acquire_pool() -> None:
+    """Building the import workflow does not open a database connection."""
+    pool = MagicMock()
+    fetch = create_autospec(FetchScreeningsFromSourceQuery, instance=True)
+
+    build_import_screenings_use_case(pool, "test_schema", "key", fetch)
+
     pool.acquire.assert_not_called()
 
 
