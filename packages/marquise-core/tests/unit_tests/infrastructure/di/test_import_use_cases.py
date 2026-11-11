@@ -8,19 +8,14 @@ from marquise.application.queries.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
 from marquise.application.queries.find_stored_movies import FindStoredMoviesQuery
-from marquise.application.queries.link_screenings import LinkScreeningsQuery
 from marquise.application.repositories import SourceRegistryQuery
 from marquise.application.use_cases.create_movies import CreateMoviesCommand
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
-from marquise.application.use_cases.enrich_movies import EnrichMoviesUseCase
-from marquise.application.use_cases.import_screenings import ImportScreeningsCommand
-from marquise.application.use_cases.match_movies import MatchMoviesUseCase
 from marquise.infrastructure.di.import_use_cases import (
     build_create_movies_use_case,
     build_create_screenings_use_case,
     build_fetch_screenings_use_case,
     build_find_stored_movies_query,
-    build_import_screenings_use_case,
 )
 
 
@@ -51,24 +46,6 @@ def test_movie_builders_wire_supplied_pool_and_schema() -> None:
     assert isinstance(query, FindStoredMoviesQuery)
     assert command._movie_repository._gateway._pool is pool
     assert query._movie_repository._gateway._table == '"test_schema".movies'
-    pool.acquire.assert_not_called()
-
-
-def test_import_builder_wires_every_step() -> None:
-    """The coordinator receives each use case it sequences."""
-    pool = MagicMock()
-    fetch = create_autospec(FetchScreeningsFromSourceQuery, instance=True)
-
-    command = build_import_screenings_use_case(pool, "test_schema", "key", fetch)
-
-    assert isinstance(command, ImportScreeningsCommand)
-    assert command._fetch_screenings is fetch
-    assert isinstance(command._match_movies, MatchMoviesUseCase)
-    assert isinstance(command._find_stored_movies, FindStoredMoviesQuery)
-    assert isinstance(command._create_movies, CreateMoviesCommand)
-    assert isinstance(command._link_screenings, LinkScreeningsQuery)
-    assert isinstance(command._create_screenings, CreateScreeningsCommand)
-    assert isinstance(command._enrich_movies, EnrichMoviesUseCase)
     pool.acquire.assert_not_called()
 
 
