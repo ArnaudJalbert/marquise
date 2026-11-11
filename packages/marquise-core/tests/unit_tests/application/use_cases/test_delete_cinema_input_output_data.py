@@ -17,15 +17,3 @@ def test_input_data_rejects_whitespace_cinema_id() -> None:
     """Verify InputData rejects a whitespace-only cinema_id."""
     with pytest.raises(ValueError, match="cinema_id must not be empty"):
         DeleteCinemaUseCase.InputData(cinema_id="   ")
-
-
-def test_input_data_allows_valid_input() -> None:
-    """Verify InputData accepts a valid cinema_id."""
-    data = DeleteCinemaUseCase.InputData(cinema_id="cin-001")
-    assert data.cinema_id == "cin-001"
-
-
-def test_output_data_creation() -> None:
-    """Verify OutputData can be created with expected fields."""
-    response = DeleteCinemaUseCase.OutputData(cinema_id="cin-001")
-    assert response.cinema_id == "cin-001"

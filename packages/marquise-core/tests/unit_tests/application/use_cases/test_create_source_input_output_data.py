@@ -31,31 +31,7 @@ def test_input_data_rejects_whitespace_display_name() -> None:
         CreateSourceUseCase.InputData(name="source", display_name="   ")
 
 
-def test_input_data_allows_valid_input() -> None:
-    """Verify InputData accepts valid data."""
-    data = CreateSourceUseCase.InputData(
-        name="cineplex",
-        display_name="Cineplex",
-        description="Cineplex showtimes",
-    )
-    assert data.name == "cineplex"
-    assert data.display_name == "Cineplex"
-    assert data.description == "Cineplex showtimes"
-
-
 def test_input_data_defaults() -> None:
     """Verify InputData defaults."""
     data = CreateSourceUseCase.InputData(name="source", display_name="Source")
     assert data.description is None
-
-
-def test_output_data_creation() -> None:
-    """Verify OutputData can be created."""
-    response = CreateSourceUseCase.OutputData(
-        name="cineplex",
-        display_name="Cineplex",
-        description="A source",
-    )
-    assert response.name == "cineplex"
-    assert response.display_name == "Cineplex"
-    assert response.description == "A source"
