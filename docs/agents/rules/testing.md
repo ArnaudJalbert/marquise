@@ -38,6 +38,16 @@ Each package has a `tests/new_tests/` folder. All new tests go there, in every p
 - New tests follow the rules in this file: public interfaces only, `create_autospec` for collaborators, scenario docstrings.
 - SQL-level integration tests live in root `integration_tests/` and run nightly, not in `tests/new_tests/` (#548).
 
+### Temporary pruning exception
+
+For [#564](https://github.com/ArnaudJalbert/marquise/issues/564)'s pruning children #566 through #571 only, the replacement-coverage prerequisite above is waived. These tickets prune tests for domain objects, DTOs and exceptions, application workflows, factories and resource lifecycle, sources and providers, persistence, API and CLI. This exception ends when those tickets finish and does not apply to #572 or other work.
+
+- Leave every `new_tests/` directory untouched. Do not add, move, modify or delete anything there during pruning.
+- Prune existing suites in place. Existing tests may be edited when that reduces test count while preserving useful coverage.
+- Delete duplicates only when named surviving tests cover the same useful behavior, regardless of folder. Checks that exercise only configured mocks or language machinery may be deleted without replacement when they protect no Marquise behavior or explicit contract.
+- Preserve unique assertions, including useful private-method coverage, test discovery, architecture and public API checks, and existing coverage gates.
+- Add no new tests during this phase. New tests and substantial rewrites belong to the later code refactors, under `new_tests/`.
+
 ## Coverage
 
 70% minimum for core. Target 100% for `domain/` and `application/`. **Enforced:** `fail_under` in `packages/marquise-core/pyproject.toml` and `--cov-fail-under` in `.github/workflows/quality.yml`.

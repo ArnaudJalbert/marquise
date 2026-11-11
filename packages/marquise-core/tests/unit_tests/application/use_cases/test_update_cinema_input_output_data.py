@@ -87,38 +87,6 @@ def test_input_data_allows_none_optionals() -> None:
     assert data.website is None
 
 
-def test_input_data_allows_valid_input() -> None:
-    """Verify InputData accepts valid data."""
-    data = UpdateCinemaUseCase.InputData(
-        cinema_id="cin-001",
-        name="Test Cinema",
-        address="123 St",
-        city="Montreal",
-        website="https://example.com",
-    )
-    assert data.cinema_id == "cin-001"
-    assert data.name == "Test Cinema"
-    assert data.address == "123 St"
-    assert data.city == "Montreal"
-    assert data.website == "https://example.com"
-
-
-def test_output_data_creation() -> None:
-    """Verify OutputData can be created with expected fields."""
-    response = UpdateCinemaUseCase.OutputData(
-        id="cin-001",
-        name="Test Cinema",
-        address="123 St",
-        city="Montreal",
-        website="https://example.com",
-    )
-    assert response.id == "cin-001"
-    assert response.name == "Test Cinema"
-    assert response.address == "123 St"
-    assert response.city == "Montreal"
-    assert response.website == "https://example.com"
-
-
 def test_output_data_allows_none_optionals() -> None:
     """Verify OutputData allows None for optional fields."""
     data = UpdateCinemaUseCase.OutputData(id="cin-001", name="Test Cinema")
