@@ -26,18 +26,13 @@ from marquise.application.exceptions import (
     TooManyScreeningDaysError,
 )
 from marquise.application.metadata import (
-    MetadataBatch,
-    MetadataMovie,
-    MetadataRepository,
     ProviderIdentity,
-    TitleFact,
 )
 from marquise.application.movie_workflows import (
     EnrichMovieInputData,
     EnrichMovieOutputData,
     MergeMoviesInputData,
     MergeMoviesOutputData,
-    MovieMetadataRepository,
     MovieMetadataSnapshot,
     MovieMetadataValues,
     MovieWorkflowConflictError,
@@ -94,10 +89,6 @@ __all__ = [
     "MetadataRateLimitedError",
     "MetadataNotFoundError",
     "MetadataInvalidDataError",
-    "TitleFact",
-    "MetadataMovie",
-    "MetadataBatch",
-    "MetadataRepository",
     "MovieMetadataValues",
     "MovieMetadataSnapshot",
     "EnrichMovieInputData",
@@ -107,7 +98,6 @@ __all__ = [
     "MergeMoviesInputData",
     "MergeMoviesOutputData",
     "MovieWorkflowConflictError",
-    "MovieMetadataRepository",
     "RefreshMoviesUseCase",
     "MergeMoviesUseCase",
     "BrowseScreeningMoviesQuery",

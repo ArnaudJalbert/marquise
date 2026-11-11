@@ -10,20 +10,22 @@ from marquise import (
     MergeMoviesInputData,
     MergeMoviesOutputData,
     MergeMoviesUseCase,
-    MetadataBatch,
-    MetadataMovie,
     MetadataNotFoundError,
     MetadataRateLimitedError,
-    MetadataRepository,
-    MovieMetadataRepository,
     MovieMetadataSnapshot,
     MovieMetadataValues,
     ProviderIdentity,
     RefreshMoviesInputData,
     RefreshMoviesOutputData,
     RefreshMoviesUseCase,
+)
+from marquise.application.metadata import (
+    MetadataBatch,
+    MetadataMovie,
+    MetadataRepository,
     TitleFact,
 )
+from marquise.application.movie_workflows import MovieMetadataRepository
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
 
