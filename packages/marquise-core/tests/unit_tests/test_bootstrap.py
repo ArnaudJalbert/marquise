@@ -6,9 +6,6 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from marquise.application.queries.fetch_screenings_from_source import (
-    FetchScreeningsFromSourceQuery,
-)
 from marquise.application.queries.get_cinema_screenings import (
     GetCinemaScreeningsQuery,
 )
@@ -22,7 +19,6 @@ from marquise.application.queries.list_cinema_source_assignments import (
 from marquise.application.queries.search_screenings import SearchScreeningsQuery
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
-from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
@@ -245,8 +241,6 @@ async def test_list_assignments_query_returns_configured_query() -> None:
         "unassign_source_use_case",
         "get_cinema_source_use_case",
         "list_registry_sources_use_case",
-        "fetch_screenings_use_case",
-        "create_screenings_use_case",
         "get_cinema_use_case",
         "get_cinema_screenings_query",
         "get_cinema_movies_use_case",
@@ -276,8 +270,6 @@ def test_configured_use_cases_require_initialize(property_name: str) -> None:
         ("unassign_source_use_case", UnassignSourceUseCase),
         ("get_cinema_source_use_case", GetCinemaSourceUseCase),
         ("list_registry_sources_use_case", ListRegistrySourcesUseCase),
-        ("fetch_screenings_use_case", FetchScreeningsFromSourceQuery),
-        ("create_screenings_use_case", CreateScreeningsCommand),
         ("get_cinema_use_case", GetCinemaUseCase),
         ("get_cinema_screenings_query", GetCinemaScreeningsQuery),
         ("get_cinema_movies_use_case", GetCinemaMoviesUseCase),
