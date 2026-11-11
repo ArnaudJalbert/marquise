@@ -299,10 +299,6 @@ function Privacy() {
       <h2>No accounts or editing</h2>
       <p>
         Marquise does not offer visitor accounts, login, or manual editing.
-        The former authorized-editing feature and its account-linked change
-        history are removed from the application and scheduled for deletion in
-        the same release, with no new archive. Hosting providers may retain
-        copies in their backups until those backups expire.
       </p>
       <h2>Email</h2>
       <p>
