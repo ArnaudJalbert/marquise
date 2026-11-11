@@ -6,7 +6,7 @@ from unittest.mock import create_autospec
 import pytest
 
 from marquise.application.exceptions import ScreeningNotFoundError
-from marquise.application.queries import GetScreeningQuery
+from marquise.application.queries.get_screening import GetScreeningQuery
 from marquise.application.readers import ScreeningReader
 
 

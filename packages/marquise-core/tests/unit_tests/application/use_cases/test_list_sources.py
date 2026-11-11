@@ -7,7 +7,7 @@ from unittest.mock import create_autospec
 import pytest
 
 from marquise.application.repositories import SourceDefinitionRepository
-from marquise.application.use_cases import ListSourcesUseCase
+from marquise.application.use_cases.list_sources import ListSourcesUseCase
 from marquise.domain.entities import SourceDefinition
 from marquise.domain.value_objects import SourceName
 

@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from marquise.application.queries import (
-    GetCinemaScreeningsQuery,
-    GetMovieScreeningsQuery,
+from marquise.application.queries.get_cinema_screenings import GetCinemaScreeningsQuery
+from marquise.application.queries.get_movie_screenings import GetMovieScreeningsQuery
+from marquise.application.queries.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
-    SearchScreeningsQuery,
 )
+from marquise.application.queries.search_screenings import SearchScreeningsQuery
 from marquise.infrastructure.di.queries import (
     build_get_cinema_screenings_query,
     build_get_movie_screenings_query,
