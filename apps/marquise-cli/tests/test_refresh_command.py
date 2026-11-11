@@ -13,9 +13,9 @@ from marquise import (
     MetadataRateLimitedError,
     MetadataUnavailableError,
     MovieNotFoundError,
-    RefreshMoviesExecutor,
     RefreshMoviesInputData,
     RefreshMoviesOutputData,
+    RefreshMoviesUseCase,
 )
 from marquise_cli.refresh_command import run_refresh_movies
 
@@ -26,7 +26,7 @@ async def test_refresh_one_preserves_id(
     movie_id: str, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """One target reaches the public executor unchanged and prints its stable ID."""
-    executor = create_autospec(RefreshMoviesExecutor, instance=True, spec_set=True)
+    executor = create_autospec(RefreshMoviesUseCase, instance=True, spec_set=True)
     output = RefreshMoviesOutputData((EnrichMovieOutputData(movie_id, "enriched"),))
     executor.execute.return_value = output
 
@@ -46,7 +46,7 @@ async def test_refresh_all_reports_partial_failure(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """A failed middle record retains successful and unchanged records and totals."""
-    executor = create_autospec(RefreshMoviesExecutor, instance=True, spec_set=True)
+    executor = create_autospec(RefreshMoviesUseCase, instance=True, spec_set=True)
     executor.execute.return_value = RefreshMoviesOutputData(
         (
             EnrichMovieOutputData("movie-001", "enriched"),
@@ -76,7 +76,7 @@ async def test_refresh_all_reports_partial_failure(
 @pytest.mark.asyncio
 async def test_refresh_all_empty(capsys: pytest.CaptureFixture[str]) -> None:
     """No confirmed movies is a successful empty bulk refresh."""
-    executor = create_autospec(RefreshMoviesExecutor, instance=True, spec_set=True)
+    executor = create_autospec(RefreshMoviesUseCase, instance=True, spec_set=True)
     executor.execute.return_value = RefreshMoviesOutputData(())
 
     assert await run_refresh_movies(executor, all_movies=True) == 0
@@ -94,7 +94,7 @@ async def test_invalid_target_never_executes(
     movie_id: str | None, all_movies: bool, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Missing, blank or contradictory targets fail before any application call."""
-    executor = create_autospec(RefreshMoviesExecutor, instance=True, spec_set=True)
+    executor = create_autospec(RefreshMoviesUseCase, instance=True, spec_set=True)
 
     assert (
         await run_refresh_movies(executor, movie_id=movie_id, all_movies=all_movies)
@@ -123,7 +123,7 @@ async def test_single_target_failure(
     failure: MetadataFailure, printed: str, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Unknown, unconfirmed and unavailable targets retain explicit typed failure."""
-    executor = create_autospec(RefreshMoviesExecutor, instance=True, spec_set=True)
+    executor = create_autospec(RefreshMoviesUseCase, instance=True, spec_set=True)
     executor.execute.return_value = RefreshMoviesOutputData(
         (EnrichMovieOutputData("movie-001", "not_enriched", failure),)
     )
@@ -151,7 +151,7 @@ async def test_application_failure_is_safe_and_nonzero(
     error: ApplicationError, message: str, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Documented executor errors cannot report success or leak error credentials."""
-    executor = create_autospec(RefreshMoviesExecutor, instance=True, spec_set=True)
+    executor = create_autospec(RefreshMoviesUseCase, instance=True, spec_set=True)
     executor.execute.side_effect = error
 
     assert await run_refresh_movies(executor, movie_id="movie-001") == 1
