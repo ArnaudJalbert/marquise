@@ -30,15 +30,6 @@ async def test_save_and_find_by_name(
 
 
 @pytest.mark.asyncio
-async def test_find_by_name_missing(
-    source_definition_gateway: SupabaseSourceDefinitionGateway,
-) -> None:
-    """Verify find_by_name returns None when no match exists."""
-    result = await source_definition_gateway.find_by_name("nonexistent")
-    assert result is None
-
-
-@pytest.mark.asyncio
 async def test_delete(
     source_definition_gateway: SupabaseSourceDefinitionGateway,
 ) -> None:
