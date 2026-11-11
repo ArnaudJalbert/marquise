@@ -284,6 +284,7 @@ def test_get_cinema_is_cached(client: TestClient, factory: MagicMock) -> None:
     second = client.get("/v1/cinemas/cin-1")
 
     assert first.status_code == 200
+    assert second.status_code == 200
     assert first.headers.get("X-FastAPI-Cache") == "MISS"
     assert second.headers.get("X-FastAPI-Cache") == "HIT"
     assert second.json() == first.json()
@@ -693,6 +694,7 @@ def test_get_movie_is_cached(client: TestClient, factory: MagicMock) -> None:
     second = client.get("/v1/movies/mov-1")
 
     assert first.status_code == 200
+    assert second.status_code == 200
     assert first.headers.get("X-FastAPI-Cache") == "MISS"
     assert second.headers.get("X-FastAPI-Cache") == "HIT"
     assert second.json() == first.json()
@@ -746,6 +748,7 @@ def test_get_cinema_screenings_is_cached(
     second = client.get("/v1/cinemas/cin-1/screenings")
 
     assert first.status_code == 200
+    assert second.status_code == 200
     assert first.headers.get("X-FastAPI-Cache") == "MISS"
     assert second.headers.get("X-FastAPI-Cache") == "HIT"
     assert second.json() == first.json()
@@ -964,6 +967,22 @@ def test_health_is_exempt_from_rate_limiting(
     responses = [client.get("/health") for _ in range(5)]
 
     assert all(response.status_code == 200 for response in responses)
+
+
+def test_rate_limit_is_configurable_via_env_var(
+    monkeypatch: pytest.MonkeyPatch, factory: MagicMock
+) -> None:
+    """A higher configured limit allows more requests before a 429."""
+    monkeypatch.setenv("MARQUISE_API_RATE_LIMIT", "5/minute")
+    factory.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+        cinemas=[], total=0
+    )
+    client = TestClient(create_app(factory=factory))
+
+    responses = [client.get("/v1/cinemas") for _ in range(5)]
+
+    assert all(response.status_code == 200 for response in responses)
+    assert client.get("/v1/cinemas").status_code == 429
 
 
 def test_search_screenings(client: TestClient, factory: MagicMock) -> None:
