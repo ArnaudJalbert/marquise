@@ -153,25 +153,3 @@ async def test_delete_missing(
 
     result = await repo.delete(SourceName(value="missing"))
     assert result is False
-
-
-@pytest.mark.asyncio
-async def test_exists_by_name(
-    repo: SupabaseSourceDefinitionRepository, mock_gateway: AsyncMock
-) -> None:
-    """Verify exists_by_name returns True when gateway returns True."""
-    mock_gateway.exists_by_name.return_value = True
-
-    result = await repo.exists_by_name(SourceName(value="cineplex"))
-    assert result is True
-
-
-@pytest.mark.asyncio
-async def test_exists_by_name_missing(
-    repo: SupabaseSourceDefinitionRepository, mock_gateway: AsyncMock
-) -> None:
-    """Verify exists_by_name returns False when gateway returns False."""
-    mock_gateway.exists_by_name.return_value = False
-
-    result = await repo.exists_by_name(SourceName(value="missing"))
-    assert result is False

@@ -7,9 +7,9 @@ import pytest
 
 from marquise import (
     EnrichMovieOutputData,
-    MergeMoviesExecutor,
     MergeMoviesInputData,
     MergeMoviesOutputData,
+    MergeMoviesUseCase,
     MetadataBatch,
     MetadataMovie,
     MetadataNotFoundError,
@@ -19,16 +19,10 @@ from marquise import (
     MovieMetadataSnapshot,
     MovieMetadataValues,
     ProviderIdentity,
-    RefreshMoviesExecutor,
     RefreshMoviesInputData,
     RefreshMoviesOutputData,
+    RefreshMoviesUseCase,
     TitleFact,
-)
-from marquise.application.exceptions import (
-    MetadataDetailMappingError,
-    MetadataFailure,
-    MetadataRequestRefusedError,
-    MetadataUnavailableError,
 )
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
@@ -71,25 +65,6 @@ async def test_empty_and_failed_retrieval(
     assert not failed.complete and isinstance(failed.failure, MetadataNotFoundError)
 
 
-@pytest.mark.parametrize(
-    "failure,retryable",
-    [
-        (MetadataUnavailableError("down"), True),
-        (MetadataRateLimitedError("later"), True),
-        (MetadataRequestRefusedError("bad key"), False),
-        (MetadataNotFoundError("gone"), False),
-        (MetadataDetailMappingError("bad record"), False),
-    ],
-)
-def test_only_outages_and_rate_limits_are_retryable(
-    failure: MetadataFailure, retryable: bool
-) -> None:
-    """A refresh may succeed later only after an outage or a rate limit."""
-    assert (
-        EnrichMovieOutputData("movie", "not_enriched", failure).retryable is retryable
-    )
-
-
 def test_partial_batch_preserves_facts() -> None:
     """A failed later page retains ordered earlier facts but cannot be complete."""
     failure = MetadataRateLimitedError("Later page failed")
@@ -115,10 +90,10 @@ def test_enrichment_outcomes() -> None:
 async def test_delivery_execution_seams() -> None:
     """Thin callers use only facade DTOs and autospecced execute signatures."""
     outcome = EnrichMovieOutputData("stable-id", "enriched")
-    refresh = create_autospec(RefreshMoviesExecutor, instance=True, spec_set=True)
+    refresh = create_autospec(RefreshMoviesUseCase, instance=True, spec_set=True)
     refresh.execute.return_value = RefreshMoviesOutputData((outcome,))
     assert (await refresh.execute(RefreshMoviesInputData())).results == (outcome,)
-    merger = create_autospec(MergeMoviesExecutor, instance=True, spec_set=True)
+    merger = create_autospec(MergeMoviesUseCase, instance=True, spec_set=True)
     merger.execute.return_value = MergeMoviesOutputData("preview", ())
     assert (await merger.execute(MergeMoviesInputData("keep", ("other",)))).status == (
         "preview"

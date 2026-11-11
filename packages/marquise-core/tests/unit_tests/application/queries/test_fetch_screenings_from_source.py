@@ -273,7 +273,7 @@ async def test_fetch_raises_when_cinema_not_found() -> None:
 
 @pytest.mark.asyncio
 async def test_fetch_bounds_movie_detail_concurrency() -> None:
-    """Test that movie detail requests never exceed the configured concurrency."""
+    """Test that movie detail requests never exceed eight at once."""
     mock_cinema_repo = create_autospec(CinemaRepository, instance=True)
     mock_assignment_repo = create_autospec(
         CinemaSourceAssignmentRepository, instance=True
@@ -282,7 +282,8 @@ async def test_fetch_bounds_movie_detail_concurrency() -> None:
     mock_cinema_repo.find_by_id.return_value = CINEMA
     mock_assignment_repo.find_by_cinema_id.return_value = ASSIGNMENT
     mock_registry.fetch_showtimes.return_value = [
-        _make_showtime(f"Movie {index}", identifier=f"id-{index}") for index in range(5)
+        _make_showtime(f"Movie {index}", identifier=f"id-{index}")
+        for index in range(10)
     ]
     active = 0
     maximum = 0
@@ -305,24 +306,11 @@ async def test_fetch_bounds_movie_detail_concurrency() -> None:
             cinema_id="cin-123",
             start_date=date(2026, 6, 7),
             end_date=date(2026, 6, 7),
-            enrichment_concurrency=2,
         )
     )
 
-    assert len(result.movies) == 5
-    assert maximum == 2
-
-
-@pytest.mark.asyncio
-async def test_fetch_rejects_non_positive_enrichment_concurrency() -> None:
-    """Test that an invalid enrichment limit fails during use-case construction."""
-    with pytest.raises(ValueError, match="positive"):
-        FetchScreeningsFromSourceQuery.InputData(
-            cinema_id="cin-123",
-            start_date=date(2026, 6, 7),
-            end_date=date(2026, 6, 7),
-            enrichment_concurrency=0,
-        )
+    assert len(result.movies) == 10
+    assert maximum == 8
 
 
 @pytest.mark.asyncio

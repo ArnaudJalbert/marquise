@@ -1,4 +1,4 @@
-"""Shared workflow DTOs, execution seams and stable-ID persistence contracts.
+"""Shared workflow DTOs and stable-ID persistence contracts.
 
 These contracts have no production implementations. IDs at delivery boundaries
 are strings. tmdb_id is explicitly TMDB-only; another provider's identity must
@@ -8,12 +8,8 @@ never be assigned to it. A known identity does not imply successful enrichment.
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal, Protocol
+from typing import Literal
 
-from marquise.application.exceptions import (
-    MetadataRateLimitedError,
-    MetadataUnavailableError,
-)
 from marquise.application.exceptions import (
     MovieWorkflowConflictError as MovieWorkflowConflictError,
 )
@@ -87,13 +83,6 @@ class EnrichMovieOutputData:
         """Only a movie left not enriched carries a failure."""
         if (self.status == "not_enriched") != (self.failure is not None):
             raise ValueError("Only not enriched results carry a failure")
-
-    @property
-    def retryable(self) -> bool:
-        """Whether refreshing again later may succeed: an outage or rate limit."""
-        return isinstance(
-            self.failure, (MetadataUnavailableError, MetadataRateLimitedError)
-        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -191,22 +180,4 @@ class MovieMetadataRepository(ABC):
         duplicates only after all references are moved. Blocked/stale requests
         change nothing and return blocked with reasons, including missing IDs.
         """
-        ...
-
-
-class RefreshMoviesExecutor(Protocol):
-    """Injectable explicit refresh execution interface for thin CLI handlers."""
-
-    async def execute(
-        self, input_data: RefreshMoviesInputData
-    ) -> RefreshMoviesOutputData:
-        """Refresh one or all confirmed movies using initial enrichment policy."""
-        ...
-
-
-class MergeMoviesExecutor(Protocol):
-    """Injectable targeted dry-run/apply execution interface."""
-
-    async def execute(self, input_data: MergeMoviesInputData) -> MergeMoviesOutputData:
-        """Preview or apply a guarded merge, without implicit approval."""
         ...

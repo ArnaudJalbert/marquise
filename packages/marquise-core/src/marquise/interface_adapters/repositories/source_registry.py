@@ -10,7 +10,6 @@ from datetime import UTC, datetime
 
 from marquise.application.repositories import (
     MovieEnrichmentData,
-    RegistrySourceEntry,
     ShowtimeRow,
     SourceRegistryQuery,
 )
@@ -71,13 +70,13 @@ class SourceRegistry(SourceRegistryQuery):
             raise ValueError(f"A source with name '{name}' is already registered")
         self._adapters[name] = adapter
 
-    def list_available(self) -> dict[str, RegistrySourceEntry]:
-        """Return all registered sources with their names.
+    def list_available(self) -> list[str]:
+        """Return the names of all registered sources.
 
         Returns:
-            A mapping of source name to ``RegistrySourceEntry``.
+            Unique machine names in registration order.
         """
-        return {name: RegistrySourceEntry(name=name) for name in self._adapters}
+        return list(self._adapters)
 
     async def fetch_showtimes(
         self,

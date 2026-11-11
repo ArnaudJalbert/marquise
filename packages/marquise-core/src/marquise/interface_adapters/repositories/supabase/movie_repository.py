@@ -24,22 +24,11 @@ class SupabaseMovieRepository(MovieRepository):
     def __init__(self, gateway: MovieGateway) -> None:
         self._gateway = gateway
 
-    async def save(self, movie: Movie) -> Movie:
-        """Persist a movie via the gateway and return the mapped entity.
-
-        Args:
-            movie: The movie domain entity to save.
-
-        Returns:
-            The saved movie with server-assigned fields.
-        """
-        return await self._save(movie, update_existing=True)
-
     async def create_or_reuse(self, movie: Movie) -> Movie:
         """Create a movie, preserving details when a concurrent import won."""
-        return await self._save(movie, update_existing=False)
+        return await self._save(movie)
 
-    async def _save(self, movie: Movie, *, update_existing: bool) -> Movie:
+    async def _save(self, movie: Movie) -> Movie:
         data = await self._gateway.save(
             movie_id=str(movie.id),
             title=movie.title,
@@ -61,7 +50,7 @@ class SupabaseMovieRepository(MovieRepository):
             tmdb_id=movie.tmdb_id,
             tmdb_rating=movie.tmdb_rating,
             tmdb_vote_count=movie.tmdb_vote_count,
-            update_existing=update_existing,
+            update_existing=False,
         )
         return self._to_entity(data)
 
@@ -96,18 +85,6 @@ class SupabaseMovieRepository(MovieRepository):
             movie_ids=[str(movie_id) for movie_id in movie_ids]
         )
         return [self._to_entity(row) for row in data]
-
-    async def find_by_title(self, title: str) -> Movie | None:
-        """Find a movie by title, case-insensitively.
-
-        Args:
-            title: The movie title to search for.
-
-        Returns:
-            The matching movie entity, or None if not found.
-        """
-        data = await self._gateway.find_by_title(title=title)
-        return self._to_entity(data) if data is not None else None
 
     async def find_by_titles(self, titles: list[str]) -> list[Movie]:
         """Find candidate movies containing any title term, case-insensitively.

@@ -236,10 +236,8 @@ class ImportScreeningsCommand:
     ) -> CreateMoviesCommand.MovieInput:
         """Reformat one missing movie and its fetched details."""
         return self._create_movies.MovieInput(
-            title=missing.title,
             saved_title=missing.saved_title,
             key=missing.key,
-            source_identifier=missing.source_identifier,
             tmdb_id=missing.tmdb_id,
             release_year=missing.release_year,
             description=details.description,
