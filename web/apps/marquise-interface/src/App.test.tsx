@@ -1123,7 +1123,7 @@ it("discloses server logs, no accounts or editing, forwarded email, and the priv
   expect(screen.getByText(/outside Québec/)).toBeTruthy();
   expect(screen.getByRole("heading", { name: "No accounts or editing" })).toBeTruthy();
   expect(screen.getByText(/does not offer visitor accounts, login, or manual editing/)).toBeTruthy();
-  expect(screen.getByText(/history have been deleted, with no new archive/)).toBeTruthy();
+  expect(screen.getByText(/history has been deleted, with no new archive/)).toBeTruthy();
   expect(screen.getByText(/personal Gmail inbox/)).toBeTruthy();
   expect(screen.getByRole("link", { name: "Google's privacy policy" }).getAttribute("href")).toBe("https://policies.google.com/privacy");
   expect(screen.getByText(/Arnaud Jalbert is responsible/)).toBeTruthy();
