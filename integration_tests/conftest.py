@@ -148,7 +148,7 @@ async def db_pool(
     async with pool.acquire() as conn:
         migration = (
             (
-                Path(__file__).resolve().parents[4]
+                Path(__file__).resolve().parents[1]
                 / "scripts/migrations/359-movie-enrichment-state.sql"
             )
             .read_text()

@@ -7,7 +7,10 @@ import pytest
 from marquise.infrastructure.sources.cinematheque.gateways import source as cinema
 from marquise.infrastructure.sources.cineplex.gateways import source as cineplex
 
-_FIXTURES = Path(__file__).parents[5] / "fixtures" / "source_identity"
+_FIXTURES = (
+    Path(__file__).resolve().parents[5]
+    / "packages/marquise-core/tests/fixtures/source_identity"
+)
 
 
 @pytest.mark.asyncio
