@@ -38,3 +38,9 @@ extend-select = [
     "I", # isort
     "UP", # pyupgrade (enforces str | None over Optional[str])
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["packages/marquise-core/tests/unit_tests"]
+pythonpath = ["packages/marquise-core/src", "packages/marquise-core/tests"]
+addopts = "--import-mode=importlib"
+asyncio_default_fixture_loop_scope = "function"

@@ -17,7 +17,7 @@ from marquise.interface_adapters.repositories.protocols.screening import (
     ScreeningExternalIdConflictGatewayError,
 )
 
-SCRIPTS = Path(__file__).resolve().parents[7] / "scripts"
+SCRIPTS = Path(__file__).resolve().parents[4] / "scripts"
 
 
 @pytest.mark.asyncio

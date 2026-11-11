@@ -35,4 +35,4 @@ jobs:
       - run: uv python install 3.13
       - run: uv sync --group dev
       - name: Run deterministic integration tests
-        run: uv run pytest packages/marquise-core/tests/integration_tests/ -q
+        run: uv run pytest integration_tests/ -q

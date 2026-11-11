@@ -6,7 +6,7 @@ from uuid import uuid4
 import asyncpg
 import pytest
 
-SCRIPTS = Path(__file__).resolve().parents[6] / "scripts"
+SCRIPTS = Path(__file__).resolve().parents[3] / "scripts"
 
 WRITE_TABLES = ("screening_write_audit", "screening_write_results")
 

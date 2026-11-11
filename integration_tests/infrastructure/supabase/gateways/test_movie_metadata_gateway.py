@@ -17,7 +17,7 @@ from marquise.interface_adapters.repositories.protocols.movie_metadata import (
 
 SCHEMA = "marquise-test"
 STAMP = datetime(2026, 10, 30, 12, tzinfo=UTC)
-ROOT = Path(__file__).resolve().parents[7]
+ROOT = Path(__file__).resolve().parents[4]
 
 
 @pytest.mark.asyncio

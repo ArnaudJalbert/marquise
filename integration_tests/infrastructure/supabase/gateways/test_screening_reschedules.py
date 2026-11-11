@@ -49,7 +49,7 @@ from marquise.interface_adapters.repositories.supabase.screening_repository impo
 )
 from support.movie_import import import_command
 
-SCRIPTS = Path(__file__).resolve().parents[7] / "scripts"
+SCRIPTS = Path(__file__).resolve().parents[4] / "scripts"
 SCHEMA = '"marquise-test"'
 CINEMA_NAME = "Cinéma Cineplex Odeon Quartier Latin"
 LEGACY_CINEMA = "9fbeeb8d-b725-47b2-b10b-998331428d2b"
