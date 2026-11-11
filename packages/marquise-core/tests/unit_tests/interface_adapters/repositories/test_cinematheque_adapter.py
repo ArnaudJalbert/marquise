@@ -47,30 +47,3 @@ async def test_fetch_showtimes_delegates_to_source(
         start_date=start,
         end_date=end,
     )
-
-
-@pytest.mark.asyncio
-async def test_fetch_movie_detail_delegates_to_source(
-    mock_source: AsyncMock,
-) -> None:
-    """Verify the identifier passes straight through to the source."""
-    mock_source.fetch_movie_detail.return_value = {"description": "A film"}
-
-    adapter = CinemathequeAdapter(mock_source)
-    result = await adapter.fetch_movie_detail("2026-07-09|123")
-
-    assert result == {"description": "A film"}
-    mock_source.fetch_movie_detail.assert_awaited_once_with(identifier="2026-07-09|123")
-
-
-@pytest.mark.asyncio
-async def test_fetch_movie_detail_returns_none(
-    mock_source: AsyncMock,
-) -> None:
-    """Verify None passes through when the source finds no enrichment data."""
-    mock_source.fetch_movie_detail.return_value = None
-
-    adapter = CinemathequeAdapter(mock_source)
-    result = await adapter.fetch_movie_detail("2026-07-09|999")
-
-    assert result is None

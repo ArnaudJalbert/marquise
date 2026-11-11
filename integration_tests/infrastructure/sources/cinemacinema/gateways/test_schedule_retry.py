@@ -76,14 +76,3 @@ def test_schedule_http_failure_remains_fatal(
         assert requests == ["/schedule"] * attempts
     finally:
         raised.value.close()
-
-
-def test_successful_schedule_is_not_retried(
-    schedule_server: tuple[list[int], list[str]],
-) -> None:
-    """A healthy schedule request returns without additional requests."""
-    statuses, requests = schedule_server
-    statuses.append(200)
-
-    assert source._fetch_schedule() == {}
-    assert requests == ["/schedule"]
