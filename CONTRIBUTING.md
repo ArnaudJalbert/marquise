@@ -94,7 +94,6 @@ Package roles and dependency rules: [web rules](docs/agents/rules/web.md).
 | `MARQUISE_API_CORS_ORIGINS` | No | Comma-separated CORS origins (default: none) |
 | `MARQUISE_API_RATE_LIMIT` | No | Per-IP rate limit (default: `3000/minute`) |
 | `MARQUISE_API_LOG_LEVEL` | No | API log level (default: `INFO`) |
-| `SOURCE_DATABASE_URL`, `TARGET_DATABASE_URL` | `scripts/transfer_cinema_configuration.py` only | Source and destination of the cinema configuration transfer |
 | `VITE_MARQUISE_API_BASE_URL` | No (web) | API origin for the interface build (default: same origin; the Docker build sets `https://api.marquise.mov`) |
 | `VITE_MARQUISE_DATA_SOURCE` | No (web) | Demo only: `api` makes `pnpm prototype` call the API instead of sample data |
 
