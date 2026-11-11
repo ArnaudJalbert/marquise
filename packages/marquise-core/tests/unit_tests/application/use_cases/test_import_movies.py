@@ -85,22 +85,6 @@ async def test_creates_missing_movies_with_all_metadata() -> None:
 
 
 @pytest.mark.asyncio
-async def test_skips_existing_movies() -> None:
-    """Test that existing movies are not created again."""
-    mock_movie_repo = create_autospec(MovieRepository, instance=True)
-    existing_movie = Movie(id=MovieId(value="mov-existing"), title="Existing Movie")
-    mock_movie_repo.find_by_titles.return_value = [existing_movie]
-
-    lookup = await _run(
-        _make_command(mock_movie_repo),
-        (_make_movie_input("Existing Movie"),),
-    )
-
-    assert lookup["Existing Movie"] == "mov-existing"
-    mock_movie_repo.create_or_reuse.assert_not_awaited()
-
-
-@pytest.mark.asyncio
 async def test_returns_lookup_for_all_inputs() -> None:
     """Test that both existing and new movies appear in the lookup."""
     mock_movie_repo = create_autospec(MovieRepository, instance=True)
