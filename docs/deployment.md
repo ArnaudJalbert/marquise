@@ -2,12 +2,8 @@
 
 Production deployments are automated via GitHub Actions (`.github/workflows/fly-deploy.yml`) using path-filtered triggers and workspace-root build contexts.
 
-The private self-managed catalog database has a separate manual setup. See
-[Fly PostgreSQL setup and recovery](fly-postgres.md) for provisioning, the
-configuration-only transfer, costs, and backup limitations. The API and the
-daily scheduled import still use Supabase. A manual dispatch of
-`scheduled-import.yml` imports into Fly `marquise-db` with
-`deploy/import/fly.toml`.
+The API and the scheduled import use Supabase. A manual dispatch of
+`scheduled-import.yml` runs the same Supabase import.
 
 ## Architecture
 
