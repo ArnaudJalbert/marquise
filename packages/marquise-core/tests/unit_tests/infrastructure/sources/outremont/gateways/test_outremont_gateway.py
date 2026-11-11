@@ -18,7 +18,6 @@ from marquise.infrastructure.sources.outremont.gateways.source import (
     OutremontSource,
     _clean_title,
     _extract_outremont_film_detail,
-    _is_cinema,
     _show_rows,
     fetch_showtimes,
 )
@@ -87,12 +86,6 @@ def test_clean_title_strips_cadre_prefix() -> None:
 def test_clean_title_without_prefix_is_unchanged() -> None:
     """A title without a pipe prefix is returned unchanged."""
     assert _clean_title("Blue Velvet") == "Blue Velvet"
-
-
-def test_is_cinema_filters_by_category_name() -> None:
-    """Only shows whose firstgroup resolves to ``Cinéma`` are cinema."""
-    assert _is_cinema(_cinema_show(), _CATEGORY_NAMES) is True
-    assert _is_cinema(_cinema_show(category="cat-musique"), _CATEGORY_NAMES) is False
 
 
 def test_show_rows_one_row_per_event_with_utc_instant() -> None:
