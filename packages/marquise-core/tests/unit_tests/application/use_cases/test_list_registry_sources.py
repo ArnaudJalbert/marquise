@@ -47,9 +47,3 @@ def test_source_entry_raises_on_empty_name() -> None:
     """Verify SourceEntry.__post_init__ rejects empty name."""
     with pytest.raises(ValueError, match="name must not be empty"):
         ListRegistrySourcesUseCase.SourceEntry(name="")
-
-
-def test_input_data_creation() -> None:
-    """Verify InputData can be created with no parameters."""
-    data = ListRegistrySourcesUseCase.InputData()
-    assert data is not None

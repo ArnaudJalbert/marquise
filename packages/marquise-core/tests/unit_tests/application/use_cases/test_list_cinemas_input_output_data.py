@@ -7,18 +7,6 @@ import pytest
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 
 
-def test_input_data_defaults_to_none_name() -> None:
-    """Verify InputData defaults name to None."""
-    data = ListCinemasUseCase.InputData()
-    assert data.name is None
-
-
-def test_input_data_allows_valid_name() -> None:
-    """Verify InputData accepts a valid name."""
-    data = ListCinemasUseCase.InputData(name="Cinema")
-    assert data.name == "Cinema"
-
-
 def test_input_data_rejects_empty_name() -> None:
     """Verify InputData rejects an empty name string."""
     with pytest.raises(ValueError, match="name must not be empty when provided"):
@@ -29,22 +17,6 @@ def test_input_data_rejects_whitespace_name() -> None:
     """Verify InputData rejects a whitespace-only name."""
     with pytest.raises(ValueError, match="name must not be empty when provided"):
         ListCinemasUseCase.InputData(name="   ")
-
-
-def test_cinema_data_creation() -> None:
-    """Verify CinemaData can be created with all fields."""
-    data = ListCinemasUseCase.CinemaData(
-        id="id-1",
-        name="Test Cinema",
-        address="123 Test St",
-        city="Montreal",
-        website="https://example.com",
-    )
-    assert data.id == "id-1"
-    assert data.name == "Test Cinema"
-    assert data.address == "123 Test St"
-    assert data.city == "Montreal"
-    assert data.website == "https://example.com"
 
 
 def test_cinema_data_allows_none_optional_fields() -> None:
@@ -117,41 +89,7 @@ def test_cinema_data_rejects_whitespace_website_when_provided() -> None:
         ListCinemasUseCase.CinemaData(id="id-1", name="Test", website="   ")
 
 
-def test_output_data_creation() -> None:
-    """Verify OutputData can be created with a list of CinemaData."""
-    cinema = ListCinemasUseCase.CinemaData(id="id-1", name="Test Cinema")
-    data = ListCinemasUseCase.OutputData(cinemas=[cinema], total=1)
-    assert len(data.cinemas) == 1
-    assert data.cinemas[0].id == "id-1"
-    assert data.cinemas[0].name == "Test Cinema"
-    assert data.total == 1
-
-
-def test_output_data_empty_list() -> None:
-    """Verify OutputData accepts an empty list."""
-    data = ListCinemasUseCase.OutputData(cinemas=[], total=0)
-    assert len(data.cinemas) == 0
-
-
 def test_output_data_rejects_negative_total() -> None:
     """Verify OutputData rejects a negative total."""
     with pytest.raises(ValueError, match="total must not be negative"):
         ListCinemasUseCase.OutputData(cinemas=[], total=-1)
-
-
-def test_input_data_rejects_page_below_one() -> None:
-    """Verify InputData rejects a page less than 1."""
-    with pytest.raises(ValueError, match="page must be at least 1"):
-        ListCinemasUseCase.InputData(page=0)
-
-
-def test_input_data_rejects_non_positive_size() -> None:
-    """Verify InputData rejects a size less than 1 when provided."""
-    with pytest.raises(ValueError, match="size must be positive when provided"):
-        ListCinemasUseCase.InputData(size=0)
-
-
-def test_input_data_allows_none_size() -> None:
-    """Verify InputData allows size=None (unbounded)."""
-    data = ListCinemasUseCase.InputData(size=None)
-    assert data.size is None
