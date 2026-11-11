@@ -2,10 +2,6 @@
 
 Bootstrap the PostgreSQL schema (Supabase or a disposable database) and apply migrations.
 
-Private Fly catalog preparation is documented in
-[Fly PostgreSQL setup and recovery](fly-postgres.md). The retained Supabase
-catalog remains separate from that new database.
-
 Env vars → [CONTRIBUTING.md](../CONTRIBUTING.md#environment-variables).
 
 ---
