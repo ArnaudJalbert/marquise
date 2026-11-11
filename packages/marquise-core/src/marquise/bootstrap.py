@@ -10,9 +10,6 @@ from marquise.application.queries.browse_screening_movies import (
     BrowseScreeningMoviesQuery,
 )
 from marquise.application.queries.count_screening_days import CountScreeningDaysQuery
-from marquise.application.queries.fetch_screenings_from_source import (
-    FetchScreeningsFromSourceQuery,
-)
 from marquise.application.queries.get_cinema_screenings import (
     GetCinemaScreeningsQuery,
 )
@@ -24,7 +21,6 @@ from marquise.application.queries.list_cinema_source_assignments import (
 from marquise.application.queries.search_screenings import SearchScreeningsQuery
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
-from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
@@ -206,16 +202,6 @@ class MarquiseFactory:
     def list_registry_sources_use_case(self) -> ListRegistrySourcesUseCase:
         """Configured use case for listing registry sources."""
         return self._container.list_registry_sources_use_case
-
-    @property
-    def fetch_screenings_use_case(self) -> FetchScreeningsFromSourceQuery:
-        """Configured query for fetching source screenings."""
-        return self._container.fetch_screenings_use_case
-
-    @property
-    def create_screenings_use_case(self) -> CreateScreeningsCommand:
-        """Configured command for creating screenings."""
-        return self._container.create_screenings_use_case
 
     @property
     def import_screenings_use_case(self) -> ImportScreeningsCommand:

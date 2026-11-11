@@ -430,16 +430,6 @@ class Container:
         return self._list_registry_sources_use_case
 
     @property
-    def fetch_screenings_use_case(self) -> FetchScreeningsFromSourceQuery:
-        """Public fetch-screenings query."""
-        return self._fetch_screenings_use_case
-
-    @property
-    def create_screenings_use_case(self) -> CreateScreeningsCommand:
-        """Public create-screenings command."""
-        return self._create_screenings_use_case
-
-    @property
     def import_screenings_use_case(self) -> ImportScreeningsCommand:
         """Public application workflow for importing one cinema."""
         return self._import_screenings_use_case
