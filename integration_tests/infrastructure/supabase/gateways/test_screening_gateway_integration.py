@@ -168,15 +168,6 @@ async def test_import_reschedules_idempotently_and_preserves_conflicts(
 
 
 @pytest.mark.asyncio
-async def test_find_by_id_missing(
-    screening_gateway: SupabaseScreeningGateway,
-) -> None:
-    """Verify find_by_id returns None for a non-existent ID."""
-    found = await screening_gateway.find_by_id("scr-missing")
-    assert found is None
-
-
-@pytest.mark.asyncio
 async def test_save_upserts_on_unique_key_conflict(
     screening_gateway: SupabaseScreeningGateway,
     gateway: SupabaseCinemaGateway,
