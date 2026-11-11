@@ -139,7 +139,7 @@ uv run pytest packages/marquise-core/tests/unit_tests/ -k "test_name" -q
 uv run pytest packages/marquise-core/tests/unit_tests/ --cov=marquise --cov-report=term-missing -q
 
 # Deterministic integration tests (requires a disposable PostgreSQL DATABASE_URL)
-uv run pytest packages/marquise-core/tests/integration_tests/ -q
+uv run pytest integration_tests -q
 
 # Live provider connectivity only (requires internet, no database)
 uv run pytest packages/marquise-core/tests/provider_smoke_tests/ -q
@@ -206,11 +206,11 @@ packages/marquise-core/tests/
 │   ├── security/
 │   ├── test_import_boundary.py
 │   └── test_public_api.py
-├── integration_tests/        # disposable PostgreSQL; conftest.py here
-│   └── infrastructure/
 ├── provider_smoke_tests/     # live provider connectivity
 ├── fixtures/
 └── support/
+
+integration_tests/           # nightly SQL integration tests; disposable PostgreSQL
 
 apps/marquise-api/tests/      # mock MarquiseFactory
 apps/marquise-cli/tests/      # mock MarquiseFactory

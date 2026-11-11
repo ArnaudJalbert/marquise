@@ -157,7 +157,7 @@ separate test database if needed, then point `DATABASE_URL` at it.
 Run integration tests:
 
 ```bash
-uv run pytest packages/marquise-core/tests/integration_tests/ -q
+uv run pytest integration_tests/ -q
 ```
 
 Requires `DATABASE_URL` in `.env`.
