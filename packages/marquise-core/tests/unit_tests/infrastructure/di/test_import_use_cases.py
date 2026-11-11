@@ -50,13 +50,14 @@ def test_movie_builders_wire_supplied_pool_and_schema() -> None:
     pool.acquire.assert_not_called()
 
 
-def test_import_builder_does_not_acquire_pool() -> None:
-    """Building the import workflow does not open a database connection."""
+def test_import_builder_passes_fetch_without_acquiring_pool() -> None:
+    """Building the workflow keeps its fetch query without opening the pool."""
     pool = MagicMock()
     fetch = create_autospec(FetchScreeningsFromSourceQuery, instance=True)
 
-    build_import_screenings_use_case(pool, "test_schema", "key", fetch)
+    command = build_import_screenings_use_case(pool, "test_schema", "key", fetch)
 
+    assert command._fetch_screenings is fetch
     pool.acquire.assert_not_called()
 
 
