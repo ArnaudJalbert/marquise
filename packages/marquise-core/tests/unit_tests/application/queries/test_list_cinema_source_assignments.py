@@ -6,7 +6,9 @@ from unittest.mock import create_autospec
 
 import pytest
 
-from marquise.application.queries import ListCinemaSourceAssignmentsQuery
+from marquise.application.queries.list_cinema_source_assignments import (
+    ListCinemaSourceAssignmentsQuery,
+)
 from marquise.application.readers import (
     CinemaSourceAssignmentData,
     CinemaSourceAssignmentReader,

@@ -11,7 +11,7 @@ from marquise.application.exceptions import (
     CinemaIdAlreadyExistsError,
 )
 from marquise.application.repositories import CinemaRepository
-from marquise.application.use_cases import CreateCinemaUseCase
+from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.domain.entities import Cinema
 from marquise.domain.value_objects import CinemaId
 

@@ -10,7 +10,7 @@ from marquise.application.exceptions import CinemaSourceAssignmentNotFoundError
 from marquise.application.repositories import (
     CinemaSourceAssignmentRepository,
 )
-from marquise.application.use_cases import GetCinemaSourceUseCase
+from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
 from marquise.domain.entities import Cinema, CinemaSourceAssignment, SourceDefinition
 from marquise.domain.value_objects import CinemaId, SourceName
 

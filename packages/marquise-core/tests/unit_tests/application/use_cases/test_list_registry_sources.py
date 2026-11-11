@@ -7,7 +7,9 @@ from unittest.mock import create_autospec
 import pytest
 
 from marquise.application.repositories import SourceRegistryQuery
-from marquise.application.use_cases import ListRegistrySourcesUseCase
+from marquise.application.use_cases.list_registry_sources import (
+    ListRegistrySourcesUseCase,
+)
 
 
 @pytest.mark.asyncio
