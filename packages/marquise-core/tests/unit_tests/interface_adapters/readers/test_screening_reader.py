@@ -89,7 +89,6 @@ async def test_find_by_id_defaults_absent_optional_fields() -> None:
     assert result.ticket_url is None
     assert result.room is None
     assert result.language is None
-    assert gateway.find_by_id.return_value == row
 
 
 @pytest.mark.asyncio

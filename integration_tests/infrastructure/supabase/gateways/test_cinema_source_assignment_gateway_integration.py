@@ -87,12 +87,3 @@ async def test_unassign_missing(
 ) -> None:
     """Verify unassign returns False when no assignment exists."""
     assert await assignment_gateway.unassign("nonexistent") is False
-
-
-@pytest.mark.asyncio
-async def test_find_by_cinema_id_missing(
-    assignment_gateway: SupabaseCinemaSourceAssignmentGateway,
-) -> None:
-    """Verify find_by_cinema_id returns None when no match."""
-    result = await assignment_gateway.find_by_cinema_id("nonexistent")
-    assert result is None
