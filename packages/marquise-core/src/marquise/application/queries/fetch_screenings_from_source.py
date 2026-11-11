@@ -22,6 +22,7 @@ from marquise.domain.value_objects import CinemaId
 
 logger = logging.getLogger(__name__)
 _MONTREAL = ZoneInfo("America/Toronto")
+_ENRICHMENT_CONCURRENCY = 8
 
 
 class FetchScreeningsFromSourceQuery:
@@ -32,15 +33,12 @@ class FetchScreeningsFromSourceQuery:
         cinema_id: str
         start_date: date
         end_date: date
-        enrichment_concurrency: int = 8
 
         def __post_init__(self) -> None:
             if not self.cinema_id.strip():
                 raise ValueError("cinema_id must not be empty")
             if self.start_date > self.end_date:
                 raise ValueError("start_date must not be after end_date")
-            if self.enrichment_concurrency < 1:
-                raise ValueError("enrichment_concurrency must be positive")
 
     @dataclass(frozen=True, slots=True)
     class FetchedMovieData:
@@ -141,7 +139,6 @@ class FetchScreeningsFromSourceQuery:
                 self.source_registry,
                 source_name,
                 unique_identifiers,
-                input_data.enrichment_concurrency,
             )
             for ident, detail in zip(unique_identifiers, raw_details):
                 if isinstance(detail, MovieEnrichmentData):
@@ -236,10 +233,9 @@ async def _fetch_movie_details(
     source_registry: SourceRegistryQuery,
     source_name: str,
     identifiers: list[str],
-    concurrency: int,
 ) -> list[MovieEnrichmentData | Exception]:
     """Fetch movie details concurrently with an explicit upper bound."""
-    semaphore = asyncio.Semaphore(concurrency)
+    semaphore = asyncio.Semaphore(_ENRICHMENT_CONCURRENCY)
     return list(
         await asyncio.gather(
             *(

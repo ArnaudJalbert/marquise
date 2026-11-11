@@ -11,10 +11,6 @@ from datetime import datetime
 from typing import Literal, Protocol
 
 from marquise.application.exceptions import (
-    MetadataRateLimitedError,
-    MetadataUnavailableError,
-)
-from marquise.application.exceptions import (
     MovieWorkflowConflictError as MovieWorkflowConflictError,
 )
 from marquise.application.metadata import ProviderIdentity
@@ -87,13 +83,6 @@ class EnrichMovieOutputData:
         """Only a movie left not enriched carries a failure."""
         if (self.status == "not_enriched") != (self.failure is not None):
             raise ValueError("Only not enriched results carry a failure")
-
-    @property
-    def retryable(self) -> bool:
-        """Whether refreshing again later may succeed: an outage or rate limit."""
-        return isinstance(
-            self.failure, (MetadataUnavailableError, MetadataRateLimitedError)
-        )
 
 
 @dataclass(frozen=True, slots=True)
