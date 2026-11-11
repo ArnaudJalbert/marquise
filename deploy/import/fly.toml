@@ -1,8 +1,0 @@
-# Build the one-off CLI image into the database app's private Fly registry.
-# This config is used with `fly deploy --build-only`; it never deploys the CLI
-# over the PostgreSQL Machine.
-app = "marquise-db"
-primary_region = "yyz"
-
-[build]
-  dockerfile = "../../apps/marquise-cli/Dockerfile"
