@@ -33,14 +33,3 @@ class Cinema:
         """
         if not self.name.strip():
             raise ValueError("Cinema name cannot be empty")
-
-    def is_located_in(self, city: str) -> bool:
-        """Check if the cinema is located in a specific city.
-
-        Args:
-            city: The city name to check against (case-insensitive).
-
-        Returns:
-            True if the cinema's city matches the given city, False otherwise.
-        """
-        return self.city is not None and self.city.lower() == city.lower()

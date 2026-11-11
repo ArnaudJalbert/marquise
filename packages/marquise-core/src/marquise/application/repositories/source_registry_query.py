@@ -15,17 +15,6 @@ from marquise.domain.entities import Cinema, SourceDefinition
 
 
 @dataclass(frozen=True, slots=True)
-class RegistrySourceEntry:
-    """A source registered in the code-level registry.
-
-    Attributes:
-        name: Unique machine name (e.g. ``"cinemacinema"``).
-    """
-
-    name: str
-
-
-@dataclass(frozen=True, slots=True)
 class ShowtimeRow:
     """A single showtime row returned by a source.
 
@@ -102,11 +91,11 @@ class SourceRegistryQuery(ABC):
     """Interface for listing available showtime source gateways."""
 
     @abstractmethod
-    def list_available(self) -> dict[str, RegistrySourceEntry]:
-        """Return all registered sources with their metadata.
+    def list_available(self) -> list[str]:
+        """Return the names of all registered sources.
 
         Returns:
-            A mapping of source name to ``RegistrySourceEntry``.
+            Unique machine names (e.g. ``"cinemacinema"``).
         """
         ...
 

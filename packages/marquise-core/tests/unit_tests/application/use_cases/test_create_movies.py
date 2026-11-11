@@ -33,7 +33,6 @@ async def test_creates_a_movie_with_every_detail(
         command.InputData(
             (
                 MovieInput(
-                    "Dune",
                     "Dune (2021)",
                     "tmdb:7",
                     tmdb_id="7",
@@ -60,8 +59,8 @@ async def test_sources_sharing_a_key_create_one_movie(
     output = await command.execute(
         command.InputData(
             (
-                MovieInput("Doomsday", "Doomsday", "tmdb:7", tmdb_id="7"),
-                MovieInput("Docteur Doom", "Docteur Doom", "tmdb:7", tmdb_id="7"),
+                MovieInput("Doomsday", "tmdb:7", tmdb_id="7"),
+                MovieInput("Docteur Doom", "tmdb:7", tmdb_id="7"),
             )
         )
     )
@@ -76,8 +75,8 @@ async def test_the_movie_with_an_identity_wins_its_key(
     command: CreateMoviesCommand, movie_repository: Mock, matched_first: bool
 ) -> None:
     """Whatever the order, the created movie carries the TMDB identity."""
-    matched = MovieInput("Fjord", "Fjord", "tmdb:7", tmdb_id="7")
-    unmatched = MovieInput("Fjord (VOSTA)", "Fjord (VOSTA)", "tmdb:7")
+    matched = MovieInput("Fjord", "tmdb:7", tmdb_id="7")
+    unmatched = MovieInput("Fjord (VOSTA)", "tmdb:7")
     pair = (matched, unmatched) if matched_first else (unmatched, matched)
 
     await command.execute(command.InputData(pair))
@@ -93,8 +92,8 @@ async def test_first_unmatched_movie_wins_its_key(
     await command.execute(
         command.InputData(
             (
-                MovieInput("First", "First", "title:same"),
-                MovieInput("Second", "Second", "title:same"),
+                MovieInput("First", "title:same"),
+                MovieInput("Second", "title:same"),
             )
         )
     )
@@ -105,10 +104,10 @@ async def test_first_unmatched_movie_wins_its_key(
 @pytest.mark.parametrize(
     "fields",
     [
-        {"title": 1, "saved_title": "Film", "key": "title:film"},
-        {"title": "Film", "saved_title": 1, "key": "title:film"},
-        {"title": "Film", "saved_title": "Film", "key": "k", "directors": ["One"]},
-        {"title": "Film", "saved_title": "Film", "key": "k", "release_year": "2026"},
+        {"saved_title": 1, "key": "title:film"},
+        {"saved_title": "Film", "key": 1},
+        {"saved_title": "Film", "key": "k", "directors": ["One"]},
+        {"saved_title": "Film", "key": "k", "release_year": "2026"},
     ],
 )
 def test_movie_input_rejects_wrong_types(fields: dict) -> None:

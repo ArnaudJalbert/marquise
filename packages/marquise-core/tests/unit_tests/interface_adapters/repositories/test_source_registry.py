@@ -59,22 +59,18 @@ def test_register_multiple_sources(
 def test_list_available_returns_all_registered(
     registry: SourceRegistry, mock_adapter: SourceAdapter
 ) -> None:
-    """Verify list_available returns all registered sources with metadata."""
+    """Verify list_available returns the names of all registered sources."""
     mock_adapter2 = create_autospec(SourceAdapter, instance=True)
     registry.register("cinemacinema", mock_adapter)
     registry.register("cinema_du_parc", mock_adapter2)
 
     available = registry.list_available()
 
-    assert len(available) == 2
-    assert "cinemacinema" in available
-    assert "cinema_du_parc" in available
-    entry = available["cinemacinema"]
-    assert entry.name == "cinemacinema"
+    assert available == ["cinemacinema", "cinema_du_parc"]
 
 
 def test_list_available_returns_empty_when_none_registered(
     registry: SourceRegistry,
 ) -> None:
-    """Verify list_available returns empty dict when nothing is registered."""
-    assert registry.list_available() == {}
+    """Verify list_available returns an empty list when nothing is registered."""
+    assert registry.list_available() == []

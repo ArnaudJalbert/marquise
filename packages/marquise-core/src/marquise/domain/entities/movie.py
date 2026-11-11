@@ -6,7 +6,7 @@ import html
 import re
 import unicodedata
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 
 from ..value_objects import MovieId
 
@@ -140,17 +140,3 @@ class Movie:
         if not a or (a.count(" ") == 0 and len(a) < 6):
             return False
         return a == b or f" {a} " in f" {b} "
-
-    def is_recent(self, years: int = 1) -> bool:
-        """Check if the movie was released within the last specified years.
-
-        Args:
-            years: Number of years to consider as "recent" (default 1).
-
-        Returns:
-            True if the movie's release year is within the given window,
-            False if the release year is unknown.
-        """
-        if self.release_year is None:
-            return False
-        return datetime.now(UTC).year - self.release_year <= years
