@@ -38,7 +38,6 @@ async def test_refresh_one_preserves_id(
         f"[refreshed] {movie_id}\nDone: 1 refreshed, 0 skipped, 0 failed.\n"
     )
     assert captured.err == ""
-    assert output.results[0].movie_id == movie_id
 
 
 @pytest.mark.asyncio

@@ -284,45 +284,11 @@ def test_get_cinema_is_cached(client: TestClient, factory: MagicMock) -> None:
     second = client.get("/v1/cinemas/cin-1")
 
     assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.headers.get("X-FastAPI-Cache") == "MISS"
+    assert second.headers.get("X-FastAPI-Cache") == "HIT"
     assert second.json() == first.json()
     factory.get_cinema_use_case.execute.assert_awaited_once()
-
-
-def test_get_cinema_cache_has_miss_header_on_first_request(
-    client: TestClient, factory: MagicMock
-) -> None:
-    """The first request for /cinemas/{id} has X-FastAPI-Cache: MISS header."""
-    factory.get_cinema_use_case.execute.return_value = SimpleNamespace(
-        id="cin-1",
-        name="Test Cinema",
-        address=None,
-        city=None,
-        website=None,
-    )
-
-    response = client.get("/v1/cinemas/cin-1")
-
-    assert response.status_code == 200
-    assert response.headers.get("X-FastAPI-Cache") == "MISS"
-
-
-def test_get_cinema_cache_has_hit_header_on_repeat_request(
-    client: TestClient, factory: MagicMock
-) -> None:
-    """Repeat requests for /cinemas/{id} have X-FastAPI-Cache: HIT header."""
-    factory.get_cinema_use_case.execute.return_value = SimpleNamespace(
-        id="cin-1",
-        name="Test Cinema",
-        address=None,
-        city=None,
-        website=None,
-    )
-
-    client.get("/v1/cinemas/cin-1")
-    response = client.get("/v1/cinemas/cin-1")
-
-    assert response.status_code == 200
-    assert response.headers.get("X-FastAPI-Cache") == "HIT"
 
 
 def test_different_cinemas_have_separate_cache_entries(
@@ -699,7 +665,9 @@ def test_list_cinemas_is_cached(client: TestClient, factory: MagicMock) -> None:
     second = client.get("/v1/cinemas")
 
     assert first.status_code == 200
+    assert first.headers.get("X-FastAPI-Cache") == "MISS"
     assert second.status_code == 200
+    assert second.headers.get("X-FastAPI-Cache") == "HIT"
     assert first.json() == second.json()
     factory.list_cinemas_use_case.execute.assert_awaited_once()
 
@@ -726,6 +694,9 @@ def test_get_movie_is_cached(client: TestClient, factory: MagicMock) -> None:
     second = client.get("/v1/movies/mov-1")
 
     assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.headers.get("X-FastAPI-Cache") == "MISS"
+    assert second.headers.get("X-FastAPI-Cache") == "HIT"
     assert second.json() == first.json()
     factory.get_movie_use_case.execute.assert_awaited_once()
 
@@ -777,125 +748,11 @@ def test_get_cinema_screenings_is_cached(
     second = client.get("/v1/cinemas/cin-1/screenings")
 
     assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.headers.get("X-FastAPI-Cache") == "MISS"
+    assert second.headers.get("X-FastAPI-Cache") == "HIT"
     assert second.json() == first.json()
     factory.get_cinema_screenings_query.execute.assert_awaited_once()
-
-
-def test_list_cinemas_cache_has_miss_header_on_first_request(
-    client: TestClient, factory: MagicMock
-) -> None:
-    """The first request for /cinemas has X-FastAPI-Cache: MISS header."""
-    factory.list_cinemas_use_case.execute.return_value = SimpleNamespace(
-        cinemas=[], total=0
-    )
-
-    response = client.get("/v1/cinemas")
-
-    assert response.status_code == 200
-    assert response.headers.get("X-FastAPI-Cache") == "MISS"
-
-
-def test_list_cinemas_cache_has_hit_header_on_repeat_request(
-    client: TestClient, factory: MagicMock
-) -> None:
-    """Repeat requests for /cinemas have X-FastAPI-Cache: HIT header."""
-    factory.list_cinemas_use_case.execute.return_value = SimpleNamespace(
-        cinemas=[], total=0
-    )
-
-    client.get("/v1/cinemas")
-    response = client.get("/v1/cinemas")
-
-    assert response.status_code == 200
-    assert response.headers.get("X-FastAPI-Cache") == "HIT"
-
-
-def test_get_movie_cache_has_miss_header_on_first_request(
-    client: TestClient, factory: MagicMock
-) -> None:
-    """The first request for /movies/{id} has X-FastAPI-Cache: MISS header."""
-    factory.get_movie_use_case.execute.return_value = SimpleNamespace(
-        id="mov-1",
-        title="Test Movie",
-        release_year=2026,
-        directors=None,
-        cast=None,
-        duration_minutes=None,
-        description=None,
-        poster_url=None,
-        trailer_url=None,
-        genres=None,
-        original_title=None,
-        rating=None,
-        origin_countries=None,
-    )
-
-    response = client.get("/v1/movies/mov-1")
-
-    assert response.status_code == 200
-    assert response.headers.get("X-FastAPI-Cache") == "MISS"
-
-
-def test_get_movie_cache_has_hit_header_on_repeat_request(
-    client: TestClient, factory: MagicMock
-) -> None:
-    """Repeat requests for /movies/{id} have X-FastAPI-Cache: HIT header."""
-    factory.get_movie_use_case.execute.return_value = SimpleNamespace(
-        id="mov-1",
-        title="Test Movie",
-        release_year=2026,
-        directors=None,
-        cast=None,
-        duration_minutes=None,
-        description=None,
-        poster_url=None,
-        trailer_url=None,
-        genres=None,
-        original_title=None,
-        rating=None,
-        origin_countries=None,
-    )
-
-    client.get("/v1/movies/mov-1")
-    response = client.get("/v1/movies/mov-1")
-
-    assert response.status_code == 200
-    assert response.headers.get("X-FastAPI-Cache") == "HIT"
-
-
-def test_get_cinema_screenings_cache_has_miss_header_on_first_request(
-    client: TestClient, factory: MagicMock
-) -> None:
-    """The first screenings request has an X-FastAPI-Cache MISS header."""
-    factory.get_cinema_screenings_query.execute.return_value = SimpleNamespace(
-        cinema_id="cin-1",
-        cinema_name="Cinema One",
-        screenings=[],
-        total=0,
-    )
-
-    response = client.get("/v1/cinemas/cin-1/screenings")
-
-    assert response.status_code == 200
-    assert response.headers.get("X-FastAPI-Cache") == "MISS"
-
-
-def test_get_cinema_screenings_cache_has_hit_header_on_repeat_request(
-    client: TestClient, factory: MagicMock
-) -> None:
-    """Repeat requests for /cinemas/{id}/screenings have X-FastAPI-Cache: HIT header."""
-    factory.get_cinema_screenings_query.execute.return_value = SimpleNamespace(
-        cinema_id="cin-1",
-        cinema_name="Cinema One",
-        screenings=[],
-        total=0,
-    )
-
-    client.get("/v1/cinemas/cin-1/screenings")
-    response = client.get("/v1/cinemas/cin-1/screenings")
-
-    assert response.status_code == 200
-    assert response.headers.get("X-FastAPI-Cache") == "HIT"
 
 
 def test_different_movies_have_separate_cache_entries(

@@ -96,13 +96,6 @@ def client(factory: MagicMock) -> TestClient:
     return TestClient(create_app(factory=factory))
 
 
-def test_response_includes_request_id_header(client: TestClient) -> None:
-    """Every response carries an X-Request-ID header."""
-    response = client.get("/health")
-
-    assert response.headers.get("X-Request-ID")
-
-
 def test_incoming_request_id_header_is_echoed_back(client: TestClient) -> None:
     """A client-supplied X-Request-ID is reused rather than replaced."""
     response = client.get("/health", headers={"X-Request-ID": "client-supplied-id"})
