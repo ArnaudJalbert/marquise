@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 from ..value_objects import ScreeningId, Showtime
@@ -50,32 +49,6 @@ class Screening:
             and self.showtime.value.astimezone(zone).date()
             == incoming.showtime.value.astimezone(zone).date()
         )
-
-    def is_upcoming(self, now: datetime | None = None) -> bool:
-        """Check if this screening is still in the future.
-
-        Args:
-            now: Reference time (defaults to current UTC time).
-
-        Returns:
-            True if the showtime is after the reference time.
-        """
-        if now is None:
-            now = datetime.now(UTC)
-        return self.showtime.value > now
-
-    def has_ended(self, now: datetime | None = None) -> bool:
-        """Check if this screening has already ended.
-
-        Args:
-            now: Reference time (defaults to current UTC time).
-
-        Returns:
-            True if the showtime is before the reference time.
-        """
-        if now is None:
-            now = datetime.now(UTC)
-        return self.showtime.value < now
 
     def __str__(self) -> str:
         return (

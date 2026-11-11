@@ -55,15 +55,3 @@ class SourceDefinitionRepository(ABC):
             True if a source definition was deleted, False otherwise.
         """
         ...
-
-    @abstractmethod
-    async def exists_by_name(self, name: SourceName) -> bool:
-        """Check whether a source definition exists with the given name.
-
-        Args:
-            name: The source name to check for.
-
-        Returns:
-            True if a source definition with that name exists.
-        """
-        ...
