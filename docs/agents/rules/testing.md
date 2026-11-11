@@ -17,7 +17,7 @@ Everything through interface adapters is unit-testable with zero external I/O. I
 | `apps/marquise-api/` | `apps/marquise-api/tests/` | `MarquiseFactory` |
 | `apps/marquise-cli/` | `apps/marquise-cli/tests/` | `MarquiseFactory` |
 
-Paths are under `packages/marquise-core/tests/` unless stated. Adapter tests are unit tests; there is no `integration_tests/interface_adapters/`.
+Paths are under `packages/marquise-core/tests/` unless a row names root `integration_tests/`. Adapter tests are unit tests; there is no `integration_tests/interface_adapters/`.
 
 ## Python mechanics
 
