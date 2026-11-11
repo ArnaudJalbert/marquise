@@ -4,35 +4,3 @@ Protocols (typing.Protocol) that define the interface between
 interface_adapters and infrastructure.  Implementations reside in
 ``infrastructure/<tech>/gateways/`` and return plain dicts.
 """
-
-from marquise.interface_adapters.repositories.protocols.base import (
-    GatewayError,
-    GatewayPage,
-)
-from marquise.interface_adapters.repositories.protocols.cinema import (
-    CinemaGateway,
-)
-from marquise.interface_adapters.repositories.protocols.cinema_source_assignment import (  # noqa: E501
-    CinemaSourceAssignmentGateway as CinemaSourceAssignmentGateway,
-)
-from marquise.interface_adapters.repositories.protocols.movie import MovieGateway
-from marquise.interface_adapters.repositories.protocols.screening import (
-    ScreeningGateway,
-)
-from marquise.interface_adapters.repositories.protocols.showtime_source import (
-    ShowtimeSource,
-)
-from marquise.interface_adapters.repositories.protocols.source_definition import (
-    SourceDefinitionGateway,
-)
-
-__all__ = [
-    "CinemaGateway",
-    "CinemaSourceAssignmentGateway",
-    "GatewayError",
-    "GatewayPage",
-    "MovieGateway",
-    "ScreeningGateway",
-    "ShowtimeSource",
-    "SourceDefinitionGateway",
-]

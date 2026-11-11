@@ -8,7 +8,7 @@ import pytest
 
 from marquise.application.exceptions import CinemaNotFoundError
 from marquise.application.repositories import CinemaRepository
-from marquise.application.use_cases import DeleteCinemaUseCase
+from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
 from marquise.domain.value_objects import CinemaId
 
 

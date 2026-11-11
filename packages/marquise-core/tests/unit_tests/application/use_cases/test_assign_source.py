@@ -16,7 +16,7 @@ from marquise.application.repositories import (
     CinemaSourceAssignmentRepository,
     SourceDefinitionRepository,
 )
-from marquise.application.use_cases import AssignSourceUseCase
+from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.domain.entities import Cinema, CinemaSourceAssignment, SourceDefinition
 from marquise.domain.value_objects import CinemaId, SourceName
 

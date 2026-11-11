@@ -8,7 +8,7 @@ import pytest
 
 from marquise.application.exceptions import CinemaSourceAssignmentNotFoundError
 from marquise.application.repositories import CinemaSourceAssignmentRepository
-from marquise.application.use_cases import UnassignSourceUseCase
+from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 
 
 @pytest.mark.asyncio

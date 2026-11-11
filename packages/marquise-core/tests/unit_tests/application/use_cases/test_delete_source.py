@@ -8,7 +8,7 @@ import pytest
 
 from marquise.application.exceptions import SourceNotFoundError
 from marquise.application.repositories import SourceDefinitionRepository
-from marquise.application.use_cases import DeleteSourceUseCase
+from marquise.application.use_cases.delete_source import DeleteSourceUseCase
 
 
 @pytest.mark.asyncio
