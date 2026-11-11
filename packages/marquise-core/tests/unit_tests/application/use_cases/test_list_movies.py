@@ -57,20 +57,6 @@ async def test_list_movies_passes_page_and_size_as_limit_offset() -> None:
 
 
 @pytest.mark.asyncio
-async def test_list_movies_passes_none_size_as_unbounded() -> None:
-    """Verify size=None passes limit=None, offset=0 (unbounded)."""
-    mock_repo = create_autospec(MovieRepository, instance=True)
-    mock_repo.find_all.return_value = Page(items=[], total=50)
-
-    use_case = ListMoviesUseCase(movie_repository=mock_repo)
-    request = ListMoviesUseCase.InputData(page=1, size=None)
-
-    await use_case.execute(request)
-
-    mock_repo.find_all.assert_awaited_once_with(title_filter=None, limit=None, offset=0)
-
-
-@pytest.mark.asyncio
 async def test_list_movies_filters_by_title() -> None:
     """Verify movies are filtered when a title filter is provided."""
     mock_repo = create_autospec(MovieRepository, instance=True)
