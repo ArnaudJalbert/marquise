@@ -62,14 +62,3 @@ class SourceDefinitionGateway(Protocol):
             True if a row was deleted, False otherwise.
         """
         ...
-
-    async def exists_by_name(self, name: str) -> bool:
-        """Check whether a source definition exists with the given name.
-
-        Args:
-            name: The name to check for.
-
-        Returns:
-            True if a row with that name exists.
-        """
-        ...
