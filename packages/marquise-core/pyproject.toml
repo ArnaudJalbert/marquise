@@ -25,7 +25,6 @@ packages = ["src/marquise"]
 [tool.pytest.ini_options]
 pythonpath = ["src", "tests"]
 testpaths = ["tests"]
-addopts = "--import-mode=importlib"
 asyncio_default_fixture_loop_scope = "function"
 
 [tool.coverage.run]
