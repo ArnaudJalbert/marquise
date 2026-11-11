@@ -7,9 +7,9 @@ import pytest
 
 from marquise import (
     EnrichMovieOutputData,
-    MergeMoviesExecutor,
     MergeMoviesInputData,
     MergeMoviesOutputData,
+    MergeMoviesUseCase,
     MetadataBatch,
     MetadataMovie,
     MetadataNotFoundError,
@@ -19,9 +19,9 @@ from marquise import (
     MovieMetadataSnapshot,
     MovieMetadataValues,
     ProviderIdentity,
-    RefreshMoviesExecutor,
     RefreshMoviesInputData,
     RefreshMoviesOutputData,
+    RefreshMoviesUseCase,
     TitleFact,
 )
 from marquise.application.exceptions import (
@@ -115,10 +115,10 @@ def test_enrichment_outcomes() -> None:
 async def test_delivery_execution_seams() -> None:
     """Thin callers use only facade DTOs and autospecced execute signatures."""
     outcome = EnrichMovieOutputData("stable-id", "enriched")
-    refresh = create_autospec(RefreshMoviesExecutor, instance=True, spec_set=True)
+    refresh = create_autospec(RefreshMoviesUseCase, instance=True, spec_set=True)
     refresh.execute.return_value = RefreshMoviesOutputData((outcome,))
     assert (await refresh.execute(RefreshMoviesInputData())).results == (outcome,)
-    merger = create_autospec(MergeMoviesExecutor, instance=True, spec_set=True)
+    merger = create_autospec(MergeMoviesUseCase, instance=True, spec_set=True)
     merger.execute.return_value = MergeMoviesOutputData("preview", ())
     assert (await merger.execute(MergeMoviesInputData("keep", ("other",)))).status == (
         "preview"
