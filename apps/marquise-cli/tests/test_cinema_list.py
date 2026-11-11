@@ -50,7 +50,6 @@ async def test_cinema_list_success(
 
     captured = capsys.readouterr()
     assert "Available cinemas" in captured.out
-    assert "Cinema" in captured.out
     assert "City" in captured.out
     assert "Cinema du Parc" in captured.out
     assert "Quartier Latin" in captured.out

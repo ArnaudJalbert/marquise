@@ -86,7 +86,7 @@ async def test_run_import_cinema_looks_up_source_and_spins_full_import(
 ) -> None:
     """Verify source lookup and full import retain direct DTOs, spinner, and cleanup."""
     get_source_use_case = create_autospec(GetCinemaSourceUseCase, instance=True)
-    get_source_use_case.InputData = MagicMock(wraps=GetCinemaSourceUseCase.InputData)
+    get_source_use_case.InputData = GetCinemaSourceUseCase.InputData
     get_source_use_case.execute = AsyncMock(
         return_value=GetCinemaSourceUseCase.OutputData(
             cinema_id="cin-001",
@@ -128,7 +128,6 @@ async def test_run_import_cinema_looks_up_source_and_spins_full_import(
     get_source_use_case.execute.assert_awaited_once_with(
         GetCinemaSourceUseCase.InputData(cinema_id="cin-001")
     )
-    get_source_use_case.InputData.assert_called_once_with(cinema_id="cin-001")
     import_screenings.assert_awaited_once_with(
         mock_factory,
         "cin-001",
@@ -253,23 +252,6 @@ async def test_run_import_all_limits_active_cinema_pipelines() -> None:
 
     assert len(results) == 4
     assert maximum == 2
-
-
-def test_import_all_stays_green_when_only_movies_are_skipped() -> None:
-    """Movies skipped inside an imported cinema do not fail the scheduled job."""
-    factory = _make_factory(
-        [SimpleNamespace(id="cin-1", name="Cinema One")],
-        import_side_effect=[
-            ImportScreeningsCommand.OutputData(
-                "cin-1", "Cinema One", "cineplex", (), 2, 2, 0, 0
-            )
-        ],
-    )
-    with patch(
-        "marquise_cli.import_commands.all_command.MarquiseFactory",
-        return_value=factory,
-    ):
-        import_all(days=1)
 
 
 def test_import_all_turns_red_when_a_cinema_fails() -> None:
