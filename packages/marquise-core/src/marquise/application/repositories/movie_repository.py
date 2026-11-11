@@ -21,18 +21,6 @@ class MovieRepository(ABC):
         ...
 
     @abstractmethod
-    async def save(self, movie: Movie) -> Movie:
-        """Persists a movie entity.
-
-        Args:
-            movie: The movie to save.
-
-        Returns:
-            The saved movie with its assigned ID.
-        """
-        ...
-
-    @abstractmethod
     async def find_by_id(self, movie_id: MovieId) -> Movie | None:
         """Retrieve a movie by its unique identifier.
 
@@ -60,18 +48,6 @@ class MovieRepository(ABC):
     @abstractmethod
     async def find_by_tmdb_id(self, tmdb_id: str) -> Movie | None:
         """Find a movie by its TMDB film id, or return None."""
-        ...
-
-    @abstractmethod
-    async def find_by_title(self, title: str) -> Movie | None:
-        """Find a movie by title, case-insensitively.
-
-        Args:
-            title: The movie title to search for.
-
-        Returns:
-            The matching movie, or None if not found.
-        """
         ...
 
     @abstractmethod
