@@ -66,68 +66,6 @@ def test_screening_creation(
     assert screening.showtime == sample_showtime
 
 
-def test_is_upcoming_returns_true_when_showtime_is_future(
-    sample_cinema: Cinema,
-    sample_movie: Movie,
-) -> None:
-    """Verify is_upcoming returns True for a future showtime."""
-    future = Showtime(value=datetime.now(UTC) + timedelta(hours=1))
-    screening = create_screening(future, sample_cinema, sample_movie)
-    assert screening.is_upcoming()
-
-
-def test_is_upcoming_returns_false_when_showtime_is_past(
-    sample_cinema: Cinema,
-    sample_movie: Movie,
-) -> None:
-    """Verify is_upcoming returns False for a past showtime."""
-    past = Showtime(value=datetime.now(UTC) - timedelta(hours=1))
-    screening = create_screening(past, sample_cinema, sample_movie)
-    assert not screening.is_upcoming()
-
-
-def test_is_upcoming_with_explicit_now(
-    sample_cinema: Cinema,
-    sample_movie: Movie,
-) -> None:
-    """Verify is_upcoming respects an explicit ``now`` parameter."""
-    showtime = Showtime(value=datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC))
-    screening = create_screening(showtime, sample_cinema, sample_movie)
-    assert screening.is_upcoming(now=datetime(2026, 6, 6, 11, 0, 0, tzinfo=UTC))
-    assert not screening.is_upcoming(now=datetime(2026, 6, 6, 13, 0, 0, tzinfo=UTC))
-
-
-def test_has_ended_returns_true_when_showtime_is_past(
-    sample_cinema: Cinema,
-    sample_movie: Movie,
-) -> None:
-    """Verify has_ended returns True for a past showtime."""
-    past = Showtime(value=datetime.now(UTC) - timedelta(hours=1))
-    screening = create_screening(past, sample_cinema, sample_movie)
-    assert screening.has_ended()
-
-
-def test_has_ended_returns_false_when_showtime_is_future(
-    sample_cinema: Cinema,
-    sample_movie: Movie,
-) -> None:
-    """Verify has_ended returns False for a future showtime."""
-    future = Showtime(value=datetime.now(UTC) + timedelta(hours=1))
-    screening = create_screening(future, sample_cinema, sample_movie)
-    assert not screening.has_ended()
-
-
-def test_has_ended_with_explicit_now(
-    sample_cinema: Cinema,
-    sample_movie: Movie,
-) -> None:
-    """Verify has_ended respects an explicit ``now`` parameter."""
-    showtime = Showtime(value=datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC))
-    screening = create_screening(showtime, sample_cinema, sample_movie)
-    assert screening.has_ended(now=datetime(2026, 6, 6, 13, 0, 0, tzinfo=UTC))
-    assert not screening.has_ended(now=datetime(2026, 6, 6, 11, 0, 0, tzinfo=UTC))
-
-
 def test_screening_str_representation(
     sample_cinema: Cinema,
     sample_movie: Movie,

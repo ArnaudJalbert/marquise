@@ -111,19 +111,3 @@ class SupabaseSourceDefinitionGateway:
                 name,
             )
         return result != "DELETE 0"
-
-    async def exists_by_name(self, name: str) -> bool:
-        """Check whether a source definition exists with the given name.
-
-        Args:
-            name: The name to check for.
-
-        Returns:
-            True if a row with that name exists.
-        """
-        async with self._pool.acquire() as conn:
-            result = await conn.fetchval(
-                f"SELECT EXISTS(SELECT 1 FROM {self._table} WHERE name = $1)",
-                name,
-            )
-        return bool(result)

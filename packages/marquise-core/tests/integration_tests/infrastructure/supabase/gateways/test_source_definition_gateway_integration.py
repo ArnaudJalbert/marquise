@@ -39,17 +39,6 @@ async def test_find_by_name_missing(
 
 
 @pytest.mark.asyncio
-async def test_exists_by_name(
-    source_definition_gateway: SupabaseSourceDefinitionGateway,
-) -> None:
-    """Verify exists_by_name returns True after saving a source."""
-    g = source_definition_gateway
-    await g.save(name="test-source", display_name="Test Source")
-    assert await g.exists_by_name("test-source") is True
-    assert await g.exists_by_name("missing") is False
-
-
-@pytest.mark.asyncio
 async def test_delete(
     source_definition_gateway: SupabaseSourceDefinitionGateway,
 ) -> None:

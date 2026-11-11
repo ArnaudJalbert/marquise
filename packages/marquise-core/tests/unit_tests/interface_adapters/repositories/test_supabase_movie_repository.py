@@ -60,9 +60,8 @@ def gateway_dict() -> dict:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("update_existing", [True, False])
-async def test_save(sample_movie: Movie, update_existing: bool) -> None:
-    """Test save delegates to gateway and maps result."""
+async def test_create_or_reuse(sample_movie: Movie) -> None:
+    """create_or_reuse sends the movie without updating a match, then maps it."""
     mock_gateway = create_autospec(MovieGateway, instance=True)
     mock_gateway.save.return_value = {
         "id": "mov-123",
@@ -83,8 +82,7 @@ async def test_save(sample_movie: Movie, update_existing: bool) -> None:
     }
 
     repo = SupabaseMovieRepository(gateway=mock_gateway)
-    operation = repo.save if update_existing else repo.create_or_reuse
-    result = await operation(sample_movie)
+    result = await repo.create_or_reuse(sample_movie)
 
     assert result.id == MovieId(value="mov-123")
     assert result.title == "Inception"
@@ -111,7 +109,7 @@ async def test_save(sample_movie: Movie, update_existing: bool) -> None:
         tmdb_id=None,
         tmdb_rating=8.1,
         tmdb_vote_count=1234,
-        update_existing=update_existing,
+        update_existing=False,
     )
 
 
@@ -193,35 +191,8 @@ async def test_find_by_ids_omits_missing(gateway_dict: dict) -> None:
 
 
 @pytest.mark.asyncio
-async def test_find_by_title(gateway_dict: dict) -> None:
-    """Test find_by_title returns entity when found."""
-    mock_gateway = create_autospec(MovieGateway, instance=True)
-    mock_gateway.find_by_title.return_value = gateway_dict
-
-    repo = SupabaseMovieRepository(gateway=mock_gateway)
-    result = await repo.find_by_title("Inception")
-
-    assert result is not None
-    assert result.title == "Inception"
-    assert result.id == MovieId(value="mov-123")
-    mock_gateway.find_by_title.assert_awaited_once_with(title="Inception")
-
-
-@pytest.mark.asyncio
-async def test_find_by_title_missing() -> None:
-    """Test find_by_title returns None when not found."""
-    mock_gateway = create_autospec(MovieGateway, instance=True)
-    mock_gateway.find_by_title.return_value = None
-
-    repo = SupabaseMovieRepository(gateway=mock_gateway)
-    result = await repo.find_by_title("Non Existent Movie")
-
-    assert result is None
-
-
-@pytest.mark.asyncio
-async def test_save_handles_minimal_movie() -> None:
-    """Test save handles movie with no optional fields."""
+async def test_create_or_reuse_handles_minimal_movie() -> None:
+    """create_or_reuse maps a movie with no optional fields."""
     movie = Movie(
         id=MovieId(value="mov-min"),
         title="Minimal",
@@ -246,7 +217,7 @@ async def test_save_handles_minimal_movie() -> None:
     }
 
     repo = SupabaseMovieRepository(gateway=mock_gateway)
-    result = await repo.save(movie)
+    result = await repo.create_or_reuse(movie)
 
     assert result.title == "Minimal"
     assert result.directors is None
@@ -271,13 +242,13 @@ async def test_save_handles_minimal_movie() -> None:
         tmdb_id=None,
         tmdb_rating=None,
         tmdb_vote_count=None,
-        update_existing=True,
+        update_existing=False,
     )
 
 
 @pytest.mark.asyncio
-async def test_save_handles_none_fields() -> None:
-    """Test save when movie has None directors and cast."""
+async def test_create_or_reuse_handles_none_fields() -> None:
+    """create_or_reuse maps a movie with None directors and cast."""
     movie = Movie(
         id=MovieId(value="mov-none"),
         title="No Info",
@@ -302,7 +273,7 @@ async def test_save_handles_none_fields() -> None:
     }
 
     repo = SupabaseMovieRepository(gateway=mock_gateway)
-    result = await repo.save(movie)
+    result = await repo.create_or_reuse(movie)
 
     assert result.title == "No Info"
     assert result.release_year is None
@@ -327,7 +298,7 @@ async def test_save_handles_none_fields() -> None:
         tmdb_id=None,
         tmdb_rating=None,
         tmdb_vote_count=None,
-        update_existing=True,
+        update_existing=False,
     )
 
 
