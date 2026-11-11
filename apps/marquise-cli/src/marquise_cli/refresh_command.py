@@ -5,9 +5,9 @@ import sys
 from marquise import (
     ApplicationError,
     MovieNotFoundError,
-    RefreshMoviesExecutor,
     RefreshMoviesInputData,
     RefreshMoviesOutputData,
+    RefreshMoviesUseCase,
 )
 
 
@@ -31,7 +31,7 @@ def _print_results(output: RefreshMoviesOutputData) -> int:
 
 
 async def run_refresh_movies(
-    executor: RefreshMoviesExecutor,
+    executor: RefreshMoviesUseCase,
     *,
     movie_id: str | None = None,
     all_movies: bool = False,

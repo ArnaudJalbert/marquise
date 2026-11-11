@@ -40,14 +40,12 @@ from marquise.application.metadata import (
 from marquise.application.movie_workflows import (
     EnrichMovieInputData,
     EnrichMovieOutputData,
-    MergeMoviesExecutor,
     MergeMoviesInputData,
     MergeMoviesOutputData,
     MovieMetadataRepository,
     MovieMetadataSnapshot,
     MovieMetadataValues,
     MovieWorkflowConflictError,
-    RefreshMoviesExecutor,
     RefreshMoviesInputData,
     RefreshMoviesOutputData,
 )
@@ -84,6 +82,8 @@ from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
+from marquise.application.use_cases.merge_movies import MergeMoviesUseCase
+from marquise.application.use_cases.refresh_movies import RefreshMoviesUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.bootstrap import (
@@ -117,8 +117,8 @@ __all__ = [
     "MergeMoviesOutputData",
     "MovieWorkflowConflictError",
     "MovieMetadataRepository",
-    "RefreshMoviesExecutor",
-    "MergeMoviesExecutor",
+    "RefreshMoviesUseCase",
+    "MergeMoviesUseCase",
     "BrowseScreeningMoviesQuery",
     "CountScreeningDaysQuery",
     "ApplicationError",

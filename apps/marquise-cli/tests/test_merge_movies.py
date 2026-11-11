@@ -6,9 +6,9 @@ from unittest.mock import create_autospec
 import pytest
 
 from marquise import (
-    MergeMoviesExecutor,
     MergeMoviesInputData,
     MergeMoviesOutputData,
+    MergeMoviesUseCase,
     MovieMetadataSnapshot,
     MovieMetadataValues,
     ProviderIdentity,
@@ -19,7 +19,7 @@ from marquise_cli.merge_movies import apply_merge, dry_run_merge, format_merge
 @pytest.mark.asyncio
 async def test_preview_and_exact_approval_roundtrip() -> None:
     """Formatting preserves every approved field including tuples and timestamps."""
-    executor = create_autospec(MergeMoviesExecutor, instance=True)
+    executor = create_autospec(MergeMoviesUseCase, instance=True)
     snapshots = tuple(
         MovieMetadataSnapshot(
             name,
@@ -51,7 +51,7 @@ async def test_preview_and_exact_approval_roundtrip() -> None:
 @pytest.mark.asyncio
 async def test_only_clean_preview_is_approval(status: str) -> None:
     """Blocked or previously applied output is never converted to fresh approval."""
-    executor = create_autospec(MergeMoviesExecutor, instance=True)
+    executor = create_autospec(MergeMoviesUseCase, instance=True)
     with pytest.raises(ValueError):
         await apply_merge(
             executor,
@@ -65,7 +65,7 @@ async def test_only_clean_preview_is_approval(status: str) -> None:
 @pytest.mark.asyncio
 async def test_changed_target_set_is_rejected() -> None:
     """Approval cannot silently broaden a targeted merge."""
-    executor = create_autospec(MergeMoviesExecutor, instance=True)
+    executor = create_autospec(MergeMoviesUseCase, instance=True)
     with pytest.raises(ValueError):
         await apply_merge(
             executor,

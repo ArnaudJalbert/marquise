@@ -5,9 +5,9 @@ from dataclasses import asdict
 from datetime import datetime
 
 from marquise import (
-    MergeMoviesExecutor,
     MergeMoviesInputData,
     MergeMoviesOutputData,
+    MergeMoviesUseCase,
     MovieMetadataSnapshot,
     MovieMetadataValues,
     ProviderIdentity,
@@ -28,7 +28,7 @@ def format_merge(
 
 
 async def dry_run_merge(
-    executor: MergeMoviesExecutor, survivor_id: str, duplicate_ids: tuple[str, ...]
+    executor: MergeMoviesUseCase, survivor_id: str, duplicate_ids: tuple[str, ...]
 ) -> MergeMoviesOutputData:
     """Request a read-only preview for exactly these targets."""
     return await executor.execute(MergeMoviesInputData(survivor_id, duplicate_ids))
@@ -55,7 +55,7 @@ def _read_snapshot(data: dict) -> MovieMetadataSnapshot:
 
 
 async def apply_merge(
-    executor: MergeMoviesExecutor,
+    executor: MergeMoviesUseCase,
     survivor_id: str,
     duplicate_ids: tuple[str, ...],
     approved_preview: str,
