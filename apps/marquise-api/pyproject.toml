@@ -1,6 +1,6 @@
 [project]
 name = "marquise-api"
-version = "0.1.23"
+version = "0.1.24"
 description = "Marquise public read-only screening REST API"
 requires-python = ">=3.13"
 dependencies = [
