@@ -189,3 +189,16 @@ async def test_fetch_movie_detail_delegates_to_source(
 
     assert result == {"description": "A movie"}
     mock_source.fetch_movie_detail.assert_awaited_once_with(slug="the-odyssey")
+
+
+@pytest.mark.asyncio
+async def test_fetch_movie_detail_returns_none(
+    mock_source: AsyncMock,
+) -> None:
+    """Verify None when source returns None."""
+    mock_source.fetch_movie_detail.return_value = None
+
+    adapter = CineplexAdapter(mock_source)
+    result = await adapter.fetch_movie_detail("non-existent")
+
+    assert result is None

@@ -62,3 +62,18 @@ async def test_fetch_movie_detail_delegates_to_source(
 
     assert result == {"description": "A film"}
     mock_source.fetch_movie_detail.assert_awaited_once_with(identifier=identifier)
+
+
+@pytest.mark.asyncio
+async def test_fetch_movie_detail_returns_none(
+    mock_source: AsyncMock,
+) -> None:
+    """Verify None passes through when the source finds no enrichment data."""
+    mock_source.fetch_movie_detail.return_value = None
+
+    adapter = CinemaModerneAdapter(mock_source)
+    result = await adapter.fetch_movie_detail(
+        "https://www.cinemamoderne.com/films/details/unknown/"
+    )
+
+    assert result is None
