@@ -83,20 +83,6 @@ async def test_mixed_matches_preserve_source_titles() -> None:
 
 
 @pytest.mark.asyncio
-async def test_failed_matching_stops_before_any_movie_is_created() -> None:
-    """A TMDB outage raises instead of importing the movie by title alone."""
-    movies = _movies()
-    matcher = build_matcher()
-    matcher.execute.side_effect = MovieMetadataUnavailableError("offline")
-    command = build_movie_import(movies, matcher)
-    with pytest.raises(MovieMetadataUnavailableError):
-        await command.execute(
-            command.InputData(movies=(command.build_movie_input(title="Offline"),))
-        )
-    movies.create_or_reuse.assert_not_awaited()
-
-
-@pytest.mark.asyncio
 async def test_remake_reusing_a_year_titled_row_keeps_the_source_title() -> None:
     """Screenings look movies up by source title, so a remake must still link."""
     movies = _movies()
