@@ -241,34 +241,6 @@ async def test_save_with_timezone_aware_datetime(
 
 
 @pytest.mark.asyncio
-async def test_read_import_candidates_populates_release_year(
-    sample_screening: Screening,
-) -> None:
-    """read_import_candidates maps the Movie release year from gateway data."""
-    mock_gateway = create_autospec(ScreeningGateway, instance=True)
-    mock_gateway.read_import_candidates.return_value = [
-        {
-            "id": "scr-456",
-            "movie_id": "mov-456",
-            "cinema_id": "cin-789",
-            "showtime": datetime(2026, 7, 1, 14, 0, 0),
-            "movie__id": "mov-456",
-            "movie__title": "Test Movie",
-            "movie__release_year": 2026,
-            "cinema__id": "cin-789",
-            "cinema__name": "Test Cinema",
-        }
-    ]
-
-    result = await SupabaseScreeningRepository(mock_gateway).read_import_candidates(
-        sample_screening
-    )
-
-    assert len(result) == 1
-    assert result[0].movie.release_year == 2026
-
-
-@pytest.mark.asyncio
 async def test_find_distinct_movies_by_cinema() -> None:
     """Test find_distinct_movies_by_cinema maps rows to Movie entities."""
     movie_row = {

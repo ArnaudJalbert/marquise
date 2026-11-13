@@ -160,12 +160,12 @@ async def read_screening(
     """Read a persisted entity through its current import-candidate identity."""
     row = await gateway.find_by_id(screening_id)
     assert row is not None
-    incoming = screening_identity(row)
+    incoming = build_screening_identity(row)
     candidates = await repository.read_import_candidates(incoming)
     return next(candidate for candidate in candidates if candidate.id == incoming.id)
 
 
-def screening_identity(row: dict) -> Screening:
+def build_screening_identity(row: dict) -> Screening:
     """Build the identity used to read a persisted screening's candidates."""
     return Screening(
         id=ScreeningId(row["id"]),

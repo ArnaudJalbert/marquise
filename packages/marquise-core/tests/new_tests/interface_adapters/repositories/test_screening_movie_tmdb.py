@@ -24,6 +24,7 @@ def screening_row() -> dict:
         "showtime": datetime(2026, 6, 7, 19, 30),
         "movie__id": "mov-1",
         "movie__title": "Test Movie",
+        "movie__release_year": 2026,
         "movie__tmdb_id": "123",
         "movie__tmdb_rating": 8.2,
         "movie__tmdb_vote_count": 203,
@@ -58,6 +59,21 @@ def incoming_screening() -> Screening:
         cinema=Cinema(id=CinemaId(value="cin-1"), name="Test Cinema"),
         showtime=Showtime(value=datetime(2026, 6, 7, 19, 30, tzinfo=UTC)),
     )
+
+
+@pytest.mark.asyncio
+async def test_read_import_candidates_preserves_movie_release_year(
+    screening_row: dict, incoming_screening: Screening
+) -> None:
+    """Candidate reads preserve the Movie release year."""
+    gateway = create_autospec(ScreeningGateway, instance=True)
+    gateway.read_import_candidates.return_value = [screening_row]
+
+    result = await SupabaseScreeningRepository(gateway).read_import_candidates(
+        incoming_screening
+    )
+
+    assert result[0].movie.release_year == 2026
 
 
 @pytest.mark.asyncio
