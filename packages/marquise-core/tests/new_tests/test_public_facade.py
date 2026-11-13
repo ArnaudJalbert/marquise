@@ -21,7 +21,6 @@ REMOVED_EXPORTS = {
     "ScreeningWriteBusyError",
     "SelfDemotionError",
     "SetAccountRoleUseCase",
-    "UpdateScreeningUseCase",
     "VerifyAccessTokenQuery",
     "WriteScreeningUseCase",
 }

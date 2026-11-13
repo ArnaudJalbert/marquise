@@ -90,10 +90,6 @@ class MemoryScreeningRepository(ScreeningRepository):
         """Unused by import tests."""
         return self.rows.pop(screening_id, None) is not None
 
-    async def find_by_id(self, screening_id: ScreeningId) -> Screening:
-        """Return a detached stored entity."""
-        return deepcopy(self.rows[screening_id])
-
     async def find_distinct_movies_by_cinema(
         self,
         cinema_id: CinemaId,
