@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from marquise.domain.entities import Cinema
-from marquise.domain.value_objects import CinemaId
+from marquise.domain.entities import Cinema, Movie
+from marquise.domain.value_objects import CinemaId, MovieId
 
 
 def extract_prefixed(data: dict, prefix: str) -> dict:
@@ -35,4 +35,37 @@ def dict_to_cinema(data: dict) -> Cinema:
         address=data.get("address"),
         city=data.get("city"),
         website=data.get("website"),
+    )
+
+
+def _split_comma_separated_values(value: str | None) -> tuple[str, ...] | None:
+    return tuple(value.split(",")) if value else None
+
+
+def to_movie(data: dict) -> Movie:
+    """Convert gateway movie data into a Movie entity.
+
+    Args:
+        data: The gateway row with movie columns.
+
+    Returns:
+        The matching Movie entity.
+    """
+    return Movie(
+        id=MovieId(value=data["id"]),
+        title=data["title"],
+        release_year=data.get("release_year"),
+        directors=_split_comma_separated_values(data.get("directors")),
+        cast=_split_comma_separated_values(data.get("cast_members")),
+        duration_minutes=data.get("duration_minutes"),
+        description=data.get("description"),
+        poster_url=data.get("poster_url"),
+        trailer_url=data.get("trailer_url"),
+        genres=_split_comma_separated_values(data.get("genres")),
+        original_title=data.get("original_title"),
+        rating=data.get("rating"),
+        origin_countries=_split_comma_separated_values(data.get("origin_countries")),
+        tmdb_id=data.get("tmdb_id"),
+        tmdb_rating=data.get("tmdb_rating"),
+        tmdb_vote_count=data.get("tmdb_vote_count"),
     )

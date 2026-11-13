@@ -35,7 +35,9 @@ _MOVIE_COLUMNS = (
     " m.genres AS movie__genres,"
     " m.original_title AS movie__original_title,"
     " m.rating AS movie__rating,"
-    " m.origin_countries AS movie__origin_countries"
+    " m.origin_countries AS movie__origin_countries,"
+    " m.tmdb_id AS movie__tmdb_id, m.tmdb_rating AS movie__tmdb_rating,"
+    " m.tmdb_vote_count AS movie__tmdb_vote_count"
 )
 _CINEMA_COLUMNS = (
     "c.id AS cinema__id, c.name AS cinema__name,"
@@ -50,7 +52,8 @@ _JOINED_COLUMNS = f"{_SCREENING_COLUMNS}, {_MOVIE_COLUMNS}, {_CINEMA_COLUMNS}"
 _PLAIN_MOVIE_COLUMNS = (
     "m.id, m.title, m.release_year, m.directors, m.cast_members,"
     " m.duration_minutes, m.description, m.poster_url, m.trailer_url,"
-    " m.genres, m.original_title, m.rating, m.origin_countries"
+    " m.genres, m.original_title, m.rating, m.origin_countries,"
+    " m.tmdb_id, m.tmdb_rating, m.tmdb_vote_count"
 )
 
 
