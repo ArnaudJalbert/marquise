@@ -2,7 +2,7 @@
 
 Read when writing or reviewing Python in `packages/marquise-core` or `apps/*`.
 
-Types, dataclasses, errors, modules and docstrings follow the shared `coding-python` skill ([AGENTS.md](../../../AGENTS.md#shared-coding-standards)). This file holds what only Marquise defines.
+Types, dataclasses, errors, modules and docstrings follow the shared `coding-python` skill. This file holds what only Marquise defines.
 
 ## Errors
 

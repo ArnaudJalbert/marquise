@@ -2,7 +2,7 @@
 
 Read when writing, moving or reviewing tests in either stack.
 
-The test boundary, Python mechanics, web testing and review red flags follow the shared `coding-testing` skill, and use-case tests follow `coding-use-cases` ([AGENTS.md](../../../AGENTS.md#shared-coding-standards)). This file holds what only Marquise defines.
+The test boundary, Python mechanics, web testing and review red flags follow the shared `coding-testing` skill, and use-case tests follow `coding-use-cases`. This file holds what only Marquise defines.
 
 ## Boundary
 

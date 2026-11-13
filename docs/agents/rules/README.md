@@ -6,7 +6,7 @@ Repository rules for agents and humans. The index, with when to read each file, 
 
 | Knowledge | Home |
 |---|---|
-| A rule that holds across repos | A shared coding skill ([AGENTS.md](../../../AGENTS.md#shared-coding-standards)) |
+| A rule that holds across repos | A shared `coding-*` skill |
 | A rule only Marquise follows, or how Marquise applies a shared one | A topic file here |
 | A domain term | The relevant `CONTEXT.md` ([docs/agents/domain.md](../domain.md)) |
 | A hard-to-reverse decision and its reason | An ADR under `docs/adr/` |

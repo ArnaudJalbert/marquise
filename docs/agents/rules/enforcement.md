@@ -2,7 +2,7 @@
 
 Read when adding a rule, adding a check, or deciding what to verify at each stage of a change.
 
-Each rule has one home: a topic file here, or a shared coding skill ([AGENTS.md](../../../AGENTS.md#shared-coding-standards)). This map only says how and when Marquise checks it.
+Each rule has one home: a topic file here, or a shared `coding-*` skill. This map only says how and when Marquise checks it.
 
 ## Existing code
 
@@ -14,7 +14,7 @@ Each rule has one home: a topic file here, or a shared coding skill ([AGENTS.md]
 
 | Stage | What runs | Catches |
 |---|---|---|
-| Writing | The author reads the matching rule file and shared coding skill from [AGENTS.md](../../../AGENTS.md#shared-coding-standards) | Design: what a use case does, how it is split, what names mean |
+| Writing | The author reads the matching rule file and shared coding skill from [AGENTS.md](../../../AGENTS.md#rules) | Design: what a use case does, how it is split, what names mean |
 | Before commit | `uv run ruff format .`, `uv run ruff check .`, `uv run ty check packages/marquise-core/src`, unit tests | Everything automated, in seconds |
 | CI | The same commands in `.github/workflows/quality.yml`, plus integration tests | Everything automated, on every push |
 | Review | The reviewer follows [review-and-delivery](review-and-delivery.md#review) | Everything marked Review below |

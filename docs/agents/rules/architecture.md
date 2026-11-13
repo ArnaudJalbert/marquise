@@ -2,7 +2,7 @@
 
 Read when adding a use case, repository, gateway, adapter or endpoint, moving code across layers, wiring dependencies, or changing what delivery apps import.
 
-The layer rules, boundaries, injection and review gate come from the shared `coding-clean-architecture` skill ([AGENTS.md](../../../AGENTS.md#shared-coding-standards)). This file maps them onto Marquise.
+The layer rules, boundaries, injection and review gate come from the shared `coding-clean-architecture` skill. This file maps them onto Marquise.
 
 ## Layers
 
