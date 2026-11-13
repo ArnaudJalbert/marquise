@@ -18,7 +18,6 @@ from marquise.application.repositories import Page, ScreeningRepository
 from marquise.domain.entities import Movie, Screening
 from marquise.domain.value_objects import (
     CinemaId,
-    MovieId,
     ScreeningId,
     Showtime,
 )
@@ -30,6 +29,7 @@ from marquise.interface_adapters.repositories.protocols.screening import (
 )
 from marquise.interface_adapters.repositories.supabase._utils import (
     dict_to_cinema,
+    dict_to_movie,
     extract_prefixed,
 )
 
@@ -49,42 +49,6 @@ def _parse_datetime(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=UTC)
     return value
-
-
-def _dict_to_movie(data: dict) -> Movie:
-    """Convert a prefixed movie dict into a Movie entity.
-
-    Args:
-        data: A dict with movie keys (``id``, ``title``, etc.).
-
-    Returns:
-        A new Movie entity.
-    """
-    raw_directors = data.get("directors")
-    directors = tuple(raw_directors.split(",")) if raw_directors else None
-    raw_cast = data.get("cast_members")
-    cast = tuple(raw_cast.split(",")) if raw_cast else None
-    raw_genres = data.get("genres")
-    genres = tuple(raw_genres.split(",")) if raw_genres else None
-    raw_origin_countries = data.get("origin_countries")
-    origin_countries = (
-        tuple(raw_origin_countries.split(",")) if raw_origin_countries else None
-    )
-    return Movie(
-        id=MovieId(value=data["id"]),
-        title=data["title"],
-        release_year=data.get("release_year"),
-        directors=directors,
-        cast=cast,
-        duration_minutes=data.get("duration_minutes"),
-        description=data.get("description"),
-        poster_url=data.get("poster_url"),
-        trailer_url=data.get("trailer_url"),
-        genres=genres,
-        original_title=data.get("original_title"),
-        rating=data.get("rating"),
-        origin_countries=origin_countries,
-    )
 
 
 class SupabaseScreeningRepository(ScreeningRepository):
@@ -278,7 +242,7 @@ class SupabaseScreeningRepository(ScreeningRepository):
             offset=offset,
         )
         return Page(
-            items=[_dict_to_movie(row) for row in gateway_page.rows],
+            items=[dict_to_movie(row) for row in gateway_page.rows],
             total=gateway_page.total,
         )
 
@@ -293,7 +257,7 @@ class SupabaseScreeningRepository(ScreeningRepository):
         Returns:
             A new Screening entity populated with the dict values.
         """
-        movie = _dict_to_movie(extract_prefixed(data, "movie__"))
+        movie = dict_to_movie(extract_prefixed(data, "movie__"))
         cinema = dict_to_cinema(extract_prefixed(data, "cinema__"))
         return Screening(
             id=ScreeningId(value=data["id"]),

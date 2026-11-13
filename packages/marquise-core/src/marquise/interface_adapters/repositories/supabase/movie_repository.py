@@ -10,6 +10,7 @@ from marquise.application.repositories import MovieRepository, Page
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
 from marquise.interface_adapters.repositories.protocols.movie import MovieGateway
+from marquise.interface_adapters.repositories.supabase._utils import dict_to_movie
 
 
 class SupabaseMovieRepository(MovieRepository):
@@ -52,12 +53,12 @@ class SupabaseMovieRepository(MovieRepository):
             tmdb_vote_count=movie.tmdb_vote_count,
             update_existing=False,
         )
-        return self._to_entity(data)
+        return dict_to_movie(data)
 
     async def find_by_tmdb_id(self, tmdb_id: str) -> Movie | None:
         """Find a movie by its TMDB film id, or return None."""
         data = await self._gateway.find_by_tmdb_id(tmdb_id)
-        return self._to_entity(data) if data is not None else None
+        return dict_to_movie(data) if data is not None else None
 
     async def find_by_id(self, movie_id: MovieId) -> Movie | None:
         """Retrieve a movie by ID.
@@ -69,7 +70,7 @@ class SupabaseMovieRepository(MovieRepository):
             The matching movie entity, or None if not found.
         """
         data = await self._gateway.find_by_id(movie_id=str(movie_id))
-        return self._to_entity(data) if data is not None else None
+        return dict_to_movie(data) if data is not None else None
 
     async def find_by_ids(self, movie_ids: list[MovieId]) -> list[Movie]:
         """Retrieve movies by a list of unique identifiers.
@@ -84,7 +85,7 @@ class SupabaseMovieRepository(MovieRepository):
         data = await self._gateway.find_by_ids(
             movie_ids=[str(movie_id) for movie_id in movie_ids]
         )
-        return [self._to_entity(row) for row in data]
+        return [dict_to_movie(row) for row in data]
 
     async def find_by_titles(self, titles: list[str]) -> list[Movie]:
         """Find candidate movies containing any title term, case-insensitively.
@@ -96,7 +97,7 @@ class SupabaseMovieRepository(MovieRepository):
             A list of candidate Movie entities.
         """
         data = await self._gateway.find_by_titles(titles)
-        return [self._to_entity(row) for row in data]
+        return [dict_to_movie(row) for row in data]
 
     async def exists_by_id(self, movie_id: MovieId) -> bool:
         """Check whether a movie exists with the given ID.
@@ -132,48 +133,6 @@ class SupabaseMovieRepository(MovieRepository):
             title_filter=title_filter, limit=limit, offset=offset
         )
         return Page(
-            items=[self._to_entity(row) for row in gateway_page.rows],
+            items=[dict_to_movie(row) for row in gateway_page.rows],
             total=gateway_page.total,
-        )
-
-    @staticmethod
-    def _to_entity(data: dict) -> Movie:
-        """Map a raw gateway dict to a Movie domain entity.
-
-        Args:
-            data: The dict returned by the gateway.
-
-        Returns:
-            A new Movie entity populated with the dict values.
-        """
-        raw_directors = data.get("directors")
-        if raw_directors:
-            directors = tuple(raw_directors.split(","))
-        else:
-            directors = None
-        raw_cast = data.get("cast_members")
-        cast = tuple(raw_cast.split(",")) if raw_cast else None
-        raw_genres = data.get("genres")
-        genres = tuple(raw_genres.split(",")) if raw_genres else None
-        raw_origin_countries = data.get("origin_countries")
-        origin_countries = (
-            tuple(raw_origin_countries.split(",")) if raw_origin_countries else None
-        )
-        return Movie(
-            id=MovieId(value=data["id"]),
-            title=data["title"],
-            release_year=data.get("release_year"),
-            directors=directors,
-            cast=cast,
-            duration_minutes=data.get("duration_minutes"),
-            description=data.get("description"),
-            poster_url=data.get("poster_url"),
-            trailer_url=data.get("trailer_url"),
-            genres=genres,
-            original_title=data.get("original_title"),
-            rating=data.get("rating"),
-            origin_countries=origin_countries,
-            tmdb_id=data.get("tmdb_id"),
-            tmdb_rating=data.get("tmdb_rating"),
-            tmdb_vote_count=data.get("tmdb_vote_count"),
         )
