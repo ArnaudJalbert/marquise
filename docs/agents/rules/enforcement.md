@@ -14,7 +14,7 @@ Each rule has one home: a topic file here, or a Calepin coding standard named by
 
 | Stage | What runs | Catches |
 |---|---|---|
-| Writing | The author reads the matching rule file and Calepin standard from [AGENTS.md](../../../AGENTS.md#rules) | Design: what a use case does, how it is split, what names mean |
+| Writing | The author reads the matching rule file and Calepin standard from [AGENTS.md](../../../AGENTS.md#shared-coding-standards) | Design: what a use case does, how it is split, what names mean |
 | Before commit | `uv run ruff format .`, `uv run ruff check .`, `uv run ty check packages/marquise-core/src`, unit tests | Everything automated, in seconds |
 | CI | The same commands in `.github/workflows/quality.yml`, plus integration tests | Everything automated, on every push |
 | Review | The reviewer follows [review-and-delivery](review-and-delivery.md#review) | Everything marked Review below |
@@ -39,7 +39,7 @@ Check `Rules test` is a planned AST test in `packages/marquise-core/tests/unit_t
 | A use case does one job | `coding-use-cases` | Review | Review |
 | A command returns IDs, and data comes from a query | `coding-use-cases` | Review | Review |
 | A coordinator has no loops or conditions | `coding-use-cases` | Rules test | Planned |
-| Inner `InputData` and `OutputData`, never reused | `coding-use-cases` | `test_use_case_architecture.py` | Enforced |
+| Inner `InputData` and `OutputData`, never reused | `coding-use-cases` | `packages/marquise-core/tests/unit_tests/application/test_use_case_architecture.py`; its allowlist only shrinks | Enforced |
 | `InputData` checks its types | `coding-use-cases` | Rules test: `isinstance` in `__post_init__` | Planned |
 | Input stops at `execute` | `coding-use-cases` | Rules test: no private method or inner class uses an input type | Planned |
 | Entities first, then repository and reader data classes, then an inner class | `coding-use-cases` | Review | Review |
@@ -70,7 +70,7 @@ Check `Rules test` is a planned AST test in `packages/marquise-core/tests/unit_t
 
 | Rule | Home | Check | Status |
 |---|---|---|---|
-| Casing | `coding-naming` | Ruff `N` | Enforced |
+| Casing | `coding-naming` | Ruff `N` in `pyproject.toml` | Enforced |
 | No single-letter variables | `coding-naming` | Rules test | Planned |
 | Yes-or-no functions use `is_`, `has_` or `can_` | `coding-naming` | Rules test: functions returning `bool` | Planned |
 | Functions start with a verb | `coding-naming` | Review. A word list would be unreliable | Review |

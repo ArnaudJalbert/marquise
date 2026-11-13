@@ -7,13 +7,13 @@ Montreal cinema showtimes: a Python backend (uv workspace: `packages/marquise-co
 1. **Clean Architecture wins.** Layer boundaries, inward dependencies, injectable collaborators and single responsibility hold on every change.
 2. **Then ponytail.** The smallest change that fully solves the task: reuse first, stdlib before dependencies, deletion over addition, abstractions only with a concrete payoff. Ponytail never trades away safety, correctness, data integrity, acceptance criteria or required tests; a shorter diff is not automatically better.
 
-When they pull apart, keep the architecture and find a smaller change inside it. When unsure, ship the simple version and say what was skipped.
+Marquise's own rules override the [shared coding standards](#shared-coding-standards), and those override ponytail.
 
-The shared coding standards below take precedence over ponytail, and Marquise's own rules take precedence over them.
+When they pull apart, keep the architecture and find a smaller change inside it. When unsure, ship the simple version and say what was skipped.
 
 ## Shared coding standards
 
-This repo follows the Calepin `coding-clean-architecture` and `coding-use-cases` standards, plus the always-on `coding-functions`, `coding-naming`, `coding-python` and `coding-testing`. Load each skill before the work it names. They live in the Calepin vault under `90-agents/skills/coding-*`, and each routes to its note in `30-zettelkasten/` (map: `Coding standards.md`). The rule files below hold only what is specific to Marquise.
+This repo follows the Calepin `coding-clean-architecture` and `coding-use-cases` standards, plus `coding-functions`, `coding-naming` and `coding-testing` always and `coding-python` for Python. Load each skill before the work it names. They live in the Calepin vault under `90-agents/skills/coding-*`, and each routes to its note in `30-zettelkasten/` (map: `Coding standards.md`). The rule files below hold only what is specific to Marquise.
 
 | Skill | Read when |
 |---|---|
@@ -30,7 +30,7 @@ Read the matching file before the work it names. How rules are written and added
 
 | Rules | Read when |
 |---|---|
-| [architecture](docs/agents/rules/architecture.md) | Adding a use case, repository, gateway, adapter or endpoint; moving code across layers; wiring dependencies; changing what apps import. Layer paths and the `marquise` facade |
+| [architecture](docs/agents/rules/architecture.md) | Whenever `coding-clean-architecture` applies: Marquise layer paths and the `marquise` facade |
 | [python](docs/agents/rules/python.md) | Writing or reviewing Python: error locations, uv lockfile, quality gate |
 | [testing](docs/agents/rules/testing.md) | Writing, moving or reviewing tests: test locations, `new_tests/` transition, coverage gate |
 | [web](docs/agents/rules/web.md) | Working under `web/` |

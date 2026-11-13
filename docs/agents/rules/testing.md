@@ -30,7 +30,7 @@ Each package has a `tests/new_tests/` folder. All new tests go there, in every p
 - Old tests stay in place and keep running until their behavior has a test under `new_tests/`.
 - Delete old tests in batches, once their behavior is covered by a new test. Do not add new tests to old folders.
 - CI runs both folders until the old ones are gone. The core unit step lists `new_tests/` next to `unit_tests/`. The API and CLI steps run their whole `tests/` folder, so they pick up `new_tests/` automatically.
-- New tests follow `coding-testing`: public interfaces only, `create_autospec` for collaborators, scenario docstrings.
+- New tests follow `coding-testing`.
 - SQL-level integration tests live in root `integration_tests/` and run nightly, not in `tests/new_tests/` (#548).
 
 ### Temporary pruning exception

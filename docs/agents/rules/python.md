@@ -6,7 +6,7 @@ Types, dataclasses, errors, modules and docstrings follow the Calepin `coding-py
 
 ## Errors
 
-- Application errors live in `application/exceptions/`, one module per aggregate.
+- Application errors live in `application/exceptions/`.
 - Repository gateway errors are declared with their protocols under `interface_adapters/repositories/protocols/`.
 - The API maps an unvalidated `ValueError` to 422. In `apps/marquise-api/src/marquise_api/exception_handlers.py`, explicitly mapped `ApplicationError` subclasses get their configured status; unmapped ones fall back to 400.
 
