@@ -13,7 +13,7 @@ When they pull apart, keep the architecture and find a smaller change inside it.
 
 ## Shared coding standards
 
-This repo follows the Calepin `coding-clean-architecture` and `coding-use-cases` standards, plus `coding-functions`, `coding-naming` and `coding-testing` always and `coding-python` for Python. Load each skill before the work it names. They live in the Calepin vault under `90-agents/skills/coding-*`, and each routes to its note in `30-zettelkasten/` (map: `Coding standards.md`). The rule files below hold only what is specific to Marquise.
+This repo follows the shared `coding-clean-architecture` and `coding-use-cases` skills, plus `coding-functions`, `coding-naming` and `coding-testing` always and `coding-python` for Python. Load each skill before the work it names. The rule files below hold only what is specific to Marquise.
 
 | Skill | Read when |
 |---|---|

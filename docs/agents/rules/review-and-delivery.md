@@ -23,7 +23,7 @@ Read when filing an issue, or opening, reviewing or merging a pull request.
 
 - AI-authored code is reviewed by a different person or a fresh agent that did not write it.
 - The reviewer reads the issue, the matching rules, the full diff and current-head CI.
-- The reviewer confirms every rule marked Review in [enforcement](enforcement.md) that applies to the change, including the Calepin `coding-use-cases`, `coding-functions` and `coding-naming` standards.
+- The reviewer confirms every rule marked Review in [enforcement](enforcement.md) that applies to the change, including the shared `coding-use-cases`, `coding-functions` and `coding-naming` skills.
 - Evidence beats opinion: tests, measurements, code or documented constraints.
 - The reviewer leads with the strongest material objection. With none, they state what they tried to falsify and the residual risk.
 - Authors weigh feedback on evidence; reviewers withdraw findings the evidence disproves.
