@@ -58,14 +58,14 @@ async def assert_move_preserves_identity(
     repository: ScreeningRepository, saved: Screening, changed: Screening
 ) -> None:
     """A moved screening keeps its persisted identity."""
-    moved = move_by_15_minutes(changed)
+    moved = _move_by_15_minutes(changed)
     state = await repository.read_import_candidates(moved)
     result = await repository.commit_import(moved, incoming=moved, expected=state)
     assert result.id == saved.id
     assert result.showtime == moved.showtime
 
 
-def move_by_15_minutes(screening: Screening) -> Screening:
+def _move_by_15_minutes(screening: Screening) -> Screening:
     return replace(
         screening,
         showtime=Showtime(screening.showtime.value + timedelta(minutes=15)),
@@ -77,16 +77,16 @@ async def assert_target_arrival(
 ) -> None:
     """An occupied target arriving after the snapshot cannot be overwritten."""
     await repository.commit_import(original, incoming=original, expected=())
-    incoming = move_by_15_minutes(original)
+    incoming = _move_by_15_minutes(original)
     state = await repository.read_import_candidates(incoming)
-    target = build_target_screening(incoming)
+    target = _build_target_screening(incoming)
     await repository.commit_import(target, incoming=target, expected=())
     await assert_stale_snapshot_rejected(repository, incoming, state)
     await assert_candidates_equal(repository, original, (original,))
     await assert_candidates_equal(repository, target, (target,))
 
 
-def build_target_screening(incoming: Screening) -> Screening:
+def _build_target_screening(incoming: Screening) -> Screening:
     return replace(
         incoming,
         id=type(incoming.id)("target"),
