@@ -10,7 +10,7 @@ from marquise.application.repositories import MovieRepository, Page
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
 from marquise.interface_adapters.repositories.protocols.movie import MovieGateway
-from marquise.interface_adapters.repositories.supabase._utils import dict_to_movie
+from marquise.interface_adapters.repositories.supabase._utils import to_movie
 
 
 class SupabaseMovieRepository(MovieRepository):
@@ -53,12 +53,12 @@ class SupabaseMovieRepository(MovieRepository):
             tmdb_vote_count=movie.tmdb_vote_count,
             update_existing=False,
         )
-        return dict_to_movie(data)
+        return to_movie(data)
 
     async def find_by_tmdb_id(self, tmdb_id: str) -> Movie | None:
         """Find a movie by its TMDB film id, or return None."""
         data = await self._gateway.find_by_tmdb_id(tmdb_id)
-        return dict_to_movie(data) if data is not None else None
+        return to_movie(data) if data is not None else None
 
     async def find_by_id(self, movie_id: MovieId) -> Movie | None:
         """Retrieve a movie by ID.
@@ -70,7 +70,7 @@ class SupabaseMovieRepository(MovieRepository):
             The matching movie entity, or None if not found.
         """
         data = await self._gateway.find_by_id(movie_id=str(movie_id))
-        return dict_to_movie(data) if data is not None else None
+        return to_movie(data) if data is not None else None
 
     async def find_by_ids(self, movie_ids: list[MovieId]) -> list[Movie]:
         """Retrieve movies by a list of unique identifiers.
@@ -85,7 +85,7 @@ class SupabaseMovieRepository(MovieRepository):
         data = await self._gateway.find_by_ids(
             movie_ids=[str(movie_id) for movie_id in movie_ids]
         )
-        return [dict_to_movie(row) for row in data]
+        return [to_movie(row) for row in data]
 
     async def find_by_titles(self, titles: list[str]) -> list[Movie]:
         """Find candidate movies containing any title term, case-insensitively.
@@ -97,7 +97,7 @@ class SupabaseMovieRepository(MovieRepository):
             A list of candidate Movie entities.
         """
         data = await self._gateway.find_by_titles(titles)
-        return [dict_to_movie(row) for row in data]
+        return [to_movie(row) for row in data]
 
     async def exists_by_id(self, movie_id: MovieId) -> bool:
         """Check whether a movie exists with the given ID.
@@ -133,6 +133,6 @@ class SupabaseMovieRepository(MovieRepository):
             title_filter=title_filter, limit=limit, offset=offset
         )
         return Page(
-            items=[dict_to_movie(row) for row in gateway_page.rows],
+            items=[to_movie(row) for row in gateway_page.rows],
             total=gateway_page.total,
         )

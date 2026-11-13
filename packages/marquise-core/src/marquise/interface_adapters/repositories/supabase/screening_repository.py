@@ -29,8 +29,8 @@ from marquise.interface_adapters.repositories.protocols.screening import (
 )
 from marquise.interface_adapters.repositories.supabase._utils import (
     dict_to_cinema,
-    dict_to_movie,
     extract_prefixed,
+    to_movie,
 )
 
 
@@ -242,7 +242,7 @@ class SupabaseScreeningRepository(ScreeningRepository):
             offset=offset,
         )
         return Page(
-            items=[dict_to_movie(row) for row in gateway_page.rows],
+            items=[to_movie(row) for row in gateway_page.rows],
             total=gateway_page.total,
         )
 
@@ -257,7 +257,7 @@ class SupabaseScreeningRepository(ScreeningRepository):
         Returns:
             A new Screening entity populated with the dict values.
         """
-        movie = dict_to_movie(extract_prefixed(data, "movie__"))
+        movie = to_movie(extract_prefixed(data, "movie__"))
         cinema = dict_to_cinema(extract_prefixed(data, "cinema__"))
         return Screening(
             id=ScreeningId(value=data["id"]),

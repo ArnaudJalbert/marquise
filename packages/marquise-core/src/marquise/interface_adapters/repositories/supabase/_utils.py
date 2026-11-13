@@ -42,7 +42,7 @@ def _split_comma_separated_values(value: str | None) -> tuple[str, ...] | None:
     return tuple(value.split(",")) if value else None
 
 
-def dict_to_movie(data: dict) -> Movie:
+def to_movie(data: dict) -> Movie:
     """Convert gateway movie data into a Movie entity.
 
     Args:
