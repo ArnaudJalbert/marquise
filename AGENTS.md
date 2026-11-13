@@ -9,7 +9,20 @@ Montreal cinema showtimes: a Python backend (uv workspace: `packages/marquise-co
 
 When they pull apart, keep the architecture and find a smaller change inside it. When unsure, ship the simple version and say what was skipped.
 
-The [use-cases](docs/agents/rules/use-cases.md) and [functions](docs/agents/rules/functions.md) rules take precedence over ponytail.
+The shared coding standards below take precedence over ponytail, and Marquise's own rules take precedence over them.
+
+## Shared coding standards
+
+This repo follows the Calepin `coding-clean-architecture` and `coding-use-cases` standards, plus the always-on `coding-functions`, `coding-naming`, `coding-python` and `coding-testing`. Load each skill before the work it names. They live in the Calepin vault under `90-agents/skills/coding-*`, and each routes to its note in `30-zettelkasten/` (map: `Coding standards.md`). The rule files below hold only what is specific to Marquise.
+
+| Skill | Read when |
+|---|---|
+| `coding-clean-architecture` | Adding a use case, repository, gateway, adapter or endpoint; moving code across layers; wiring dependencies; changing what apps import |
+| `coding-use-cases` | Creating, changing, reviewing or testing a use case or query |
+| `coding-functions` | Writing or reviewing functions and methods |
+| `coding-naming` | Naming or reviewing variables, parameters, properties, functions, classes, types, or components |
+| `coding-python` | Writing or reviewing Python, including docstrings |
+| `coding-testing` | Writing, moving or reviewing tests |
 
 ## Rules
 
@@ -17,12 +30,9 @@ Read the matching file before the work it names. How rules are written and added
 
 | Rules | Read when |
 |---|---|
-| [architecture](docs/agents/rules/architecture.md) | Adding a use case, repository, gateway, adapter or endpoint; moving code across layers; wiring dependencies; changing what apps import |
-| [use-cases](docs/agents/rules/use-cases.md) | Creating, changing or reviewing a use case or query |
-| [functions](docs/agents/rules/functions.md) | Writing or reviewing Python functions and methods |
-| [naming](docs/agents/rules/naming.md) | Naming or reviewing variables, parameters, properties, functions, classes, types, or components in Python or TypeScript |
-| [python](docs/agents/rules/python.md) | Writing or reviewing Python |
-| [testing](docs/agents/rules/testing.md) | Writing, moving or reviewing tests |
+| [architecture](docs/agents/rules/architecture.md) | Adding a use case, repository, gateway, adapter or endpoint; moving code across layers; wiring dependencies; changing what apps import. Layer paths and the `marquise` facade |
+| [python](docs/agents/rules/python.md) | Writing or reviewing Python: error locations, uv lockfile, quality gate |
+| [testing](docs/agents/rules/testing.md) | Writing, moving or reviewing tests: test locations, `new_tests/` transition, coverage gate |
 | [web](docs/agents/rules/web.md) | Working under `web/` |
 | [enforcement](docs/agents/rules/enforcement.md) | Adding a rule or check; deciding what to verify at each stage |
 | [review-and-delivery](docs/agents/rules/review-and-delivery.md) | Filing an issue; opening, reviewing or merging a PR |
