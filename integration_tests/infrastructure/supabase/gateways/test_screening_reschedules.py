@@ -21,8 +21,8 @@ from marquise.application.repositories.source_registry_query import (
 )
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.import_screenings import ImportScreeningsCommand
-from marquise.domain.entities import Cinema, Screening
-from marquise.domain.value_objects import CinemaId, ScreeningId
+from marquise.domain.entities import Cinema, Movie, Screening
+from marquise.domain.value_objects import CinemaId, MovieId, ScreeningId, Showtime
 from marquise.infrastructure.supabase.gateways.cinema import SupabaseCinemaGateway
 from marquise.infrastructure.supabase.gateways.cinema_source_assignment import (
     SupabaseCinemaSourceAssignmentGateway,
@@ -148,7 +148,32 @@ async def stored(
     page = await SupabaseScreeningReadGateway(db_pool, "marquise-test").search(
         cinema_id=cinema_id
     )
-    return [await repository.find_by_id(ScreeningId(row["id"])) for row in page.rows]
+    gateway = SupabaseScreeningGateway(db_pool, "marquise-test")
+    return [await read_screening(repository, gateway, row["id"]) for row in page.rows]
+
+
+async def read_screening(
+    repository: SupabaseScreeningRepository,
+    gateway: SupabaseScreeningGateway,
+    screening_id: str,
+) -> Screening:
+    """Read a persisted entity through its current import-candidate identity."""
+    row = await gateway.find_by_id(screening_id)
+    assert row is not None
+    incoming = screening_identity(row)
+    candidates = await repository.read_import_candidates(incoming)
+    return next(candidate for candidate in candidates if candidate.id == incoming.id)
+
+
+def screening_identity(row: dict) -> Screening:
+    """Build the identity used to read a persisted screening's candidates."""
+    return Screening(
+        id=ScreeningId(row["id"]),
+        movie=Movie(id=MovieId(row["movie_id"]), title=row["movie__title"]),
+        cinema=Cinema(id=CinemaId(row["cinema_id"]), name=row["cinema__name"]),
+        showtime=Showtime(row["showtime"].replace(tzinfo=UTC)),
+        external_id=row["external_id"],
+    )
 
 
 async def seed_legacy_receipt(db_pool: asyncpg.Pool) -> None:
@@ -196,7 +221,7 @@ async def test_all_five_legacy_reschedules_preserve_identity(
         "597122",
         source_name="other-source",
     )
-    other_before = await repository.find_by_id(ScreeningId("other-cinema"))
+    other_before = await read_screening(repository, screening_gateway, "other-cinema")
     before = await stored(db_pool, repository, LEGACY_CINEMA)
     assignments = SupabaseCinemaSourceAssignmentGateway(db_pool, "marquise-test")
     await assignments.assign(LEGACY_CINEMA, "other-source")
@@ -223,7 +248,10 @@ async def test_all_five_legacy_reschedules_preserve_identity(
     assert {row.showtime.value for row in after} == {row.showtime for row in rows}
     async with db_pool.acquire() as connection:
         await connection.execute(receipt.replace("marquise.", f"{SCHEMA}."))
-    assert await repository.find_by_id(ScreeningId("other-cinema")) == other_before
+    assert (
+        await read_screening(repository, screening_gateway, "other-cinema")
+        == other_before
+    )
     repeated = await run_import(command, registry, rows, LEGACY_CINEMA)
     assert repeated.updated_count == 5
     assert (
@@ -258,7 +286,7 @@ async def test_dst_and_cross_day_refusal(
     await screening_gateway.save(
         "owner", "digger", "cin-001", local(old), "shared", source_name="cineplex"
     )
-    before = await repository.find_by_id(ScreeningId("owner"))
+    before = await read_screening(repository, screening_gateway, "owner")
 
     result = await run_import(
         command, registry, [ShowtimeRow("DIGGER", local(new), external_id="shared")]
@@ -266,7 +294,7 @@ async def test_dst_and_cross_day_refusal(
 
     assert result.rescheduled_count == int(accepted)
     assert result.skipped_count == int(not accepted)
-    after = await repository.find_by_id(ScreeningId("owner"))
+    after = await read_screening(repository, screening_gateway, "owner")
     assert after.showtime.value == (local(new) if accepted else before.showtime.value)
     assert after.id == before.id
 
@@ -302,7 +330,7 @@ async def test_dst_fold_batch_preserves_persisted_owner(
         "shared",
         source_name="cineplex",
     )
-    before = await repository.find_by_id(ScreeningId("owner"))
+    before = await read_screening(repository, screening_gateway, "owner")
     first = datetime(2026, 11, 1, 1, 30, tzinfo=ZoneInfo("America/Montreal"), fold=0)
     result = await run_import(
         command,
@@ -315,7 +343,7 @@ async def test_dst_fold_batch_preserves_persisted_owner(
 
     assert result.skipped_count == 2
     assert result.rescheduled_count == 0
-    assert await repository.find_by_id(ScreeningId("owner")) == before
+    assert await read_screening(repository, screening_gateway, "owner") == before
 
 
 @pytest.mark.asyncio
@@ -337,7 +365,7 @@ async def test_missing_native_id_cannot_reschedule_legacy_blank_owner(
         await connection.execute(
             f"UPDATE {SCHEMA}.screenings SET external_id='' WHERE id='owner'"
         )
-    before = await repository.find_by_id(ScreeningId("owner"))
+    before = await read_screening(repository, screening_gateway, "owner")
     result = await run_import(
         command,
         registry,
@@ -345,7 +373,7 @@ async def test_missing_native_id_cannot_reschedule_legacy_blank_owner(
     )
     assert result.imported_count == 1
     assert result.rescheduled_count == 0
-    assert await repository.find_by_id(ScreeningId("owner")) == before
+    assert await read_screening(repository, screening_gateway, "owner") == before
 
 
 @pytest.mark.asyncio
@@ -460,7 +488,7 @@ async def test_same_time_source_takeover_is_refused(
         source_name="cineplex",
         room="Old room",
     )
-    before = await repository.find_by_id(ScreeningId("owner"))
+    before = await read_screening(repository, screening_gateway, "owner")
     await SupabaseCinemaSourceAssignmentGateway(db_pool, "marquise-test").assign(
         "cin-001", "other-source"
     )
@@ -475,7 +503,7 @@ async def test_same_time_source_takeover_is_refused(
     )
 
     assert result.skipped_count == 1
-    assert await repository.find_by_id(ScreeningId("owner")) == before
+    assert await read_screening(repository, screening_gateway, "owner") == before
     assert "source provenance" in caplog.text
 
 
@@ -498,7 +526,7 @@ async def test_missing_external_id_never_moves_an_existing_screening(
         "shared",
         source_name="cineplex",
     )
-    before = await repository.find_by_id(ScreeningId("owner"))
+    before = await read_screening(repository, screening_gateway, "owner")
     result = await run_import(
         command,
         registry,
@@ -507,7 +535,7 @@ async def test_missing_external_id_never_moves_an_existing_screening(
 
     assert result.rescheduled_count == 0
     assert result.imported_count == 1
-    assert await repository.find_by_id(ScreeningId("owner")) == before
+    assert await read_screening(repository, screening_gateway, "owner") == before
 
 
 @pytest.mark.asyncio
@@ -541,7 +569,7 @@ async def test_idless_metadata_cannot_attest_a_retained_legacy_id(
         ],
     )
     assert metadata.updated_count == 1
-    observed = await repository.find_by_id(ScreeningId("owner"))
+    observed = await read_screening(repository, screening_gateway, "owner")
     assert observed.source_name is None
     assert observed.external_id == "shared"
     assert observed.room == "New room"
@@ -553,7 +581,7 @@ async def test_idless_metadata_cannot_attest_a_retained_legacy_id(
     )
     assert moved.skipped_count == 1
     assert moved.rescheduled_count == 0
-    assert await repository.find_by_id(ScreeningId("owner")) == observed
+    assert await read_screening(repository, screening_gateway, "owner") == observed
 
 
 @pytest.mark.asyncio
@@ -587,7 +615,7 @@ async def test_manual_reparent_cannot_transfer_cinema_scoped_ownership(
         "shared",
         source_name="cineplex",
     )
-    before = await repository.find_by_id(ScreeningId("owner"))
+    before = await read_screening(repository, screening_gateway, "owner")
     changed = await repository.replace(
         replace(
             before,
@@ -609,7 +637,7 @@ async def test_manual_reparent_cannot_transfer_cinema_scoped_ownership(
     assert result.rescheduled_count == int(eligible)
     assert result.skipped_count == int(not eligible)
     assert changed.source_name == ("cineplex" if eligible else None)
-    after = await repository.find_by_id(ScreeningId("owner"))
+    after = await read_screening(repository, screening_gateway, "owner")
     assert after.showtime.value == (
         local("2026-10-07T13:15") if eligible else changed.showtime.value
     )
@@ -633,7 +661,7 @@ async def test_external_id_change_without_source_witness_clears_provenance(
         "shared",
         source_name="cineplex",
     )
-    before = await repository.find_by_id(ScreeningId("owner"))
+    before = await read_screening(repository, screening_gateway, "owner")
 
     changed = await repository.replace(
         replace(before, external_id="replacement"),
@@ -662,7 +690,7 @@ async def test_same_cinema_replace_keeps_provenance_when_native_id_is_unchanged(
         "shared",
         source_name="cineplex",
     )
-    before = await repository.find_by_id(ScreeningId("owner"))
+    before = await read_screening(repository, screening_gateway, "owner")
 
     changed = await repository.replace(before, fields=frozenset({"cinema_id"}))
 
@@ -690,7 +718,7 @@ async def test_failed_reschedule_preserves_old_values(
         source_name="cineplex",
         room="Old room",
     )
-    before = await repository.find_by_id(ScreeningId("owner"))
+    before = await read_screening(repository, screening_gateway, "owner")
     async with db_pool.acquire() as connection:
         await connection.execute(f"""
             CREATE FUNCTION {SCHEMA}.fail_reschedule() RETURNS trigger AS $$
@@ -713,7 +741,7 @@ async def test_failed_reschedule_preserves_old_values(
                     )
                 ],
             )
-        assert await repository.find_by_id(ScreeningId("owner")) == before
+        assert await read_screening(repository, screening_gateway, "owner") == before
     finally:
         async with db_pool.acquire() as connection:
             await connection.execute(
@@ -772,7 +800,7 @@ async def test_concurrent_source_change_refuses_waiting_reschedule(
             await asyncio.gather(pending, return_exceptions=True)
 
     assert result.skipped_count == 1
-    saved = await repository.find_by_id(ScreeningId("owner"))
+    saved = await read_screening(repository, screening_gateway, "owner")
     assert saved.showtime.value == local("2026-10-07T13:00")
     assert saved.source_name == "other-source"
 
@@ -805,7 +833,7 @@ async def test_concurrent_imports_move_one_screening_without_duplicates(
         source_name="cineplex",
         room="Unrelated room",
     )
-    unrelated = await repository.find_by_id(ScreeningId("unrelated"))
+    unrelated = await read_screening(repository, screening_gateway, "unrelated")
     rows = [
         ShowtimeRow(
             "DIGGER", local("2026-10-07T13:15"), external_id="shared", room="New room"
@@ -818,11 +846,11 @@ async def test_concurrent_imports_move_one_screening_without_duplicates(
 
     assert sum(result.total_count for result in results) == 2
     assert sum(result.skipped_count + result.imported_count for result in results) == 0
-    owner = await repository.find_by_id(ScreeningId("owner"))
+    owner = await read_screening(repository, screening_gateway, "owner")
     assert owner.showtime.value == local("2026-10-07T13:15")
     assert owner.room == "New room"
     assert len(await stored(db_pool, repository, "cin-001")) == 2
-    assert await repository.find_by_id(ScreeningId("unrelated")) == unrelated
+    assert await read_screening(repository, screening_gateway, "unrelated") == unrelated
 
 
 @pytest.mark.asyncio
@@ -844,7 +872,7 @@ async def test_concurrent_target_arrival_rolls_back_reschedule(
         "shared",
         source_name="cineplex",
     )
-    before = await repository.find_by_id(ScreeningId("owner"))
+    before = await read_screening(repository, screening_gateway, "owner")
     pending: asyncio.Task[ImportScreeningsCommand.OutputData] | None = None
     try:
         async with db_pool.acquire() as connection:
@@ -880,8 +908,8 @@ async def test_concurrent_target_arrival_rolls_back_reschedule(
 
     assert result.skipped_count == 1
     assert "rescheduled identity" in caplog.text
-    assert await repository.find_by_id(ScreeningId("owner")) == before
-    target = await repository.find_by_id(ScreeningId("target"))
+    assert await read_screening(repository, screening_gateway, "owner") == before
+    target = await read_screening(repository, screening_gateway, "target")
     assert target.external_id is None
     assert target.room == "Unrelated room"
 
