@@ -20,19 +20,56 @@ async def assert_checked_writes(
     state = await repository.read_import_candidates(incoming)
     changed = replace(saved, room="concurrently changed")
     await repository.commit_import(changed, incoming=incoming, expected=state)
-    proposed = replace(saved, room="outdated")
+    await assert_stale_snapshot_rejected(repository, incoming, state)
+    await assert_candidate_room(repository, incoming, "concurrently changed")
+    await assert_incoming_write_rejected(repository, incoming)
+    await assert_move_preserves_identity(repository, saved, changed)
+
+
+async def assert_stale_snapshot_rejected(
+    repository: ScreeningRepository,
+    incoming: Screening,
+    state: tuple[Screening, ...],
+) -> None:
+    """A stale snapshot cannot overwrite a concurrent update."""
+    proposed = replace(incoming, room="outdated")
     with pytest.raises(ScreeningWriteConflictError):
         await repository.commit_import(proposed, incoming=incoming, expected=state)
-    assert (await repository.find_by_id(saved.id)).room == "concurrently changed"
+
+
+async def assert_candidate_room(
+    repository: ScreeningRepository, incoming: Screening, room: str
+) -> None:
+    """The current candidate keeps its latest room."""
+    candidates = await repository.read_import_candidates(incoming)
+    assert len(candidates) == 1
+    assert candidates[0].room == room
+
+
+async def assert_incoming_write_rejected(
+    repository: ScreeningRepository, incoming: Screening
+) -> None:
+    """An empty expected snapshot cannot overwrite an existing screening."""
     with pytest.raises(ScreeningWriteConflictError):
         await repository.commit_import(incoming, incoming=incoming, expected=())
-    moved = replace(
-        changed, showtime=Showtime(changed.showtime.value + timedelta(minutes=15))
-    )
+
+
+async def assert_move_preserves_identity(
+    repository: ScreeningRepository, saved: Screening, changed: Screening
+) -> None:
+    """A moved screening keeps its persisted identity."""
+    moved = _move_by_15_minutes(changed)
     state = await repository.read_import_candidates(moved)
     result = await repository.commit_import(moved, incoming=moved, expected=state)
     assert result.id == saved.id
     assert result.showtime == moved.showtime
+
+
+def _move_by_15_minutes(screening: Screening) -> Screening:
+    return replace(
+        screening,
+        showtime=Showtime(screening.showtime.value + timedelta(minutes=15)),
+    )
 
 
 async def assert_target_arrival(
@@ -40,18 +77,31 @@ async def assert_target_arrival(
 ) -> None:
     """An occupied target arriving after the snapshot cannot be overwritten."""
     await repository.commit_import(original, incoming=original, expected=())
-    incoming = replace(
-        original, showtime=Showtime(original.showtime.value + timedelta(minutes=15))
-    )
+    incoming = _move_by_15_minutes(original)
     state = await repository.read_import_candidates(incoming)
-    target = replace(
-        incoming, id=type(original.id)("target"), external_id=None, room="unrelated"
-    )
+    target = _build_target_screening(incoming)
     await repository.commit_import(target, incoming=target, expected=())
-    with pytest.raises(ScreeningWriteConflictError):
-        await repository.commit_import(incoming, incoming=incoming, expected=state)
-    assert await repository.find_by_id(original.id) == original
-    assert await repository.find_by_id(target.id) == target
+    await assert_stale_snapshot_rejected(repository, incoming, state)
+    await assert_candidates_equal(repository, original, (original,))
+    await assert_candidates_equal(repository, target, (target,))
+
+
+def _build_target_screening(incoming: Screening) -> Screening:
+    return replace(
+        incoming,
+        id=type(incoming.id)("target"),
+        external_id=None,
+        room="unrelated",
+    )
+
+
+async def assert_candidates_equal(
+    repository: ScreeningRepository,
+    incoming: Screening,
+    expected: tuple[Screening, ...],
+) -> None:
+    """Candidate lookup returns the expected entities."""
+    assert await repository.read_import_candidates(incoming) == expected
 
 
 async def assert_removed_owner(
