@@ -2,9 +2,9 @@
 
 Read when writing, moving or reviewing tests in either stack.
 
-## Boundary
+The test boundary, Python mechanics, web testing and review red flags follow the shared `coding-testing` skill, and use-case tests follow `coding-use-cases`. This file holds what only Marquise defines.
 
-Everything through interface adapters is unit-testable with zero external I/O. Infrastructure is the only layer that touches real externals. Unit tests stub network calls with injected or patched fetchers where those seams exist. Database gateways use a real disposable database; selected HTTP clients also get offline loopback-HTTP integration tests.
+## Boundary
 
 | Code | Test location | Swap in |
 |---|---|---|
@@ -21,11 +21,6 @@ Paths are under `packages/marquise-core/tests/` unless a row names root `integra
 
 ## Python mechanics
 
-- Function-style tests.
-- Every test function has a scenario docstring.
-- `@pytest.mark.asyncio` for async tests.
-- `create_autospec(Interface, instance=True)` so mocks match real signatures.
-- `assert_awaited_once()` and `assert_not_awaited()` for async mocks.
 - Run each app suite in its own pytest invocation.
 
 ## Transition
@@ -35,7 +30,7 @@ Each package has a `tests/new_tests/` folder. All new tests go there, in every p
 - Old tests stay in place and keep running until their behavior has a test under `new_tests/`.
 - Delete old tests in batches, once their behavior is covered by a new test. Do not add new tests to old folders.
 - CI runs both folders until the old ones are gone. The core unit step lists `new_tests/` next to `unit_tests/`. The API and CLI steps run their whole `tests/` folder, so they pick up `new_tests/` automatically.
-- New tests follow the rules in this file: public interfaces only, `create_autospec` for collaborators, scenario docstrings.
+- New tests follow `coding-testing`.
 - SQL-level integration tests live in root `integration_tests/` and run nightly, not in `tests/new_tests/` (#548).
 
 ### Temporary pruning exception
@@ -51,14 +46,3 @@ For [#564](https://github.com/ArnaudJalbert/marquise/issues/564)'s pruning child
 ## Coverage
 
 70% minimum for core. Target 100% for `domain/` and `application/`. **Enforced:** `fail_under` in `packages/marquise-core/pyproject.toml` and `--cov-fail-under` in `.github/workflows/quality.yml`.
-
-## Web
-
-- Vitest and Testing Library, colocated as `*.test.ts` or `*.test.tsx`.
-- Test behaviour, not implementation.
-- Unit tests make no live HTTP calls: inject a mock client or pass data through props.
-
-## Review red flags
-
-- An application-layer test that hits a real database or network.
-- A test that needs a live external service to prove application logic.
