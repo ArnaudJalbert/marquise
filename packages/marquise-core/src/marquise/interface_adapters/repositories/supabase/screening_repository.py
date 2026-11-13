@@ -192,25 +192,6 @@ class SupabaseScreeningRepository(ScreeningRepository):
         """
         return await self._gateway.delete(screening_id=str(screening_id))
 
-    async def find_by_id(self, screening_id: ScreeningId) -> Screening:
-        """Retrieve a screening by ID.
-
-        Args:
-            screening_id: The unique identifier of the screening.
-
-        Returns:
-            The matching screening entity.
-
-        Raises:
-            ScreeningNotFoundError: If no screening with the given ID exists.
-        """
-        data = await self._gateway.find_by_id(screening_id=str(screening_id))
-        if data is None:
-            raise ScreeningNotFoundError(
-                f"A screening with ID '{screening_id}' was not found"
-            )
-        return self._to_entity(data)
-
     async def find_distinct_movies_by_cinema(
         self,
         cinema_id: CinemaId,

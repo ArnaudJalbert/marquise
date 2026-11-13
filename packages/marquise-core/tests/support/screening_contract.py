@@ -23,7 +23,8 @@ async def assert_checked_writes(
     proposed = replace(saved, room="outdated")
     with pytest.raises(ScreeningWriteConflictError):
         await repository.commit_import(proposed, incoming=incoming, expected=state)
-    assert (await repository.find_by_id(saved.id)).room == "concurrently changed"
+    updated = await repository.read_import_candidates(incoming)
+    assert len(updated) == 1 and updated[0].room == "concurrently changed"
     with pytest.raises(ScreeningWriteConflictError):
         await repository.commit_import(incoming, incoming=incoming, expected=())
     moved = replace(
@@ -50,8 +51,8 @@ async def assert_target_arrival(
     await repository.commit_import(target, incoming=target, expected=())
     with pytest.raises(ScreeningWriteConflictError):
         await repository.commit_import(incoming, incoming=incoming, expected=state)
-    assert await repository.find_by_id(original.id) == original
-    assert await repository.find_by_id(target.id) == target
+    assert await repository.read_import_candidates(original) == (original,)
+    assert await repository.read_import_candidates(target) == (target,)
 
 
 async def assert_removed_owner(

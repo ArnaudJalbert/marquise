@@ -215,23 +215,6 @@ async def test_save_raises_when_row_already_exists(
 
 
 @pytest.mark.asyncio
-async def test_find_by_id(gateway_dict: dict) -> None:
-    """Test find_by_id returns entity when found."""
-    mock_gateway = create_autospec(ScreeningGateway, instance=True)
-    mock_gateway.find_by_id.return_value = gateway_dict
-
-    repo = SupabaseScreeningRepository(gateway=mock_gateway)
-    result = await repo.find_by_id(ScreeningId(value="scr-123"))
-
-    assert result is not None
-    assert result.id == ScreeningId(value="scr-123")
-    assert result.movie.id == MovieId(value="mov-456")
-    assert result.showtime.value.tzinfo == UTC
-    assert result.showtime.value == datetime(2026, 6, 7, 19, 30, 0, tzinfo=UTC)
-    mock_gateway.find_by_id.assert_awaited_once_with(screening_id="scr-123")
-
-
-@pytest.mark.asyncio
 async def test_save_with_timezone_aware_datetime(
     sample_screening: Screening,
 ) -> None:
@@ -258,55 +241,31 @@ async def test_save_with_timezone_aware_datetime(
 
 
 @pytest.mark.asyncio
-async def test_find_by_id_missing() -> None:
-    """Test find_by_id raises ScreeningNotFoundError when not found."""
+async def test_read_import_candidates_populates_release_year(
+    sample_screening: Screening,
+) -> None:
+    """read_import_candidates maps the Movie release year from gateway data."""
     mock_gateway = create_autospec(ScreeningGateway, instance=True)
-    mock_gateway.find_by_id.return_value = None
+    mock_gateway.read_import_candidates.return_value = [
+        {
+            "id": "scr-456",
+            "movie_id": "mov-456",
+            "cinema_id": "cin-789",
+            "showtime": datetime(2026, 7, 1, 14, 0, 0),
+            "movie__id": "mov-456",
+            "movie__title": "Test Movie",
+            "movie__release_year": 2026,
+            "cinema__id": "cin-789",
+            "cinema__name": "Test Cinema",
+        }
+    ]
 
-    repo = SupabaseScreeningRepository(gateway=mock_gateway)
-    with pytest.raises(ScreeningNotFoundError):
-        await repo.find_by_id(ScreeningId(value="scr-999"))
+    result = await SupabaseScreeningRepository(mock_gateway).read_import_candidates(
+        sample_screening
+    )
 
-
-@pytest.mark.asyncio
-async def test_to_entity_populates_release_year() -> None:
-    """Test _to_entity populates release_year from gateway data."""
-    mock_gateway = create_autospec(ScreeningGateway, instance=True)
-    raw = {
-        "id": "scr-456",
-        "movie_id": "mov-456",
-        "cinema_id": "cin-789",
-        "showtime": datetime(2026, 7, 1, 14, 0, 0),
-        "external_id": None,
-        "ticket_url": None,
-        "room": None,
-        "language": None,
-        "movie__id": "mov-456",
-        "movie__title": "Test Movie",
-        "movie__release_year": 2026,
-        "movie__directors": None,
-        "movie__cast_members": None,
-        "movie__duration_minutes": None,
-        "movie__description": None,
-        "movie__poster_url": None,
-        "movie__trailer_url": None,
-        "movie__genres": None,
-        "movie__original_title": None,
-        "movie__rating": None,
-        "movie__origin_countries": None,
-        "cinema__id": "cin-789",
-        "cinema__name": "Test Cinema",
-        "cinema__address": None,
-        "cinema__city": None,
-        "cinema__website": None,
-    }
-    mock_gateway.find_by_id.return_value = raw
-
-    repo = SupabaseScreeningRepository(gateway=mock_gateway)
-    result = await repo.find_by_id(ScreeningId(value="scr-456"))
-
-    assert result is not None
-    assert result.movie.release_year == 2026
+    assert len(result) == 1
+    assert result[0].movie.release_year == 2026
 
 
 @pytest.mark.asyncio
