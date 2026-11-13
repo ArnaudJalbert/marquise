@@ -25,6 +25,7 @@ EXPECTED_PUBLIC_SURFACE: set[str] = {
     "MergeMoviesInputData",
     "MergeMoviesOutputData",
     "MovieWorkflowConflictError",
+    "MONTREAL_TIME_ZONE",
     "RefreshMoviesUseCase",
     "MergeMoviesUseCase",
     "BrowseScreeningMoviesQuery",

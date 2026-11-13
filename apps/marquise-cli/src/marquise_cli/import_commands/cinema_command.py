@@ -6,18 +6,16 @@ import asyncio
 import sys
 from dataclasses import asdict
 from datetime import date, datetime, timedelta
-from zoneinfo import ZoneInfo
 
 import questionary
 from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
-from marquise import ImportScreeningsCommand, MarquiseFactory
+from marquise import MONTREAL_TIME_ZONE, ImportScreeningsCommand, MarquiseFactory
 from marquise_cli.helpers import run_spinner, select_cinema
 
 _console = Console()
-_MONTREAL_TZ = ZoneInfo("America/Toronto")
 
 
 async def _select_date_range() -> tuple[date, date] | None:
@@ -80,7 +78,7 @@ def _screenings_table(result: dict) -> Table:
     table.add_column("Status")
     for screening in result["screenings"]:
         local_time = datetime.fromisoformat(screening["showtime"]).astimezone(
-            _MONTREAL_TZ
+            MONTREAL_TIME_ZONE
         )
         table.add_row(
             screening["movie_title"],

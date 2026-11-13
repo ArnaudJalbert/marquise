@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from zoneinfo import ZoneInfo
 
+from ..constants import MONTREAL_TIME_ZONE
 from ..value_objects import ScreeningId, Showtime
 from .cinema import Cinema
 from .movie import Movie
@@ -38,7 +38,6 @@ class Screening:
 
     def can_reschedule_to(self, incoming: Screening) -> bool:
         """Check verified native ownership and the Montreal calendar date."""
-        zone = ZoneInfo("America/Montreal")
         return bool(
             self.cinema.id == incoming.cinema.id
             and self.movie.id == incoming.movie.id
@@ -46,8 +45,8 @@ class Screening:
             and self.external_id == incoming.external_id
             and self.source_name
             and self.source_name == incoming.source_name
-            and self.showtime.value.astimezone(zone).date()
-            == incoming.showtime.value.astimezone(zone).date()
+            and self.showtime.value.astimezone(MONTREAL_TIME_ZONE).date()
+            == incoming.showtime.value.astimezone(MONTREAL_TIME_ZONE).date()
         )
 
     def __str__(self) -> str:
