@@ -70,7 +70,7 @@ async def _register_source(factory: MarquiseFactory, source: dict) -> bool:
         return False
     try:
         await _create_source(factory, source["name"], details)
-    except SourceAlreadyExistsError as error:
+    except (SourceAlreadyExistsError, ValueError) as error:
         print(f"  Failed: {error}", file=sys.stderr)
         raise SystemExit(1) from error
     return True

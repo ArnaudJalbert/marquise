@@ -56,7 +56,7 @@ async def _delete_sources(factory: MarquiseFactory, source_names: list[str]) -> 
     for source_name in source_names:
         try:
             await _delete_source(factory, source_name)
-        except SourceNotFoundError as error:
+        except (SourceNotFoundError, ValueError) as error:
             print(f"  Failed: {error}", file=sys.stderr)
             raise SystemExit(1) from error
 

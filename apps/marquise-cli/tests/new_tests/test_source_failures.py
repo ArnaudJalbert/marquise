@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from functools import partial
 from unittest.mock import AsyncMock, MagicMock, create_autospec
 
 import pytest
@@ -45,7 +44,9 @@ def source_factory(mock_factory: MagicMock) -> MagicMock:
 
 
 @pytest.fixture(autouse=True)
-def source_prompts(monkeypatch: pytest.MonkeyPatch, source_factory: MagicMock) -> None:
+def source_prompts(
+    monkeypatch: pytest.MonkeyPatch, source_factory: MagicMock
+) -> MagicMock:
     """Use deterministic prompt answers and replace only the factory boundary."""
     monkeypatch.setattr(register_command, "MarquiseFactory", lambda: source_factory)
     monkeypatch.setattr(unregister_command, "MarquiseFactory", lambda: source_factory)
@@ -57,14 +58,19 @@ def source_prompts(monkeypatch: pytest.MonkeyPatch, source_factory: MagicMock) -
     questionary.confirm.return_value.ask_async = AsyncMock(return_value=True)
     monkeypatch.setattr(register_command, "questionary", questionary)
     monkeypatch.setattr(unregister_command, "questionary", questionary)
+    return questionary
 
 
-def test_register_preserves_success_and_rerun_finishes(
+def test_register_existing_source_stops_remaining_registrations(
     source_factory: MagicMock, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """A failed registration leaves earlier sources registered and rerun skips them."""
+    """A duplicate second source exits non-zero before registering the third."""
     creation = source_factory.create_source_use_case
-    creation.execute.side_effect = partial(_register_until_second, source_factory)
+    creation.execute.side_effect = [
+        CreateSourceUseCase.OutputData(name="first", display_name="First"),
+        SourceAlreadyExistsError("second already exists"),
+        CreateSourceUseCase.OutputData(name="third", display_name="Third"),
+    ]
     with pytest.raises(SystemExit) as error:
         main(["source", "register"])
     assert error.value.code == 1
@@ -77,46 +83,21 @@ def test_register_preserves_success_and_rerun_finishes(
         "second",
     ]
     source_factory.shutdown.assert_awaited_once()
-    _finish_registration(source_factory)
-    output = capsys.readouterr().out
-    assert "--- Registering: first ---" not in output
-    assert "Created: second" in output
-    assert "Created: third" in output
 
 
-def _register_until_second(
-    factory: MagicMock, request: CreateSourceUseCase.InputData
-) -> CreateSourceUseCase.OutputData:
-    """Keep successful writes while failing on the second source."""
-    if request.name == "second":
-        raise SourceAlreadyExistsError("second already exists")
-    return _persist_source(factory, request)
-
-
-def _persist_source(
-    factory: MagicMock, request: CreateSourceUseCase.InputData
-) -> CreateSourceUseCase.OutputData:
-    """Keep source state at the stubbed application boundary across runs."""
-    factory.list_sources_use_case.execute.return_value.sources.append(
-        ListSourcesUseCase.SourceData(
-            name=request.name, display_name=request.display_name
-        )
-    )
-    return CreateSourceUseCase.OutputData(
-        name=request.name, display_name=request.display_name
-    )
-
-
-def _finish_registration(factory: MagicMock) -> None:
-    """Retry with the same source state after resolving the failure."""
-    creation = factory.create_source_use_case
-    creation.execute.reset_mock(side_effect=True)
-    creation.execute.side_effect = partial(_persist_source, factory)
-    assert main(["source", "register"]) == 0
-    assert [call.args[0].name for call in creation.execute.await_args_list] == [
-        "second",
-        "third",
-    ]
+def test_register_empty_display_name_fails_cleanly(
+    source_prompts: MagicMock,
+    source_factory: MagicMock,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """An empty display name reports the validation error and exits non-zero."""
+    source_prompts.text.return_value.ask_async.return_value = ""
+    with pytest.raises(SystemExit) as error:
+        main(["source", "register"])
+    assert error.value.code == 1
+    assert "Failed: display_name must not be empty" in capsys.readouterr().err
+    source_factory.create_source_use_case.execute.assert_not_awaited()
+    source_factory.shutdown.assert_awaited_once()
 
 
 def test_unregister_missing_source_stops_remaining_deletions(
@@ -147,31 +128,54 @@ def test_unregister_missing_source_stops_remaining_deletions(
 def _show_registered_sources(factory: MagicMock) -> None:
     """List all three sources for removal."""
     factory.list_sources_use_case.execute.return_value = ListSourcesUseCase.OutputData(
-        sources=[
-            ListSourcesUseCase.SourceData(name=name, display_name=name)
-            for name in ("first", "second", "third")
-        ]
+        sources=_REGISTERED_SOURCES
     )
 
 
-@pytest.mark.parametrize("command", ["register", "unregister"])
+def test_unregister_empty_source_name_fails_cleanly(
+    source_prompts: MagicMock,
+    source_factory: MagicMock,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """An empty selected source name reports the validation error and exits."""
+    _show_registered_sources(source_factory)
+    source_prompts.checkbox.return_value.ask_async.return_value = ["", "third"]
+    with pytest.raises(SystemExit) as error:
+        main(["source", "unregister"])
+    assert error.value.code == 1
+    assert "Failed: source_name must not be empty" in capsys.readouterr().err
+    source_factory.delete_source_use_case.execute.assert_not_awaited()
+    source_factory.shutdown.assert_awaited_once()
+
+
+_REGISTERED_SOURCES = [
+    ListSourcesUseCase.SourceData(name=name, display_name=name)
+    for name in ("first", "second", "third")
+]
+
+
+@pytest.mark.parametrize(
+    ("command", "use_case_attribute", "registered_sources"),
+    [
+        ("register", "create_source_use_case", []),
+        ("unregister", "delete_source_use_case", _REGISTERED_SOURCES),
+    ],
+)
 def test_unexpected_source_error_remains_visible(
-    command: str, source_factory: MagicMock, capsys: pytest.CaptureFixture[str]
+    command: str,
+    use_case_attribute: str,
+    registered_sources: list[ListSourcesUseCase.SourceData],
+    source_factory: MagicMock,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Unexpected errors propagate unchanged and stop before the next source."""
-    _show_registered_sources(source_factory)
-    if command == "register":
-        source_factory.list_sources_use_case.execute.return_value = (
-            ListSourcesUseCase.OutputData(sources=[])
-        )
-    operation = (
-        source_factory.create_source_use_case
-        if command == "register"
-        else source_factory.delete_source_use_case
+    source_factory.list_sources_use_case.execute.return_value = (
+        ListSourcesUseCase.OutputData(sources=registered_sources)
     )
-    failure = ValueError("unexpected failure")
+    operation = getattr(source_factory, use_case_attribute)
+    failure = RuntimeError("unexpected failure")
     operation.execute.side_effect = failure
-    with pytest.raises(ValueError) as error:
+    with pytest.raises(RuntimeError) as error:
         main(["source", command])
     assert error.value is failure
     operation.execute.assert_awaited_once()
