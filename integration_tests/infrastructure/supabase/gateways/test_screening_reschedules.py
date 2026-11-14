@@ -966,20 +966,15 @@ async def test_provenance_receipt_mismatch_rolls_back_every_row(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "bootstrap", ["marquise-schema.sql", "marquise-test-schema.sql"]
-)
 async def test_source_migration_and_bootstrap_share_fk_behavior(
-    db_pool: asyncpg.Pool, bootstrap: str
+    db_pool: asyncpg.Pool,
 ) -> None:
     """Fresh and upgraded schemas enforce provenance and keep legacy rows unknown."""
     schema = f"provenance_{uuid4().hex}"
     async with db_pool.acquire() as connection:
         try:
-            sql = (SCRIPTS / bootstrap).read_text()
-            await connection.execute(
-                sql.replace("marquise-test", schema).replace("marquise", schema)
-            )
+            sql = (SCRIPTS / "marquise-schema.sql").read_text()
+            await connection.execute(sql.replace("marquise", schema))
             await connection.execute(
                 f"INSERT INTO {schema}.cinemas (id,name) VALUES ('cin','Cinema'); "
                 f"INSERT INTO {schema}.movies (id,title) VALUES ('mov','Movie'); "

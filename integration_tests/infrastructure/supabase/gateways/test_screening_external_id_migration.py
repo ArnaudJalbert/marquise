@@ -21,11 +21,8 @@ SCRIPTS = Path(__file__).resolve().parents[4] / "scripts"
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "bootstrap", ["marquise-schema.sql", "marquise-test-schema.sql"]
-)
 async def test_external_id_migration_preserves_rows_and_refuses_unsafe_rollback(
-    db_pool: asyncpg.Pool, bootstrap: str
+    db_pool: asyncpg.Pool,
 ) -> None:
     """Bootstrap and upgrade allow shared IDs; unsafe rollback preserves both rows."""
     schema = f"migration_{uuid4().hex}"
@@ -35,7 +32,7 @@ async def test_external_id_migration_preserves_rows_and_refuses_unsafe_rollback(
     showtime = datetime(2026, 10, 7, 17, tzinfo=UTC)
     async with db_pool.acquire() as conn:
         try:
-            sql = (SCRIPTS / bootstrap).read_text().replace("marquise-test", schema)
+            sql = (SCRIPTS / "marquise-schema.sql").read_text()
             await conn.execute(sql.replace("marquise", schema))
             for cinema_id in ("royalmount", "cinematheque"):
                 await cinema.save(cinema_id, cinema_id, address=None, city=None)

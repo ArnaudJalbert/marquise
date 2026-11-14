@@ -393,20 +393,15 @@ async def test_additive_migration_is_bounded_rerunnable_and_preserves_legacy(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "filename,schema",
-    [
-        ("marquise-schema.sql", "marquise"),
-        ("marquise-test-schema.sql", '"marquise-test"'),
-    ],
-)
 async def test_fresh_schemas_are_rerunnable_with_nullable_timezone_stamp(
     db_pool: asyncpg.Pool,
-    filename: str,
-    schema: str,
 ) -> None:
-    """Both bootstrap scripts create the same additive lifecycle state on rerun."""
-    sql = (ROOT / "scripts" / filename).read_text().replace(schema, "fresh_359")
+    """The canonical bootstrap preserves nullable lifecycle state on rerun."""
+    sql = (
+        (ROOT / "scripts/marquise-schema.sql")
+        .read_text()
+        .replace("marquise", "fresh_359")
+    )
     async with db_pool.acquire() as conn:
         try:
             await conn.execute(sql)

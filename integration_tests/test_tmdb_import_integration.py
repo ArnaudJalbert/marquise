@@ -52,6 +52,10 @@ async def test_import_links_translated_screening_to_known_movie(
     await movies.create_or_reuse(original)
     async with db_pool.acquire() as conn:
         await conn.execute(
+            f'INSERT INTO "{TEST_SCHEMA}".source_definitions (name, display_name) '
+            "VALUES ('test-source', 'Test Source')"
+        )
+        await conn.execute(
             f'INSERT INTO "{TEST_SCHEMA}".cinemas (id, name) VALUES ($1, $2)',
             "test-cinema",
             "Test Cinema",
