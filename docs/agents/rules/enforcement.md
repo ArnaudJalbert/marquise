@@ -6,8 +6,11 @@ Each rule has a home in its topic file. This map only says how and when it is ch
 
 ## Existing code
 
-- Much existing code predates these rules. Fix violations as you touch the code: every new or changed function and use case follows the rules, and code you work in gets fixed along the way.
-- Don't start a change just to fix old violations unless it is the task.
+- Much existing code predates these rules. A task brings only the lines it writes up to them, never the code around those lines. Tests count.
+- An edit must not make an existing violation worse. A mechanical edit, such as swapping a literal or renaming a symbol, does not bring the surrounding function into scope.
+- To add logic to a function that already breaks the rules, put the logic in a new function that complies and call it from the old one. If that is impossible, restructure only that function, in its own `refactor` commit, and name it in the PR body.
+- Leave old violations alone: don't fix, list or file them unless cleanup is the task.
+- Review checks added and changed lines plus the no-worse rule. A violation in unchanged context is not a finding.
 - Leave the automated checks as Planned until enough code complies to turn one on without a large cleanup.
 
 ## When
