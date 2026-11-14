@@ -17,7 +17,7 @@ from marquise import ImportScreeningsCommand, MarquiseFactory
 from marquise_cli.helpers import run_spinner, select_cinema
 
 _console = Console()
-_MONTREAL_TZ = ZoneInfo("America/Toronto")
+_MONTREAL_TZ = ZoneInfo("America/Montreal")
 
 
 async def _select_date_range() -> tuple[date, date] | None:

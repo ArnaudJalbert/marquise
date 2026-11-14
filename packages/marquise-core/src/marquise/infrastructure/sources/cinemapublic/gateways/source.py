@@ -22,10 +22,8 @@ from urllib.parse import urljoin, urlparse
 
 import certifi
 
-from marquise.infrastructure.sources._timezone import (
-    MONTREAL_TZ,
-    montreal_local_to_utc_iso,
-)
+from marquise.domain.constants import MONTREAL_TIME_ZONE
+from marquise.infrastructure.sources._timezone import montreal_local_to_utc_iso
 
 _SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 
@@ -243,7 +241,7 @@ def _parse_jsonld_showtimes(
         except ValueError:
             continue
         if dt.tzinfo is not None:
-            dt = dt.astimezone(MONTREAL_TZ)
+            dt = dt.astimezone(MONTREAL_TIME_ZONE)
 
         date_key = dt.strftime("%Y-%m-%d")
         showtime = dt.strftime("%Y-%m-%dT%H:%M")
@@ -427,7 +425,7 @@ def fetch_showtimes(
     # ------------------------------------------------------------------
     results: list[dict[str, Any]] = []
     for date_key in all_dates:
-        dt = datetime.strptime(date_key, "%Y-%m-%d").replace(tzinfo=MONTREAL_TZ)
+        dt = datetime.strptime(date_key, "%Y-%m-%d").replace(tzinfo=MONTREAL_TIME_ZONE)
         if dt < range_start or dt > range_end:
             continue
         events = sorted(
@@ -437,11 +435,11 @@ def fetch_showtimes(
         for ev in events:
             try:
                 ev_dt = datetime.fromisoformat(ev["showtime"]).replace(
-                    tzinfo=MONTREAL_TZ
+                    tzinfo=MONTREAL_TIME_ZONE
                 )
             except ValueError:
                 ev_dt = datetime.strptime(ev["showtime"], "%Y-%m-%dT%I:%M %p").replace(
-                    tzinfo=MONTREAL_TZ
+                    tzinfo=MONTREAL_TIME_ZONE
                 )
             if ev_dt < range_start or ev_dt > range_end:
                 continue
