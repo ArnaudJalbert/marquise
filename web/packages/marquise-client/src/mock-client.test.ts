@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { MockMarquiseClient } from "./mock-client";
+import { MONTREAL_TIME_ZONE } from "./montreal-date";
 
 describe("MockMarquiseClient grid", () => {
   it("lists `days` dates starting at `startDate`", async () => {
@@ -201,7 +202,7 @@ describe("MockMarquiseClient paged demo", () => {
     const item = (await client.fetchForDate("2026-08-05"))[0]!;
     const showtime = item.showtimes![0]!;
     const time = new Intl.DateTimeFormat("en-GB", {
-      timeZone: "America/Toronto",
+      timeZone: MONTREAL_TIME_ZONE,
       hour: "2-digit",
       minute: "2-digit",
       hourCycle: "h23",

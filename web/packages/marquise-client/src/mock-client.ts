@@ -11,7 +11,12 @@ import {
   type MovieDetailClient,
 } from "./movie-detail-client";
 import type { MovieCardGridItem, MovieGridClient } from "./movie-grid-client";
-import { addDays, montrealDateTime, toMontrealIsoDate } from "./montreal-date";
+import {
+  MONTREAL_TIME_ZONE,
+  addDays,
+  montrealDateTime,
+  toMontrealIsoDate,
+} from "./montreal-date";
 
 export interface MockMarquiseClientOptions {
   /** First selectable date as "YYYY-MM-DD"; defaults to today in Montréal. */
@@ -231,7 +236,7 @@ export class MockMarquiseClient
       )
       .filter(({ item, showtime }) => {
         const time = new Intl.DateTimeFormat("en-GB", {
-          timeZone: "America/Toronto",
+          timeZone: MONTREAL_TIME_ZONE,
           hour: "2-digit",
           minute: "2-digit",
           hourCycle: "h23",
