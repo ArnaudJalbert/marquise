@@ -8,12 +8,6 @@ from collections.abc import Sequence
 
 from marquise_cli.routing import create_parser, dispatch
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    datefmt="%H:%M:%S",
-)
-
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Run Marquise CLI.
@@ -25,6 +19,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     Returns:
         Process exit code.
     """
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%H:%M:%S",
+    )
     return dispatch(create_parser(), sys.argv[1:] if argv is None else argv)
 
 
