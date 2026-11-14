@@ -30,10 +30,13 @@ describe("montrealDayRange", () => {
 });
 
 describe("toMontrealIsoDate", () => {
-  it("maps a previous UTC evening to the correct Montréal calendar date", () => {
-    expect(toMontrealIsoDate(new Date("2026-08-06T01:00:00Z"))).toBe(
-      "2026-08-05",
-    );
+  it.each([
+    ["2026-08-06T03:59:59Z", "2026-08-05"],
+    ["2026-08-06T04:00:00Z", "2026-08-06"],
+    ["2026-01-06T04:59:59Z", "2026-01-05"],
+    ["2026-01-06T05:00:00Z", "2026-01-06"],
+  ])("maps %s to the Montréal calendar date %s", (instant, expected) => {
+    expect(toMontrealIsoDate(new Date(instant))).toBe(expected);
   });
 });
 

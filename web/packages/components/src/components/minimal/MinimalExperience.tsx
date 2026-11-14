@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
+  MONTREAL_TIME_ZONE,
   MovieNotFoundError,
   posterRenditionUrl,
   toMontrealIsoDate,
@@ -31,7 +32,7 @@ import {
 } from "./catalogue-time-filters";
 
 const timeFormatter = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "America/Toronto",
+  timeZone: MONTREAL_TIME_ZONE,
   hour: "2-digit",
   minute: "2-digit",
   hourCycle: "h23",

@@ -14,7 +14,11 @@ export type {
   ScreeningQuery,
   ScreeningPage,
 } from "./discovery-client";
-export { toMontrealIsoDate, montrealDateTime } from "./montreal-date";
+export {
+  MONTREAL_TIME_ZONE,
+  toMontrealIsoDate,
+  montrealDateTime,
+} from "./montreal-date";
 
 export type {
   BrowseClient,

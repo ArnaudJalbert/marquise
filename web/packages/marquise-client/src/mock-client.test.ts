@@ -1,6 +1,43 @@
 import { describe, expect, it } from "vitest";
 
 import { MockMarquiseClient } from "./mock-client";
+import { MONTREAL_TIME_ZONE } from "./montreal-date";
+import type { CinemaShowtime } from "./cinema";
+import type { MovieCardGridItem } from "./movie-grid-client";
+import type { ScreeningQuery } from "./discovery-client";
+
+function createScreeningQuery(
+  item: MovieCardGridItem,
+  showtime: CinemaShowtime,
+): ScreeningQuery {
+  const time = formatMontrealTime(showtime.startsAt);
+  return {
+    date: "2026-08-05",
+    page: 1,
+    movie: item.movie.title,
+    movieId: item.movie.id,
+    cinemaId: showtime.cinema.id,
+    language: showtime.language ?? undefined,
+    fromTime: time,
+    toTime: time,
+  };
+}
+
+function formatMontrealTime(startsAt: string): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: MONTREAL_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(startsAt));
+}
+
+async function prepareScreeningFilter() {
+  const client = new MockMarquiseClient({ startDate: "2026-08-05" });
+  const item = (await client.fetchForDate("2026-08-05"))[0]!;
+  const showtime = item.showtimes![0]!;
+  return { client, item, showtime, query: createScreeningQuery(item, showtime) };
+}
 
 describe("MockMarquiseClient grid", () => {
   it("lists `days` dates starting at `startDate`", async () => {
@@ -197,31 +234,18 @@ describe("MockMarquiseClient paged demo", () => {
   });
 
   it("filters demo screenings by title, movie ID, cinema ID, language and Montréal time together", async () => {
-    const client = new MockMarquiseClient({ startDate: "2026-08-05" });
-    const item = (await client.fetchForDate("2026-08-05"))[0]!;
-    const showtime = item.showtimes![0]!;
-    const time = new Intl.DateTimeFormat("en-GB", {
-      timeZone: "America/Toronto",
-      hour: "2-digit",
-      minute: "2-digit",
-      hourCycle: "h23",
-    }).format(new Date(showtime.startsAt));
-    const result = await client.fetchScreeningPage({
-      date: "2026-08-05",
-      page: 1,
-      movie: item.movie.title,
-      movieId: item.movie.id,
-      cinemaId: showtime.cinema.id,
-      language: showtime.language ?? undefined,
-      fromTime: time,
-      toTime: time,
-    });
+    const { client, item, showtime, query } = await prepareScreeningFilter();
+    const result = await client.fetchScreeningPage(query);
     expect(result.items.map((match) => match.movie.id)).toEqual([
       item.movie.id,
     ]);
     expect(result.items.flatMap((match) => match.showtimes ?? [])).toEqual([
       showtime,
     ]);
+  });
+
+  it("returns an empty screening page for an unmatched title", async () => {
+    const client = new MockMarquiseClient({ startDate: "2026-08-05" });
     await expect(
       client.fetchScreeningPage({
         date: "2026-08-05",
