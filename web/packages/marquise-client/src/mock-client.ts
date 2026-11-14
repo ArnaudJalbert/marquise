@@ -190,6 +190,63 @@ const CINEMAS: readonly Cinema[] = [
 const LANGUAGES: readonly string[] = ["VOSTF", "VF", "VO"];
 const DEFAULT_LANGUAGE = "VOSTF";
 
+const screeningTimeFormatter = new Intl.DateTimeFormat("en-GB", {
+  timeZone: MONTREAL_TIME_ZONE,
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+interface ScreeningRow {
+  item: MovieCardGridItem;
+  showtime: CinemaShowtime;
+}
+
+function matchesMovie(item: MovieCardGridItem, query: ScreeningQuery): boolean {
+  return (
+    (!query.movie ||
+      item.movie.title.toLowerCase().includes(query.movie.toLowerCase())) &&
+    (!query.movieId || query.movieId === item.movie.id)
+  );
+}
+
+function matchesScreening(row: ScreeningRow, query: ScreeningQuery): boolean {
+  const time = screeningTimeFormatter.format(new Date(row.showtime.startsAt));
+  return (
+    matchesMovie(row.item, query) &&
+    (!query.cinemaId || query.cinemaId === row.showtime.cinema.id) &&
+    (!query.language || query.language === row.showtime.language) &&
+    (!query.fromTime || time >= query.fromTime) &&
+    (!query.toTime || time <= query.toTime)
+  );
+}
+
+function groupScreeningRows(rows: ScreeningRow[]): MovieCardGridItem[] {
+  const groups = new Map<string | undefined, MovieCardGridItem>();
+  for (const { item, showtime } of rows) {
+    const group = groups.get(item.movie.id) ?? { ...item, showtimes: [] };
+    group.showtimes = [...(group.showtimes ?? []), showtime];
+    groups.set(item.movie.id, group);
+  }
+  return [...groups.values()];
+}
+
+function createScreeningPage(
+  rows: ScreeningRow[],
+  query: ScreeningQuery,
+  size = query.size ?? 48,
+): ScreeningPage {
+  const visible = rows.slice((query.page - 1) * size, query.page * size);
+  return {
+    items: groupScreeningRows(visible),
+    page: query.page,
+    size,
+    total: rows.length,
+    pages: Math.ceil(rows.length / size),
+    screeningCount: visible.length,
+  };
+}
+
 const TIMES: readonly string[] = [
   "11:15",
   "13:45",
@@ -234,48 +291,8 @@ export class MockMarquiseClient
       .flatMap((item) =>
         (item.showtimes ?? []).map((showtime) => ({ item, showtime })),
       )
-      .filter(({ item, showtime }) => {
-        const time = new Intl.DateTimeFormat("en-GB", {
-          timeZone: MONTREAL_TIME_ZONE,
-          hour: "2-digit",
-          minute: "2-digit",
-          hourCycle: "h23",
-        }).format(new Date(showtime.startsAt));
-        return (
-          (!query.movie ||
-            item.movie.title
-              .toLowerCase()
-              .includes(query.movie.toLowerCase())) &&
-          (!query.movieId || query.movieId === item.movie.id) &&
-          (!query.cinemaId || query.cinemaId === showtime.cinema.id) &&
-          (!query.language || query.language === showtime.language) &&
-          (!query.fromTime || time >= query.fromTime) &&
-          (!query.toTime || time <= query.toTime)
-        );
-      });
-    const size = query.size ?? 48;
-    const visible = rows.slice((query.page - 1) * size, query.page * size);
-    const ids = [...new Set(visible.map(({ item }) => item.movie.id))];
-    return {
-      items: ids.flatMap((id) => {
-        const first = visible.find(({ item }) => item.movie.id === id);
-        return first
-          ? [
-              {
-                ...first.item,
-                showtimes: visible
-                  .filter(({ item }) => item.movie.id === id)
-                  .map(({ showtime }) => showtime),
-              },
-            ]
-          : [];
-      }),
-      page: query.page,
-      size,
-      total: rows.length,
-      pages: Math.ceil(rows.length / size),
-      screeningCount: visible.length,
-    };
+      .filter((row) => matchesScreening(row, query));
+    return createScreeningPage(rows, query);
   }
   async fetchShowtimePage(
     movieId: string,
