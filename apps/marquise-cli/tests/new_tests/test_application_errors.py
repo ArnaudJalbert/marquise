@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from importlib import import_module
+from types import ModuleType
 from unittest.mock import AsyncMock, MagicMock, create_autospec
 
 import pytest
@@ -17,11 +17,14 @@ from marquise import (
     CinemaSourceAssignmentNotFoundError,
     GetCinemaSourceUseCase,
     ImportScreeningsCommand,
+    ListCinemasUseCase,
     MarquiseFactory,
     SourceNotFoundError,
     UnassignSourceUseCase,
 )
 from marquise_cli.app import main
+from marquise_cli.import_commands import cinema_command
+from marquise_cli.source_commands import assign_command, unassign_command
 
 
 @dataclass(frozen=True)
@@ -36,15 +39,14 @@ class Command:
 @pytest.fixture
 def command(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> Command:
     """Supply interactive selections and a factory without external services."""
-    group, name, attribute, use_case_type = request.param
-    module = import_module(f"marquise_cli.{group}_commands.{name}_command")
+    argv, module, attribute, use_case_type, selections = request.param
     factory = _stub_factory()
     use_case = create_autospec(use_case_type, instance=True)
     use_case.InputData = use_case_type.InputData
     setattr(factory, attribute, use_case)
     monkeypatch.setattr(module, "MarquiseFactory", lambda: factory)
-    _stub_selections(module.__name__, monkeypatch)
-    return Command((group, name), factory, use_case)
+    _stub_selections(module, selections, monkeypatch)
+    return Command(argv, factory, use_case)
 
 
 def _stub_factory() -> MagicMock:
@@ -58,30 +60,47 @@ def _stub_factory() -> MagicMock:
     return factory
 
 
-def _stub_selections(module_name: str, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        f"{module_name}.select_cinema", AsyncMock(return_value=make_cinema_data())
-    )
-    if module_name.endswith(".assign_command"):
-        monkeypatch.setattr(
-            f"{module_name}.select_source", AsyncMock(return_value="cineplex")
-        )
-    elif module_name.endswith("cinema_command"):
-        monkeypatch.setattr(
-            f"{module_name}._select_date_range",
-            AsyncMock(return_value=(date(2026, 11, 14), date(2026, 11, 15))),
-        )
+def _stub_selections(
+    module: ModuleType,
+    selections: dict[str, ListCinemasUseCase.CinemaData | str | tuple[date, date]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    for attribute, selection in selections.items():
+        monkeypatch.setattr(module, attribute, AsyncMock(return_value=selection))
 
 
+IMPORT_SELECTIONS = {
+    "select_cinema": make_cinema_data(),
+    "_select_date_range": (date(2026, 11, 14), date(2026, 11, 15)),
+}
 IMPORT_LOOKUP = (
-    "import",
-    "cinema",
+    ("import", "cinema"),
+    cinema_command,
     "get_cinema_source_use_case",
     GetCinemaSourceUseCase,
+    IMPORT_SELECTIONS,
 )
-IMPORT = ("import", "cinema", "import_screenings_use_case", ImportScreeningsCommand)
-ASSIGN = ("source", "assign", "assign_source_use_case", AssignSourceUseCase)
-UNASSIGN = ("source", "unassign", "unassign_source_use_case", UnassignSourceUseCase)
+IMPORT = (
+    ("import", "cinema"),
+    cinema_command,
+    "import_screenings_use_case",
+    ImportScreeningsCommand,
+    IMPORT_SELECTIONS,
+)
+ASSIGN = (
+    ("source", "assign"),
+    assign_command,
+    "assign_source_use_case",
+    AssignSourceUseCase,
+    {"select_cinema": make_cinema_data(), "select_source": "cineplex"},
+)
+UNASSIGN = (
+    ("source", "unassign"),
+    unassign_command,
+    "unassign_source_use_case",
+    UnassignSourceUseCase,
+    {"select_cinema": make_cinema_data()},
+)
 
 
 @pytest.mark.parametrize(
@@ -109,13 +128,25 @@ def test_documented_error_prints_message_and_exits_nonzero(
 
 
 @pytest.mark.parametrize(
-    "command", [IMPORT_LOOKUP, IMPORT, ASSIGN, UNASSIGN], indirect=True
+    ("command", "error_type"),
+    [
+        (IMPORT_LOOKUP, RuntimeError),
+        (IMPORT_LOOKUP, ValueError),
+        (IMPORT_LOOKUP, SourceNotFoundError),
+        (IMPORT, RuntimeError),
+        (IMPORT, ValueError),
+        (IMPORT, SourceNotFoundError),
+        (ASSIGN, RuntimeError),
+        (ASSIGN, ValueError),
+        (ASSIGN, CinemaSourceAssignmentNotFoundError),
+        (UNASSIGN, RuntimeError),
+        (UNASSIGN, ValueError),
+        (UNASSIGN, SourceNotFoundError),
+    ],
+    indirect=["command"],
 )
-@pytest.mark.parametrize("error_type", [RuntimeError, ValueError, SourceNotFoundError])
 def test_unlisted_errors_escape(command: Command, error_type: type[Exception]) -> None:
     """Unexpected application and programming failures keep their traceback."""
-    if command.argv == ("source", "assign") and error_type is SourceNotFoundError:
-        error_type = CinemaSourceAssignmentNotFoundError
     error = error_type("Unexpected failure")
     command.use_case.execute.side_effect = error
     with pytest.raises(error_type) as failure:
