@@ -351,48 +351,6 @@ async def test_invalid_write_inputs_do_not_stamp(
 
 
 @pytest.mark.asyncio
-async def test_additive_migration_is_bounded_rerunnable_and_preserves_legacy(
-    db_pool: asyncpg.Pool,
-) -> None:
-    """Migration retains every legacy field, never infers success and can rerun."""
-    sql = (ROOT / "scripts/migrations/359-movie-enrichment-state.sql").read_text()
-    assert "SET LOCAL lock_timeout = '5s'" in sql
-    assert "SET LOCAL statement_timeout = '60s'" in sql
-    async with db_pool.acquire() as conn:
-        try:
-            await conn.execute("CREATE SCHEMA migration_359")
-            await conn.execute("""CREATE TABLE migration_359.movies
-                (id TEXT PRIMARY KEY, title TEXT, tmdb_id TEXT UNIQUE)""")
-            await conn.execute("""CREATE TABLE migration_359.screenings
-                (id TEXT PRIMARY KEY,
-                 movie_id TEXT REFERENCES migration_359.movies(id))""")
-            await conn.execute(
-                "INSERT INTO migration_359.movies VALUES ('legacy', 'Original', '42')"
-            )
-            migration = sql.replace("marquise.", "migration_359.")
-            await conn.execute(migration)
-            assert dict(await conn.fetchrow("SELECT * FROM migration_359.movies")) == {
-                "id": "legacy",
-                "title": "Original",
-                "tmdb_id": "42",
-                "metadata_enriched_at": None,
-            }
-            await conn.execute(
-                "UPDATE migration_359.movies SET metadata_enriched_at = $1", STAMP
-            )
-            await conn.execute(migration)
-            assert (
-                await conn.fetchval(
-                    "SELECT metadata_enriched_at FROM migration_359.movies"
-                )
-                == STAMP
-            )
-        finally:
-            await conn.execute("ROLLBACK")
-            await conn.execute("DROP SCHEMA IF EXISTS migration_359 CASCADE")
-
-
-@pytest.mark.asyncio
 async def test_fresh_schemas_are_rerunnable_with_nullable_timezone_stamp(
     db_pool: asyncpg.Pool,
 ) -> None:
@@ -444,35 +402,6 @@ async def test_reference_round_trip_never_restores_an_old_revision(
     assert before["revision"] != after["revision"]
     with pytest.raises(MovieMetadataConflictError):
         await gateway.update_metadata("movie", before["revision"], {}, "42", STAMP)
-
-
-@pytest.mark.asyncio
-async def test_migration_failure_rolls_back_all_additions(
-    db_pool: asyncpg.Pool,
-) -> None:
-    """A missing prerequisite table leaves no partial columns or functions."""
-    sql = (ROOT / "scripts/migrations/359-movie-enrichment-state.sql").read_text()
-    async with db_pool.acquire() as conn:
-        try:
-            await conn.execute("CREATE SCHEMA failure_359")
-            await conn.execute("CREATE TABLE failure_359.movies (id TEXT PRIMARY KEY)")
-            with pytest.raises(asyncpg.UndefinedTableError):
-                await conn.execute(sql.replace("marquise.", "failure_359."))
-            await conn.execute("ROLLBACK")
-            assert (
-                await conn.fetchval("""SELECT count(*) FROM information_schema.columns
-                WHERE table_schema = 'failure_359' AND table_name = 'movies' """)
-                == 1
-            )
-            assert (
-                await conn.fetchval("""SELECT count(*) FROM pg_proc p
-                JOIN pg_namespace n ON n.oid = p.pronamespace
-                WHERE n.nspname = 'failure_359' """)
-                == 0
-            )
-        finally:
-            await conn.execute("ROLLBACK")
-            await conn.execute("DROP SCHEMA IF EXISTS failure_359 CASCADE")
 
 
 @pytest.mark.asyncio

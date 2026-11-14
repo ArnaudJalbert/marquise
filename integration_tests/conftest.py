@@ -70,39 +70,31 @@ async def db_pool(
     await pool.close()
 
 
-@pytest_asyncio.fixture
-async def gateway(db_pool: asyncpg.Pool) -> AsyncIterator[SupabaseCinemaGateway]:
-    """Provide a SupabaseCinemaGateway with a clean test table."""
-    yield SupabaseCinemaGateway(pool=db_pool, schema=TEST_SCHEMA)
+@pytest.fixture
+def gateway(db_pool: asyncpg.Pool) -> SupabaseCinemaGateway:
+    """Provide a SupabaseCinemaGateway on the test schema."""
+    return SupabaseCinemaGateway(pool=db_pool, schema=TEST_SCHEMA)
 
 
-@pytest_asyncio.fixture
-async def source_definition_gateway(
-    db_pool: asyncpg.Pool,
-) -> AsyncIterator[SupabaseSourceDefinitionGateway]:
-    """Provide a SupabaseSourceDefinitionGateway with a clean test table."""
-    yield SupabaseSourceDefinitionGateway(pool=db_pool, schema=TEST_SCHEMA)
+@pytest.fixture
+def source_definition_gateway(db_pool: asyncpg.Pool) -> SupabaseSourceDefinitionGateway:
+    """Provide a SupabaseSourceDefinitionGateway on the test schema."""
+    return SupabaseSourceDefinitionGateway(pool=db_pool, schema=TEST_SCHEMA)
 
 
-@pytest_asyncio.fixture
-async def assignment_gateway(
-    db_pool: asyncpg.Pool,
-) -> AsyncIterator[SupabaseCinemaSourceAssignmentGateway]:
-    """Provide a SupabaseCinemaSourceAssignmentGateway with a clean table."""
-    yield SupabaseCinemaSourceAssignmentGateway(pool=db_pool, schema=TEST_SCHEMA)
+@pytest.fixture
+def assignment_gateway(db_pool: asyncpg.Pool) -> SupabaseCinemaSourceAssignmentGateway:
+    """Provide a SupabaseCinemaSourceAssignmentGateway on the test schema."""
+    return SupabaseCinemaSourceAssignmentGateway(pool=db_pool, schema=TEST_SCHEMA)
 
 
-@pytest_asyncio.fixture
-async def movie_gateway(
-    db_pool: asyncpg.Pool,
-) -> AsyncIterator[SupabaseMovieGateway]:
-    """Provide a SupabaseMovieGateway with a clean test table."""
-    yield SupabaseMovieGateway(pool=db_pool, schema=TEST_SCHEMA)
+@pytest.fixture
+def movie_gateway(db_pool: asyncpg.Pool) -> SupabaseMovieGateway:
+    """Provide a SupabaseMovieGateway on the test schema."""
+    return SupabaseMovieGateway(pool=db_pool, schema=TEST_SCHEMA)
 
 
-@pytest_asyncio.fixture
-async def screening_gateway(
-    db_pool: asyncpg.Pool,
-) -> AsyncIterator[SupabaseScreeningGateway]:
-    """Provide a SupabaseScreeningGateway with a clean test table."""
-    yield SupabaseScreeningGateway(pool=db_pool, schema=TEST_SCHEMA)
+@pytest.fixture
+def screening_gateway(db_pool: asyncpg.Pool) -> SupabaseScreeningGateway:
+    """Provide a SupabaseScreeningGateway on the test schema."""
+    return SupabaseScreeningGateway(pool=db_pool, schema=TEST_SCHEMA)
