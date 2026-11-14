@@ -38,7 +38,7 @@ pnpm install
 pnpm dev
 ```
 
-`pnpm dev` starts the interface, which always calls the real API: in development it proxies `/v1` to a local API on port 8000 (`make api`). `make web-live` starts both. `pnpm prototype` serves the sample-data demo.
+`pnpm dev` starts the interface, which always calls the real API: in development it proxies `/v1` to a local API on port 8000 (`make api`). `make web-live` starts both.
 
 ## Checks
 
