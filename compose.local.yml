@@ -52,7 +52,7 @@ services:
       - "127.0.0.1:4300:80"
     volumes:
       - ./local/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./web/packages/components/demo/public/posters:/usr/share/nginx/html/local-posters:ro
+      - ./local/posters:/usr/share/nginx/html/local-posters:ro
     depends_on:
       api:
         condition: service_healthy
