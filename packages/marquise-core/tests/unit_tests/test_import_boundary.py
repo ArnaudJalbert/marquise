@@ -1,8 +1,7 @@
 """Import boundary enforcement test.
 
 Uses AST scanning to verify that Python files under ``apps/`` never import
-from ``marquise`` private internals.  The import-linter contract in
-``pyproject.toml`` provides the same enforcement for full packages.
+from ``marquise`` private internals.
 """
 
 from __future__ import annotations
