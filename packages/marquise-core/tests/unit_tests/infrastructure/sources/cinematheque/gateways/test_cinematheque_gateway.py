@@ -207,21 +207,26 @@ def test_parse_movie_data_unescapes_html_entities_in_title() -> None:
     assert rows[0]["movie_title"] == "L'aile ou de la cuisse (VOF)"
 
 
-def _schedule_pages_by_url() -> dict[str, str]:
-    """Build schedule pages for 2026-12-24 and 2026-12-25, keyed by URL.
+def _build_schedule_pages_by_url(today: datetime) -> dict[str, str]:
+    """Build schedule pages for ``today`` and the next day, keyed by URL.
 
-    The 2026-12-24 page lists 2026-12-25 as another available date.
+    Today's page lists the next day as another available date.
+
+    Args:
+        today: The day the gateway treats as today.
 
     Returns:
         Page HTML keyed by its ``schdate`` URL, one film per page.
     """
+    today_str = today.strftime("%Y-%m-%d")
+    next_day_str = (today + timedelta(days=1)).strftime("%Y-%m-%d")
     return {
-        f"{BASE_URL}?schdate=2026-12-24": _schedule_html(
-            {"1": _film("1", "Today's Movie", sch_date_str="2026-12-24")},
-            option_dates=["2026-12-25"],
+        f"{BASE_URL}?schdate={today_str}": _schedule_html(
+            {"1": _film("1", "Today's Movie", sch_date_str=today_str)},
+            option_dates=[next_day_str],
         ),
-        f"{BASE_URL}?schdate=2026-12-25": _schedule_html(
-            {"2": _film("2", "Future Movie", sch_date_str="2026-12-25")}
+        f"{BASE_URL}?schdate={next_day_str}": _schedule_html(
+            {"2": _film("2", "Future Movie", sch_date_str=next_day_str)}
         ),
     }
 
@@ -239,12 +244,12 @@ def _frozen_clock(now: datetime) -> Iterator[None]:
     with patch(
         "marquise.infrastructure.sources.cinematheque.gateways.source.datetime",
         wraps=datetime,
-    ) as clock:
-        clock.now.return_value = now
+    ) as patched_datetime:
+        patched_datetime.now.return_value = now
         yield
 
 
-def _fetch_from(pages_by_url: dict[str, str]) -> AbstractContextManager[Mock]:
+def _patch_fetch(pages_by_url: dict[str, str]) -> AbstractContextManager[Mock]:
     """Patch the gateway fetcher to serve ``pages_by_url``.
 
     An unexpected URL raises ``KeyError``.
@@ -257,6 +262,7 @@ def _fetch_from(pages_by_url: dict[str, str]) -> AbstractContextManager[Mock]:
     """
     return patch(
         "marquise.infrastructure.sources.cinematheque.gateways.source._fetch",
+        autospec=True,
         side_effect=pages_by_url.__getitem__,
     )
 
@@ -265,8 +271,9 @@ def _fetch_from(pages_by_url: dict[str, str]) -> AbstractContextManager[Mock]:
 async def test_fetch_showtimes_combines_today_and_future_dates() -> None:
     """Today's page bootstraps the date list; other in-range dates are fetched."""
     start_date = datetime(2026, 12, 24)
+    pages_by_url = _build_schedule_pages_by_url(start_date)
 
-    with _frozen_clock(start_date), _fetch_from(_schedule_pages_by_url()):
+    with _frozen_clock(start_date), _patch_fetch(pages_by_url):
         rows = fetch_showtimes(start_date=start_date, end_date=datetime(2026, 12, 31))
 
     titles = {row["movie_title"] for row in rows}
