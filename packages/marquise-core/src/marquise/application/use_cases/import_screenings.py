@@ -120,8 +120,9 @@ class ImportScreeningsCommand:
         """Import a cinema's screenings and the movies behind them.
 
         Missing movies are created, then looked up again, so every screening
-        links through a query. Enrichment never fails the import: a movie it
-        cannot enrich is left not enriched.
+        links through a query. Expected missing or invalid metadata leaves a
+        movie not enriched. Metadata outages and unexpected errors propagate
+        after screenings are saved.
         Running it again is safe, because stored movies and screenings are reused.
 
         Args:
@@ -129,6 +130,14 @@ class ImportScreeningsCommand:
 
         Returns:
             What was imported, with one summary per screening.
+
+        Raises:
+            MetadataFailure: If enrichment fails for a reason other than missing
+                or invalid metadata.
+            MovieWorkflowConflictError: If enrichment cannot resolve an identity
+                or write conflict.
+            ValueError: If the enrichment clock returns a timestamp without a
+                timezone.
         """
         source_data = await self._fetch(
             input_data.cinema_id, input_data.start_date, input_data.end_date

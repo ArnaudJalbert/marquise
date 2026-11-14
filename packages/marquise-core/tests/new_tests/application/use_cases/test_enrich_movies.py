@@ -151,6 +151,24 @@ async def test_metadata_outage_stops_enrichment(
 
 
 @pytest.mark.asyncio
+async def test_partial_batch_outage_stops_before_writing(
+    use_case: EnrichMoviesUseCase, movie_repository: Mock, provider: Mock
+) -> None:
+    """An outage with usable partial detail propagates without persisting it."""
+    failure = MetadataUnavailableError("Partial")
+    provider.movie_details.side_effect = None
+    provider.movie_details.return_value = MetadataBatch(
+        (MetadataMovie(ProviderIdentity("tmdb", "7"), ()),),
+        complete=False,
+        failure=failure,
+    )
+    with pytest.raises(MetadataUnavailableError) as raised:
+        await use_case.execute(use_case.InputData((MovieInput("one", "7"),)))
+    assert raised.value is failure
+    movie_repository.update_metadata.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_unexpected_provider_error_propagates(
     use_case: EnrichMoviesUseCase, provider: Mock
 ) -> None:
