@@ -28,7 +28,6 @@ primary_region = 'yyz'
   auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
-  processes = ['app']
 
 [env]
   # Optional — overrides the default "marquise" database schema.
@@ -39,4 +38,3 @@ primary_region = 'yyz'
 [[vm]]
   memory = '256mb'
   cpus = 1
-  memory_mb = 256
