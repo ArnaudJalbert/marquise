@@ -9,9 +9,8 @@ convert through this helper so every source emits a real, DST-correct UTC
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from zoneinfo import ZoneInfo
 
-MONTREAL_TZ = ZoneInfo("America/Toronto")
+from marquise.domain.constants import MONTREAL_TIME_ZONE
 
 
 def montreal_local_to_utc_iso(date_str: str, time_str: str) -> str:
@@ -25,6 +24,6 @@ def montreal_local_to_utc_iso(date_str: str, time_str: str) -> str:
         A UTC ISO 8601 string (e.g. ``"2026-07-11T23:30:00+00:00"``).
     """
     local_dt = datetime.fromisoformat(f"{date_str}T{time_str}").replace(
-        tzinfo=MONTREAL_TZ
+        tzinfo=MONTREAL_TIME_ZONE
     )
     return local_dt.astimezone(UTC).isoformat()

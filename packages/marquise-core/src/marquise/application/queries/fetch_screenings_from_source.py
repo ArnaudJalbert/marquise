@@ -6,7 +6,6 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import date, datetime
-from zoneinfo import ZoneInfo
 
 from marquise.application.exceptions import (
     CinemaNotFoundError,
@@ -18,10 +17,10 @@ from marquise.application.repositories import (
     MovieEnrichmentData,
     SourceRegistryQuery,
 )
+from marquise.domain.constants import MONTREAL_TIME_ZONE
 from marquise.domain.value_objects import CinemaId
 
 logger = logging.getLogger(__name__)
-_MONTREAL = ZoneInfo("America/Toronto")
 _ENRICHMENT_CONCURRENCY = 8
 
 
@@ -108,10 +107,10 @@ class FetchScreeningsFromSourceQuery:
         source_name = str(assignment.source.name)
 
         start_dt = datetime.combine(
-            input_data.start_date, datetime.min.time(), tzinfo=_MONTREAL
+            input_data.start_date, datetime.min.time(), tzinfo=MONTREAL_TIME_ZONE
         )
         end_dt = datetime.combine(
-            input_data.end_date, datetime.max.time(), tzinfo=_MONTREAL
+            input_data.end_date, datetime.max.time(), tzinfo=MONTREAL_TIME_ZONE
         )
 
         raw_rows = await self.source_registry.fetch_showtimes(
