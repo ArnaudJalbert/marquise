@@ -45,8 +45,8 @@ not manufacture responses or switch to fixtures when it fails.
   ID with a slash. Fifty other films exercise catalogue pages and poster grids,
   with sparse metadata and the long title The Assassination of Jesse James by
   the Coward Robert Ford.
-- Posters mount from the existing dev-only artwork directory. Its
-  [source record](../web/packages/components/demo/public/posters/SOURCES.md)
+- Posters mount from `local/posters/`. Its
+  [source record](posters/SOURCES.md)
   applies. They are not copied into the local React image or production bundle.
 
 `make local-up` refreshes generated screening dates to today after startup.

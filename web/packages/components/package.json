@@ -1,6 +1,6 @@
 {
   "name": "marquise-components",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "type": "module",
   "sideEffects": [
@@ -17,7 +17,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "rm -rf dist && vite build && tsc -p tsconfig.build.json && node demo/check-isolation.mjs",
+    "build": "rm -rf dist && vite build && tsc -p tsconfig.build.json",
     "lint": "oxlint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

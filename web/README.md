@@ -17,10 +17,6 @@ catalogue. Both views load bounded pages and append the next page on scroll. Cin
 directory and venue pages use real data. Movie links
 resolve metadata by exact ID and load the requested schedule window.
 
-The approved sample prototype stays in `packages/components/demo`, outside the
-production bundle. Run `pnpm prototype` for it. See
-[design/332/README.md](design/332/README.md) for its data and historical evidence.
-
 ## Design
 
 Package roles and design rules: [web rules](../docs/agents/rules/web.md).
@@ -95,8 +91,7 @@ pnpm --filter marquise-interface dev
   `VITE_MARQUISE_API_BASE_URL` is supplied. The older client interfaces remain
   available to independent consumers.
 - The shared package ships `dist/index.css`. Workspace development resolves the
-  component code and stylesheet from source. The demo stays outside library
-  output; the library build fails if demo fixtures reach `dist/`.
+  component code and stylesheet from source.
 - Static hosting must rewrite document requests to `index.html` for movie links,
   refreshes, and cinema routes.
 - On constrained hosts, use `pnpm lint -- --threads=2` and

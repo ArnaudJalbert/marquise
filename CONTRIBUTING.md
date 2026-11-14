@@ -95,7 +95,6 @@ Package roles and dependency rules: [web rules](docs/agents/rules/web.md).
 | `MARQUISE_API_RATE_LIMIT` | No | Per-IP rate limit (default: `3000/minute`) |
 | `MARQUISE_API_LOG_LEVEL` | No | API log level (default: `INFO`) |
 | `VITE_MARQUISE_API_BASE_URL` | No (web) | API origin for the interface build (default: same origin; the Docker build sets `https://api.marquise.mov`) |
-| `VITE_MARQUISE_DATA_SOURCE` | No (web) | Demo only: `api` makes `pnpm prototype` call the API instead of sample data |
 
 Importing `marquise.infrastructure.di.container` runs `load_dotenv()`, so a local
 `.env` leaks into any process or test that builds the factory.
@@ -119,7 +118,6 @@ make format                  # ruff format
 make ty                      # type check marquise-core
 make web                     # interface dev server; /v1 proxies to a local API on :8000
 make web-live                # local API and interface together
-make web-demo                # sample-data component demo (pnpm prototype)
 make local-up                # isolated Postgres + API + built app, see local/README.md
 make deploy-api              # Fly deploy, also run by CI
 make deploy-interface        # Fly deploy, also run by CI
@@ -176,7 +174,6 @@ pnpm lint        # oxlint across workspace
 pnpm typecheck   # tsc --noEmit across workspace
 pnpm test        # vitest across workspace
 
-pnpm prototype   # sample-data component demo → http://localhost:4174
 
 # Single package
 pnpm --filter marquise-components test
