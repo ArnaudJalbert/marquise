@@ -17,6 +17,18 @@ def _start_of_today_utc() -> datetime:
     return datetime(now.year, now.month, now.day, tzinfo=UTC)
 
 
+def _assume_utc(moment: datetime) -> datetime:
+    """Return ``moment`` with UTC attached when it has no timezone.
+
+    Args:
+        moment: A query date that may lack a timezone.
+
+    Returns:
+        ``moment`` unchanged when it has a timezone, otherwise in UTC.
+    """
+    return moment if moment.tzinfo is not None else moment.replace(tzinfo=UTC)
+
+
 def resolve_showtimes_date_range(
     from_: datetime | None = Query(
         default=None,
@@ -37,9 +49,14 @@ def resolve_showtimes_date_range(
     request that omits them would collide on one cache entry frozen at
     whichever moment first populated it.
 
+    Naive dates are read as UTC here for the same reason: equivalent
+    ranges then share one cache entry.
+
     Returns:
         A ``(start, end)`` tuple, both timezone-aware.
     """
-    resolved_from = from_ if from_ is not None else _start_of_today_utc()
-    resolved_to = to if to is not None else resolved_from + timedelta(days=7)
+    resolved_from = _assume_utc(from_) if from_ is not None else _start_of_today_utc()
+    resolved_to = (
+        _assume_utc(to) if to is not None else resolved_from + timedelta(days=7)
+    )
     return resolved_from, resolved_to

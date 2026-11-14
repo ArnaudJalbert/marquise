@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi_cache.decorator import cache
@@ -131,8 +131,8 @@ async def get_cinema_movies(
     output = await use_case.execute(
         GetCinemaMoviesUseCase.InputData(
             cinema_id=cinema_id,
-            start_date=from_.replace(tzinfo=from_.tzinfo or UTC),
-            end_date=to.replace(tzinfo=to.tzinfo or UTC),
+            start_date=from_,
+            end_date=to,
             page=params.page,
             size=params.size,
         )

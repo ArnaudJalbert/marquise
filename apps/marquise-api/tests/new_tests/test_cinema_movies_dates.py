@@ -1,6 +1,6 @@
 """The cinema movies route supplies timezone-aware use-case dates."""
 
-from datetime import UTC, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from unittest.mock import create_autospec
 
 import pytest
@@ -32,22 +32,51 @@ def client(factory: MarquiseFactory) -> TestClient:
 
 
 @pytest.mark.parametrize(
-    "date_case",
-    [("", UTC), ("T18:00:00", UTC), ("T18:00:00-04:00", timezone(timedelta(hours=-4)))],
+    ("from_param", "to_param", "expected_range"),
+    [
+        (
+            "2026-06-27",
+            "2026-06-28",
+            (datetime(2026, 6, 27, tzinfo=UTC), datetime(2026, 6, 28, tzinfo=UTC)),
+        ),
+        (
+            "2026-06-27T18:00:00",
+            "2026-06-28T18:00:00",
+            (
+                datetime(2026, 6, 27, 18, tzinfo=UTC),
+                datetime(2026, 6, 28, 18, tzinfo=UTC),
+            ),
+        ),
+    ],
 )
-def test_route_preserves_date_inputs_with_explicit_timezone(
-    client: TestClient, factory: MarquiseFactory, date_case: tuple[str, timezone]
+def test_route_reads_naive_dates_as_utc(
+    client: TestClient,
+    factory: MarquiseFactory,
+    from_param: str,
+    to_param: str,
+    expected_range: tuple[datetime, datetime],
 ) -> None:
-    """Date-only and naive dates assume UTC; explicit offsets stay intact."""
-    date_suffix, expected_zone = date_case
-    params = {"from": f"2026-06-27{date_suffix}", "to": f"2026-06-28{date_suffix}"}
+    """Date-only and naive datetimes reach the use case in UTC."""
+    params = {"from": from_param, "to": to_param}
     response = client.get("/v1/cinemas/cin-date-contract/movies", params=params)
     assert response.status_code == 200
     request = factory.get_cinema_movies_use_case.execute.call_args.args[0]
-    assert request.start_date.tzinfo == expected_zone
-    assert request.end_date.tzinfo == expected_zone
-    assert request.start_date.hour == (18 if date_suffix else 0)
-    assert request.end_date.hour == (18 if date_suffix else 0)
+    assert (request.start_date, request.end_date) == expected_range
+
+
+def test_route_keeps_explicit_offsets(
+    client: TestClient, factory: MarquiseFactory
+) -> None:
+    """Dates with an offset reach the use case with that offset."""
+    montreal_summer = timezone(timedelta(hours=-4))
+    params = {"from": "2026-06-27T18:00:00-04:00", "to": "2026-06-28T18:00:00-04:00"}
+    response = client.get("/v1/cinemas/cin-date-contract/movies", params=params)
+    assert response.status_code == 200
+    request = factory.get_cinema_movies_use_case.execute.call_args.args[0]
+    assert request.start_date == datetime(2026, 6, 27, 18, tzinfo=montreal_summer)
+    assert request.end_date == datetime(2026, 6, 28, 18, tzinfo=montreal_summer)
+    assert request.start_date.tzinfo == montreal_summer
+    assert request.end_date.tzinfo == montreal_summer
 
 
 def test_route_defaults_are_timezone_aware(
