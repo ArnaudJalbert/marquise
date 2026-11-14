@@ -81,7 +81,6 @@ from marquise.bootstrap import (
     create_factory,
     create_factory_session,
 )
-from marquise.domain.constants import MONTREAL_TIME_ZONE
 
 __all__ = [
     "ProviderIdentity",
@@ -99,7 +98,6 @@ __all__ = [
     "MergeMoviesInputData",
     "MergeMoviesOutputData",
     "MovieWorkflowConflictError",
-    "MONTREAL_TIME_ZONE",
     "RefreshMoviesUseCase",
     "MergeMoviesUseCase",
     "BrowseScreeningMoviesQuery",
