@@ -143,7 +143,7 @@ async def _enrich(
         return EnrichMovieOutputData(request.movie_id, "unchanged")
     batch = await metadata.movie_details(request.identity)
     if batch.failure is not None:
-        return _not_enriched(request.movie_id, batch.failure)
+        raise batch.failure
     if not batch.complete or len(batch.items) != 1:
         return _not_enriched(
             request.movie_id,
@@ -168,13 +168,19 @@ async def _enrich(
         year = values.release_year or snapshot.values.release_year
         if values.title is None or year is None:
             raise
+        logger.warning(
+            "Movie %s conflicts with title %r; storing %r",
+            request.movie_id,
+            values.title,
+            f"{values.title} ({year})",
+        )
         values = replace(values, title=f"{values.title} ({year})")
         await movies.update_metadata(snapshot, values, request.identity.id, enriched_at)
     return EnrichMovieOutputData(request.movie_id, "enriched")
 
 
 def _not_enriched(movie_id: str, failure: Exception) -> EnrichMovieOutputData:
-    """Log why one movie is left not enriched; it never stops the caller."""
+    """Log an expected miss and leave the movie not enriched."""
     logger.warning("Movie %s not enriched: %s", movie_id, type(failure).__name__)
     return EnrichMovieOutputData(movie_id, "not_enriched", failure)
 
@@ -229,9 +235,17 @@ class EnrichMoviesUseCase:
             input_data: The movies to enrich.
 
         Returns:
-            The IDs enriched, and the IDs left not enriched for any failure
-            or internal error, which never stops the caller. A movie with no
-            known identity is in neither.
+            The IDs enriched, and the IDs skipped for missing or invalid metadata.
+            A movie with no known identity is in neither.
+
+        Raises:
+            MetadataFailure: If metadata retrieval fails for any reason other
+                than missing or invalid data.
+            MovieWorkflowConflictError: If an identity or write conflict cannot
+                be resolved by appending the release year.
+            ValueError: If the clock returns a timestamp without a timezone.
+
+        Unexpected dependency errors propagate and stop enrichment.
         """
         results = [
             await self._enrich_one(movie.movie_id, movie.tmdb_id)
@@ -243,10 +257,10 @@ class EnrichMoviesUseCase:
     async def _enrich_one(
         self, movie_id: str, tmdb_id: str | None
     ) -> EnrichMovieOutputData:
-        """Enrich one movie, leaving it not enriched on any error."""
+        """Enrich one movie, skipping only missing or invalid metadata."""
         try:
             return await self._enrich_known(movie_id, tmdb_id)
-        except Exception as error:
+        except (MetadataNotFoundError, MetadataInvalidDataError) as error:
             return _not_enriched(movie_id, error)
 
     async def _enrich_known(
