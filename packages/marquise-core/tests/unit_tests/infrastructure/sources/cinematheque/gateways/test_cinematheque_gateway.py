@@ -207,7 +207,8 @@ def test_parse_movie_data_unescapes_html_entities_in_title() -> None:
 @pytest.mark.asyncio
 async def test_fetch_showtimes_combines_today_and_future_dates() -> None:
     """Today's page bootstraps the date list; other in-range dates are fetched."""
-    today = datetime.now().strftime("%Y-%m-%d")
+    start_date = datetime(2026, 12, 24)
+    today = start_date.strftime("%Y-%m-%d")
     today_html = _schedule_html(
         {"1": _film("1", "Today's Movie", sch_date_str=today, start_time="18:00")},
         option_dates=["2026-12-25"],
@@ -229,11 +230,18 @@ async def test_fetch_showtimes_combines_today_and_future_dates() -> None:
             )
         raise AssertionError(f"unexpected url: {url}")
 
-    with patch(
-        "marquise.infrastructure.sources.cinematheque.gateways.source._fetch",
-        side_effect=fake_fetch,
+    with (
+        patch(
+            "marquise.infrastructure.sources.cinematheque.gateways.source.datetime",
+            wraps=datetime,
+        ) as clock,
+        patch(
+            "marquise.infrastructure.sources.cinematheque.gateways.source._fetch",
+            side_effect=fake_fetch,
+        ),
     ):
-        rows = fetch_showtimes(end_date=datetime(2026, 12, 31))
+        clock.now.return_value = start_date
+        rows = fetch_showtimes(start_date=start_date, end_date=datetime(2026, 12, 31))
 
     titles = {row["movie_title"] for row in rows}
     assert titles == {"Today's Movie", "Future Movie"}
