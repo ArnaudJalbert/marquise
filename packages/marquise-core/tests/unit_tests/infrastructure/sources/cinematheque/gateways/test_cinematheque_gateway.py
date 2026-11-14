@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
+from contextlib import AbstractContextManager, contextmanager
 from datetime import UTC, datetime, timedelta
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from urllib.error import HTTPError
 
 import pytest
 
 from marquise.infrastructure.sources.cinematheque.gateways.source import (
+    BASE_URL,
     CinemathequeSource,
     _extract_available_dates,
     _extract_movie_data,
@@ -204,43 +207,66 @@ def test_parse_movie_data_unescapes_html_entities_in_title() -> None:
     assert rows[0]["movie_title"] == "L'aile ou de la cuisse (VOF)"
 
 
+def _schedule_pages_by_url() -> dict[str, str]:
+    """Build schedule pages for 2026-12-24 and 2026-12-25, keyed by URL.
+
+    The 2026-12-24 page lists 2026-12-25 as another available date.
+
+    Returns:
+        Page HTML keyed by its ``schdate`` URL, one film per page.
+    """
+    return {
+        f"{BASE_URL}?schdate=2026-12-24": _schedule_html(
+            {"1": _film("1", "Today's Movie", sch_date_str="2026-12-24")},
+            option_dates=["2026-12-25"],
+        ),
+        f"{BASE_URL}?schdate=2026-12-25": _schedule_html(
+            {"2": _film("2", "Future Movie", sch_date_str="2026-12-25")}
+        ),
+    }
+
+
+@contextmanager
+def _frozen_clock(now: datetime) -> Iterator[None]:
+    """Patch the gateway clock so ``datetime.now()`` returns ``now``.
+
+    Args:
+        now: The moment the gateway should treat as the current time.
+
+    Yields:
+        Control while the gateway clock is frozen.
+    """
+    with patch(
+        "marquise.infrastructure.sources.cinematheque.gateways.source.datetime",
+        wraps=datetime,
+    ) as clock:
+        clock.now.return_value = now
+        yield
+
+
+def _fetch_from(pages_by_url: dict[str, str]) -> AbstractContextManager[Mock]:
+    """Patch the gateway fetcher to serve ``pages_by_url``.
+
+    An unexpected URL raises ``KeyError``.
+
+    Args:
+        pages_by_url: Page HTML keyed by the URL that returns it.
+
+    Returns:
+        A patcher for the gateway's ``_fetch``.
+    """
+    return patch(
+        "marquise.infrastructure.sources.cinematheque.gateways.source._fetch",
+        side_effect=pages_by_url.__getitem__,
+    )
+
+
 @pytest.mark.asyncio
 async def test_fetch_showtimes_combines_today_and_future_dates() -> None:
     """Today's page bootstraps the date list; other in-range dates are fetched."""
     start_date = datetime(2026, 12, 24)
-    today = start_date.strftime("%Y-%m-%d")
-    today_html = _schedule_html(
-        {"1": _film("1", "Today's Movie", sch_date_str=today, start_time="18:00")},
-        option_dates=["2026-12-25"],
-    )
 
-    def fake_fetch(url: str) -> str:
-        if f"schdate={today}" in url:
-            return today_html
-        if "schdate=2026-12-25" in url:
-            return _schedule_html(
-                {
-                    "2": _film(
-                        "2",
-                        "Future Movie",
-                        sch_date_str="2026-12-25",
-                        start_time="20:00",
-                    )
-                }
-            )
-        raise AssertionError(f"unexpected url: {url}")
-
-    with (
-        patch(
-            "marquise.infrastructure.sources.cinematheque.gateways.source.datetime",
-            wraps=datetime,
-        ) as clock,
-        patch(
-            "marquise.infrastructure.sources.cinematheque.gateways.source._fetch",
-            side_effect=fake_fetch,
-        ),
-    ):
-        clock.now.return_value = start_date
+    with _frozen_clock(start_date), _fetch_from(_schedule_pages_by_url()):
         rows = fetch_showtimes(start_date=start_date, end_date=datetime(2026, 12, 31))
 
     titles = {row["movie_title"] for row in rows}
