@@ -1376,8 +1376,8 @@ def test_get_cinema_movies(client: TestClient, factory: MagicMock) -> None:
     factory.get_cinema_movies_use_case.execute.assert_awaited_once_with(
         GetCinemaMoviesUseCase.InputData(
             cinema_id="cin-1",
-            start_date=datetime(2026, 6, 27),
-            end_date=datetime(2026, 6, 28),
+            start_date=datetime(2026, 6, 27, tzinfo=UTC),
+            end_date=datetime(2026, 6, 28, tzinfo=UTC),
             page=1,
             size=50,
         )
