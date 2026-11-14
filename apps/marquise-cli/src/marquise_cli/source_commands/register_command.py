@@ -10,7 +10,7 @@ import questionary
 from rich.console import Console
 from rich.table import Table
 
-from marquise import MarquiseFactory
+from marquise import MarquiseFactory, SourceAlreadyExistsError
 from marquise_cli.helpers import run_spinner
 
 _console = Console()
@@ -68,23 +68,31 @@ async def _register_source(factory: MarquiseFactory, source: dict) -> bool:
     details = await _source_details()
     if details is None:
         return False
-    display_name, description = details
     try:
-        create_source_use_case = factory.create_source_use_case
-        result = await run_spinner(
-            create_source_use_case.execute(
-                create_source_use_case.InputData(
-                    name=source["name"],
-                    display_name=display_name,
-                    description=description,
-                )
-            ),
-            description=f"Registering {source['name']}...",
-        )
-        print(f"  Created: {result.name}")
-    except Exception as error:
+        await _create_source(factory, source["name"], details)
+    except SourceAlreadyExistsError as error:
         print(f"  Failed: {error}", file=sys.stderr)
+        raise SystemExit(1) from error
     return True
+
+
+async def _create_source(
+    factory: MarquiseFactory, source_name: str, details: tuple[str, str | None]
+) -> None:
+    """Create one source and report its successful registration."""
+    display_name, description = details
+    create_source_use_case = factory.create_source_use_case
+    result = await run_spinner(
+        create_source_use_case.execute(
+            create_source_use_case.InputData(
+                name=source_name,
+                display_name=display_name,
+                description=description,
+            )
+        ),
+        description=f"Registering {source_name}...",
+    )
+    print(f"  Created: {result.name}")
 
 
 async def run_register_sources(factory: MarquiseFactory) -> None:
