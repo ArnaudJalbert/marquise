@@ -1084,13 +1084,25 @@ def test_search_screenings_pagination(client: TestClient, factory: MagicMock) ->
     factory.search_screenings_query.execute.assert_awaited_once()
 
 
-def test_search_screenings_size_out_of_range_is_rejected(
-    client: TestClient,
+@pytest.mark.parametrize(
+    "url",
+    [
+        "/v1/screenings?size=101",
+        "/v1/cinemas/cin-1/movies?from=2026-11-20",
+        "/v1/cinemas/cin-1/movies?to=2026-11-27",
+        "/v1/cinemas/cin-1/movies?from=2026-11-20T18:00:00&to=2026-11-27T18:00:00Z",
+        "/v1/cinemas/cin-1/movies?from=2026-11-20T18:00:00Z&to=2026-11-27T18:00:00",
+    ],
+)
+def test_invalid_screening_query_is_rejected(
+    client: TestClient, factory: MagicMock, url: str
 ) -> None:
-    """A size above the max page size is rejected with a 422."""
-    response = client.get("/v1/screenings", params={"size": 101})
-
+    """Oversized pages and naive cinema movie dates fail before querying."""
+    response = client.get(url)
     assert response.status_code == 422
+    assert response.json()["error_code"] == "invalid_input"
+    factory.search_screenings_query.execute.assert_not_awaited()
+    factory.get_cinema_movies_use_case.execute.assert_not_awaited()
 
 
 def test_search_screenings_invalid_range_returns_422_envelope(
