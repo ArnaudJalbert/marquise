@@ -13,11 +13,15 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
-from marquise import ImportScreeningsCommand, MarquiseFactory
+from marquise import (
+    CinemaSourceAssignmentNotFoundError,
+    ImportScreeningsCommand,
+    MarquiseFactory,
+)
 from marquise_cli.helpers import run_spinner, select_cinema
 
 _console = Console()
-_MONTREAL_TZ = ZoneInfo("America/Toronto")
+_MONTREAL_TZ = ZoneInfo("America/Montreal")
 
 
 async def _select_date_range() -> tuple[date, date] | None:
@@ -144,4 +148,8 @@ async def run_import_cinema(factory: MarquiseFactory) -> None:
 
 def import_cinema() -> None:
     """Fetch showtimes from one cinema source and save them to database."""
-    asyncio.run(run_import_cinema(MarquiseFactory()))
+    try:
+        asyncio.run(run_import_cinema(MarquiseFactory()))
+    except CinemaSourceAssignmentNotFoundError as error:
+        print(str(error), file=sys.stderr)
+        raise SystemExit(1) from error

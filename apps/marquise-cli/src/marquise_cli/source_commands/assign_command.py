@@ -3,8 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import sys
 
-from marquise import MarquiseFactory
+from marquise import (
+    CinemaNotFoundError,
+    CinemaSourceAssignmentAlreadyExistsError,
+    MarquiseFactory,
+    SourceNotFoundError,
+)
 from marquise_cli.helpers import run_spinner, select_cinema, select_source
 
 
@@ -41,4 +47,12 @@ async def run_assign(factory: MarquiseFactory) -> None:
 
 def assign() -> None:
     """Assign a showtime source to a cinema after interactive selection."""
-    asyncio.run(run_assign(MarquiseFactory()))
+    try:
+        asyncio.run(run_assign(MarquiseFactory()))
+    except (
+        CinemaNotFoundError,
+        SourceNotFoundError,
+        CinemaSourceAssignmentAlreadyExistsError,
+    ) as error:
+        print(str(error), file=sys.stderr)
+        raise SystemExit(1) from error

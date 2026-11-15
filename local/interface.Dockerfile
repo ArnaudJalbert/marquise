@@ -11,7 +11,6 @@ COPY packages/marquise-client/src ./packages/marquise-client/src
 COPY packages/marquise-client/tsconfig*.json packages/marquise-client/vite.config.ts ./packages/marquise-client/
 COPY packages/components/src ./packages/components/src
 COPY packages/components/tsconfig*.json packages/components/vite.config.ts ./packages/components/
-COPY packages/components/demo/check-isolation.mjs ./packages/components/demo/
 COPY apps/marquise-interface/src ./apps/marquise-interface/src
 COPY apps/marquise-interface/tsconfig*.json apps/marquise-interface/vite.config.ts apps/marquise-interface/index.html ./apps/marquise-interface/
 COPY apps/marquise-interface/scripts ./apps/marquise-interface/scripts

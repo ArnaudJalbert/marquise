@@ -1,6 +1,6 @@
 [project]
 name = "marquise-core"
-version = "0.2.68"
+version = "0.2.71"
 description = "Montreal cinema showtimes aggregator — core domain, application, and infrastructure layers"
 readme = "README.md"
 requires-python = ">=3.13"

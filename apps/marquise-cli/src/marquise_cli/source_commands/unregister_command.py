@@ -9,7 +9,7 @@ import questionary
 from rich.console import Console
 from rich.table import Table
 
-from marquise import MarquiseFactory
+from marquise import MarquiseFactory, SourceNotFoundError
 from marquise_cli.helpers import run_spinner
 
 _console = Console()
@@ -55,16 +55,22 @@ async def _delete_sources(factory: MarquiseFactory, source_names: list[str]) -> 
     """Delete selected persistent source definitions."""
     for source_name in source_names:
         try:
-            delete_source_use_case = factory.delete_source_use_case
-            await run_spinner(
-                delete_source_use_case.execute(
-                    delete_source_use_case.InputData(source_name=source_name)
-                ),
-                description=f"Removing {source_name}...",
-            )
-            print(f"  Removed: {source_name}")
-        except Exception as error:
+            await _delete_source(factory, source_name)
+        except SourceNotFoundError as error:
             print(f"  Failed: {error}", file=sys.stderr)
+            raise SystemExit(1) from error
+
+
+async def _delete_source(factory: MarquiseFactory, source_name: str) -> None:
+    """Delete one source and report its successful removal."""
+    delete_source_use_case = factory.delete_source_use_case
+    await run_spinner(
+        delete_source_use_case.execute(
+            delete_source_use_case.InputData(source_name=source_name)
+        ),
+        description=f"Removing {source_name}...",
+    )
+    print(f"  Removed: {source_name}")
 
 
 async def run_unregister_sources(factory: MarquiseFactory) -> None:

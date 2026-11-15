@@ -5,7 +5,14 @@ from unittest.mock import Mock, create_autospec
 
 import pytest
 
+from marquise.application.exceptions import MetadataUnavailableError
 from marquise.application.exceptions.movie import MovieNotLinkedError
+from marquise.application.metadata import MetadataBatch, MetadataRepository
+from marquise.application.movie_workflows import (
+    MovieMetadataRepository,
+    MovieMetadataSnapshot,
+    MovieMetadataValues,
+)
 from marquise.application.queries.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
@@ -278,3 +285,44 @@ def test_input_dates_must_be_in_order() -> None:
     """The start date can't come after the end date."""
     with pytest.raises(ValueError):
         ImportScreeningsCommand.InputData("cin-1", date(2026, 11, 2), date(2026, 11, 1))
+
+
+@pytest.mark.asyncio
+async def test_enrichment_outage_propagates_after_screenings_are_saved() -> None:
+    """A TMDB outage while enriching fails the import once screenings are saved."""
+    fetch = autospec_use_case(FetchScreeningsFromSourceQuery)
+    fetch.execute.return_value = FetchScreeningsFromSourceQuery.OutputData(
+        "cinema",
+        "Cinema",
+        "source",
+        (FetchScreeningsFromSourceQuery.FetchedMovieData(title="Film"),),
+        (FetchScreeningsFromSourceQuery.FetchedScreeningData("Film", DAY),),
+    )
+    movies = create_autospec(MovieRepository, instance=True)
+    movies.find_by_tmdb_id.return_value = None
+    movies.find_by_titles.return_value = []
+    movies.create_or_reuse.side_effect = lambda movie: movie
+    create_screenings = autospec_use_case(CreateScreeningsCommand)
+    create_screenings.execute.return_value = CreateScreeningsCommand.OutputData(
+        (), 1, 0, 0, 0
+    )
+    provider = create_autospec(MetadataRepository, instance=True)
+    provider.movie_details.return_value = MetadataBatch(
+        (), complete=False, failure=MetadataUnavailableError("provider down")
+    )
+    metadata_movies = create_autospec(MovieMetadataRepository, instance=True)
+    metadata_movies.get.side_effect = lambda movie_id: MovieMetadataSnapshot(
+        movie_id, "1", MovieMetadataValues(title="Film"), tmdb_id="1"
+    )
+    enricher = EnrichMoviesUseCase(
+        metadata_movies, provider, lambda: datetime(2026, 10, 31, tzinfo=UTC)
+    )
+    command = import_command(
+        fetch, movies, create_screenings, build_matcher(build_match("1")), enricher
+    )
+    with pytest.raises(MetadataUnavailableError, match="provider down"):
+        await command.execute(
+            command.InputData("cinema", date(2026, 10, 31), DAY.date())
+        )
+    create_screenings.execute.assert_awaited_once()
+    metadata_movies.update_metadata.assert_not_awaited()

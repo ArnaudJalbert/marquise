@@ -7,6 +7,7 @@ from datetime import datetime
 import asyncpg
 
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
+from marquise.domain.constants import MONTREAL_TIME_ZONE
 from marquise.infrastructure.supabase.gateways.screening_reader import _naive_utc
 from marquise.interface_adapters.repositories.protocols.base import GatewayPage
 
@@ -99,7 +100,7 @@ class SupabaseScreeningMovieReadGateway:
             rows = await connection.fetch(
                 f"""
                 SELECT ((s.showtime AT TIME ZONE 'UTC')
-                        AT TIME ZONE 'America/Montreal')::date AS day,
+                        AT TIME ZONE '{MONTREAL_TIME_ZONE.key}')::date AS day,
                        count(*)::int AS screenings
                 {self._build_qualifying_screenings_sql()}
                 GROUP BY day ORDER BY day
@@ -124,7 +125,7 @@ class SupabaseScreeningMovieReadGateway:
                    SELECT 1 FROM unnest($7::int[], $8::int[]) h(lo, hi)
                    WHERE int4range(h.lo, h.hi) @> extract(
                        hour FROM (s.showtime AT TIME ZONE 'UTC')
-                           AT TIME ZONE 'America/Montreal'
+                           AT TIME ZONE '{MONTREAL_TIME_ZONE.key}'
                    )::int
                    ) <> $9::boolean)
               AND NOT s.cinema_id = ANY($10::text[])
