@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from unittest.mock import AsyncMock, MagicMock, create_autospec
 
 import pytest
@@ -154,29 +155,37 @@ _REGISTERED_SOURCES = [
 ]
 
 
+@dataclass(frozen=True, slots=True)
+class SourceErrorCase:
+    """Configure a source command and its failing operation."""
+
+    command: str
+    use_case_attribute: str
+    registered_sources: list[ListSourcesUseCase.SourceData]
+
+
 @pytest.mark.parametrize(
-    ("command", "use_case_attribute", "registered_sources"),
+    "case",
     [
-        ("register", "create_source_use_case", []),
-        ("unregister", "delete_source_use_case", _REGISTERED_SOURCES),
+        SourceErrorCase("register", "create_source_use_case", []),
+        SourceErrorCase("unregister", "delete_source_use_case", _REGISTERED_SOURCES),
     ],
+    ids=["register", "unregister"],
 )
 def test_unexpected_source_error_remains_visible(
-    command: str,
-    use_case_attribute: str,
-    registered_sources: list[ListSourcesUseCase.SourceData],
+    case: SourceErrorCase,
     source_factory: MagicMock,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Unexpected errors propagate unchanged and stop before the next source."""
     source_factory.list_sources_use_case.execute.return_value = (
-        ListSourcesUseCase.OutputData(sources=registered_sources)
+        ListSourcesUseCase.OutputData(sources=case.registered_sources)
     )
-    operation = getattr(source_factory, use_case_attribute)
+    operation = getattr(source_factory, case.use_case_attribute)
     failure = RuntimeError("unexpected failure")
     operation.execute.side_effect = failure
     with pytest.raises(RuntimeError) as error:
-        main(["source", command])
+        main(["source", case.command])
     assert error.value is failure
     operation.execute.assert_awaited_once()
     source_factory.shutdown.assert_awaited_once()
