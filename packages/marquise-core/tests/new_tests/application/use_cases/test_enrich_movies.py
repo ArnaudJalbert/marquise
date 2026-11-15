@@ -258,6 +258,53 @@ async def test_title_conflict_stores_year_and_warns(
     )
 
 
+def _untitled_year_conflict(provider: Mock, movie_repository: Mock) -> None:
+    """Dune arrives without a year and its first write hits a title conflict."""
+    provider.movie_details.side_effect = None
+    provider.movie_details.return_value = MetadataBatch(
+        (
+            MetadataMovie(
+                ProviderIdentity("tmdb", "7"),
+                (TitleFact("Dune", "canonical", "en-US"),),
+            ),
+        )
+    )
+    movie_repository.update_metadata.side_effect = [
+        MovieWorkflowConflictError("title taken"),
+        None,
+    ]
+
+
+@pytest.mark.asyncio
+async def test_title_conflict_without_any_year_propagates(
+    use_case: EnrichMoviesUseCase, movie_repository: Mock, provider: Mock
+) -> None:
+    """With no year from the provider or the Movie, the conflict is not retried."""
+    _untitled_year_conflict(provider, movie_repository)
+
+    with pytest.raises(MovieWorkflowConflictError, match="title taken"):
+        await use_case.execute(use_case.InputData((MovieInput("one", "7"),)))
+    movie_repository.update_metadata.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_title_conflict_falls_back_to_the_stored_year(
+    use_case: EnrichMoviesUseCase, movie_repository: Mock, provider: Mock
+) -> None:
+    """Without a provider year, the retry title uses the Movie's stored year."""
+    _untitled_year_conflict(provider, movie_repository)
+    movie_repository.get.side_effect = lambda movie_id: MovieMetadataSnapshot(
+        movie_id, "1", MovieMetadataValues(title="Dune", release_year=1984), None
+    )
+
+    await use_case.execute(use_case.InputData((MovieInput("one", "7"),)))
+
+    assert (
+        movie_repository.update_metadata.await_args_list[-1].args[1].title
+        == "Dune (1984)"
+    )
+
+
 @pytest.mark.parametrize("fields", [{"movie_id": 1}, {"movie_id": "one", "tmdb_id": 7}])
 def test_movie_input_rejects_wrong_types(fields: dict) -> None:
     """Input is the one place types are checked."""
