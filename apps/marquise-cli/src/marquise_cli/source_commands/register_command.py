@@ -5,12 +5,13 @@ from __future__ import annotations
 import asyncio
 import sys
 from dataclasses import asdict
+from typing import NoReturn
 
 import questionary
 from rich.console import Console
 from rich.table import Table
 
-from marquise import MarquiseFactory, SourceAlreadyExistsError
+from marquise import CreateSourceUseCase, MarquiseFactory, SourceAlreadyExistsError
 from marquise_cli.helpers import run_spinner
 
 _console = Console()
@@ -68,31 +69,42 @@ async def _register_source(factory: MarquiseFactory, source: dict) -> bool:
     details = await _source_details()
     if details is None:
         return False
+    input_data = _source_input(factory, source["name"], details)
     try:
-        await _create_source(factory, source["name"], details)
-    except (SourceAlreadyExistsError, ValueError) as error:
-        print(f"  Failed: {error}", file=sys.stderr)
-        raise SystemExit(1) from error
+        await _create_source(factory, input_data)
+    except SourceAlreadyExistsError as error:
+        _exit_failed(error)
     return True
 
 
-async def _create_source(
+def _source_input(
     factory: MarquiseFactory, source_name: str, details: tuple[str, str | None]
+) -> CreateSourceUseCase.InputData:
+    """Build validated source input, exiting on invalid prompt answers."""
+    display_name, description = details
+    try:
+        return factory.create_source_use_case.InputData(
+            name=source_name, display_name=display_name, description=description
+        )
+    except ValueError as error:
+        _exit_failed(error)
+
+
+async def _create_source(
+    factory: MarquiseFactory, input_data: CreateSourceUseCase.InputData
 ) -> None:
     """Create one source and report its successful registration."""
-    display_name, description = details
-    create_source_use_case = factory.create_source_use_case
     result = await run_spinner(
-        create_source_use_case.execute(
-            create_source_use_case.InputData(
-                name=source_name,
-                display_name=display_name,
-                description=description,
-            )
-        ),
-        description=f"Registering {source_name}...",
+        factory.create_source_use_case.execute(input_data),
+        description=f"Registering {input_data.name}...",
     )
     print(f"  Created: {result.name}")
+
+
+def _exit_failed(error: Exception) -> NoReturn:
+    """Report a documented failure and exit non-zero."""
+    print(f"  Failed: {error}", file=sys.stderr)
+    raise SystemExit(1) from error
 
 
 async def run_register_sources(factory: MarquiseFactory) -> None:

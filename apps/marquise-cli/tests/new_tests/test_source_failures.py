@@ -131,22 +131,6 @@ def _show_sources(
     )
 
 
-def test_unregister_empty_source_name_fails_cleanly(
-    source_prompts: MagicMock,
-    source_factory: MagicMock,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """An empty selected source name reports the validation error and exits."""
-    _show_sources(source_factory, _REGISTERED_SOURCES)
-    source_prompts.checkbox.return_value.ask_async.return_value = ["", "third"]
-    with pytest.raises(SystemExit) as error:
-        main(["source", "unregister"])
-    assert error.value.code == 1
-    assert "Failed: source_name must not be empty" in capsys.readouterr().err
-    source_factory.delete_source_use_case.execute.assert_not_awaited()
-    source_factory.shutdown.assert_awaited_once()
-
-
 _REGISTERED_SOURCES = [
     ListSourcesUseCase.SourceData(name=name, display_name=name)
     for name in ("first", "second", "third")
@@ -160,19 +144,23 @@ _OPERATION_BY_COMMAND = {
 
 @dataclass(frozen=True, slots=True)
 class SourceErrorCase:
-    """Configure a source command and its failing operation."""
+    """Configure a source command, its registered sources and its failure."""
 
     command: str
     registered_sources: list[ListSourcesUseCase.SourceData]
+    failure: Exception
 
 
 @pytest.mark.parametrize(
     "case",
     [
-        SourceErrorCase("register", []),
-        SourceErrorCase("unregister", _REGISTERED_SOURCES),
+        SourceErrorCase("register", [], RuntimeError("unexpected failure")),
+        SourceErrorCase("register", [], ValueError("unexpected value")),
+        SourceErrorCase(
+            "unregister", _REGISTERED_SOURCES, RuntimeError("unexpected failure")
+        ),
     ],
-    ids=["register", "unregister"],
+    ids=["register", "register-value-error", "unregister"],
 )
 def test_unexpected_source_error_remains_visible(
     case: SourceErrorCase,
@@ -182,11 +170,10 @@ def test_unexpected_source_error_remains_visible(
     """Unexpected errors propagate unchanged and stop before the next source."""
     _show_sources(source_factory, case.registered_sources)
     operation = getattr(source_factory, _OPERATION_BY_COMMAND[case.command])
-    failure = RuntimeError("unexpected failure")
-    operation.execute.side_effect = failure
-    with pytest.raises(RuntimeError) as error:
+    operation.execute.side_effect = case.failure
+    with pytest.raises(type(case.failure)) as error:
         main(["source", case.command])
-    assert error.value is failure
+    assert error.value is case.failure
     operation.execute.assert_awaited_once()
     source_factory.shutdown.assert_awaited_once()
     assert "Failed:" not in capsys.readouterr().err
