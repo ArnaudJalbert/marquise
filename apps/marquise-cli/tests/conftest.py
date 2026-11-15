@@ -7,13 +7,21 @@ from unittest.mock import AsyncMock, MagicMock, create_autospec
 import pytest
 
 from marquise import (
+    CreateSourceUseCase,
     DeleteCinemaUseCase,
+    DeleteSourceUseCase,
     ListCinemasUseCase,
     MarquiseFactory,
     UpdateCinemaUseCase,
 )
 
-UseCaseType = type[DeleteCinemaUseCase | ListCinemasUseCase | UpdateCinemaUseCase]
+UseCaseType = type[
+    CreateSourceUseCase
+    | DeleteCinemaUseCase
+    | DeleteSourceUseCase
+    | ListCinemasUseCase
+    | UpdateCinemaUseCase
+]
 
 
 @pytest.fixture
@@ -26,7 +34,7 @@ def mock_factory() -> MagicMock:
 
 
 def mock_use_case(use_case_type: UseCaseType) -> MagicMock:
-    """Provide a mocked cinema use case with its real input DTO constructor."""
+    """Provide a mocked use case with its real input DTO constructor."""
     use_case = create_autospec(use_case_type, instance=True)
     use_case.execute = AsyncMock()
     use_case.InputData = use_case_type.InputData

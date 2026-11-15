@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, create_autospec
 
 import pytest
 
+from conftest import mock_use_case
 from marquise import (
     CreateSourceUseCase,
     DeleteSourceUseCase,
@@ -33,14 +34,8 @@ def source_factory(mock_factory: MagicMock) -> MagicMock:
     listing.execute.return_value = ListSourcesUseCase.OutputData(sources=[])
     mock_factory.list_registry_sources_use_case = registry
     mock_factory.list_sources_use_case = listing
-    mock_factory.create_source_use_case = create_autospec(
-        CreateSourceUseCase, instance=True
-    )
-    mock_factory.create_source_use_case.InputData = CreateSourceUseCase.InputData
-    mock_factory.delete_source_use_case = create_autospec(
-        DeleteSourceUseCase, instance=True
-    )
-    mock_factory.delete_source_use_case.InputData = DeleteSourceUseCase.InputData
+    mock_factory.create_source_use_case = mock_use_case(CreateSourceUseCase)
+    mock_factory.delete_source_use_case = mock_use_case(DeleteSourceUseCase)
     return mock_factory
 
 
@@ -72,18 +67,11 @@ def test_register_existing_source_stops_remaining_registrations(
         SourceAlreadyExistsError("second already exists"),
         CreateSourceUseCase.OutputData(name="third", display_name="Third"),
     ]
-    with pytest.raises(SystemExit) as error:
-        main(["source", "register"])
-    assert error.value.code == 1
+    _assert_stopped_after_second(source_factory, "register", "name")
     output = capsys.readouterr()
     assert "Created: first" in output.out
     assert "second already exists" in output.err
     assert "--- Registering: third ---" not in output.out
-    assert [call.args[0].name for call in creation.execute.await_args_list] == [
-        "first",
-        "second",
-    ]
-    source_factory.shutdown.assert_awaited_once()
 
 
 def test_register_empty_display_name_fails_cleanly(
@@ -105,31 +93,41 @@ def test_unregister_missing_source_stops_remaining_deletions(
     source_factory: MagicMock, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """A missing second source exits non-zero before removing the third."""
-    _show_registered_sources(source_factory)
-    deletion = source_factory.delete_source_use_case
-    deletion.execute.side_effect = [
+    _show_sources(source_factory, _REGISTERED_SOURCES)
+    source_factory.delete_source_use_case.execute.side_effect = [
         None,
         SourceNotFoundError("second was not found"),
         None,
     ]
-    with pytest.raises(SystemExit) as error:
-        main(["source", "unregister"])
-    assert error.value.code == 1
+    _assert_stopped_after_second(source_factory, "unregister", "source_name")
     output = capsys.readouterr()
     assert "Removed: first" in output.out
     assert "second was not found" in output.err
     assert "Removed: third" not in output.out
-    assert [call.args[0].source_name for call in deletion.execute.await_args_list] == [
+
+
+def _assert_stopped_after_second(
+    factory: MagicMock, command: str, name_field: str
+) -> None:
+    """Run a source command and check it stopped after the second source."""
+    operation = getattr(factory, _OPERATION_BY_COMMAND[command])
+    with pytest.raises(SystemExit) as error:
+        main(["source", command])
+    assert error.value.code == 1
+    attempted = operation.execute.await_args_list
+    assert [getattr(call.args[0], name_field) for call in attempted] == [
         "first",
         "second",
     ]
-    source_factory.shutdown.assert_awaited_once()
+    factory.shutdown.assert_awaited_once()
 
 
-def _show_registered_sources(factory: MagicMock) -> None:
-    """List all three sources for removal."""
+def _show_sources(
+    factory: MagicMock, sources: list[ListSourcesUseCase.SourceData]
+) -> None:
+    """List the given sources as already registered."""
     factory.list_sources_use_case.execute.return_value = ListSourcesUseCase.OutputData(
-        sources=_REGISTERED_SOURCES
+        sources=sources
     )
 
 
@@ -139,7 +137,7 @@ def test_unregister_empty_source_name_fails_cleanly(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """An empty selected source name reports the validation error and exits."""
-    _show_registered_sources(source_factory)
+    _show_sources(source_factory, _REGISTERED_SOURCES)
     source_prompts.checkbox.return_value.ask_async.return_value = ["", "third"]
     with pytest.raises(SystemExit) as error:
         main(["source", "unregister"])
@@ -154,21 +152,25 @@ _REGISTERED_SOURCES = [
     for name in ("first", "second", "third")
 ]
 
+_OPERATION_BY_COMMAND = {
+    "register": "create_source_use_case",
+    "unregister": "delete_source_use_case",
+}
+
 
 @dataclass(frozen=True, slots=True)
 class SourceErrorCase:
     """Configure a source command and its failing operation."""
 
     command: str
-    use_case_attribute: str
     registered_sources: list[ListSourcesUseCase.SourceData]
 
 
 @pytest.mark.parametrize(
     "case",
     [
-        SourceErrorCase("register", "create_source_use_case", []),
-        SourceErrorCase("unregister", "delete_source_use_case", _REGISTERED_SOURCES),
+        SourceErrorCase("register", []),
+        SourceErrorCase("unregister", _REGISTERED_SOURCES),
     ],
     ids=["register", "unregister"],
 )
@@ -178,10 +180,8 @@ def test_unexpected_source_error_remains_visible(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Unexpected errors propagate unchanged and stop before the next source."""
-    source_factory.list_sources_use_case.execute.return_value = (
-        ListSourcesUseCase.OutputData(sources=case.registered_sources)
-    )
-    operation = getattr(source_factory, case.use_case_attribute)
+    _show_sources(source_factory, case.registered_sources)
+    operation = getattr(source_factory, _OPERATION_BY_COMMAND[case.command])
     failure = RuntimeError("unexpected failure")
     operation.execute.side_effect = failure
     with pytest.raises(RuntimeError) as error:
