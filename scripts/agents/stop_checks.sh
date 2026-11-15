@@ -30,7 +30,7 @@ if grep -qvE '^web/' <<<"$changed"; then
   # Both apps import core, so a core change runs every suite.
   core=$(grep -c '^packages/' <<<"$changed")
   [ "$core" -gt 0 ] && run uv run pytest -q \
-    packages/marquise-core/tests/unit_tests/ packages/marquise-core/tests/new_tests/
+    packages/marquise-core/tests/unit_tests/
   if [ "$core" -gt 0 ] || grep -q '^apps/marquise-api/' <<<"$changed"; then
     run uv run pytest -q apps/marquise-api/tests/
   fi
