@@ -32,7 +32,7 @@ def current_rate_limit() -> str:
     ``MARQUISE_API_RATE_LIMIT`` per case without reconstructing the limiter.
 
     Returns:
-        The rate limit string, e.g. ``"60/minute"``.
+        The rate limit string, e.g. ``"3000/minute"``.
     """
     return os.environ.get("MARQUISE_API_RATE_LIMIT", DEFAULT_RATE_LIMIT)
 

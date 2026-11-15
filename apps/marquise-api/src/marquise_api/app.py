@@ -10,7 +10,7 @@ MARQUISE_API_CORS_ORIGINS
     ``http://localhost:3000,https://myfrontend.example.com``
 MARQUISE_API_RATE_LIMIT
     Per-IP request rate limit, in slowapi's ``<count>/<period>`` string
-    syntax (default: ``60/minute``). Example: ``120/minute``.
+    syntax (default: ``3000/minute``). Example: ``120/minute``.
 """
 
 from __future__ import annotations

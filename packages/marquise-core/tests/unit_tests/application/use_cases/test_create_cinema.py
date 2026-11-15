@@ -67,7 +67,10 @@ async def test_create_cinema_raises_error_when_cinema_already_exists() -> None:
         name="Existing Cinema", address="123 Test St", city="Montreal"
     )
 
-    with pytest.raises(CinemaAlreadyExistsError, match="already exists"):
+    with pytest.raises(
+        CinemaAlreadyExistsError,
+        match=r"^A cinema with name 'Existing Cinema' already exists\.$",
+    ):
         await use_case.execute(request)
 
     mock_repo.find_by_name_and_address.assert_awaited_once()
