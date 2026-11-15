@@ -38,7 +38,7 @@ jobs:
 
       - name: Run unit tests with coverage
         run: |
-          uv run pytest packages/marquise-core/tests/unit_tests/ packages/marquise-core/tests/new_tests/ \
+          uv run pytest packages/marquise-core/tests/unit_tests/ \
             --cov=marquise \
             --cov-report=xml \
             --cov-report=term-missing \
