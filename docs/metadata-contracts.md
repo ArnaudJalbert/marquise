@@ -43,8 +43,10 @@ During matching only unavailable and rate_limited stop the cinema. A candidate
 whose details are not_found or invalid_data is set aside; a clear match among
 the other candidates still wins, otherwise the movie is incomplete and imports
 without an identity. A search that fails with not_found or invalid_data leaves
-that movie incomplete too. Enrichment never stops the cinema: any failure or
-internal error leaves that movie not enriched and is logged. Source
+that movie incomplete too. Enrichment skips and logs only not_found and
+invalid_data misses. Outages and unexpected errors propagate and stop the run.
+Title conflicts retry with the release year appended and log the Movie ID and
+conflicting title. Source
 metadata and the original screening mapping title remain available to callers.
 Provider facts never imply permission to assign a non-TMDB ID to tmdb_id.
 

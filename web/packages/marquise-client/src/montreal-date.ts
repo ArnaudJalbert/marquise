@@ -1,4 +1,4 @@
-const MONTREAL_TIME_ZONE = "America/Toronto";
+export const MONTREAL_TIME_ZONE = "America/Montreal";
 
 const montrealDateFormatter = new Intl.DateTimeFormat("en-CA", {
   timeZone: MONTREAL_TIME_ZONE,

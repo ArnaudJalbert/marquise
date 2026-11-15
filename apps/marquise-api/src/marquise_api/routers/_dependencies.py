@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 from fastapi import Query
+from pydantic import AwareDatetime
 
 
 def _start_of_today_utc() -> datetime:
@@ -18,14 +19,20 @@ def _start_of_today_utc() -> datetime:
 
 
 def resolve_showtimes_date_range(
-    from_: datetime | None = Query(
+    from_: AwareDatetime | None = Query(
         default=None,
         alias="from",
-        description="Start of range (inclusive). Defaults to the start of today (UTC).",
+        description=(
+            "Start of range (inclusive), with a timezone offset, for example "
+            "2026-11-20T00:00:00-05:00. Defaults to the start of today (UTC)."
+        ),
     ),
-    to: datetime | None = Query(
+    to: AwareDatetime | None = Query(
         default=None,
-        description="End of range (inclusive). Defaults to one week from start.",
+        description=(
+            "End of range (inclusive), with a timezone offset. Defaults to one "
+            "week from start."
+        ),
     ),
 ) -> tuple[datetime, datetime]:
     """Resolve the effective showtimes date range, applying defaults.

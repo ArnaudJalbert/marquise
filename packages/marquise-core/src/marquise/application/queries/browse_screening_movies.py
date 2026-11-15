@@ -5,9 +5,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
-from zoneinfo import ZoneInfo
 
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
+from marquise.domain.constants import MONTREAL_TIME_ZONE
 
 
 class BrowseScreeningMoviesQuery:
@@ -79,11 +79,12 @@ class BrowseScreeningMoviesQuery:
 
     async def execute(self, input_data: InputData) -> OutputData:
         """Convert local date bounds and read one movie page."""
-        zone = ZoneInfo("America/Montreal")
-        start = datetime.combine(input_data.start, time.min, zone).astimezone(UTC)
+        start = datetime.combine(
+            input_data.start, time.min, MONTREAL_TIME_ZONE
+        ).astimezone(UTC)
         end = (
             datetime.combine(
-                input_data.end + timedelta(days=1), time.min, zone
+                input_data.end + timedelta(days=1), time.min, MONTREAL_TIME_ZONE
             ).astimezone(UTC)
             - timedelta(microseconds=1)
             if input_data.end is not None

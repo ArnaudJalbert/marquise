@@ -6,8 +6,11 @@ Each rule has one home: a topic file here, or a shared `coding-*` skill. This ma
 
 ## Existing code
 
-- Much existing code predates these rules. Fix violations as you touch the code: every new or changed function and use case follows the rules, and code you work in gets fixed along the way.
-- Don't start a change just to fix old violations unless it is the task.
+- Much existing code predates these rules. A task brings only the lines it writes up to them, never the code around those lines. Tests count.
+- An edit must not make an existing violation worse. A mechanical edit, such as swapping a literal or renaming a symbol, does not bring the surrounding function into scope.
+- To add logic to a function that already breaks the rules, put the logic in a new function that complies and call it from the old one. If that is impossible, restructure only that function, in its own `refactor` commit, and name it in the PR body.
+- Leave old violations alone: don't fix, list or file them unless cleanup is the task.
+- Review checks added and changed lines plus the no-worse rule. A violation in unchanged context is not a finding.
 - Leave the automated checks as Planned until enough code complies to turn one on without a large cleanup.
 
 ## When
@@ -16,6 +19,7 @@ Each rule has one home: a topic file here, or a shared `coding-*` skill. This ma
 |---|---|---|
 | Writing | The author reads the matching rule file and shared coding skill from [AGENTS.md](../../../AGENTS.md#rules) | Design: what a use case does, how it is split, what names mean |
 | Before commit | `uv run ruff format .`, `uv run ruff check .`, `uv run ty check packages/marquise-core/src`, unit tests | Everything automated, in seconds |
+| Agent finishes a turn | In T3 agent worktrees, the Claude Code Stop hook (`.claude/settings.json`, `scripts/agents/stop_checks.sh`) runs the same checks for the changed area and blocks the stop until they pass | Workers that report checks they never ran |
 | CI | The same commands in `.github/workflows/quality.yml`, plus integration tests | Everything automated, on every push |
 | Review | The reviewer follows [review-and-delivery](review-and-delivery.md#review) | Everything marked Review below |
 

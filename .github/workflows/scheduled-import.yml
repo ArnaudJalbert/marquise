@@ -5,9 +5,6 @@ concurrency:
   cancel-in-progress: false
 
 on:
-  schedule:
-    # Nightly at 07:17 UTC (≈ 02:17–03:17 America/Montreal); offset avoids top-of-hour load
-    - cron: "17 7 * * *"
   workflow_dispatch:
     inputs:
       days:
