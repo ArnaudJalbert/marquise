@@ -6,6 +6,7 @@ import threading
 import urllib.error
 from collections.abc import Iterator
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from unittest.mock import create_autospec
 
 import pytest
 
@@ -19,6 +20,7 @@ def schedule_server(
     """Serve controlled HTTP responses without mocking network I/O."""
     statuses: list[int] = []
     requests: list[str] = []
+    monkeypatch.setattr(source.time, "sleep", create_autospec(source.time.sleep))
 
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:

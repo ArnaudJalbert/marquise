@@ -18,6 +18,17 @@ The GitHub Project's `Status` field is the workflow contract. It controls ticket
 
 `wayfinder:*` labels belong to the wayfinder workflow. Leave them to it.
 
+## Risk labels
+
+Every work ticket carries one risk label. The autonomous loop reads it to pick the implementer and the review depth. An open ticket without one counts as `risk:high`.
+
+| Label | Use | Loop behaviour |
+| --- | --- | --- |
+| `risk:low` | Small, well-specified change with a low blast radius: docs, tests, a local fix inside one module, deletions of unused code with no callers | Claude Sonnet implements. One Codex Terra review |
+| `risk:high` | Touches the data model, migrations, persistence, the import pipeline, the public API contract, auth, CI or deployment, spans packages, or has unclear scope | Claude Opus implements. Codex Terra plus Claude Opus review, and Arnaud reads it in full |
+
+The agent sets the label during scoping or a labeling pass. Arno changes any label he disagrees with.
+
 Idea, spec, and ticket labels describe what an issue represents. They can sit beside type and area labels, and they do not change Project `Status` or authorize implementation.
 
 Specs are parent issues. Create each work ticket as a direct child of its spec using GitHub's native sub-issue relationship. Milestones are long-term goals, like sprints. Specs and tickets may join one. When a spec has a milestone, give its tickets the same one. A milestone does not establish parentage. Labels classify issues and do not establish parentage.
