@@ -1,5 +1,6 @@
 """Explicitly refresh confirmed movies using the initial enrichment policy."""
 
+import logging
 from collections.abc import Callable
 from datetime import datetime
 
@@ -16,6 +17,8 @@ from marquise.application.movie_workflows import (
     RefreshMoviesOutputData,
 )
 from marquise.application.use_cases.enrich_movies import _enrich
+
+logger = logging.getLogger(__name__)
 
 
 class RefreshMoviesUseCase:
@@ -87,4 +90,5 @@ class RefreshMoviesUseCase:
     @staticmethod
     def _not_enriched(movie_id: str, failure: Exception) -> EnrichMovieOutputData:
         """List one movie as not enriched; it never stops the refresh."""
+        logger.warning("Movie %s not enriched: %s", movie_id, type(failure).__name__)
         return EnrichMovieOutputData(movie_id, "not_enriched", failure)

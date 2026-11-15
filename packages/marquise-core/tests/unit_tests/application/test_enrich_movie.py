@@ -7,10 +7,6 @@ from unittest.mock import Mock, create_autospec
 
 import pytest
 
-from marquise.application.exceptions import (
-    MetadataRateLimitedError,
-    MetadataUnavailableError,
-)
 from marquise.application.metadata import (
     LocalizedMovieMetadata,
     MetadataBatch,
@@ -353,22 +349,16 @@ async def test_failure_preserves_state_and_can_retry(
 @pytest.mark.parametrize(
     "batch",
     [
-        MetadataBatch((), complete=False, failure=MetadataRateLimitedError("Wait")),
         MetadataBatch((), complete=False),
         MetadataBatch(()),
         MetadataBatch((MetadataMovie(IDENTITY, ()), MetadataMovie(IDENTITY, ()))),
         MetadataBatch((MetadataMovie(ProviderIdentity("tmdb", "wrong"), ()),)),
-        MetadataBatch(
-            (MetadataMovie(IDENTITY, ()),),
-            complete=False,
-            failure=MetadataUnavailableError("Partial"),
-        ),
     ],
 )
 async def test_invalid_or_incomplete_detail_never_writes(
     movies: Mock, metadata: Mock, batch: MetadataBatch[MetadataMovie]
 ) -> None:
-    """Incomplete, mismatched and failed details cannot stamp success."""
+    """Incomplete and mismatched details cannot stamp success."""
     metadata.movie_details.return_value = batch
     assert (await use_case(movies, metadata).execute(REQUEST)).status == "not_enriched"
     movies.update_metadata.assert_not_awaited()

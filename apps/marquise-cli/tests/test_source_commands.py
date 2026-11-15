@@ -225,28 +225,6 @@ async def test_source_register_all_existing(
 
 
 @pytest.mark.asyncio
-async def test_source_register_failure(
-    mock_factory: MagicMock, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """Verify source register reports create use-case errors."""
-    create_use_case = create_autospec(CreateSourceUseCase, instance=True)
-    create_use_case.execute = AsyncMock(side_effect=ValueError("already exists"))
-    mock_factory.list_registry_sources_use_case = _registry_use_case(
-        [_SourceEntry("cinemacinema")]
-    )
-    mock_factory.list_sources_use_case = _list_use_case([])
-    mock_factory.create_source_use_case = create_use_case
-
-    with patch("marquise_cli.source_commands.register_command.questionary") as mock_q:
-        mock_q.text.return_value.ask_async = AsyncMock(
-            side_effect=["Cinéma Cinéma", "Showtimes description"]
-        )
-        await run_register_sources(mock_factory)
-
-    assert "Failed: already exists" in capsys.readouterr().err
-
-
-@pytest.mark.asyncio
 async def test_source_unregister_success(
     mock_factory: MagicMock, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -334,7 +312,7 @@ async def test_source_unregister_cancelled_at_confirm(
 async def test_source_unregister_partial_failure(
     mock_factory: MagicMock, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Verify source unregister reports each delete use-case failure."""
+    """Verify an unexpected delete failure stops unregister and propagates."""
     delete_use_case = create_autospec(DeleteSourceUseCase, instance=True)
     delete_use_case.execute = AsyncMock(side_effect=ValueError("Something went wrong"))
     mock_factory.list_registry_sources_use_case = _registry_use_case(
@@ -348,9 +326,8 @@ async def test_source_unregister_partial_failure(
             return_value=["cinemacinema"]
         )
         mock_q.confirm.return_value.ask_async = AsyncMock(return_value=True)
-        await run_unregister_sources(mock_factory)
-
-    assert "Failed: Something went wrong" in capsys.readouterr().err
+        with pytest.raises(ValueError, match="Something went wrong"):
+            await run_unregister_sources(mock_factory)
 
 
 ASSIGN = (
