@@ -1,9 +1,11 @@
+import { MONTREAL_TIME_ZONE } from "marquise-client";
+
 const timeFormatter = new Intl.DateTimeFormat("en-CA", {
   hour: "2-digit",
   minute: "2-digit",
   hour12: false,
   hourCycle: "h23",
-  timeZone: "America/Toronto",
+  timeZone: MONTREAL_TIME_ZONE,
 });
 
 export function formatTime(startsAt: string): string {
@@ -18,14 +20,14 @@ const hourFormatter = new Intl.DateTimeFormat("en-CA", {
   hour: "2-digit",
   hour12: false,
   hourCycle: "h23",
-  timeZone: "America/Toronto",
+  timeZone: MONTREAL_TIME_ZONE,
 });
 
 const dateFormatter = new Intl.DateTimeFormat("en-CA", {
   year: "numeric",
   month: "2-digit",
   day: "2-digit",
-  timeZone: "America/Toronto",
+  timeZone: MONTREAL_TIME_ZONE,
 });
 
 /** Hour (0–23) of a showtime in the Montreal timezone, used for time-range filtering. */

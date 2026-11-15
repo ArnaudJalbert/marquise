@@ -1,4 +1,4 @@
-.PHONY: test test-core test-core-integrations test-api test-cli api cli lint format ty deploy-api deploy-interface web web-live web-demo
+.PHONY: test test-core test-core-integrations test-api test-cli api cli lint format ty deploy-api deploy-interface web web-live
 
 test: test-core test-api test-cli
 
@@ -34,10 +34,6 @@ deploy-api:
 
 deploy-interface:
 	cd web && flyctl deploy . --config apps/marquise-interface/fly.toml --remote-only
-
-# Start the marquise-components sample-data demo (dev-only) → http://localhost:4174
-web-demo:
-	cd web && pnpm prototype
 
 # Start the interface → http://localhost:5173 (/v1 proxies to a local API on :8000; run `make api`)
 web:

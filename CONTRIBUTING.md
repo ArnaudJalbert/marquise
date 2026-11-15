@@ -95,7 +95,6 @@ Package roles and dependency rules: [web rules](docs/agents/rules/web.md).
 | `MARQUISE_API_RATE_LIMIT` | No | Per-IP rate limit (default: `3000/minute`) |
 | `MARQUISE_API_LOG_LEVEL` | No | API log level (default: `INFO`) |
 | `VITE_MARQUISE_API_BASE_URL` | No (web) | API origin for the interface build (default: same origin; the Docker build sets `https://api.marquise.mov`) |
-| `VITE_MARQUISE_DATA_SOURCE` | No (web) | Demo only: `api` makes `pnpm prototype` call the API instead of sample data |
 
 Importing `marquise.infrastructure.di.container` runs `load_dotenv()`, so a local
 `.env` leaks into any process or test that builds the factory.
@@ -119,7 +118,6 @@ make format                  # ruff format
 make ty                      # type check marquise-core
 make web                     # interface dev server; /v1 proxies to a local API on :8000
 make web-live                # local API and interface together
-make web-demo                # sample-data component demo (pnpm prototype)
 make local-up                # isolated Postgres + API + built app, see local/README.md
 make deploy-api              # Fly deploy, also run by CI
 make deploy-interface        # Fly deploy, also run by CI
@@ -176,7 +174,6 @@ pnpm lint        # oxlint across workspace
 pnpm typecheck   # tsc --noEmit across workspace
 pnpm test        # vitest across workspace
 
-pnpm prototype   # sample-data component demo → http://localhost:4174
 
 # Single package
 pnpm --filter marquise-components test
@@ -210,7 +207,7 @@ packages/marquise-core/tests/
 ├── fixtures/
 └── support/
 
-integration_tests/           # nightly SQL integration tests; disposable PostgreSQL
+integration_tests/           # SQL integration tests; disposable PostgreSQL
 
 apps/marquise-api/tests/      # mock MarquiseFactory
 apps/marquise-cli/tests/      # mock MarquiseFactory
@@ -228,13 +225,13 @@ Pull requests to `main` run the repository workflows:
 - `release-validation`: when a package's `src/**` or `pyproject.toml` changes, its version must increase, and its distributions must build.
 - `web-quality`: for web changes, install the frozen pnpm workspace and run web lint, TypeScript checks, unit tests, and production builds on Node.js 24.
 
-The nightly `integration` workflow runs the same deterministic suite against its own PostgreSQL 17 service. It needs no production secrets or live provider access. The separate `provider-connectivity` workflow checks the real Cineplex and CinemaCinema endpoints daily and by manual dispatch. Its failures are visible but do not fail the deterministic suite; a connectivity check does not validate every showtime or movie-detail response.
+The manually dispatched `integration` workflow runs the same deterministic suite against its own PostgreSQL 17 service. It needs no production secrets or live provider access. The separate `provider-connectivity` workflow checks the real Cineplex and CinemaCinema endpoints by manual dispatch. Its failures are visible but do not fail the deterministic suite; a connectivity check does not validate every showtime or movie-detail response.
 
-After merge and on schedule:
+After merge and on demand:
 
 - `release`: on push to `main`, tags and releases each bumped package ([docs/releasing.md](docs/releasing.md)).
 - `fly-deploy`: on push to `main` touching deployable paths, deploys the API and interface to Fly and smoke-tests them ([docs/deployment.md](docs/deployment.md)).
-- `scheduled-import`: daily import into Supabase; manual dispatch runs the same import.
+- `scheduled-import`: import into Supabase by manual dispatch only.
 
 Triggers, commands and environment wiring are defined in [`.github/workflows/`](.github/workflows/). `ty` is a blocking quality step.
 

@@ -109,13 +109,35 @@ def test_input_rejects_non_positive_size() -> None:
         )
 
 
-def test_input_rejects_inverted_range() -> None:
-    """start_date after end_date is rejected."""
-    with pytest.raises(ValueError, match="start_date must not be after end_date"):
+@pytest.mark.parametrize(
+    ("start_date", "end_date", "message"),
+    [
+        (
+            datetime(2026, 6, 28, tzinfo=UTC),
+            datetime(2026, 6, 27, tzinfo=UTC),
+            "start_date must not be after end_date",
+        ),
+        (
+            datetime(2026, 6, 27),
+            datetime(2026, 6, 28, tzinfo=UTC),
+            "start_date must be timezone-aware",
+        ),
+        (
+            datetime(2026, 6, 27, tzinfo=UTC),
+            datetime(2026, 6, 28),
+            "end_date must be timezone-aware",
+        ),
+    ],
+)
+def test_input_rejects_invalid_range(
+    start_date: datetime, end_date: datetime, message: str
+) -> None:
+    """Inverted ranges and either naive boundary are rejected."""
+    with pytest.raises(ValueError, match=message):
         GetCinemaMoviesUseCase.InputData(
             cinema_id="cin-1",
-            start_date=datetime(2026, 6, 28, tzinfo=UTC),
-            end_date=datetime(2026, 6, 27, tzinfo=UTC),
+            start_date=start_date,
+            end_date=end_date,
         )
 
 

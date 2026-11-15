@@ -6,10 +6,10 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
-from zoneinfo import ZoneInfo
 
 from marquise.application.exceptions import TooManyScreeningDaysError
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
+from marquise.domain.constants import MONTREAL_TIME_ZONE
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,6 @@ class CountScreeningDaysQuery:
     """Total the listing's matching screenings per day, with zero for empty days."""
 
     _MAX_DAYS = 42
-    _ZONE = ZoneInfo("America/Montreal")
 
     @dataclass(frozen=True, slots=True)
     class HourRange:
@@ -154,7 +153,7 @@ class CountScreeningDaysQuery:
         return next_day_start - timedelta(microseconds=1)
 
     def _to_utc_day_start(self, day: date) -> datetime:
-        return datetime.combine(day, time.min, self._ZONE).astimezone(UTC)
+        return datetime.combine(day, time.min, MONTREAL_TIME_ZONE).astimezone(UTC)
 
     @staticmethod
     def _fill_missing_days(
