@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 
 from marquise.application.exceptions import CinemaNotFoundError
 from marquise.application.repositories import CinemaRepository, ScreeningRepository
@@ -19,8 +19,8 @@ class GetCinemaMoviesUseCase:
 
         Attributes:
             cinema_id: The cinema to fetch movies for.
-            start_date: Start of the range (inclusive).
-            end_date: End of the range (inclusive).
+            start_date: Timezone-aware start of the range (inclusive).
+            end_date: Timezone-aware end of the range (inclusive).
             page: Page number (1-based). Ignored when size is None.
             size: Max number of movies per page. If None, all matching
                 movies are returned unbounded (page is ignored).
@@ -36,19 +36,25 @@ class GetCinemaMoviesUseCase:
             """Validate input data.
 
             Raises:
-                ValueError: If cinema_id is empty, the range is inverted,
-                    size is provided but not positive, or page is less than 1.
+                ValueError: If cinema_id is empty, either date is naive, the
+                    range is inverted, size is provided but not positive,
+                    or page is less than 1.
             """
             if not self.cinema_id.strip():
                 raise ValueError("cinema_id must not be empty")
-            start = self.start_date.replace(tzinfo=self.start_date.tzinfo or UTC)
-            end = self.end_date.replace(tzinfo=self.end_date.tzinfo or UTC)
-            if start > end:
-                raise ValueError("start_date must not be after end_date")
+            self._validate_date_range()
             if self.size is not None and self.size < 1:
                 raise ValueError("size must be positive when provided")
             if self.page < 1:
                 raise ValueError("page must be at least 1")
+
+        def _validate_date_range(self) -> None:
+            if self.start_date.utcoffset() is None:
+                raise ValueError("start_date must be timezone-aware")
+            if self.end_date.utcoffset() is None:
+                raise ValueError("end_date must be timezone-aware")
+            if self.start_date > self.end_date:
+                raise ValueError("start_date must not be after end_date")
 
     @dataclass(frozen=True, slots=True)
     class MovieData:
