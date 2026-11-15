@@ -1365,7 +1365,7 @@ def test_get_cinema_movies(client: TestClient, factory: MagicMock) -> None:
 
     response = client.get(
         "/v1/cinemas/cin-1/movies",
-        params={"from": "2026-06-27", "to": "2026-06-28"},
+        params={"from": "2026-06-27T00:00:00Z", "to": "2026-06-28T00:00:00Z"},
     )
 
     assert response.status_code == 200
