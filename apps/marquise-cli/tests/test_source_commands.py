@@ -8,17 +8,23 @@ from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 
 import pytest
 
-from conftest import make_cinema_data, mock_use_case
+from conftest import Command, make_cinema_data, mock_use_case
 from marquise import (
     AssignSourceUseCase,
+    CinemaNotFoundError,
+    CinemaSourceAssignmentAlreadyExistsError,
+    CinemaSourceAssignmentNotFoundError,
     CreateSourceUseCase,
     DeleteSourceUseCase,
     ListCinemasUseCase,
     ListRegistrySourcesUseCase,
     ListSourcesUseCase,
+    SourceNotFoundError,
     UnassignSourceUseCase,
 )
+from marquise_cli.app import main
 from marquise_cli.helpers import select_cinema, select_source
+from marquise_cli.source_commands import assign_command, unassign_command
 from marquise_cli.source_commands.assign_command import run_assign
 from marquise_cli.source_commands.list_registered_command import (
     run_list_registered_sources,
@@ -345,3 +351,65 @@ async def test_source_unregister_partial_failure(
         await run_unregister_sources(mock_factory)
 
     assert "Failed: Something went wrong" in capsys.readouterr().err
+
+
+ASSIGN = (
+    ("source", "assign"),
+    assign_command,
+    "assign_source_use_case",
+    AssignSourceUseCase,
+    {"select_cinema": make_cinema_data(), "select_source": "cineplex"},
+)
+UNASSIGN = (
+    ("source", "unassign"),
+    unassign_command,
+    "unassign_source_use_case",
+    UnassignSourceUseCase,
+    {"select_cinema": make_cinema_data()},
+)
+
+
+@pytest.mark.parametrize(
+    ("command", "error"),
+    [
+        (UNASSIGN, CinemaSourceAssignmentNotFoundError("No assignment to remove")),
+        (ASSIGN, CinemaNotFoundError("Cinema no longer exists")),
+        (ASSIGN, SourceNotFoundError("Source no longer exists")),
+        (ASSIGN, CinemaSourceAssignmentAlreadyExistsError("Already assigned")),
+    ],
+    indirect=["command"],
+)
+def test_documented_error_prints_message_and_exits_nonzero(
+    command: Command, error: Exception, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Each documented source failure prints a message and exits unsuccessfully."""
+    command.use_case.execute.side_effect = error
+    with pytest.raises(SystemExit) as failure:
+        main(command.argv)
+    assert failure.value.code == 1
+    assert str(error) in capsys.readouterr().err
+    command.factory.shutdown.assert_awaited_once()
+
+
+@pytest.mark.parametrize(
+    ("command", "error_type"),
+    [
+        (ASSIGN, RuntimeError),
+        (ASSIGN, ValueError),
+        (ASSIGN, CinemaSourceAssignmentNotFoundError),
+        (UNASSIGN, RuntimeError),
+        (UNASSIGN, ValueError),
+        (UNASSIGN, SourceNotFoundError),
+    ],
+    indirect=["command"],
+)
+def test_unlisted_source_errors_escape(
+    command: Command, error_type: type[Exception]
+) -> None:
+    """Unexpected source failures keep their traceback."""
+    error = error_type("Unexpected failure")
+    command.use_case.execute.side_effect = error
+    with pytest.raises(error_type) as failure:
+        main(command.argv)
+    assert failure.value is error
+    command.factory.shutdown.assert_awaited_once()

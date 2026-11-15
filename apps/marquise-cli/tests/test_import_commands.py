@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 
 import pytest
 
-from conftest import make_cinema_data
+from conftest import Command, make_cinema_data
 from marquise import (
     CinemaNotFoundError,
     CinemaSourceAssignmentNotFoundError,
@@ -17,9 +17,11 @@ from marquise import (
     ImportScreeningsCommand,
     ListCinemasUseCase,
     MarquiseFactory,
+    SourceNotFoundError,
 )
+from marquise_cli.app import main
 from marquise_cli.helpers import run_spinner
-from marquise_cli.import_commands import import_all, run_import_all
+from marquise_cli.import_commands import cinema_command, import_all, run_import_all
 from marquise_cli.import_commands.cinema_command import (
     _import_screenings,
     run_import_cinema,
@@ -359,3 +361,67 @@ def test_import_all_reports_a_run_with_every_movie_matched(
     output = capsys.readouterr().out
     assert "Movies for the run: none skipped or unmatched\n" in output
     assert "Movies for Cinema One" not in output
+
+
+IMPORT_SELECTIONS = {
+    "select_cinema": make_cinema_data(),
+    "_select_date_range": (date(2026, 11, 14), date(2026, 11, 15)),
+}
+IMPORT_LOOKUP = (
+    ("import", "cinema"),
+    cinema_command,
+    "get_cinema_source_use_case",
+    GetCinemaSourceUseCase,
+    IMPORT_SELECTIONS,
+)
+IMPORT = (
+    ("import", "cinema"),
+    cinema_command,
+    "import_screenings_use_case",
+    ImportScreeningsCommand,
+    IMPORT_SELECTIONS,
+)
+
+
+@pytest.mark.parametrize(
+    ("command", "error"),
+    [
+        (IMPORT_LOOKUP, CinemaSourceAssignmentNotFoundError("No source assigned")),
+        (IMPORT, CinemaSourceAssignmentNotFoundError("Assignment removed")),
+    ],
+    indirect=["command"],
+)
+def test_documented_error_prints_message_and_exits_nonzero(
+    command: Command, error: Exception, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Each documented import failure prints a message and exits unsuccessfully."""
+    command.use_case.execute.side_effect = error
+    with pytest.raises(SystemExit) as failure:
+        main(command.argv)
+    assert failure.value.code == 1
+    assert str(error) in capsys.readouterr().err
+    command.factory.shutdown.assert_awaited_once()
+
+
+@pytest.mark.parametrize(
+    ("command", "error_type"),
+    [
+        (IMPORT_LOOKUP, RuntimeError),
+        (IMPORT_LOOKUP, ValueError),
+        (IMPORT_LOOKUP, SourceNotFoundError),
+        (IMPORT, RuntimeError),
+        (IMPORT, ValueError),
+        (IMPORT, SourceNotFoundError),
+    ],
+    indirect=["command"],
+)
+def test_unlisted_import_errors_escape(
+    command: Command, error_type: type[Exception]
+) -> None:
+    """Unexpected import failures keep their traceback."""
+    error = error_type("Unexpected failure")
+    command.use_case.execute.side_effect = error
+    with pytest.raises(error_type) as failure:
+        main(command.argv)
+    assert failure.value is error
+    command.factory.shutdown.assert_awaited_once()
