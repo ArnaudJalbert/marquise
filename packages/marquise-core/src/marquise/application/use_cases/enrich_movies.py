@@ -244,7 +244,8 @@ class EnrichMoviesUseCase:
             MetadataFailure: If metadata retrieval fails for any reason other
                 than missing or invalid data.
             MovieWorkflowConflictError: If the stored identity conflicts, or a
-                title conflict persists after appending the release year.
+                title write conflict cannot be resolved by appending the
+                release year.
             ValueError: If the clock returns a timestamp without a timezone.
         """
         results = [

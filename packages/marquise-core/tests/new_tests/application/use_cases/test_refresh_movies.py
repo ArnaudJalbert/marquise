@@ -1,4 +1,4 @@
-"""Refresh reports and logs provider outages without stopping the batch."""
+"""Refresh reports and logs provider outages."""
 
 import logging
 from datetime import UTC, datetime
