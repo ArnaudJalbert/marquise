@@ -21,6 +21,7 @@ from marquise.application.movie_workflows import (
     EnrichMovieInputData,
     EnrichMovieOutputData,
     MovieMetadataRepository,
+    MovieMetadataSnapshot,
     MovieMetadataValues,
     MovieWorkflowConflictError,
 )
@@ -164,19 +165,33 @@ async def _enrich(
     try:
         await movies.update_metadata(snapshot, values, request.identity.id, enriched_at)
     except MovieWorkflowConflictError:
-        # Another film owns the title, e.g. a remake: disambiguate by year.
-        year = values.release_year or snapshot.values.release_year
-        if values.title is None or year is None:
+        retry_values = _year_titled(request.movie_id, snapshot, values)
+        if retry_values is None:
             raise
-        logger.warning(
-            "Movie %s conflicts with title %r; retrying as %r",
-            request.movie_id,
-            values.title,
-            f"{values.title} ({year})",
+        await movies.update_metadata(
+            snapshot, retry_values, request.identity.id, enriched_at
         )
-        values = replace(values, title=f"{values.title} ({year})")
-        await movies.update_metadata(snapshot, values, request.identity.id, enriched_at)
     return EnrichMovieOutputData(request.movie_id, "enriched")
+
+
+def _year_titled(
+    movie_id: str, snapshot: MovieMetadataSnapshot, values: MovieMetadataValues
+) -> MovieMetadataValues | None:
+    """Return values titled with the release year, or None without title or year.
+
+    Another film can own the title, e.g. a remake, so the year disambiguates it.
+    """
+    year = values.release_year or snapshot.values.release_year
+    if values.title is None or year is None:
+        return None
+    title = f"{values.title} ({year})"
+    logger.warning(
+        "Movie %s conflicts with title %r; retrying as %r",
+        movie_id,
+        values.title,
+        title,
+    )
+    return replace(values, title=title)
 
 
 def _not_enriched(movie_id: str, failure: Exception) -> EnrichMovieOutputData:
