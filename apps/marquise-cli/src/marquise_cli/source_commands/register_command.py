@@ -69,25 +69,32 @@ async def _register_source(factory: MarquiseFactory, source: dict) -> bool:
     details = await _source_details()
     if details is None:
         return False
-    input_data = _source_input(factory, source["name"], details)
+    await _create_source_or_exit(factory, source["name"], details)
+    return True
+
+
+async def _create_source_or_exit(
+    factory: MarquiseFactory, source_name: str, details: tuple[str, str | None]
+) -> None:
+    """Create one source from prompt answers, exiting on documented failures."""
+    try:
+        input_data = _source_input(factory, source_name, details)
+    except ValueError as error:
+        _exit_failed(error)
     try:
         await _create_source(factory, input_data)
     except SourceAlreadyExistsError as error:
         _exit_failed(error)
-    return True
 
 
 def _source_input(
     factory: MarquiseFactory, source_name: str, details: tuple[str, str | None]
 ) -> CreateSourceUseCase.InputData:
-    """Build validated source input, exiting on invalid prompt answers."""
+    """Build validated source input from prompt answers."""
     display_name, description = details
-    try:
-        return factory.create_source_use_case.InputData(
-            name=source_name, display_name=display_name, description=description
-        )
-    except ValueError as error:
-        _exit_failed(error)
+    return factory.create_source_use_case.InputData(
+        name=source_name, display_name=display_name, description=description
+    )
 
 
 async def _create_source(
