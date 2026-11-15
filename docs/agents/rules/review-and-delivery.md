@@ -28,7 +28,7 @@ Read when filing an issue, or opening, reviewing or merging a pull request.
 - The reviewer leads with the strongest material objection. With none, they state what they tried to falsify and the residual risk.
 - Authors weigh feedback on evidence; reviewers withdraw findings the evidence disproves.
 - A push with substantive changes gets its changed range re-reviewed.
-- In the autonomous loop, the review run first runs `uv run --no-project --python 3.13 scripts/agents/pr_evidence.py --repo ArnaudJalbert/marquise --pr N`. It proves green CI on the head, a test change or a stated reason for none, a filled template, a `Closes #N` line and a reviewable diff size. Its failed checks are findings, and the reviewer agent does not re-check them. Tests: `uv run pytest -o pythonpath=scripts/agents scripts/agents`.
+- In the autonomous loop, the review run first runs `uv run --no-project --python 3.13 scripts/agents/pr_evidence.py --repo ArnaudJalbert/marquise --pr N`. It proves green CI on the head, a test change or a `No new test: reason` line in Verification, a filled template, a `Closes #N` line and a reviewable diff size. Its failed checks are findings, and the reviewer agent does not re-check them. Tests: `uv run pytest -o pythonpath=scripts/agents scripts/agents`.
 
 ## Ready to merge
 

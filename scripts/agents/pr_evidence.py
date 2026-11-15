@@ -34,12 +34,12 @@ def check(name: str, passed: bool, detail: str) -> dict:
 
 
 def ci_green(rollup: list[dict]) -> dict:
-    """Every reported check finished green; none reported is not green."""
+    """Every reported check finished green and at least one succeeded."""
     states = [
         item.get("conclusion") or item.get("state") or item.get("status")
         for item in rollup
     ]
-    passed = bool(rollup) and all(state in GREEN for state in states)
+    passed = "SUCCESS" in states and all(state in GREEN for state in states)
     names = ", ".join(
         f"{item.get('name') or item.get('context')}={state}"
         for item, state in zip(rollup, states)
@@ -48,32 +48,37 @@ def ci_green(rollup: list[dict]) -> dict:
 
 
 def tests_changed(paths: list[str], body: str) -> dict:
-    """Code changes come with a test change or a stated reason for none."""
+    """Code changes come with a test change or a `No new test: why` line."""
     code = [
         path for path in paths if CODE_PATH.search(path) and not TEST_PATH.search(path)
     ]
     tests = [path for path in paths if TEST_PATH.search(path)]
-    reason = re.search(r"no (new )?tests?\b", body, re.I)
+    reason = re.search(r"\bno (new )?tests?: *\S", body, re.I)
     passed = not code or bool(tests) or bool(reason)
     return check(
         "tests_changed", passed, f"{len(code)} code files, {len(tests)} test files"
     )
 
 
+def section_text(body: str, name: str) -> str | None:
+    """Return a section's text up to the next heading, or None when it is absent."""
+    match = re.search(rf"^#+\s*{name}\s*$(.*?)(?=^#|\Z)", body, re.M | re.I | re.S)
+    return match and re.sub(r"<!--.*?-->", "", match.group(1), flags=re.S).strip()
+
+
 def body_sections(body: str) -> dict:
-    """Every template section is present and no template placeholder is left."""
-    missing = [
-        name
-        for name in SECTIONS
-        if not re.search(rf"^#+\s*{name}\s*$", body, re.M | re.I)
-    ]
+    """Every template section is present, has content and drops the placeholders."""
+    texts = {name: section_text(body, name) for name in SECTIONS}
+    missing = [name for name, text in texts.items() if text is None]
+    empty = [name for name, text in texts.items() if text == ""]
     left = [text for text in PLACEHOLDERS[:3] if text in body]
-    detail = "; ".join(
-        filter(None, [missing and f"missing {missing}", left and f"placeholder {left}"])
-    )
-    return check(
-        "body_sections", not missing and not left, detail or "all sections filled"
-    )
+    problems = [
+        missing and f"missing {missing}",
+        empty and f"empty {empty}",
+        left and f"placeholder {left}",
+    ]
+    detail = "; ".join(filter(None, problems))
+    return check("body_sections", not detail, detail or "all sections filled")
 
 
 def closes_issue(body: str) -> dict:

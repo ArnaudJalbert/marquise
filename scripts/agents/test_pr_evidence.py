@@ -63,6 +63,12 @@ def test_missing_pending_or_failed_ci_fails(rollup: list) -> None:
     assert failed(pr(statusCheckRollup=rollup)) == {"ci_green"}
 
 
+def test_only_skipped_checks_are_not_green() -> None:
+    """A head where every workflow skipped itself has no CI evidence."""
+    rollup = [{"name": "Web", "status": "COMPLETED", "conclusion": "SKIPPED"}]
+    assert failed(pr(statusCheckRollup=rollup)) == {"ci_green"}
+
+
 def test_skipped_checks_do_not_fail_ci() -> None:
     """A workflow that skipped itself for unrelated paths is not a failure."""
     rollup = [
@@ -78,6 +84,8 @@ def test_code_without_tests_needs_a_reason() -> None:
     assert failed(pr(files=files)) == {"tests_changed"}
     reason = BODY.replace("42 passed.", "42 passed. No new test: behaviour unchanged.")
     assert failed(pr(files=files, body=reason)) == set()
+    ran_none = BODY.replace("42 passed.", "No tests were run.")
+    assert failed(pr(files=files, body=ran_none)) == {"tests_changed"}
     assert failed(pr(files=[{"path": "docs/setup.md"}])) == set()
 
 
@@ -90,6 +98,7 @@ def test_code_without_tests_needs_a_reason() -> None:
             "- Describe each change in an imperative sentence.",
             "body_sections",
         ),
+        ("Register stops at the first error. Risk: none known.", "", "body_sections"),
         ("Closes #583", "Closes #123", "closes_issue"),
         ("Closes #583", "Related to #583", "closes_issue"),
     ],
