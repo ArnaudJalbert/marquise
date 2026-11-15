@@ -124,6 +124,8 @@ class ImportScreeningsCommand:
         movie not enriched. Metadata outages and unexpected errors propagate
         after screenings are saved.
         Running it again is safe, because stored movies and screenings are reused.
+        The Raises section covers enrichment only. Source fetch and matching
+        errors also propagate.
 
         Args:
             input_data: The cinema and the dates to import.

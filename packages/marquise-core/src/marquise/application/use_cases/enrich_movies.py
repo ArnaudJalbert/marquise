@@ -169,7 +169,7 @@ async def _enrich(
         if values.title is None or year is None:
             raise
         logger.warning(
-            "Movie %s conflicts with title %r; storing %r",
+            "Movie %s conflicts with title %r; retrying as %r",
             request.movie_id,
             values.title,
             f"{values.title} ({year})",
@@ -231,6 +231,8 @@ class EnrichMoviesUseCase:
     async def execute(self, input_data: InputData) -> OutputData:
         """Enrich every movie with a known identity.
 
+        Unexpected dependency errors propagate and stop enrichment.
+
         Args:
             input_data: The movies to enrich.
 
@@ -241,11 +243,9 @@ class EnrichMoviesUseCase:
         Raises:
             MetadataFailure: If metadata retrieval fails for any reason other
                 than missing or invalid data.
-            MovieWorkflowConflictError: If an identity or write conflict cannot
-                be resolved by appending the release year.
+            MovieWorkflowConflictError: If the stored identity conflicts, or a
+                title conflict persists after appending the release year.
             ValueError: If the clock returns a timestamp without a timezone.
-
-        Unexpected dependency errors propagate and stop enrichment.
         """
         results = [
             await self._enrich_one(movie.movie_id, movie.tmdb_id)

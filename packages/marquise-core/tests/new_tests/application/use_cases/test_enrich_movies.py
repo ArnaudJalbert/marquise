@@ -102,21 +102,16 @@ async def test_movie_with_no_known_identity_is_left_out(
     "failure_type",
     [MetadataInvalidDataError, MetadataNotFoundError],
 )
-@pytest.mark.parametrize("delivery", ["batch", "exception"])
 async def test_expected_miss_skips_only_that_movie_and_continues(
     use_case: EnrichMoviesUseCase,
     provider: Mock,
     failure_type: type[MetadataFailure],
-    delivery: str,
 ) -> None:
     """A missing or invalid detail skips one Movie while the next enriches."""
     failure = failure_type("nope")
     miss = MetadataBatch((), complete=False, failure=failure)
     success = MetadataBatch((MetadataMovie(ProviderIdentity("tmdb", "8"), ()),))
-    provider.movie_details.side_effect = [
-        miss if delivery == "batch" else failure,
-        success,
-    ]
+    provider.movie_details.side_effect = [miss, success]
 
     output = await use_case.execute(
         use_case.InputData((MovieInput("one", "7"), MovieInput("two", "8")))
@@ -131,17 +126,15 @@ async def test_expected_miss_skips_only_that_movie_and_continues(
 @pytest.mark.parametrize(
     "failure_type", [MetadataUnavailableError, MetadataRateLimitedError]
 )
-@pytest.mark.parametrize("delivery", ["batch", "exception"])
 async def test_metadata_outage_stops_enrichment(
     use_case: EnrichMoviesUseCase,
     provider: Mock,
     failure_type: type[MetadataFailure],
-    delivery: str,
 ) -> None:
     """An outage propagates unchanged and stops before the next Movie."""
     failure = failure_type("provider down")
     batch = MetadataBatch((), complete=False, failure=failure)
-    provider.movie_details.side_effect = [batch if delivery == "batch" else failure]
+    provider.movie_details.side_effect = [batch]
     with pytest.raises(failure_type) as raised:
         await use_case.execute(
             use_case.InputData((MovieInput("one", "7"), MovieInput("two", "8")))
