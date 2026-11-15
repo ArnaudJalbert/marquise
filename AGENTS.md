@@ -32,7 +32,7 @@ Read the matching file before the work it names. How rules are written and added
 |---|---|
 | [architecture](docs/agents/rules/architecture.md) | Whenever `coding-clean-architecture` applies: Marquise layer paths and the `marquise` facade |
 | [python](docs/agents/rules/python.md) | Writing or reviewing Python: error locations, uv lockfile, quality gate |
-| [testing](docs/agents/rules/testing.md) | Writing, moving or reviewing tests: test locations, `new_tests/` transition, coverage gate |
+| [testing](docs/agents/rules/testing.md) | Writing, moving or reviewing tests: test locations, coverage gate |
 | [web](docs/agents/rules/web.md) | Working under `web/` |
 | [enforcement](docs/agents/rules/enforcement.md) | Adding a rule or check; deciding what to verify at each stage |
 | [review-and-delivery](docs/agents/rules/review-and-delivery.md) | Filing an issue; opening, reviewing or merging a PR |
