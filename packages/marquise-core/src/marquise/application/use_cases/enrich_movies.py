@@ -165,16 +165,14 @@ async def _enrich(
     try:
         await movies.update_metadata(snapshot, values, request.identity.id, enriched_at)
     except MovieWorkflowConflictError:
-        retry_values = _year_titled(request.movie_id, snapshot, values)
-        if retry_values is None:
+        retry = _to_year_titled_values(request.movie_id, snapshot, values)
+        if retry is None:
             raise
-        await movies.update_metadata(
-            snapshot, retry_values, request.identity.id, enriched_at
-        )
+        await movies.update_metadata(snapshot, retry, request.identity.id, enriched_at)
     return EnrichMovieOutputData(request.movie_id, "enriched")
 
 
-def _year_titled(
+def _to_year_titled_values(
     movie_id: str, snapshot: MovieMetadataSnapshot, values: MovieMetadataValues
 ) -> MovieMetadataValues | None:
     """Return values titled with the release year, or None without title or year.
@@ -185,12 +183,7 @@ def _year_titled(
     if values.title is None or year is None:
         return None
     title = f"{values.title} ({year})"
-    logger.warning(
-        "Movie %s conflicts with title %r; retrying as %r",
-        movie_id,
-        values.title,
-        title,
-    )
+    logger.warning("Movie %s title %r taken; retry %r", movie_id, values.title, title)
     return replace(values, title=title)
 
 
