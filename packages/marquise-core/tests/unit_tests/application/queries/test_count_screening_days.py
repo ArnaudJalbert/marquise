@@ -12,6 +12,7 @@ from marquise.application.readers.screening_movie_reader import ScreeningMovieRe
 from marquise.domain.value_objects import HourFilter, HourRange
 
 NOW = datetime(2026, 10, 31, 16, tzinfo=UTC)
+DAY = date(2026, 11, 3)
 
 
 @pytest.fixture
@@ -124,20 +125,24 @@ def test_invalid_date_range(start: date, end: date) -> None:
 def test_invalid_hour_range(hours: tuple[int, int]) -> None:
     """An empty, inverted or out-of-day hour range is rejected."""
     with pytest.raises(ValueError, match="hours"):
-        HourRange(*hours)
+        CountScreeningDaysQuery.InputData(
+            DAY, DAY, hours=HourFilter(ranges=(HourRange(*hours),))
+        )
 
 
 def test_empty_hour_filter() -> None:
     """An hour filter must name at least one range."""
     with pytest.raises(ValueError, match="hours"):
-        HourFilter(ranges=())
+        CountScreeningDaysQuery.InputData(DAY, DAY, hours=HourFilter(ranges=()))
 
 
 @pytest.mark.parametrize("hours", [("0", 17), (0, 17.0)])
 def test_hour_range_types_are_checked(hours: tuple) -> None:
     """A non-integer hour bound fails where it enters the application."""
     with pytest.raises(TypeError, match="must be int"):
-        HourRange(*hours)
+        CountScreeningDaysQuery.InputData(
+            DAY, DAY, hours=HourFilter(ranges=(HourRange(*hours),))
+        )
 
 
 @pytest.mark.parametrize(
@@ -150,7 +155,7 @@ def test_hour_range_types_are_checked(hours: tuple) -> None:
 def test_hour_filter_types_are_checked(fields: dict) -> None:
     """Hour ranges must be a tuple and the exclusion flag a bool."""
     with pytest.raises(TypeError):
-        HourFilter(**fields)
+        CountScreeningDaysQuery.InputData(DAY, DAY, hours=HourFilter(**fields))
 
 
 @pytest.mark.parametrize(

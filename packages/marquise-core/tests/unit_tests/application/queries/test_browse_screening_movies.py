@@ -12,6 +12,8 @@ from marquise.application.readers.screening_movie_reader import ScreeningMovieRe
 from marquise.application.repositories.page import Page
 from marquise.domain.value_objects import HourFilter, HourRange
 
+DAY = date(2026, 11, 3)
+
 
 @pytest.mark.asyncio
 async def test_montreal_dst_window_and_single_clock() -> None:
@@ -54,16 +56,15 @@ def test_invalid_request(start: date, end: date, page: int) -> None:
 def test_invalid_hour_range(hours: tuple[int, int]) -> None:
     """An empty, inverted or out-of-day range is rejected even beside a valid one."""
     with pytest.raises(ValueError, match="hours"):
-        HourRange(
-            start=hours[0],
-            end=hours[1],
+        BrowseScreeningMoviesQuery.InputData(
+            DAY, DAY, hours=HourFilter(ranges=(HourRange(*hours),))
         )
 
 
 def test_empty_hour_filter() -> None:
     """An hour filter must name at least one range."""
     with pytest.raises(ValueError, match="hours"):
-        HourFilter(ranges=())
+        BrowseScreeningMoviesQuery.InputData(DAY, DAY, hours=HourFilter(ranges=()))
 
 
 @pytest.mark.asyncio
