@@ -14,13 +14,13 @@ After each deploy, the workflow smoke-tests the API (`/health`, `/ready`,
 `/v1/cinemas?size=1`) and the interface root. It needs the `FLY_API_TOKEN`
 repository secret.
 
-## Makefile Shortcuts
+## just recipes
 
-Deployments are centrally defined in the root `Makefile` so both local operators and CI workflows execute identical commands:
+Deployments are defined in the root `justfile`, so local operators and CI run the same commands:
 
 ```bash
-make deploy-api
-make deploy-interface
+just deploy-api
+just deploy-interface
 ```
 
 ## Validation

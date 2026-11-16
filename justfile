@@ -1,5 +1,5 @@
-# Local stack on a copy of production. Recipes load `.env.local` only;
-# `copy-prod-db` alone reads `.env`, as the source of the dump.
+# Project commands and the local stack on a copy of production. Recipes load
+# `.env.local` only; `copy-prod-db` alone reads `.env`, as the source of the dump.
 
 set dotenv-filename := ".env.local"
 set dotenv-override
@@ -73,3 +73,47 @@ stop-stack:
 # Stop postgres and delete its volume
 destroy-local-db:
     {{ compose }} down --volumes db
+
+# Core, API and CLI test suites
+test: test-core test-api test-cli
+
+# Core unit tests
+test-core:
+    uv run --package marquise-core pytest packages/marquise-core/tests/unit_tests/ -q
+
+# Core integration tests on a disposable postgres; refuses the local copy
+test-core-integrations $DISPOSABLE_DATABASE_URL:
+    case "$DISPOSABLE_DATABASE_URL" in *:55432/*) echo "Refusing: that is the local production copy." >&2; exit 1 ;; esac
+    DATABASE_URL="$DISPOSABLE_DATABASE_URL" uv run pytest integration_tests/ -q
+
+# API tests
+test-api:
+    uv run --package marquise-api pytest apps/marquise-api/tests -q
+
+# CLI tests
+test-cli:
+    uv run --package marquise-cli pytest apps/marquise-cli/tests -q
+
+# Run the CLI against the local copy
+cli *args:
+    uv run --package marquise-cli marquise {{ args }}
+
+# ruff check
+lint:
+    uv run ruff check .
+
+# ruff format
+format:
+    uv run ruff format .
+
+# Type check marquise-core
+ty:
+    uv run ty check packages/marquise-core/src
+
+# Fly deploy, also run by CI
+deploy-api:
+    flyctl deploy . --config apps/marquise-api/fly.toml --remote-only
+
+# Fly deploy, also run by CI
+deploy-interface:
+    cd web && flyctl deploy . --config apps/marquise-interface/fly.toml --remote-only

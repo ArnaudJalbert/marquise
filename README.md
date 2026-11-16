@@ -40,7 +40,7 @@ pnpm dev
 
 ## Checks
 
-From the repository root: `make test`, `make lint`, `make format`, and `make ty`.
+From the repository root: `just test`, `just lint`, `just format`, and `just ty`.
 
 From `web/`: `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
 
