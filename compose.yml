@@ -1,0 +1,22 @@
+# Local stack on a copy of production. Driven by the justfile; see `just --list`.
+name: marquise
+
+services:
+  db:
+    # Same major version as the Supabase production database.
+    image: postgres:17
+    environment:
+      POSTGRES_USER: marquise
+      POSTGRES_PASSWORD: marquise
+      POSTGRES_DB: marquise
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "marquise", "-d", "marquise"]
+      interval: 2s
+      retries: 15
+
+volumes:
+  db-data:
