@@ -82,9 +82,18 @@ test-core:
     uv run --package marquise-core pytest packages/marquise-core/tests/unit_tests/ -q
 
 # Core integration tests on a disposable postgres; refuses the local copy
-test-core-integrations $DISPOSABLE_DATABASE_URL:
-    case "$DISPOSABLE_DATABASE_URL" in *:55432/*) echo "Refusing: that is the local production copy." >&2; exit 1 ;; esac
+test-core-integrations $DISPOSABLE_DATABASE_URL: (_refuse-local-copy DISPOSABLE_DATABASE_URL)
     DATABASE_URL="$DISPOSABLE_DATABASE_URL" uv run pytest integration_tests/ -q
+
+# Fail on a URL that reaches the local copy's port; an unparsable URL fails too
+_refuse-local-copy $DISPOSABLE_DATABASE_URL:
+    #!/usr/bin/env python3
+    import os, sys
+    from urllib.parse import parse_qs, urlsplit
+    url = urlsplit(os.environ["DISPOSABLE_DATABASE_URL"])
+    ports = parse_qs(url.query).get("port") or [url.port or os.environ.get("PGPORT", 5432)]
+    if 55432 in {int(port) for port in ports}:
+        sys.exit("Refusing: that is the local production copy.")
 
 # API tests
 test-api:
@@ -95,8 +104,9 @@ test-cli:
     uv run --package marquise-cli pytest apps/marquise-cli/tests -q
 
 # Run the CLI against the local copy
+[positional-arguments]
 cli *args:
-    uv run --package marquise-cli marquise {{ args }}
+    uv run --package marquise-cli marquise "$@"
 
 # ruff check
 lint:
