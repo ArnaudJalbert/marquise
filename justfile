@@ -81,19 +81,26 @@ test: test-core test-api test-cli
 test-core:
     uv run --package marquise-core pytest packages/marquise-core/tests/unit_tests/ -q
 
-# Core integration tests on a disposable postgres; refuses the local copy
-test-core-integrations $DISPOSABLE_DATABASE_URL: (_refuse-local-copy DISPOSABLE_DATABASE_URL)
+# Core integration tests on a disposable postgres; refuses one holding the marquise schema
+test-core-integrations $DISPOSABLE_DATABASE_URL: (_refuse-marquise-schema DISPOSABLE_DATABASE_URL)
     DATABASE_URL="$DISPOSABLE_DATABASE_URL" uv run pytest integration_tests/ -q
 
-# Fail on a URL that reaches the local copy's port; an unparsable URL fails too
-_refuse-local-copy $DISPOSABLE_DATABASE_URL:
-    #!/usr/bin/env python3
-    import os, sys
-    from urllib.parse import parse_qs, urlsplit
-    url = urlsplit(os.environ["DISPOSABLE_DATABASE_URL"])
-    ports = parse_qs(url.query).get("port") or [url.port or os.environ.get("PGPORT", 5432)]
-    if 55432 in {int(port) for port in ports}:
-        sys.exit("Refusing: that is the local production copy.")
+# Connect as the tests do and fail if the database holds the marquise schema (the copy or production)
+_refuse-marquise-schema $DISPOSABLE_DATABASE_URL:
+    #!/usr/bin/env -S uv run python
+    import asyncio, os, sys
+    import asyncpg
+    from marquise.infrastructure.supabase.database import sanitize_dsn
+
+    async def holds_marquise_schema() -> bool:
+        conn = await asyncpg.connect(sanitize_dsn(os.environ["DISPOSABLE_DATABASE_URL"]))
+        try:
+            return await conn.fetchval("SELECT to_regnamespace('marquise') IS NOT NULL")
+        finally:
+            await conn.close()
+
+    if asyncio.run(holds_marquise_schema()):
+        sys.exit("Refusing: this database holds the marquise schema, so it is not disposable.")
 
 # API tests
 test-api:
