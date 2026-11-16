@@ -42,10 +42,11 @@ start-local-stack-reload: start-db
     set -euo pipefail
     {{ compose }} stop api interface
     trap 'trap - EXIT INT TERM; kill 0' EXIT INT TERM
-    # When either half exits, stop the other (macOS bash 3.2 has no `wait -n`).
-    ({{ api_reload }} || :; kill 0) &
-    ({{ vite_reload }} || :; kill 0) &
-    wait
+    {{ api_reload }} & api=$!
+    {{ vite_reload }} & vite=$!
+    # When either half exits, the trap stops the other (macOS bash 3.2 has no `wait -n`).
+    while kill -0 "$api" 2>/dev/null && kill -0 "$vite" 2>/dev/null; do sleep 1; done
+    exit 1
 
 # Replace the local marquise schema with a pg_dump of production
 copy-prod-db:
