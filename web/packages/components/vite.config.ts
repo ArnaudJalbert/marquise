@@ -8,14 +8,8 @@ const externalLibraries = [
   "react",
   "react-dom",
   "react/jsx-runtime",
-  "@radix-ui/react-hover-card",
-  "@radix-ui/react-popover",
-  "@radix-ui/react-slot",
-  "class-variance-authority",
-  "clsx",
   "lucide-react",
   "marquise-client",
-  "tailwind-merge",
 ];
 
 export default defineConfig({

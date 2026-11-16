@@ -10,8 +10,8 @@ import {
   type ScreeningFilters,
   type ScreeningApi,
 } from "marquise-client";
-import { useResource } from "../discovery/use-resource";
-import { usePageResource } from "../discovery/use-page-resource";
+import { useResource } from "./use-resource";
+import { usePageResource } from "./use-page-resource";
 import { MinimalCatalogue } from "./MinimalCatalogue";
 import { decodePathId } from "./catalogue-format";
 import {

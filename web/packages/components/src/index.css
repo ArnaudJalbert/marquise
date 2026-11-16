@@ -2,7 +2,6 @@
 @import "tw-animate-css";
 @import "@fontsource-variable/geist";
 @import "@fontsource-variable/geist-mono";
-@import "./components/discovery/discovery.css";
 
 /* Include shared component utilities when an app consumes this CSS from source. */
 @source "./";
