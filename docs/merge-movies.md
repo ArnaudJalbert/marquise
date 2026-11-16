@@ -45,7 +45,6 @@ matcher refuses safely rather than claiming success.
 
 ## Migration and rollback
 
-Apply `scripts/migrations/359-movie-enrichment-state.sql` before deploying the
-metadata workflows. Reverting the application disables these commands. A
-committed data merge has no automatic reverse operation; retain the approved
-preview and a separately reviewed backup and restore procedure.
+Reverting the application disables these commands. A committed data merge has
+no automatic reverse operation; retain the approved preview and a separately
+reviewed backup and restore procedure.
