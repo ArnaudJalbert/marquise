@@ -57,6 +57,7 @@ copy-prod-db:
         *@localhost:*|*@localhost/*|*@127.0.0.1:*|*@127.0.0.1/*|*@db:*|*@db/*) ;; \
         *) echo "Refusing: .env.local DATABASE_URL is not local." >&2; exit 1 ;; \
     esac
+    [ -f .env ] || { echo "No .env found: copy-prod-db reads the production DATABASE_URL from it." >&2; exit 1; }
     {{ compose }} up -d --wait db
     PROD_DATABASE_URL="$(sed -n 's/^DATABASE_URL=//p' .env | tr -d "\"'")" \
         {{ compose }} exec -T -e PROD_DATABASE_URL db \
