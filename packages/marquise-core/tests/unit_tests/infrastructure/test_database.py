@@ -39,10 +39,16 @@ def test_sanitize_dsn_encodes_at_in_password() -> None:
 
 
 def test_sanitize_dsn_encodes_percent_in_password() -> None:
-    """Verify a % in the password is percent-encoded as %25."""
-    dsn = "postgresql://user:pw%abc@host:5432/db"
+    """Verify a % that starts no escape sequence is percent-encoded as %25."""
+    dsn = "postgresql://user:pw%zzc@host:5432/db"
     result = sanitize_dsn(dsn)
     assert "%25" in result
+
+
+def test_sanitize_dsn_keeps_encoded_password_unchanged() -> None:
+    """Verify an already percent-encoded password is not encoded twice."""
+    dsn = "postgresql://user:pw%23abc%40@host:5432/db"
+    assert sanitize_dsn(dsn) == dsn
 
 
 def test_sanitize_dsn_unmatched_format_returns_asis() -> None:
