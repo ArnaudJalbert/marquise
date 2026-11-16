@@ -89,6 +89,8 @@ test-core-integrations $DISPOSABLE_DATABASE_URL: (_refuse-marquise-schema DISPOS
 _refuse-marquise-schema $DISPOSABLE_DATABASE_URL:
     #!/usr/bin/env -S uv run python
     import asyncio, os, sys
+    from urllib.parse import unquote
+
     import asyncpg
     from marquise.infrastructure.supabase.database import sanitize_dsn
 
@@ -102,7 +104,8 @@ _refuse-marquise-schema $DISPOSABLE_DATABASE_URL:
             await conn.close()
 
     # The check covers one host, so refuse anything that can resolve to several.
-    if "," in url + os.environ.get("PGHOST", "") or "service=" in url or "PGSERVICE" in os.environ:
+    decoded = unquote(url) + os.environ.get("PGHOST", "")
+    if "," in decoded or "service=" in decoded or "PGSERVICE" in os.environ:
         sys.exit("Refusing: use a single-host URL without a service.")
     try:
         holds_schema = asyncio.run(holds_marquise_schema())
