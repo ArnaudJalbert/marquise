@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS marquise.cinema_source_assignments (
 
 CREATE TABLE IF NOT EXISTS marquise.movies (
     id               TEXT PRIMARY KEY,
-    title            TEXT NOT NULL UNIQUE,
+    title            TEXT NOT NULL,
     release_year     INTEGER,
     directors        TEXT,
     cast_members     TEXT,
@@ -46,6 +46,10 @@ CREATE TABLE IF NOT EXISTS marquise.movies (
     tmdb_vote_count  INTEGER,
     metadata_enriched_at TIMESTAMPTZ
 );
+
+-- Titles differing only by case are one film, so the import reuses the row.
+CREATE UNIQUE INDEX IF NOT EXISTS movies_title_lower_key
+    ON marquise.movies (lower(title));
 
 CREATE TABLE IF NOT EXISTS marquise.screenings (
     id          TEXT PRIMARY KEY,

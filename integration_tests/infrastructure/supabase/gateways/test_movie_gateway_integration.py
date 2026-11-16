@@ -181,6 +181,23 @@ async def test_save_updates_existing_on_title_conflict(
 
 
 @pytest.mark.asyncio
+async def test_title_differing_only_by_case_reuses_the_existing_movie(
+    movie_gateway: SupabaseMovieGateway,
+) -> None:
+    """Titles are unique ignoring case, so MINOTAUR reuses Minotaur (#644)."""
+    await movie_gateway.save(
+        movie_id="tmdb-row", title="Minotaur", release_year=2026, tmdb_id="848700"
+    )
+
+    saved = await movie_gateway.save(
+        movie_id="source-row", title="MINOTAUR", update_existing=False
+    )
+
+    assert (saved["id"], saved["title"]) == ("tmdb-row", "Minotaur")
+    assert (await movie_gateway.find_all()).total == 1
+
+
+@pytest.mark.asyncio
 async def test_save_handles_minimal_fields(
     movie_gateway: SupabaseMovieGateway,
 ) -> None:

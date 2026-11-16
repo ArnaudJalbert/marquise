@@ -55,7 +55,7 @@ class SupabaseMovieGateway:
     ) -> dict:
         """Insert or upsert a movie row.
 
-        Uses a unique constraint on title.
+        Uses the unique index on the title, ignoring case.
 
         Args:
             movie_id: Unique identifier.
@@ -93,7 +93,7 @@ class SupabaseMovieGateway:
                      tmdb_rating, tmdb_vote_count)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8,
                         $9, $10, $11, $12, $13, $14, $15, $16)
-                ON CONFLICT (title) DO UPDATE
+                ON CONFLICT ((lower(title))) DO UPDATE
                     SET release_year = COALESCE(EXCLUDED.release_year,
                                                 movies.release_year),
                         directors = COALESCE(EXCLUDED.directors,
