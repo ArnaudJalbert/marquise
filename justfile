@@ -92,14 +92,24 @@ _refuse-marquise-schema $DISPOSABLE_DATABASE_URL:
     import asyncpg
     from marquise.infrastructure.supabase.database import sanitize_dsn
 
+    url = os.environ["DISPOSABLE_DATABASE_URL"]
+
     async def holds_marquise_schema() -> bool:
-        conn = await asyncpg.connect(sanitize_dsn(os.environ["DISPOSABLE_DATABASE_URL"]))
+        conn = await asyncpg.connect(sanitize_dsn(url))
         try:
             return await conn.fetchval("SELECT to_regnamespace('marquise') IS NOT NULL")
         finally:
             await conn.close()
 
-    if asyncio.run(holds_marquise_schema()):
+    # The check covers one host, so refuse anything that can resolve to several.
+    if "," in url + os.environ.get("PGHOST", "") or "service=" in url or "PGSERVICE" in os.environ:
+        sys.exit("Refusing: use a single-host URL without a service.")
+    try:
+        holds_schema = asyncio.run(holds_marquise_schema())
+    except Exception:
+        # The error may quote connection settings, passwords included.
+        sys.exit("Refusing: could not check the database.")
+    if holds_schema:
         sys.exit("Refusing: this database holds the marquise schema, so it is not disposable.")
 
 # API tests
