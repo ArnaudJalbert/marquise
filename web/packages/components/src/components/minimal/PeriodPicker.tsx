@@ -11,7 +11,7 @@ import {
   type PointerEvent,
   type Ref,
 } from "react";
-import { useResource } from "../discovery/use-resource";
+import { useResource } from "./use-resource";
 import { addDays, formatRangeDate } from "./catalogue-format";
 import type { CatalogueDayCount, MinimalCatalogueProps } from "./catalogue-types";
 import {
