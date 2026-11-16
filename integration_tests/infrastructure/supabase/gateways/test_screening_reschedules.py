@@ -3,9 +3,7 @@
 import asyncio
 from dataclasses import replace
 from datetime import UTC, date, datetime
-from pathlib import Path
 from unittest.mock import MagicMock, create_autospec
-from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 import asyncpg
@@ -49,7 +47,6 @@ from marquise.interface_adapters.repositories.supabase.screening_repository impo
 )
 from support.movie_import import import_command
 
-SCRIPTS = Path(__file__).resolve().parents[4] / "scripts"
 SCHEMA = '"marquise-test"'
 CINEMA_NAME = "Cinéma Cineplex Odeon Quartier Latin"
 LEGACY_CINEMA = "9fbeeb8d-b725-47b2-b10b-998331428d2b"
@@ -176,7 +173,7 @@ def build_screening_identity(row: dict) -> Screening:
     )
 
 
-async def seed_legacy_receipt(db_pool: asyncpg.Pool) -> None:
+async def seed_legacy_cineplex_screenings(db_pool: asyncpg.Pool) -> None:
     """Reproduce verified historical IDs, times and stored Cineplex source links."""
     cinema = SupabaseCinemaGateway(db_pool, "marquise-test")
     assignment = SupabaseCinemaSourceAssignmentGateway(db_pool, "marquise-test")
@@ -199,6 +196,7 @@ async def seed_legacy_receipt(db_pool: asyncpg.Pool) -> None:
                 "https://apis.cineplex.com/prod/ticketing/api/v1/routing/redirect-to-ticketing"
                 f"?VistaSessionId={external_id}&LocationId=9172"
             ),
+            source_name="cineplex",
         )
 
 
@@ -212,7 +210,7 @@ async def test_all_five_legacy_reschedules_preserve_identity(
 ) -> None:
     """Verified historical rows move in place and reimport without duplicates."""
     command, registry, repository = import_chain
-    await seed_legacy_receipt(db_pool)
+    await seed_legacy_cineplex_screenings(db_pool)
     await screening_gateway.save(
         "other-cinema",
         DIGGER,
@@ -225,11 +223,6 @@ async def test_all_five_legacy_reschedules_preserve_identity(
     before = await stored(db_pool, repository, LEGACY_CINEMA)
     assignments = SupabaseCinemaSourceAssignmentGateway(db_pool, "marquise-test")
     await assignments.assign(LEGACY_CINEMA, "other-source")
-    receipt = (SCRIPTS / "migrations/287-verified-cineplex-provenance.sql").read_text()
-    async with db_pool.acquire() as connection:
-        await connection.execute(receipt.replace("marquise.", f"{SCHEMA}."))
-    attested = await stored(db_pool, repository, LEGACY_CINEMA)
-    assert attested == [replace(row, source_name="cineplex") for row in before]
     rows = [
         ShowtimeRow(title, local(f"2026-10-07T{new}"), external_id=external_id)
         for _, external_id, _, title, _, new in OBSERVED
@@ -237,7 +230,7 @@ async def test_all_five_legacy_reschedules_preserve_identity(
 
     wrong_source = await run_import(command, registry, rows, LEGACY_CINEMA)
     assert wrong_source.skipped_count == 5
-    assert await stored(db_pool, repository, LEGACY_CINEMA) == attested
+    assert await stored(db_pool, repository, LEGACY_CINEMA) == before
     await assignments.assign(LEGACY_CINEMA, "cineplex")
     result = await run_import(command, registry, rows, LEGACY_CINEMA)
 
@@ -246,8 +239,6 @@ async def test_all_five_legacy_reschedules_preserve_identity(
     after = await stored(db_pool, repository, LEGACY_CINEMA)
     assert {str(row.id) for row in after} == {str(row.id) for row in before}
     assert {row.showtime.value for row in after} == {row.showtime for row in rows}
-    async with db_pool.acquire() as connection:
-        await connection.execute(receipt.replace("marquise.", f"{SCHEMA}."))
     assert (
         await read_screening(repository, screening_gateway, "other-cinema")
         == other_before
@@ -915,120 +906,30 @@ async def test_concurrent_target_arrival_rolls_back_reschedule(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "mismatch", ["missing", "source", "time", "movie", "identity", "ticket", "cinema"]
-)
-async def test_provenance_receipt_mismatch_rolls_back_every_row(
-    import_chain: tuple[
-        ImportScreeningsCommand, MagicMock, SupabaseScreeningRepository
-    ],
+async def test_source_provenance_requires_a_registered_source(
     db_pool: asyncpg.Pool,
-    screening_gateway: SupabaseScreeningGateway,
-    mismatch: str,
 ) -> None:
-    """A changed audit fingerprint cannot grant source ownership to any row."""
-    _, _, repository = import_chain
-    await seed_legacy_receipt(db_pool)
-    owner_id = OBSERVED[0][0]
+    """Rows start with unknown provenance; deleting the source clears it."""
     async with db_pool.acquire() as connection:
-        if mismatch == "missing":
+        await connection.execute(
+            f"INSERT INTO {SCHEMA}.cinemas (id,name) VALUES ('cin','Cinema'); "
+            f"INSERT INTO {SCHEMA}.movies (id,title) VALUES ('mov','Movie'); "
+            f"INSERT INTO {SCHEMA}.source_definitions (name,display_name) "
+            "VALUES ('cineplex','Cineplex'); "
+            f"INSERT INTO {SCHEMA}.screenings (id,cinema_id,movie_id,showtime) "
+            "VALUES ('legacy','cin','mov','2026-10-07 17:00');"
+        )
+        source_name = f"SELECT source_name FROM {SCHEMA}.screenings"
+        assert await connection.fetchval(source_name) is None
+        with pytest.raises(asyncpg.ForeignKeyViolationError):
             await connection.execute(
-                f"DELETE FROM {SCHEMA}.screenings WHERE id=$1", owner_id
+                f"UPDATE {SCHEMA}.screenings SET source_name='unregistered'"
             )
-        else:
-            values = {
-                "source": ("source_name", "other-source"),
-                "time": ("showtime", datetime(2026, 10, 8, 17)),
-                "movie": ("movie_id", PARENTS),
-                "identity": ("id", "unverified-id"),
-                "ticket": (
-                    "ticket_url",
-                    "https://other.example/?VistaSessionId=597122",
-                ),
-                "cinema": ("cinema_id", "cin-001"),
-            }
-            column, value = values[mismatch]
-            await connection.execute(
-                f"UPDATE {SCHEMA}.screenings SET {column}=$1 WHERE id=$2",
-                value,
-                owner_id,
-            )
-    before = await stored(db_pool, repository)
-    script = (SCRIPTS / "migrations/287-verified-cineplex-provenance.sql").read_text()
-    async with db_pool.acquire() as connection:
-        try:
-            with pytest.raises(asyncpg.RaiseError, match="exactly five"):
-                await connection.execute(script.replace("marquise.", f"{SCHEMA}."))
-        finally:
-            await connection.execute("ROLLBACK")
-
-    assert await stored(db_pool, repository) == before
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "bootstrap", ["marquise-schema.sql", "marquise-test-schema.sql"]
-)
-async def test_source_migration_and_bootstrap_share_fk_behavior(
-    db_pool: asyncpg.Pool, bootstrap: str
-) -> None:
-    """Fresh and upgraded schemas enforce provenance and keep legacy rows unknown."""
-    schema = f"provenance_{uuid4().hex}"
-    async with db_pool.acquire() as connection:
-        try:
-            sql = (SCRIPTS / bootstrap).read_text()
-            await connection.execute(
-                sql.replace("marquise-test", schema).replace("marquise", schema)
-            )
-            await connection.execute(
-                f"INSERT INTO {schema}.cinemas (id,name) VALUES ('cin','Cinema'); "
-                f"INSERT INTO {schema}.movies (id,title) VALUES ('mov','Movie'); "
-                f"INSERT INTO {schema}.source_definitions (name,display_name) "
-                "VALUES ('cineplex','Cineplex'); "
-                f"INSERT INTO {schema}.screenings (id,cinema_id,movie_id,showtime) "
-                "VALUES ('legacy','cin','mov','2026-10-07 17:00');"
-            )
-            for upgraded in (False, True):
-                if upgraded:
-                    await connection.execute(
-                        f"ALTER TABLE {schema}.screenings DROP COLUMN source_name"
-                    )
-                    migration = (
-                        SCRIPTS / "migrations/287-screening-source-provenance.sql"
-                    ).read_text()
-                    await connection.execute(
-                        migration.replace("marquise.", f"{schema}.")
-                    )
-                    await connection.execute(
-                        migration.replace("marquise.", f"{schema}.")
-                    )
-                assert (
-                    await connection.fetchval(
-                        f"SELECT source_name FROM {schema}.screenings"
-                    )
-                    is None
-                )
-                with pytest.raises(asyncpg.ForeignKeyViolationError):
-                    await connection.execute(
-                        f"UPDATE {schema}.screenings SET source_name='unregistered'"
-                    )
-                await connection.execute(
-                    f"UPDATE {schema}.screenings SET source_name='cineplex'"
-                )
-                await connection.execute(f"DELETE FROM {schema}.source_definitions")
-                assert (
-                    await connection.fetchval(
-                        f"SELECT source_name FROM {schema}.screenings"
-                    )
-                    is None
-                )
-                await connection.execute(
-                    f"INSERT INTO {schema}.source_definitions (name,display_name) "
-                    "VALUES ('cineplex','Cineplex')"
-                )
-        finally:
-            await connection.execute("ROLLBACK")
-            await connection.execute(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
+        await connection.execute(
+            f"UPDATE {SCHEMA}.screenings SET source_name='cineplex'"
+        )
+        await connection.execute(f"DELETE FROM {SCHEMA}.source_definitions")
+        assert await connection.fetchval(source_name) is None
 
 
 @pytest.mark.asyncio

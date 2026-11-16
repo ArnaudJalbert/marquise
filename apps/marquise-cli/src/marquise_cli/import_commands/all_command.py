@@ -81,11 +81,12 @@ async def run_import_all(
     Returns:
         One ``CinemaImportResult`` per cinema processed.
     """
+    today = date.today()
+    end_date = today + timedelta(days=days - 1)
+    print(f"Starting bulk import: {today} → {end_date} ({days} days)")
+
     await factory.initialize()
     try:
-        today = date.today()
-        end_date = today + timedelta(days=days - 1)
-
         list_cinemas_use_case = factory.list_cinemas_use_case
         cinemas_response = await list_cinemas_use_case.execute(
             list_cinemas_use_case.InputData()
@@ -228,10 +229,6 @@ def _print_results(results: list[CinemaImportResult]) -> int:
 
 def import_all(days: int) -> None:
     """Import showtimes for every cinema that has a source assignment."""
-    today = date.today()
-    end_date = today + timedelta(days=days - 1)
-    print(f"Starting bulk import: {today} → {end_date} ({days} days)")
-
     results = asyncio.run(run_import_all(MarquiseFactory(), days))
 
     if _print_results(results):

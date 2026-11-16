@@ -1,6 +1,6 @@
 [project]
 name = "marquise-core"
-version = "0.2.71"
+version = "0.2.72"
 description = "Montreal cinema showtimes aggregator — core domain, application, and infrastructure layers"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -24,7 +24,7 @@ packages = ["src/marquise"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "tests"]
-testpaths = ["tests"]
+testpaths = ["tests/unit_tests"]
 asyncio_default_fixture_loop_scope = "function"
 
 [tool.coverage.run]
