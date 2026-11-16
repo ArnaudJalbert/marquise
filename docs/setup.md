@@ -150,9 +150,9 @@ existing tables.
 
 ## Integration tests
 
-Integration tests use a real database. Run
-[scripts/marquise-test-schema.sql](../scripts/marquise-test-schema.sql) against a
-separate test database if needed, then point `DATABASE_URL` at it.
+Point `DATABASE_URL` at a disposable PostgreSQL database. The pool fixture loads
+[scripts/marquise-schema.sql](../scripts/marquise-schema.sql) into `"marquise-test"`
+and truncates the test tables before each test.
 
 Run integration tests:
 
