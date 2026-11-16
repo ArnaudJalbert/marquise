@@ -19,6 +19,10 @@ async def seed(
     """Seed linked canonical and independent source screenings with all fields."""
     async with pool.acquire() as conn:
         await conn.execute(
+            f"INSERT INTO {TABLE}.source_definitions(name,display_name) "
+            "VALUES ('source','Source')"
+        )
+        await conn.execute(
             f"INSERT INTO {TABLE}.cinemas(id,name) VALUES ('cinema','Cinema')"
         )
         for index, title in enumerate(titles):
