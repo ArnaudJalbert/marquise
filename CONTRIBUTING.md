@@ -103,21 +103,24 @@ Importing `marquise.infrastructure.di.container` runs `load_dotenv()`, so a loca
 
 ## Commands
 
-### Makefile shortcuts
+### just recipes
 
 ```bash
-make test                    # core, API and CLI test suites
-make test-core               # core unit tests
-make test-core-integrations  # core integration tests (disposable PostgreSQL DATABASE_URL)
-make test-api                # API tests
-make test-cli                # CLI tests
-make cli                     # CLI
-make lint                    # ruff check
-make format                  # ruff format
-make ty                      # type check marquise-core
-make deploy-api              # Fly deploy, also run by CI
-make deploy-interface        # Fly deploy, also run by CI
+just test                                   # core, API and CLI test suites
+just test-core                              # core unit tests
+just test-core-integrations <database-url>  # core integration tests on a disposable PostgreSQL
+just test-api                               # API tests
+just test-cli                               # CLI tests
+just cli <args>                             # CLI, against the local copy
+just lint                                   # ruff check
+just format                                 # ruff format
+just ty                                     # type check marquise-core
+just deploy-api                             # Fly deploy, also run by CI
+just deploy-interface                       # Fly deploy, also run by CI
 ```
+
+Recipes load `.env.local`, so `just cli` reaches the local copy, not production.
+The local stack recipes are under [Local testing](#local-testing).
 
 ### Manual equivalents
 

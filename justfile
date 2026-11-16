@@ -1,5 +1,5 @@
-# Local stack on a copy of production. Recipes load `.env.local` only;
-# `copy-prod-db` alone reads `.env`, as the source of the dump.
+# Project commands and the local stack on a copy of production. Recipes load
+# `.env.local` only; `copy-prod-db` alone reads `.env`, as the source of the dump.
 
 set dotenv-filename := ".env.local"
 set dotenv-override
@@ -73,3 +73,77 @@ stop-stack:
 # Stop postgres and delete its volume
 destroy-local-db:
     {{ compose }} down --volumes db
+
+# Core, API and CLI test suites
+test: test-core test-api test-cli
+
+# Core unit tests
+test-core:
+    uv run --package marquise-core pytest packages/marquise-core/tests/unit_tests/ -q
+
+# Core integration tests on a disposable postgres; refuses one holding the marquise schema
+test-core-integrations $DISPOSABLE_DATABASE_URL: (_refuse-marquise-schema DISPOSABLE_DATABASE_URL)
+    DATABASE_URL="$DISPOSABLE_DATABASE_URL" uv run pytest integration_tests/ -q
+
+# Connect as the tests do and fail if the database holds the marquise schema (the copy or production)
+_refuse-marquise-schema $DISPOSABLE_DATABASE_URL:
+    #!/usr/bin/env -S uv run python
+    import asyncio, os, sys
+    from urllib.parse import unquote
+
+    import asyncpg
+    from marquise.infrastructure.supabase.database import sanitize_dsn
+
+    url = os.environ["DISPOSABLE_DATABASE_URL"]
+
+    async def holds_marquise_schema() -> bool:
+        conn = await asyncpg.connect(sanitize_dsn(url))
+        try:
+            return await conn.fetchval("SELECT to_regnamespace('marquise') IS NOT NULL")
+        finally:
+            await conn.close()
+
+    # The check covers one host, so refuse anything that can resolve to several.
+    decoded = unquote(url) + os.environ.get("PGHOST", "")
+    if "," in decoded or "service=" in decoded or "PGSERVICE" in os.environ:
+        sys.exit("Refusing: use a single-host URL without a service.")
+    try:
+        holds_schema = asyncio.run(holds_marquise_schema())
+    except Exception:
+        # The error may quote connection settings, passwords included.
+        sys.exit("Refusing: could not check the database.")
+    if holds_schema:
+        sys.exit("Refusing: this database holds the marquise schema, so it is not disposable.")
+
+# API tests
+test-api:
+    uv run --package marquise-api pytest apps/marquise-api/tests -q
+
+# CLI tests
+test-cli:
+    uv run --package marquise-cli pytest apps/marquise-cli/tests -q
+
+# Run the CLI against the local copy
+[positional-arguments]
+cli *args:
+    uv run --package marquise-cli marquise "$@"
+
+# ruff check
+lint:
+    uv run ruff check .
+
+# ruff format
+format:
+    uv run ruff format .
+
+# Type check marquise-core
+ty:
+    uv run ty check packages/marquise-core/src
+
+# Fly deploy, also run by CI
+deploy-api:
+    flyctl deploy . --config apps/marquise-api/fly.toml --remote-only
+
+# Fly deploy, also run by CI
+deploy-interface:
+    cd web && flyctl deploy . --config apps/marquise-interface/fly.toml --remote-only
