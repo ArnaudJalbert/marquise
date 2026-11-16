@@ -14,8 +14,8 @@ start-db:
         echo "No production copy found. Run: just copy-prod-db" >&2; exit 1; \
     fi
 
-api := "uv run uvicorn marquise_api.app:create_app --factory --port 18000 --reload --reload-dir apps/marquise-api/src --reload-dir packages/marquise-core/src"
-vite := "pnpm --dir web --filter marquise-interface dev --port 15173 --strictPort"
+api_reload := "uv run uvicorn marquise_api.app:create_app --factory --port 18000 --reload --reload-dir apps/marquise-api/src --reload-dir packages/marquise-core/src"
+vite_reload := "pnpm --dir web --filter marquise-interface dev --port 15173 --strictPort"
 
 # Start postgres and the API image
 start-api: start-db
@@ -29,12 +29,12 @@ start-local-stack: start-api
 # Run Vite with hot reload against the API image
 start-interface-reload: start-api
     {{ compose }} stop interface
-    {{ vite }}
+    {{ vite_reload }}
 
 # Run uvicorn with reload on the host against the local copy
 start-api-reload: start-db
-    {{ compose }} stop api interface
-    {{ api }}
+    {{ compose }} stop api
+    {{ api_reload }}
 
 # Run uvicorn and Vite with reload together; Ctrl-C stops both, postgres keeps running
 start-local-stack-reload: start-db
@@ -42,8 +42,8 @@ start-local-stack-reload: start-db
     set -euo pipefail
     {{ compose }} stop api interface
     trap 'trap - EXIT INT TERM; kill 0' EXIT INT TERM
-    {{ api }} &
-    {{ vite }} &
+    {{ api_reload }} &
+    {{ vite_reload }} &
     wait
 
 # Replace the local marquise schema with a pg_dump of production

@@ -25,8 +25,8 @@ services:
     environment:
       # Same database as .env.local, reached over the Compose network.
       DATABASE_URL: postgresql://marquise:marquise@db:5432/marquise
-      DATABASE_SCHEMA: ${DATABASE_SCHEMA}
-      MARQUISE_API_CORS_ORIGINS: ${MARQUISE_API_CORS_ORIGINS}
+      DATABASE_SCHEMA: ${DATABASE_SCHEMA:?run through just}
+      MARQUISE_API_CORS_ORIGINS: ${MARQUISE_API_CORS_ORIGINS:?run through just}
     ports:
       - "127.0.0.1:18000:8000"
     depends_on:
@@ -42,7 +42,7 @@ services:
       context: web
       dockerfile: apps/marquise-interface/Dockerfile
       args:
-        VITE_MARQUISE_API_BASE_URL: ${VITE_MARQUISE_API_BASE_URL}
+        VITE_MARQUISE_API_BASE_URL: ${VITE_MARQUISE_API_BASE_URL:?run through just}
     ports:
       - "127.0.0.1:15173:80"
     depends_on:
