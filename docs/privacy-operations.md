@@ -14,7 +14,7 @@ This is the operating procedure for the policy work in [#415](https://github.com
 | External images | Web responses set `Referrer-Policy: no-referrer` | Image hosts still receive connection information, including IP addresses |
 | Contact email | Arnaud confirms the alias forwards to his personal Gmail; the domain is managed through Squarespace | Identify the actual forwarding service; a domain registrar is not necessarily the email forwarder |
 | Authentication and edit history | Login and manual editing are removed from the application; the Auth accounts and the two write tables were deleted from the live database on 2026-11-11, with no new archive | Provider backups may retain copies until their own expiry |
-| Catalog database | A Fly database is prepared; repository documentation does not establish API cutover | Confirm the live connection destination without recording credentials |
+| Catalog database | The catalog database is Supabase; the API and the scheduled import connect to it | Confirm the live connection destination without recording credentials |
 
 Fly states that its own proxy log store does not retain inbound client IPs. This does not mean application/error output cannot contain an address. Its platform processing also extends beyond the selected Machine region. Keep those distinctions in disclosures. [Fly security questionnaire, COMPLIANCE-12 and COMPLIANCE-23](https://fly.io/legal/security-questionnaire/).
 
