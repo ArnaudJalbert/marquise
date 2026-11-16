@@ -14,12 +14,50 @@ start-db:
         echo "No production copy found. Run: just copy-prod-db" >&2; exit 1; \
     fi
 
+api_reload := "uv run uvicorn marquise_api.app:create_app --factory --port 18000 --reload --reload-dir apps/marquise-api/src --reload-dir packages/marquise-core/src"
+vite_reload := "pnpm --dir web --filter marquise-interface dev --port 15173 --strictPort"
+
+# Start postgres and the API image
+start-api: start-db
+    {{ compose }} up -d --build --wait api
+
+# Start the API and interface images: the whole app on the copy
+start-local-stack: start-api
+    {{ compose }} up -d --build --wait interface
+    @echo "Interface: http://localhost:15173"
+
+# Run Vite with hot reload against the API image
+start-interface-reload: start-api
+    {{ compose }} stop interface
+    {{ vite_reload }}
+
+# Run uvicorn with reload on the host against the local copy
+start-api-reload: start-db
+    {{ compose }} stop api
+    {{ api_reload }}
+
+# Run uvicorn and Vite with reload together; Ctrl-C stops both, postgres keeps running
+start-local-stack-reload: start-db
+    #!/usr/bin/env bash
+    set -euo pipefail
+    {{ compose }} stop api interface
+    # Ignore Ctrl-C while forking, then trap: a child that inherits a trap can swallow the TERM.
+    trap '' INT
+    {{ api_reload }} & api=$!
+    {{ vite_reload }} & vite=$!
+    trap 'trap "" INT TERM; kill 0' EXIT
+    trap 'exit 130' INT TERM
+    # When either half exits, stop the other (macOS bash 3.2 has no `wait -n`).
+    while kill -0 "$api" 2>/dev/null && kill -0 "$vite" 2>/dev/null; do sleep 1; done
+    exit 1
+
 # Replace the local marquise schema with a pg_dump of production
 copy-prod-db:
     case "$DATABASE_URL" in \
         *@localhost:*|*@localhost/*|*@127.0.0.1:*|*@127.0.0.1/*|*@db:*|*@db/*) ;; \
         *) echo "Refusing: .env.local DATABASE_URL is not local." >&2; exit 1 ;; \
     esac
+    [ -f .env ] || { echo "No .env found: copy-prod-db reads the production DATABASE_URL from it." >&2; exit 1; }
     {{ compose }} up -d --wait db
     PROD_DATABASE_URL="$(sed -n 's/^DATABASE_URL=//p' .env | tr -d "\"'")" \
         {{ compose }} exec -T -e PROD_DATABASE_URL db \

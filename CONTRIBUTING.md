@@ -184,6 +184,47 @@ pnpm --filter marquise-components add <package>
 
 ---
 
+## Local testing
+
+The whole app runs locally on a copy of production, driven by the `justfile`
+and `compose.yml`. Install [just](https://just.systems/) (`brew install just`)
+and Docker. The reload recipes also need `uv sync` and `pnpm install` in `web/`.
+
+```
+start-db                       postgres only; fails with "run just copy-prod-db" if no copy
+├─ start-api                   + api image
+│  ├─ start-local-stack        + interface image (everything needed to test the app)
+│  └─ start-interface-reload   + Vite hot reload, pointed at the local API image
+└─ start-api-reload            + uvicorn --reload on the host, with .env.local
+
+start-local-stack-reload       start-db, then uvicorn --reload and Vite together in the foreground; Ctrl-C stops both, the DB keeps running
+
+copy-prod-db                   start postgres, replace the local marquise schema with a pg_dump of production
+stop-stack                     stop all services, keep the data
+destroy-local-db               stop postgres, delete its volume
+```
+
+The interface is at <http://localhost:15173>, the API at
+<http://localhost:18000>, and postgres at `localhost:55432`.
+
+The recipes load `.env.local`, which is committed and holds only local values.
+`copy-prod-db` is the only recipe that reads `.env`, and only as the source of
+the dump.
+
+```bash
+just copy-prod-db        # once, or whenever you want fresh data
+just start-local-stack   # test the app as it ships
+just stop-stack          # stop, keep the copy
+just destroy-local-db    # delete the copy; start-db then asks for a new one
+```
+
+The stack makes no outside calls apart from poster images, which the browser
+loads from their hosts. Every checkout shares the Compose project `marquise`,
+so `destroy-local-db` in one worktree deletes the copy for all of them. Set
+`COMPOSE_PROJECT_NAME` to keep a worktree's data apart; the ports stay shared.
+
+---
+
 ## Test layout
 
 What to mock in each layer: [testing rules](docs/agents/rules/testing.md).
