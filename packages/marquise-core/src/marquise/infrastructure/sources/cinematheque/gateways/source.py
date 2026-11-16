@@ -22,6 +22,7 @@ import http.client
 import json
 import re
 import ssl
+import time
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
@@ -46,20 +47,47 @@ _MOVIE_DATA_RE = re.compile(r"var gMovieData\s*=\s*(\{.*?\})\s*</script>", re.DO
 _DATE_OPTION_RE = re.compile(r'<option value="(\d{4}-\d{2}-\d{2})">')
 _LANGUAGE_RE = re.compile(r"\((VO[A-Z]{0,5}|VF|VA)\)\s*$")
 _RUNTIME_RE = re.compile(r"(?:(\d+)\s*hr)?\s*(?:(\d+)\s*min)?")
+_FETCH_ATTEMPTS = 3
+_TIMEOUT_SECONDS = 15
 
 
 def _fetch(url: str) -> str:
     """Fetch a URL with SSL verification and a spoofed User-Agent.
+
+    Retry a timed-out response up to three attempts, with 0.5s and 1s delays,
+    so one slow page does not fail the import. Exhausted retries propagate.
 
     Args:
         url: The URL to fetch.
 
     Returns:
         The response body as a string.
+
+    Raises:
+        TimeoutError: When every attempt times out.
     """
     headers = {"User-Agent": "Mozilla/5.0 (compatible; Marquise/1.0)"}
     req = urllib.request.Request(url, headers=headers)
-    with urllib.request.urlopen(req, context=_SSL_CONTEXT, timeout=15) as resp:
+    for attempt in range(1, _FETCH_ATTEMPTS):
+        try:
+            return _read(req)
+        except TimeoutError:
+            time.sleep(0.5 * attempt)
+    return _read(req)
+
+
+def _read(req: urllib.request.Request) -> str:
+    """Send one request with a ``_TIMEOUT_SECONDS`` socket timeout.
+
+    Args:
+        req: The prepared request.
+
+    Returns:
+        The response body as a string.
+    """
+    with urllib.request.urlopen(
+        req, context=_SSL_CONTEXT, timeout=_TIMEOUT_SECONDS
+    ) as resp:
         return resp.read().decode()
 
 
