@@ -34,13 +34,4 @@ export default defineConfig({
       },
     ],
   },
-  server: {
-    proxy: {
-      // Same-origin API calls in dev: /v1/* is forwarded to the local API.
-      "/v1": {
-        target: "http://localhost:8000",
-        changeOrigin: true,
-      },
-    },
-  },
 });

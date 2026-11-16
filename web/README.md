@@ -67,7 +67,6 @@ pnpm test       # vitest across the workspace
 pnpm --filter marquise-interface dev
 # → http://localhost:5173
 
-# Same-origin /v1/* requests proxy to http://localhost:8000. Run `make api`.
 # For another API origin, set VITE_MARQUISE_API_BASE_URL at build/dev time.
 ```
 
