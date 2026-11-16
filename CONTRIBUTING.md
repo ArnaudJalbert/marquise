@@ -207,7 +207,7 @@ packages/marquise-core/tests/
 ├── fixtures/
 └── support/
 
-integration_tests/           # SQL integration tests; disposable PostgreSQL
+integration_tests/           # nightly SQL integration tests; disposable PostgreSQL
 
 apps/marquise-api/tests/      # mock MarquiseFactory
 apps/marquise-cli/tests/      # mock MarquiseFactory
@@ -225,7 +225,7 @@ Pull requests to `main` run the repository workflows:
 - `release-validation`: when a package's `src/**` or `pyproject.toml` changes, its version must increase, and its distributions must build.
 - `web-quality`: for web changes, install the frozen pnpm workspace and run web lint, TypeScript checks, unit tests, and production builds on Node.js 24.
 
-The manually dispatched `integration` workflow runs the same deterministic suite against its own PostgreSQL 17 service. It needs no production secrets or live provider access. The separate `provider-connectivity` workflow checks the real Cineplex and CinemaCinema endpoints by manual dispatch. Its failures are visible but do not fail the deterministic suite; a connectivity check does not validate every showtime or movie-detail response.
+The nightly `integration` workflow runs the same deterministic suite against its own PostgreSQL 17 service. It needs no production secrets or live provider access. The separate `provider-connectivity` workflow checks the real Cineplex and CinemaCinema endpoints daily and by manual dispatch. Its failures are visible but do not fail the deterministic suite; a connectivity check does not validate every showtime or movie-detail response.
 
 After merge, on schedule and on demand:
 

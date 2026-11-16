@@ -1,6 +1,8 @@
 name: Provider connectivity
 
 on:
+  schedule:
+    - cron: "37 8 * * *"
   workflow_dispatch:
 
 permissions:
