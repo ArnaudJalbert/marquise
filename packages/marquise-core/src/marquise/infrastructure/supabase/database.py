@@ -15,6 +15,8 @@ def sanitize_dsn(dsn: str) -> str:
 
     Some providers (e.g. Supabase) use special characters in passwords
     that must be URL-encoded before asyncpg can parse the connection string.
+    The password is decoded first, so an already-encoded password is not
+    encoded twice.
 
     The regex matches from right to left: the host is the last ``@``-delimited
     segment before the first ``/`` (or end-of-string), so ``@`` characters
@@ -34,7 +36,7 @@ def sanitize_dsn(dsn: str) -> str:
     if match is None:
         return dsn
     raw_password = match["password"]
-    safe_password = urllib.parse.quote(raw_password, safe="")
+    safe_password = urllib.parse.quote(urllib.parse.unquote(raw_password), safe="")
     rest = match["rest"] or ""
     return f"postgresql://{match['user']}:{safe_password}@{match['host']}{rest}"
 
