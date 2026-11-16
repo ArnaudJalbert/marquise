@@ -8,6 +8,7 @@ import asyncpg
 
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
 from marquise.domain.constants import MONTREAL_TIME_ZONE
+from marquise.domain.value_objects import HourFilter
 from marquise.infrastructure.supabase.gateways.screening_reader import _naive_utc
 from marquise.interface_adapters.repositories.protocols.base import GatewayPage
 
@@ -159,7 +160,7 @@ class SupabaseScreeningMovieReadGateway:
 
     @staticmethod
     def _bind_hour_arguments(
-        hours: ScreeningMovieReader.HourFilter | None,
+        hours: HourFilter | None,
     ) -> tuple[list[int], list[int], bool]:
         """Return the hour range starts, ends and exclusion flag for $7 to $9."""
         hour_ranges = hours.ranges if hours else ()

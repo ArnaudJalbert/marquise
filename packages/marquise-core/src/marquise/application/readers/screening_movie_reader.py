@@ -8,24 +8,11 @@ from datetime import date, datetime
 
 from marquise.application.readers.screening_reader import ScreeningReader
 from marquise.application.repositories.page import Page
+from marquise.domain.value_objects import HourFilter
 
 
 class ScreeningMovieReader(ABC):
     """Read upcoming screenings under the listing filters, by movie or by day."""
-
-    @dataclass(frozen=True, slots=True)
-    class HourRange:
-        """One half-open whole-hour Montréal range."""
-
-        start: int
-        end: int
-
-    @dataclass(frozen=True, slots=True)
-    class HourFilter:
-        """Hour ranges matched together before optional exclusion."""
-
-        ranges: tuple[ScreeningMovieReader.HourRange, ...]
-        excluded: bool = False
 
     @dataclass(frozen=True, slots=True)
     class SearchRequest:
@@ -38,7 +25,7 @@ class ScreeningMovieReader(ABC):
         title: str | None = None
         cinemas: tuple[str, ...] = ()
         languages: tuple[str, ...] = ()
-        hours: ScreeningMovieReader.HourFilter | None = None
+        hours: HourFilter | None = None
         excluded_cinemas: tuple[str, ...] = ()
 
     @dataclass(frozen=True, slots=True)
@@ -51,7 +38,7 @@ class ScreeningMovieReader(ABC):
         title: str | None = None
         cinemas: tuple[str, ...] = ()
         languages: tuple[str, ...] = ()
-        hours: ScreeningMovieReader.HourFilter | None = None
+        hours: HourFilter | None = None
         excluded_cinemas: tuple[str, ...] = ()
 
     @dataclass(frozen=True, slots=True)

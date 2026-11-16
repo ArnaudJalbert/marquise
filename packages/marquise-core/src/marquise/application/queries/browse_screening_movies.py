@@ -8,34 +8,11 @@ from datetime import UTC, date, datetime, time, timedelta
 
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
 from marquise.domain.constants import MONTREAL_TIME_ZONE
+from marquise.domain.value_objects import HourFilter
 
 
 class BrowseScreeningMoviesQuery:
     """Read one movie page using one clock instant for eligibility and previews."""
-
-    @dataclass(frozen=True, slots=True)
-    class HourRange:
-        """One half-open whole-hour Montréal range."""
-
-        start: int
-        end: int
-
-        def __post_init__(self) -> None:
-            """Reject empty, inverted, or out-of-day ranges."""
-            if not 0 <= self.start < self.end <= 24:
-                raise ValueError("hours must satisfy 0 <= start < end <= 24")
-
-    @dataclass(frozen=True, slots=True)
-    class HourFilter:
-        """Hour ranges matched together before optional exclusion."""
-
-        ranges: tuple[BrowseScreeningMoviesQuery.HourRange, ...]
-        excluded: bool = False
-
-        def __post_init__(self) -> None:
-            """Require at least one range when an hour filter exists."""
-            if not self.ranges:
-                raise ValueError("hours must include at least one range")
 
     @dataclass(frozen=True, slots=True)
     class InputData:
@@ -51,7 +28,7 @@ class BrowseScreeningMoviesQuery:
         title: str | None = None
         cinemas: tuple[str, ...] = ()
         languages: tuple[str, ...] = ()
-        hours: BrowseScreeningMoviesQuery.HourFilter | None = None
+        hours: HourFilter | None = None
         excluded_cinemas: tuple[str, ...] = ()
 
         def __post_init__(self) -> None:
@@ -91,7 +68,6 @@ class BrowseScreeningMoviesQuery:
             else None
         )
         now = self._clock()
-        hours = input_data.hours
         page = await self._reader.search(
             ScreeningMovieReader.SearchRequest(
                 start=start,
@@ -101,15 +77,7 @@ class BrowseScreeningMoviesQuery:
                 title=input_data.title,
                 cinemas=input_data.cinemas,
                 languages=input_data.languages,
-                hours=ScreeningMovieReader.HourFilter(
-                    ranges=tuple(
-                        ScreeningMovieReader.HourRange(item.start, item.end)
-                        for item in hours.ranges
-                    ),
-                    excluded=hours.excluded,
-                )
-                if hours
-                else None,
+                hours=input_data.hours,
                 excluded_cinemas=input_data.excluded_cinemas,
             )
         )

@@ -10,6 +10,7 @@ from datetime import UTC, date, datetime, time, timedelta
 from marquise.application.exceptions import TooManyScreeningDaysError
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
 from marquise.domain.constants import MONTREAL_TIME_ZONE
+from marquise.domain.value_objects import HourFilter
 
 logger = logging.getLogger(__name__)
 
@@ -20,36 +21,6 @@ class CountScreeningDaysQuery:
     _MAX_DAYS = 42
 
     @dataclass(frozen=True, slots=True)
-    class HourRange:
-        """One half-open whole-hour Montréal range."""
-
-        start: int
-        end: int
-
-        def __post_init__(self) -> None:
-            """Check field types, then reject empty, inverted, or out-of-day ranges."""
-            if not isinstance(self.start, int) or not isinstance(self.end, int):
-                raise TypeError("start and end must be int")
-            if not 0 <= self.start < self.end <= 24:
-                raise ValueError("hours must satisfy 0 <= start < end <= 24")
-
-    @dataclass(frozen=True, slots=True)
-    class HourFilter:
-        """Hour ranges matched together before optional exclusion."""
-
-        ranges: tuple[CountScreeningDaysQuery.HourRange, ...]
-        excluded: bool = False
-
-        def __post_init__(self) -> None:
-            """Check field types, then require at least one range."""
-            if not isinstance(self.ranges, tuple):
-                raise TypeError("ranges must be a tuple")
-            if not isinstance(self.excluded, bool):
-                raise TypeError("excluded must be a bool")
-            if not self.ranges:
-                raise ValueError("hours must include at least one range")
-
-    @dataclass(frozen=True, slots=True)
     class InputData:
         """An inclusive Montréal horizon and the listing's non-date filters."""
 
@@ -58,7 +29,7 @@ class CountScreeningDaysQuery:
         title: str | None = None
         cinemas: tuple[str, ...] = ()
         languages: tuple[str, ...] = ()
-        hours: CountScreeningDaysQuery.HourFilter | None = None
+        hours: HourFilter | None = None
         excluded_cinemas: tuple[str, ...] = ()
 
         def __post_init__(self) -> None:
@@ -70,9 +41,7 @@ class CountScreeningDaysQuery:
             for name in ("cinemas", "languages", "excluded_cinemas"):
                 if not isinstance(getattr(self, name), tuple):
                     raise TypeError(f"{name} must be a tuple")
-            if self.hours is not None and not isinstance(
-                self.hours, CountScreeningDaysQuery.HourFilter
-            ):
+            if self.hours is not None and not isinstance(self.hours, HourFilter):
                 raise TypeError("hours must be an HourFilter")
             self._require_valid_dates(self.start, self.end)
 
@@ -126,21 +95,9 @@ class CountScreeningDaysQuery:
             title=input_data.title,
             cinemas=input_data.cinemas,
             languages=input_data.languages,
-            hours=self._to_reader_hours(input_data.hours),
+            hours=input_data.hours,
             excluded_cinemas=input_data.excluded_cinemas,
         )
-
-    @staticmethod
-    def _to_reader_hours(
-        hours: CountScreeningDaysQuery.HourFilter | None,
-    ) -> ScreeningMovieReader.HourFilter | None:
-        if hours is None:
-            return None
-        ranges = tuple(
-            ScreeningMovieReader.HourRange(item.start, item.end)
-            for item in hours.ranges
-        )
-        return ScreeningMovieReader.HourFilter(ranges=ranges, excluded=hours.excluded)
 
     def _require_bounded_horizon(self, start: date, end: date) -> None:
         if (end - start).days + 1 > self._MAX_DAYS:

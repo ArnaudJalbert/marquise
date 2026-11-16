@@ -7,7 +7,12 @@ from typing import Annotated, Literal, Self
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from marquise import BrowseScreeningMoviesQuery, CountScreeningDaysQuery
+from marquise import (
+    BrowseScreeningMoviesQuery,
+    CountScreeningDaysQuery,
+    HourFilter,
+    HourRange,
+)
 from marquise_api.dependencies import (
     get_browse_screening_movies_query,
     get_count_screening_days_query,
@@ -115,10 +120,9 @@ async def browse_screening_movies(
             title=title,
             cinemas=tuple(cinema or ()),
             languages=tuple(language or ()),
-            hours=BrowseScreeningMoviesQuery.HourFilter(
+            hours=HourFilter(
                 ranges=tuple(
-                    BrowseScreeningMoviesQuery.HourRange(item.start, item.end)
-                    for item in hour_filter.ranges
+                    HourRange(item.start, item.end) for item in hour_filter.ranges
                 ),
                 excluded=hour_filter.operator == "is_not",
             )
@@ -196,11 +200,8 @@ def _to_count_input(
 
 def _to_count_hours(
     hour_filter: HourFilterRequest,
-) -> CountScreeningDaysQuery.HourFilter:
-    return CountScreeningDaysQuery.HourFilter(
-        ranges=tuple(
-            CountScreeningDaysQuery.HourRange(item.start, item.end)
-            for item in hour_filter.ranges
-        ),
+) -> HourFilter:
+    return HourFilter(
+        ranges=tuple(HourRange(item.start, item.end) for item in hour_filter.ranges),
         excluded=hour_filter.operator == "is_not",
     )

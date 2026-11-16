@@ -25,6 +25,8 @@ from marquise import (
     GetMovieScreeningsQuery,
     GetMovieUseCase,
     GetScreeningQuery,
+    HourFilter,
+    HourRange,
     ListCinemasUseCase,
     ListMoviesUseCase,
     MarquiseFactory,
@@ -1485,9 +1487,7 @@ def test_screening_movies_filters_reach_the_query(
             title="Dune",
             cinemas=("c1", "c2"),
             languages=("VO", "VOSTF"),
-            hours=BrowseScreeningMoviesQuery.HourFilter(
-                ranges=(BrowseScreeningMoviesQuery.HourRange(start=17, end=21),)
-            ),
+            hours=HourFilter(ranges=(HourRange(start=17, end=21),)),
             excluded_cinemas=("c3", "c4"),
         )
     )
@@ -1516,10 +1516,10 @@ def test_screening_movies_accepts_an_hour_filter_with_several_ranges(
         BrowseScreeningMoviesQuery.InputData(
             start=date(2026, 11, 1),
             end=None,
-            hours=BrowseScreeningMoviesQuery.HourFilter(
+            hours=HourFilter(
                 ranges=(
-                    BrowseScreeningMoviesQuery.HourRange(start=0, end=17),
-                    BrowseScreeningMoviesQuery.HourRange(start=21, end=24),
+                    HourRange(start=0, end=17),
+                    HourRange(start=21, end=24),
                 )
             ),
         )
@@ -1549,8 +1549,8 @@ def test_screening_movies_maps_a_negative_hour_filter(
         BrowseScreeningMoviesQuery.InputData(
             start=date(2026, 11, 1),
             end=None,
-            hours=BrowseScreeningMoviesQuery.HourFilter(
-                ranges=(BrowseScreeningMoviesQuery.HourRange(start=17, end=21),),
+            hours=HourFilter(
+                ranges=(HourRange(start=17, end=21),),
                 excluded=True,
             ),
         )
@@ -1669,10 +1669,10 @@ def test_screening_day_counts_return_every_day_and_reach_the_query(
             title="Dune",
             cinemas=("c1",),
             languages=("VO",),
-            hours=CountScreeningDaysQuery.HourFilter(
+            hours=HourFilter(
                 ranges=(
-                    CountScreeningDaysQuery.HourRange(start=0, end=17),
-                    CountScreeningDaysQuery.HourRange(start=21, end=24),
+                    HourRange(start=0, end=17),
+                    HourRange(start=21, end=24),
                 ),
                 excluded=True,
             ),

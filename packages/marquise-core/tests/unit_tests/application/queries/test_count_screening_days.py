@@ -9,6 +9,7 @@ import pytest
 from marquise.application.exceptions import TooManyScreeningDaysError
 from marquise.application.queries.count_screening_days import CountScreeningDaysQuery
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
+from marquise.domain.value_objects import HourFilter, HourRange
 
 NOW = datetime(2026, 10, 31, 16, tzinfo=UTC)
 
@@ -72,8 +73,8 @@ async def test_filters_reach_the_reader(
             title=" Dune ",
             cinemas=("c1",),
             languages=("VO",),
-            hours=query.HourFilter(
-                ranges=(query.HourRange(0, 17), query.HourRange(21, 24)),
+            hours=HourFilter(
+                ranges=(HourRange(0, 17), HourRange(21, 24)),
                 excluded=True,
             ),
             excluded_cinemas=("c3",),
@@ -86,10 +87,10 @@ async def test_filters_reach_the_reader(
         ("c1",),
         ("VO",),
     )
-    assert request.hours == ScreeningMovieReader.HourFilter(
+    assert request.hours == HourFilter(
         ranges=(
-            ScreeningMovieReader.HourRange(0, 17),
-            ScreeningMovieReader.HourRange(21, 24),
+            HourRange(0, 17),
+            HourRange(21, 24),
         ),
         excluded=True,
     )
@@ -123,33 +124,33 @@ def test_invalid_date_range(start: date, end: date) -> None:
 def test_invalid_hour_range(hours: tuple[int, int]) -> None:
     """An empty, inverted or out-of-day hour range is rejected."""
     with pytest.raises(ValueError, match="hours"):
-        CountScreeningDaysQuery.HourRange(*hours)
+        HourRange(*hours)
 
 
 def test_empty_hour_filter() -> None:
     """An hour filter must name at least one range."""
     with pytest.raises(ValueError, match="hours"):
-        CountScreeningDaysQuery.HourFilter(ranges=())
+        HourFilter(ranges=())
 
 
 @pytest.mark.parametrize("hours", [("0", 17), (0, 17.0)])
 def test_hour_range_types_are_checked(hours: tuple) -> None:
     """A non-integer hour bound fails where it enters the application."""
     with pytest.raises(TypeError, match="must be int"):
-        CountScreeningDaysQuery.HourRange(*hours)
+        HourRange(*hours)
 
 
 @pytest.mark.parametrize(
     "fields",
     [
-        {"ranges": [CountScreeningDaysQuery.HourRange(0, 17)]},
-        {"ranges": (CountScreeningDaysQuery.HourRange(0, 17),), "excluded": 1},
+        {"ranges": [HourRange(0, 17)]},
+        {"ranges": (HourRange(0, 17),), "excluded": 1},
     ],
 )
 def test_hour_filter_types_are_checked(fields: dict) -> None:
     """Hour ranges must be a tuple and the exclusion flag a bool."""
     with pytest.raises(TypeError):
-        CountScreeningDaysQuery.HourFilter(**fields)
+        HourFilter(**fields)
 
 
 @pytest.mark.parametrize(

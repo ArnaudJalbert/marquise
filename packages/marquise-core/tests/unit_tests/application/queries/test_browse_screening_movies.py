@@ -10,6 +10,7 @@ from marquise.application.queries.browse_screening_movies import (
 )
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
 from marquise.application.repositories.page import Page
+from marquise.domain.value_objects import HourFilter, HourRange
 
 
 @pytest.mark.asyncio
@@ -53,7 +54,7 @@ def test_invalid_request(start: date, end: date, page: int) -> None:
 def test_invalid_hour_range(hours: tuple[int, int]) -> None:
     """An empty, inverted or out-of-day range is rejected even beside a valid one."""
     with pytest.raises(ValueError, match="hours"):
-        BrowseScreeningMoviesQuery.HourRange(
+        HourRange(
             start=hours[0],
             end=hours[1],
         )
@@ -62,7 +63,7 @@ def test_invalid_hour_range(hours: tuple[int, int]) -> None:
 def test_empty_hour_filter() -> None:
     """An hour filter must name at least one range."""
     with pytest.raises(ValueError, match="hours"):
-        BrowseScreeningMoviesQuery.HourFilter(ranges=())
+        HourFilter(ranges=())
 
 
 @pytest.mark.asyncio
@@ -77,8 +78,8 @@ async def test_filter_values_are_passed_to_the_reader() -> None:
         title=" Dune ",
         cinemas=("c1", "c2"),
         languages=("VO", "VOSTF"),
-        hours=BrowseScreeningMoviesQuery.HourFilter(
-            ranges=(BrowseScreeningMoviesQuery.HourRange(start=17, end=21),),
+        hours=HourFilter(
+            ranges=(HourRange(start=17, end=21),),
             excluded=True,
         ),
         excluded_cinemas=("c3",),
@@ -95,8 +96,8 @@ async def test_filter_values_are_passed_to_the_reader() -> None:
             title=" Dune ",
             cinemas=("c1", "c2"),
             languages=("VO", "VOSTF"),
-            hours=ScreeningMovieReader.HourFilter(
-                ranges=(ScreeningMovieReader.HourRange(start=17, end=21),),
+            hours=HourFilter(
+                ranges=(HourRange(start=17, end=21),),
                 excluded=True,
             ),
             excluded_cinemas=("c3",),
