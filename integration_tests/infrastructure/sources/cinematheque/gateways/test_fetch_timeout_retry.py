@@ -2,31 +2,28 @@
 
 from __future__ import annotations
 
-import ssl
 import threading
 import time
-import urllib.request
 from collections.abc import Iterator
-from http.client import HTTPResponse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from unittest.mock import create_autospec
+from unittest.mock import Mock, call, create_autospec
 
 import pytest
 
 from marquise.infrastructure.sources.cinematheque.gateways import source
 
-_TEST_TIMEOUT_SECONDS = 0.1
 _STALL_SECONDS = 0.5
 
 
 @pytest.fixture
 def schedule_server(
     monkeypatch: pytest.MonkeyPatch,
-) -> Iterator[tuple[list[bool], list[str]]]:
+) -> Iterator[tuple[list[bool], list[str], Mock]]:
     """Serve an empty schedule page, stalling the requests marked to stall."""
     stalls: list[bool] = []
     requests: list[str] = []
-    monkeypatch.setattr(time, "sleep", create_autospec(time.sleep))
+    sleep = create_autospec(time.sleep)
+    monkeypatch.setattr(time, "sleep", sleep)
 
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:  # noqa: N802
@@ -49,17 +46,10 @@ def schedule_server(
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     thread = threading.Thread(target=server.serve_forever)
     thread.start()
-    original_urlopen = urllib.request.urlopen
-
-    def short_timeout_urlopen(
-        request: urllib.request.Request, *, context: ssl.SSLContext, timeout: float
-    ) -> HTTPResponse:
-        return original_urlopen(request, context=context, timeout=_TEST_TIMEOUT_SECONDS)
-
-    monkeypatch.setattr(urllib.request, "urlopen", short_timeout_urlopen)
+    monkeypatch.setattr(source, "_TIMEOUT_SECONDS", 0.1)
     monkeypatch.setattr(source, "BASE_URL", f"http://127.0.0.1:{server.server_port}/")
     try:
-        yield stalls, requests
+        yield stalls, requests, sleep
     finally:
         server.shutdown()
         server.server_close()
@@ -67,24 +57,24 @@ def schedule_server(
 
 
 def test_schedule_recovers_from_transient_read_timeout(
-    schedule_server: tuple[list[bool], list[str]],
+    schedule_server: tuple[list[bool], list[str], Mock],
 ) -> None:
     """A slow schedule page is fetched again instead of failing the import."""
-    stalls, requests = schedule_server
+    stalls, requests, sleep = schedule_server
     stalls.extend([True, True, False])
 
     assert source.fetch_showtimes() == []
-    assert len(requests) == 3
-    assert len(set(requests)) == 1
+    assert requests == [requests[0]] * 3
+    assert sleep.call_args_list == [call(0.5), call(1.0)]
 
 
 def test_schedule_read_timeout_fails_after_three_attempts(
-    schedule_server: tuple[list[bool], list[str]],
+    schedule_server: tuple[list[bool], list[str], Mock],
 ) -> None:
     """A page that never answers in time still fails, after three attempts."""
-    stalls, requests = schedule_server
+    stalls, requests, _ = schedule_server
     stalls.append(True)
 
     with pytest.raises(TimeoutError):
         source.fetch_showtimes()
-    assert len(requests) == 3
+    assert requests == [requests[0]] * 3

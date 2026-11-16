@@ -48,6 +48,7 @@ _DATE_OPTION_RE = re.compile(r'<option value="(\d{4}-\d{2}-\d{2})">')
 _LANGUAGE_RE = re.compile(r"\((VO[A-Z]{0,5}|VF|VA)\)\s*$")
 _RUNTIME_RE = re.compile(r"(?:(\d+)\s*hr)?\s*(?:(\d+)\s*min)?")
 _FETCH_ATTEMPTS = 3
+_TIMEOUT_SECONDS = 15
 
 
 def _fetch(url: str) -> str:
@@ -76,7 +77,7 @@ def _fetch(url: str) -> str:
 
 
 def _read(req: urllib.request.Request) -> str:
-    """Send one request with a 15-second socket timeout.
+    """Send one request with a ``_TIMEOUT_SECONDS`` socket timeout.
 
     Args:
         req: The prepared request.
@@ -84,7 +85,9 @@ def _read(req: urllib.request.Request) -> str:
     Returns:
         The response body as a string.
     """
-    with urllib.request.urlopen(req, context=_SSL_CONTEXT, timeout=15) as resp:
+    with urllib.request.urlopen(
+        req, context=_SSL_CONTEXT, timeout=_TIMEOUT_SECONDS
+    ) as resp:
         return resp.read().decode()
 
 
