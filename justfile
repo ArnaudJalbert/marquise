@@ -1,0 +1,39 @@
+# Local stack on a copy of production. Recipes load `.env.local` only;
+# `copy-prod-db` alone reads `.env`, as the source of the dump.
+
+set dotenv-filename := ".env.local"
+set dotenv-override
+set shell := ["bash", "-euo", "pipefail", "-c"]
+
+compose := "docker compose --env-file .env.local"
+psql := compose + " exec -T db psql -v ON_ERROR_STOP=1 -U marquise -d marquise"
+
+# Start postgres; fails until `just copy-prod-db` has filled it
+start-db:
+    {{ compose }} up -d --wait db
+    if [ -z "$({{ psql }} -Atc "SELECT 1 FROM information_schema.schemata WHERE schema_name = 'marquise'")" ]; then \
+        echo "No production copy found. Run: just copy-prod-db" >&2; exit 1; \
+    fi
+
+# Replace the local marquise schema with a pg_dump of production
+copy-prod-db:
+    case "$DATABASE_URL" in \
+        *@localhost:*|*@localhost/*|*@127.0.0.1:*|*@127.0.0.1/*|*@db:*|*@db/*) ;; \
+        *) echo "Refusing: .env.local DATABASE_URL is not local." >&2; exit 1 ;; \
+    esac
+    {{ compose }} up -d --wait db
+    PROD_DATABASE_URL="$(sed -n 's/^DATABASE_URL=//p' .env | tr -d "\"'")" \
+        {{ compose }} exec -T -e PROD_DATABASE_URL db \
+        sh -c 'pg_dump "$PROD_DATABASE_URL" --schema=marquise --no-owner --no-privileges -f /tmp/marquise.sql'
+    {{ compose }} exec -T db grep -m1 'Dumped from database version' /tmp/marquise.sql
+    {{ psql }} --single-transaction -c 'DROP SCHEMA IF EXISTS marquise CASCADE' -f /tmp/marquise.sql >/dev/null
+    {{ compose }} exec -T db rm /tmp/marquise.sql
+    {{ psql }} -c 'SELECT (SELECT count(*) FROM marquise.movies) AS movies, (SELECT count(*) FROM marquise.screenings) AS screenings'
+
+# Stop all services, keep the data
+stop-stack:
+    {{ compose }} stop
+
+# Stop postgres and delete its volume
+destroy-local-db:
+    {{ compose }} down --volumes db
