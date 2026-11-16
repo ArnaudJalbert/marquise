@@ -204,13 +204,12 @@ stop-stack                     stop all services, keep the data
 destroy-local-db               stop postgres, delete its volume
 ```
 
-Each start recipe runs the one above it first. The interface is at
-<http://localhost:15173>, the API at <http://localhost:18000>, and postgres at
-`localhost:55432`.
+The interface is at <http://localhost:15173>, the API at
+<http://localhost:18000>, and postgres at `localhost:55432`.
 
 The recipes load `.env.local`, which is committed and holds only local values.
 `copy-prod-db` is the only recipe that reads `.env`, and only as the source of
-the dump. Production is touched only when you copy it.
+the dump.
 
 ```bash
 just copy-prod-db        # once, or whenever you want fresh data
