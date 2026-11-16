@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Marquise logo ideas: theatre marquee</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: var(--font-sans, system-ui, sans-serif); }
+  body.standalone { background: #0b0d10; color: #f1f3f5; padding: 32px; --font-mono: ui-monospace, monospace; }
+  h2 { font-size: 12px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; opacity: .7; margin: 28px 0 12px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+  .card { border: 1px solid #35414d; border-radius: 12px; overflow: hidden; }
+  .art { aspect-ratio: 1; display: grid; place-items: center; background: #faf6f0; }
+  .art svg { width: 72%; height: 72%; }
+  .meta { padding: 8px 10px; font: 11px var(--font-mono); color: #c3ccd5; background: #222c36; }
+  .meta b { color: #f1f3f5; font-weight: 600; }
+  .small { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+  .small div { display: flex; gap: 12px; align-items: end; justify-content: center; padding: 14px; border: 1px solid #35414d; border-radius: 12px; background: #faf6f0; }
+</style>
+</head>
+<body>
+<div class="grid" id="ideas"></div>
+<h2>Same marks at 32 / 24 / 16 px</h2>
+<div class="small" id="small"></div>
+<script>
+if (window.self === window.top) document.body.classList.add("standalone");
+
+const CREAM = "#faf6f0", INK = "#1d1a24";
+const sunset = { c: "#ff7a59", b: "#ffc94a", o: "#e5386d" };
+const dusk = { c: "#3d348b", b: "#f7b801", o: "#f35b04" };
+const candy = { c: "#5e9cff", b: "#ffd166", o: "#06d6a0" };
+const cherry = { c: "#d7263d", b: "#f4d35e", o: "#1b998b" };
+
+let uid = 0;
+const rect = (x, y, w, h, rx = 0) => (a) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" ${a}/>`;
+const path = (d) => (a) => `<path d="${d}" ${a}/>`;
+// A, then B, then B∩A in the overlap colour.
+function ov(A, B, c1, c2, o) {
+  const id = "m" + uid++;
+  return `<defs><mask id="${id}"><rect x="-300" y="-300" width="600" height="600" fill="#000"/>${A('fill="#fff"')}</mask></defs>${A(`fill="${c1}"`)}${B(`fill="${c2}"`)}${B(`fill="${o}" mask="url(#${id})"`)}`;
+}
+const dots = (pts, r, fill) => pts.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${fill}"/>`).join("");
+
+const ideas = [
+  ["Blade + canopy", "the vertical sign over the canopy, overlap where they meet", () =>
+    ov(rect(-84, 6, 168, 46, 8), rect(-18, -90, 36, 124, 8), sunset.c, sunset.b, sunset.o)],
+
+  ["Cross", "blade runs through the canopy", () =>
+    ov(rect(-84, -14, 168, 46, 8), rect(-18, -88, 36, 176, 8), dusk.c, dusk.b, dusk.o)],
+
+  ["Letter board", "the canopy with its rows of changeable letters", () =>
+    rect(-86, -46, 172, 92, 10)(`fill="${sunset.c}"`) +
+    [[-24, 124], [-4, 88], [16, 108]].map(([y, w]) => rect(-w / 2, y - 4, w, 10, 5)(`fill="${CREAM}"`)).join("") +
+    rect(-86, -46, 172, 14, 7)(`fill="${sunset.o}"`)],
+
+  ["Chaser bulbs", "canopy with a row of bulbs underneath", () =>
+    rect(-86, -40, 172, 52, 10)(`fill="${dusk.c}"`) +
+    dots([-72, -48, -24, 0, 24, 48, 72].map((x) => [x, 34]), 9, dusk.b)],
+
+  ["Corner marquee", "two faces of a marquee wrapping a street corner", () =>
+    `<path d="M-88,-34 L0,-12 L0,42 L-88,20 Z" fill="${cherry.c}"/><path d="M0,-12 L88,-34 L88,20 L0,42 Z" fill="${cherry.o}"/>` +
+    `<path d="M-88,-34 L0,-56 L88,-34 L0,-12 Z" fill="${cherry.b}"/>`],
+
+  ["Blade sign", "the tall vertical sign alone, letters as dots", () =>
+    rect(-28, -92, 56, 184, 28)(`fill="${candy.c}"`) + dots([-60, -30, 0, 30, 60].map((y) => [0, y]), 10, candy.b)],
+
+  ["Arrow sign", "the classic arrow marquee pointing at the door", () =>
+    `<path d="M-88,-36 H40 L88,0 L40,36 H-88 Z" fill="${sunset.c}"/>` + dots([-64, -36, -8, 20].map((x) => [x, 0]), 8, sunset.b)],
+
+  ["Deco steps", "art deco facade, three stacked blocks", () =>
+    rect(-30, -78, 60, 36, 6)(`fill="${dusk.b}"`) + rect(-56, -46, 112, 36, 6)(`fill="${dusk.o}"`) + rect(-84, -14, 168, 70, 8)(`fill="${dusk.c}"`)],
+
+  ["Entrance", "canopy over an arched doorway", () =>
+    ov(path("M-36,80 V-4 A36,36 0 0 1 36,-4 V80 Z"), rect(-84, -52, 168, 40, 8), sunset.b, sunset.c, sunset.o)],
+
+  ["Board M", "an M up on the marquee", () =>
+    rect(-86, -56, 172, 112, 12)(`fill="${candy.c}"`) +
+    `<path d="M-44,32 V-30 L0,8 L44,-30 V32" fill="none" stroke="${CREAM}" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>`],
+
+  ["Bulb frame", "an empty marquee, just its border of bulbs", () => {
+    const pts = [];
+    for (let i = 0; i <= 6; i++) pts.push([-72 + i * 24, -46], [-72 + i * 24, 46]);
+    pts.push([-72, -15.3], [-72, 15.3], [72, -15.3], [72, 15.3]);
+    return rect(-88, -62, 176, 124, 14)(`fill="${INK}"`) + dots(pts, 7, sunset.b) + rect(-48, -20, 96, 40, 6)(`fill="${sunset.c}"`);
+  }],
+
+  ["Blade + bulbs", "blade over canopy, bulbs on the canopy edge", () =>
+    ov(rect(-84, 6, 168, 46, 8), rect(-18, -90, 36, 124, 8), cherry.c, cherry.b, cherry.o) +
+    dots([-64, -44, 44, 64].map((x) => [x, 29]), 6, cherry.b)],
+];
+
+const svg = (inner, size) => `<svg viewBox="-100 -100 200 200" ${size ? `width="${size}" height="${size}"` : ""} xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+document.getElementById("ideas").innerHTML = ideas.map(([name, note, draw]) =>
+  `<div class="card"><div class="art">${svg(draw())}</div><div class="meta"><b>${name}</b><br>${note}</div></div>`).join("");
+document.getElementById("small").innerHTML = ideas.map(([, , draw]) =>
+  `<div>${[32, 24, 16].map((s) => svg(draw(), s)).join("")}</div>`).join("");
+</script>
+</body>
+</html>

@@ -20,6 +20,20 @@ The Marquise mark is a corner marquee seen from the street: two sign faces meet 
 
 The interface app serves a copy of `favicon.svg` and a 180×180 `apple-touch-icon.png` rendered from it.
 
+## Exploration
+
+Static pages from the work that led to the mark in [#421](https://github.com/ArnaudJalbert/marquise/issues/421). Open them in a browser. Restored unchanged from the commit before they were removed.
+
+| Page | Explores |
+|---|---|
+| [`logo-ideas.html`](logo-ideas.html) | First round of logo ideas ([#421](https://github.com/ArnaudJalbert/marquise/issues/421)) |
+| [`logo-concepts.html`](logo-concepts.html) | Concept variations ([#421](https://github.com/ArnaudJalbert/marquise/issues/421)) |
+| [`logo-mockups.html`](logo-mockups.html) | Candidates in context ([#421](https://github.com/ArnaudJalbert/marquise/issues/421)) |
+| [`logo-prism.html`](logo-prism.html) | Prism direction ([#421](https://github.com/ArnaudJalbert/marquise/issues/421)) |
+| [`logo-marquee.html`](logo-marquee.html) | Marquee direction ([#421](https://github.com/ArnaudJalbert/marquise/issues/421)) |
+| [`logo-marquee-2.html`](logo-marquee-2.html) | Marquee direction, second round ([#421](https://github.com/ArnaudJalbert/marquise/issues/421)) |
+| [`brand-integration.html`](brand-integration.html) | The chosen mark in the interface, footer and favicon ([#421](https://github.com/ArnaudJalbert/marquise/issues/421)) |
+
 ## Geometry
 
 Both faces meet on the vertical axis `x = 0`. Each face is mirrored left (lit) and right (shadow).
