@@ -41,9 +41,10 @@ start-local-stack-reload: start-db
     #!/usr/bin/env bash
     set -euo pipefail
     {{ compose }} stop api interface
+    # Ignore Ctrl-C while forking, then trap: a child that inherits a trap can swallow the TERM.
+    trap '' INT
     {{ api_reload }} & api=$!
     {{ vite_reload }} & vite=$!
-    # Trap after forking: a child that inherits a trap can swallow the TERM.
     trap 'trap "" INT TERM; kill 0' EXIT
     trap 'exit 130' INT TERM
     # When either half exits, stop the other (macOS bash 3.2 has no `wait -n`).
