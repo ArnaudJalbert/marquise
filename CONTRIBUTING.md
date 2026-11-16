@@ -111,14 +111,10 @@ make test-core               # core unit tests
 make test-core-integrations  # core integration tests (disposable PostgreSQL DATABASE_URL)
 make test-api                # API tests
 make test-cli                # CLI tests
-make api                     # API with hot reload on :8000
 make cli                     # CLI
 make lint                    # ruff check
 make format                  # ruff format
 make ty                      # type check marquise-core
-make web                     # interface dev server; /v1 proxies to a local API on :8000
-make web-live                # local API and interface together
-make local-up                # isolated Postgres + API + built app, see local/README.md
 make deploy-api              # Fly deploy, also run by CI
 make deploy-interface        # Fly deploy, also run by CI
 ```
@@ -269,11 +265,3 @@ Branch and commit conventions: [review and delivery rules](docs/agents/rules/rev
 
 - [AGENTS.md](AGENTS.md): rule index and guide index
 - [Pull request template](.github/PULL_REQUEST_TEMPLATE.md)
-
-## Isolated local integration stack
-
-Run `make local-up` to build and start a local Postgres database, real API, and
-React app at `http://localhost:4300`. No production environment files or services
-are required. The database contains controlled test schedules. See
-[local/README.md](local/README.md) for data, ports, rebuild/reseed/stop commands and
-the real HTTP/browser verification script.

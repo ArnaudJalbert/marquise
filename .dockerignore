@@ -27,7 +27,6 @@ coverage.xml
 *.md
 !README.md
 mkdocs.yml
-docker-compose.yml
 bin/
 scripts/
 

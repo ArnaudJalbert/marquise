@@ -49,7 +49,6 @@ Read the matching file before the work it names. How rules are written and added
 | [docs/releasing.md](docs/releasing.md) | Version bumps, tags, releases |
 | [docs/deployment.md](docs/deployment.md) | Deploying, scheduled imports |
 | [docs/privacy-operations.md](docs/privacy-operations.md) | Personal data handling |
-| [local/README.md](local/README.md) | The isolated local stack (`make local-up`) |
 | [web/README.md](web/README.md) | Web workspace quick start |
 
 ## Agent skills

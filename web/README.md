@@ -63,12 +63,11 @@ pnpm lint       # oxlint across the workspace
 pnpm typecheck  # tsc --noEmit across the workspace
 pnpm test       # vitest across the workspace
 
-# The production interface, using the real API:
+# The production interface:
 pnpm --filter marquise-interface dev
 # → http://localhost:5173
 
-# Same-origin /v1/* requests proxy to http://localhost:8000. Run `make api`.
-# For another API origin, set VITE_MARQUISE_API_BASE_URL at build/dev time.
+# To reach an API, set VITE_MARQUISE_API_BASE_URL at build/dev time.
 ```
 
 ## API and production builds
