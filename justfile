@@ -24,7 +24,7 @@ copy-prod-db:
     {{ compose }} up -d --wait db
     PROD_DATABASE_URL="$(sed -n 's/^DATABASE_URL=//p' .env | tr -d "\"'")" \
         {{ compose }} exec -T -e PROD_DATABASE_URL db \
-        sh -c 'pg_dump "$PROD_DATABASE_URL" --schema=marquise --no-owner --no-privileges -f /tmp/marquise.sql'
+        sh -c ': "${PROD_DATABASE_URL:?is empty: set DATABASE_URL in .env}"; pg_dump "$PROD_DATABASE_URL" --schema=marquise --no-owner --no-privileges -f /tmp/marquise.sql'
     {{ compose }} exec -T db grep -m1 'Dumped from database version' /tmp/marquise.sql
     {{ psql }} --single-transaction -c 'DROP SCHEMA IF EXISTS marquise CASCADE' -f /tmp/marquise.sql >/dev/null
     {{ compose }} exec -T db rm /tmp/marquise.sql
