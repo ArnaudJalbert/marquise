@@ -227,11 +227,11 @@ Pull requests to `main` run the repository workflows:
 
 The manually dispatched `integration` workflow runs the same deterministic suite against its own PostgreSQL 17 service. It needs no production secrets or live provider access. The separate `provider-connectivity` workflow checks the real Cineplex and CinemaCinema endpoints by manual dispatch. Its failures are visible but do not fail the deterministic suite; a connectivity check does not validate every showtime or movie-detail response.
 
-After merge and on demand:
+After merge, on schedule and on demand:
 
 - `release`: on push to `main`, tags and releases each bumped package ([docs/releasing.md](docs/releasing.md)).
 - `fly-deploy`: on push to `main` touching deployable paths, deploys the API and interface to Fly and smoke-tests them ([docs/deployment.md](docs/deployment.md)).
-- `scheduled-import`: import into Supabase by manual dispatch only.
+- `scheduled-import`: nightly 31-day import into Supabase; manual dispatch runs the same import.
 
 Triggers, commands and environment wiring are defined in [`.github/workflows/`](.github/workflows/). `ty` is a blocking quality step.
 

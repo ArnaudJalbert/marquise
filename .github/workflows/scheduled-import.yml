@@ -5,12 +5,15 @@ concurrency:
   cancel-in-progress: false
 
 on:
+  schedule:
+    # Nightly at 07:17 UTC (02:17 EST, 03:17 EDT); offset avoids top-of-hour load
+    - cron: "17 7 * * *"
   workflow_dispatch:
     inputs:
       days:
         description: "Number of days to import (today inclusive)"
         required: false
-        default: "7"
+        default: "31"
 
 jobs:
   import-supabase:
@@ -37,4 +40,4 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
-        run: uv run marquise import all --days "${{ github.event.inputs.days || '7' }}"
+        run: uv run marquise import all --days "${{ github.event.inputs.days || '31' }}"
