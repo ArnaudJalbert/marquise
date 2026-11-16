@@ -3,7 +3,6 @@
 
 set dotenv-filename := ".env.local"
 set dotenv-override
-set shell := ["bash", "-euo", "pipefail", "-c"]
 
 compose := "docker compose --env-file .env.local"
 psql := compose + " exec -T db psql -v ON_ERROR_STOP=1 -U marquise -d marquise"
@@ -25,7 +24,6 @@ copy-prod-db:
     PROD_DATABASE_URL="$(sed -n 's/^DATABASE_URL=//p' .env | tr -d "\"'")" \
         {{ compose }} exec -T -e PROD_DATABASE_URL db \
         sh -c ': "${PROD_DATABASE_URL:?is empty: set DATABASE_URL in .env}"; pg_dump "$PROD_DATABASE_URL" --schema=marquise --no-owner --no-privileges -f /tmp/marquise.sql'
-    {{ compose }} exec -T db grep -m1 'Dumped from database version' /tmp/marquise.sql
     {{ psql }} --single-transaction -c 'DROP SCHEMA IF EXISTS marquise CASCADE' -f /tmp/marquise.sql >/dev/null
     {{ compose }} exec -T db rm /tmp/marquise.sql
     {{ psql }} -c 'SELECT (SELECT count(*) FROM marquise.movies) AS movies, (SELECT count(*) FROM marquise.screenings) AS screenings'

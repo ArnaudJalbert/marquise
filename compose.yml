@@ -16,7 +16,6 @@ services:
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "marquise", "-d", "marquise"]
       interval: 2s
-      timeout: 5s
       retries: 15
 
 volumes:
