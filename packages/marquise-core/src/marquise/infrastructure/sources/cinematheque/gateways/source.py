@@ -22,6 +22,7 @@ import http.client
 import json
 import re
 import ssl
+import time
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
@@ -51,16 +52,30 @@ _RUNTIME_RE = re.compile(r"(?:(\d+)\s*hr)?\s*(?:(\d+)\s*min)?")
 def _fetch(url: str) -> str:
     """Fetch a URL with SSL verification and a spoofed User-Agent.
 
+    Retry a read timeout up to three attempts, with 0.5s and 1s delays.
+    Each attempt has a 15-second socket timeout; exhausted retries propagate.
+
     Args:
         url: The URL to fetch.
 
     Returns:
         The response body as a string.
+
+    Raises:
+        TimeoutError: When all three attempts time out.
     """
     headers = {"User-Agent": "Mozilla/5.0 (compatible; Marquise/1.0)"}
     req = urllib.request.Request(url, headers=headers)
-    with urllib.request.urlopen(req, context=_SSL_CONTEXT, timeout=15) as resp:
-        return resp.read().decode()
+    attempt = 0
+    while True:
+        try:
+            with urllib.request.urlopen(req, context=_SSL_CONTEXT, timeout=15) as resp:
+                return resp.read().decode()
+        except TimeoutError:
+            if attempt == 2:
+                raise
+            time.sleep(0.5 * (attempt + 1))
+            attempt += 1
 
 
 def _extract_movie_data(html: str) -> dict[str, Any]:
