@@ -47,13 +47,14 @@ _MOVIE_DATA_RE = re.compile(r"var gMovieData\s*=\s*(\{.*?\})\s*</script>", re.DO
 _DATE_OPTION_RE = re.compile(r'<option value="(\d{4}-\d{2}-\d{2})">')
 _LANGUAGE_RE = re.compile(r"\((VO[A-Z]{0,5}|VF|VA)\)\s*$")
 _RUNTIME_RE = re.compile(r"(?:(\d+)\s*hr)?\s*(?:(\d+)\s*min)?")
+_FETCH_ATTEMPTS = 3
 
 
 def _fetch(url: str) -> str:
     """Fetch a URL with SSL verification and a spoofed User-Agent.
 
-    Retry a read timeout up to three attempts, with 0.5s and 1s delays.
-    Each attempt has a 15-second socket timeout; exhausted retries propagate.
+    Retry a timed-out response up to three attempts, with 0.5s and 1s delays,
+    so one slow page does not fail the import. Exhausted retries propagate.
 
     Args:
         url: The URL to fetch.
@@ -62,20 +63,29 @@ def _fetch(url: str) -> str:
         The response body as a string.
 
     Raises:
-        TimeoutError: When all three attempts time out.
+        TimeoutError: When every attempt times out.
     """
     headers = {"User-Agent": "Mozilla/5.0 (compatible; Marquise/1.0)"}
     req = urllib.request.Request(url, headers=headers)
-    attempt = 0
-    while True:
+    for attempt in range(1, _FETCH_ATTEMPTS):
         try:
-            with urllib.request.urlopen(req, context=_SSL_CONTEXT, timeout=15) as resp:
-                return resp.read().decode()
+            return _read(req)
         except TimeoutError:
-            if attempt == 2:
-                raise
-            time.sleep(0.5 * (attempt + 1))
-            attempt += 1
+            time.sleep(0.5 * attempt)
+    return _read(req)
+
+
+def _read(req: urllib.request.Request) -> str:
+    """Send one request with a 15-second socket timeout.
+
+    Args:
+        req: The prepared request.
+
+    Returns:
+        The response body as a string.
+    """
+    with urllib.request.urlopen(req, context=_SSL_CONTEXT, timeout=15) as resp:
+        return resp.read().decode()
 
 
 def _extract_movie_data(html: str) -> dict[str, Any]:
