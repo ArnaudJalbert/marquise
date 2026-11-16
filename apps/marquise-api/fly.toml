@@ -10,9 +10,6 @@
 # Secrets that MUST be set:
 #   fly secrets set DATABASE_URL="postgresql://..."
 #
-# Optional secrets:
-#   fly secrets set CINEPLEX_API_KEY="..."
-#
 # To list currently set secrets:
 #   fly secrets list
 # ─────────────────────────────────────────────────────────────────────────────
