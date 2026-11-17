@@ -108,7 +108,7 @@ Importing `marquise.infrastructure.di.container` runs `load_dotenv()`, so a loca
 ```bash
 just test                                   # core, API and CLI test suites
 just test-core                              # core unit tests
-just test-core-integrations <database-url>  # core integration tests on a disposable PostgreSQL
+just test-core-integrations                 # core integration tests on a fresh local database
 just test-api                               # API tests
 just test-cli                               # CLI tests
 just cli <args>                             # CLI, against the local copy
