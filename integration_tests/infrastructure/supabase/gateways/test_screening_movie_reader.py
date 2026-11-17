@@ -6,6 +6,7 @@ import asyncpg
 import pytest
 
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
+from marquise.domain.value_objects import HourFilter, HourRange
 from marquise.infrastructure.supabase.gateways.screening_movie_reader import (
     SupabaseScreeningMovieReadGateway,
 )
@@ -169,9 +170,7 @@ async def test_filters_apply_to_qualifying_screenings_before_preview_selection(
             title="Dune",
             cinemas=("c2",),
             languages=("VOSTF",),
-            hours=ScreeningMovieReader.HourFilter(
-                ranges=(ScreeningMovieReader.HourRange(18, 20),)
-            ),
+            hours=HourFilter(ranges=(HourRange(18, 20),)),
         )
     )
     assert result.total == 1
@@ -216,8 +215,8 @@ async def test_hour_ranges_support_negation_in_montreal_time_and_cinema_exclusio
             end=datetime(2026, 11, 6, 4, 59, 59, tzinfo=UTC),
             now=now,
             page=1,
-            hours=ScreeningMovieReader.HourFilter(
-                ranges=(ScreeningMovieReader.HourRange(17, 21),),
+            hours=HourFilter(
+                ranges=(HourRange(17, 21),),
                 excluded=True,
             ),
             excluded_cinemas=("c2",),
@@ -327,10 +326,10 @@ async def test_day_counts_apply_the_listing_filters(db_pool: asyncpg.Pool) -> No
         title="dun",
         cinemas=("c1", "c3"),
         languages=("VO",),
-        hours=ScreeningMovieReader.HourFilter(
+        hours=HourFilter(
             ranges=(
-                ScreeningMovieReader.HourRange(0, 17),
-                ScreeningMovieReader.HourRange(21, 24),
+                HourRange(0, 17),
+                HourRange(21, 24),
             )
         ),
         excluded_cinemas=("c3",),
@@ -342,9 +341,7 @@ async def test_day_counts_apply_the_listing_filters(db_pool: asyncpg.Pool) -> No
             start=request.start,
             end=request.end,
             now=now,
-            hours=ScreeningMovieReader.HourFilter(
-                ranges=request.hours.ranges, excluded=True
-            ),
+            hours=HourFilter(ranges=request.hours.ranges, excluded=True),
         )
     )
 
