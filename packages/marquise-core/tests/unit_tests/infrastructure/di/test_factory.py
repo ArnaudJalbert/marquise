@@ -8,6 +8,10 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from marquise.application.queries.browse_screening_movies import (
+    BrowseScreeningMoviesQuery,
+)
+from marquise.application.queries.count_screening_days import CountScreeningDaysQuery
 from marquise.application.queries.get_cinema_screenings import (
     GetCinemaScreeningsQuery,
 )
@@ -341,6 +345,8 @@ async def test_list_assignments_query_returns_configured_query() -> None:
         "get_movie_screenings_query",
         "search_screenings_query",
         "get_screening_query",
+        "browse_screening_movies_query",
+        "count_screening_days_query",
         "import_screenings_use_case",
     ],
 )
@@ -371,6 +377,8 @@ def test_configured_use_cases_require_initialize(property_name: str) -> None:
         ("get_movie_screenings_query", GetMovieScreeningsQuery),
         ("search_screenings_query", SearchScreeningsQuery),
         ("get_screening_query", GetScreeningQuery),
+        ("browse_screening_movies_query", BrowseScreeningMoviesQuery),
+        ("count_screening_days_query", CountScreeningDaysQuery),
         ("import_screenings_use_case", ImportScreeningsCommand),
     ],
 )
