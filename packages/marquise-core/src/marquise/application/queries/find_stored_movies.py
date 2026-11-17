@@ -258,7 +258,7 @@ class FindStoredMoviesQuery:
         self, matched: MatchedMovie, title_candidates: list[Movie]
     ) -> str:
         """Return the title to store. A remake takes its year to stay distinct."""
-        title = self._normalize_title(matched.source.title)
+        title = Movie.collapse_title_whitespace(matched.source.title)
         if not self._is_title_owned_by_another_film(matched, title_candidates):
             return title
         if matched.release_year is None:
@@ -266,11 +266,6 @@ class FindStoredMoviesQuery:
                 f"Movie '{title}' already has a different TMDB id"
             )
         return f"{title} ({matched.release_year})"
-
-    @staticmethod
-    def _normalize_title(title: str) -> str:
-        """Strip and collapse internal whitespace in a scraped movie title."""
-        return " ".join(title.strip().split())
 
     @staticmethod
     def _is_title_owned_by_another_film(
@@ -288,7 +283,7 @@ class FindStoredMoviesQuery:
         self, matched: MatchedMovie, title_candidates: list[Movie]
     ) -> Movie | None:
         """Find the row for a matched movie, ignoring rows owned by other films."""
-        title = self._normalize_title(matched.source.title)
+        title = Movie.collapse_title_whitespace(matched.source.title)
         titles = (title, *matched.source.matched_titles)
         candidates = [
             movie
@@ -301,7 +296,7 @@ class FindStoredMoviesQuery:
         self, movie: MovieInput, title_candidates: list[Movie], aliases: dict[str, str]
     ) -> StoredMovie | MissingMovie:
         """Compare an unmatched movie with stored rows by title alone."""
-        title = self._normalize_title(movie.title)
+        title = Movie.collapse_title_whitespace(movie.title)
         stored = self._find_match(title_candidates, (title,), movie.release_year)
         if stored is not None:
             return self._build_stored_movie(movie, stored, None)
@@ -363,11 +358,13 @@ class FindStoredMoviesQuery:
         self, candidates: list[Movie], titles: tuple[str, ...]
     ) -> list[Movie]:
         """Narrow to the single exact spelling, when there is exactly one."""
-        wanted_titles = {self._normalize_title(title).casefold() for title in titles}
+        wanted_titles = {
+            Movie.collapse_title_whitespace(title).casefold() for title in titles
+        }
         exact_matches = [
             movie
             for movie in candidates
-            if self._normalize_title(movie.title).casefold() in wanted_titles
+            if Movie.collapse_title_whitespace(movie.title).casefold() in wanted_titles
         ]
         return exact_matches if len(exact_matches) == 1 else candidates
 
