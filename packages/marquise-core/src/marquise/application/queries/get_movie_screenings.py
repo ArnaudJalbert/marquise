@@ -8,6 +8,7 @@ from datetime import datetime
 from marquise.application.exceptions import MovieNotFoundError
 from marquise.application.readers import ScreeningReader
 from marquise.application.repositories import MovieRepository
+from marquise.application.repositories.page import page_window
 from marquise.domain.value_objects import MovieId
 
 
@@ -56,12 +57,7 @@ class GetMovieScreeningsQuery:
             raise MovieNotFoundError(
                 f"A movie with ID '{input_data.movie_id}' was not found"
             )
-        limit = input_data.size
-        offset = (
-            (input_data.page - 1) * input_data.size
-            if input_data.size is not None
-            else 0
-        )
+        limit, offset = page_window(input_data.page, input_data.size)
         start_filter = (
             {"start_date": input_data.start} if input_data.start is not None else {}
         )

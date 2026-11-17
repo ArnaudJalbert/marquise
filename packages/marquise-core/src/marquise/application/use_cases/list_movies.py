@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from marquise.application.exceptions import TooManyMovieIdsError
 from marquise.application.repositories import MovieRepository
+from marquise.application.repositories.page import page_window
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
 
@@ -166,12 +167,7 @@ class ListMoviesUseCase:
             movie_data = [self._to_movie_data(m) for m in movies]
             return self.OutputData(movies=movie_data, total=len(movie_data))
 
-        if input_data.size is not None:
-            limit = input_data.size
-            offset = (input_data.page - 1) * input_data.size
-        else:
-            limit = None
-            offset = 0
+        limit, offset = page_window(input_data.page, input_data.size)
 
         page = await self.movie_repository.find_all(
             title_filter=input_data.title,

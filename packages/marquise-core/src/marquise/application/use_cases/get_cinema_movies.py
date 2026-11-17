@@ -7,6 +7,7 @@ from datetime import datetime
 
 from marquise.application.exceptions import CinemaNotFoundError
 from marquise.application.repositories import CinemaRepository, ScreeningRepository
+from marquise.application.repositories.page import page_window
 from marquise.domain.value_objects import CinemaId
 
 
@@ -143,12 +144,7 @@ class GetCinemaMoviesUseCase:
         cinema = await self.cinema_repository.find_by_id(cinema_id)
         assert cinema is not None  # existence already verified above
 
-        if input_data.size is not None:
-            limit = input_data.size
-            offset = (input_data.page - 1) * input_data.size
-        else:
-            limit = None
-            offset = 0
+        limit, offset = page_window(input_data.page, input_data.size)
 
         page = await self.screening_repository.find_distinct_movies_by_cinema(
             cinema_id=cinema_id,

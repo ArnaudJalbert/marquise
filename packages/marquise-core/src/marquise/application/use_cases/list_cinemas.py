@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from marquise.application.repositories import CinemaRepository
+from marquise.application.repositories.page import page_window
 
 
 class ListCinemasUseCase:
@@ -117,12 +118,7 @@ class ListCinemasUseCase:
             The output data containing the matching page of cinemas and the
             total count.
         """
-        if input_data.size is not None:
-            limit = input_data.size
-            offset = (input_data.page - 1) * input_data.size
-        else:
-            limit = None
-            offset = 0
+        limit, offset = page_window(input_data.page, input_data.size)
 
         page = await self.cinema_repository.find_all(
             name_filter=input_data.name,

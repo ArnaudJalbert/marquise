@@ -8,6 +8,7 @@ from datetime import datetime
 from marquise.application.exceptions import CinemaNotFoundError, MovieNotFoundError
 from marquise.application.readers import ScreeningReader
 from marquise.application.repositories import CinemaRepository, MovieRepository
+from marquise.application.repositories.page import page_window
 from marquise.domain.value_objects import CinemaId, MovieId
 
 
@@ -150,12 +151,7 @@ class SearchScreeningsQuery:
                 f"A cinema with ID '{input_data.cinema_id}' was not found"
             )
 
-        if input_data.size is not None:
-            limit = input_data.size
-            offset = (input_data.page - 1) * input_data.size
-        else:
-            limit = None
-            offset = 0
+        limit, offset = page_window(input_data.page, input_data.size)
 
         page = await self.screening_reader.search(
             movie_id=input_data.movie_id,
