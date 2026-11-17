@@ -7,10 +7,13 @@ from datetime import datetime
 import asyncpg
 
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
+from marquise.application.repositories.page import page_window
 from marquise.domain.constants import MONTREAL_TIME_ZONE
 from marquise.domain.value_objects import HourFilter
 from marquise.infrastructure.supabase.gateways.screening_reader import _naive_utc
 from marquise.interface_adapters.repositories.protocols.base import GatewayPage
+
+_MOVIES_PER_PAGE = 24
 
 type _FilterRequest = (
     ScreeningMovieReader.SearchRequest | ScreeningMovieReader.DayCountRequest
@@ -41,7 +44,7 @@ class SupabaseScreeningMovieReadGateway:
                     FROM qualifying WHERE rank = 1
                 ), selected AS (
                     SELECT * FROM eligible
-                    ORDER BY next_showtime, movie_id LIMIT 24 OFFSET $11
+                    ORDER BY next_showtime, movie_id LIMIT $11 OFFSET $12
                 )
                 SELECT totals.total, m.id, m.title, m.release_year, m.directors,
                        m.duration_minutes, m.description, m.poster_url,
@@ -55,7 +58,7 @@ class SupabaseScreeningMovieReadGateway:
                 ORDER BY p.next_showtime, p.movie_id, q.showtime, q.id
                 ''',
                 *self._bind_filter_arguments(request),
-                (request.page - 1) * 24,
+                *page_window(request.page, _MOVIES_PER_PAGE),
             )
         movies: dict[str, dict] = {}
         for row in rows:
