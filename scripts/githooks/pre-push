@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Run the test suites and web build for the areas a branch changes against main.
+# Enable once per clone: git config core.hooksPath scripts/githooks
+set -euo pipefail
+
+head=$(git rev-parse HEAD)
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$local_ref" != "(delete)" ] && [ "$local_sha" != "$head" ]; then
+    printf 'pre-push: check out %s before pushing it.\n' "${local_ref#refs/heads/}" >&2
+    exit 1
+  fi
+done
+
+base=$(git merge-base origin/main HEAD 2>/dev/null) || {
+  echo 'pre-push: no origin/main to compare against, skipping checks.' >&2
+  exit 0
+}
+changed=$(git diff --name-only "$base" HEAD)
+[ -n "$changed" ] || exit 0
+
+# Both apps import core, so a core or dependency change runs every suite.
+core=$(grep -cE '^(packages/|uv\.lock$|pyproject\.toml$)' <<<"$changed" || true)
+if [ "$core" -gt 0 ]; then
+  uv run pytest -q packages/marquise-core/tests/unit_tests/ --cov=marquise --cov-fail-under=70
+fi
+if [ "$core" -gt 0 ] || grep -q '^apps/marquise-api/' <<<"$changed"; then
+  uv run pytest -q apps/marquise-api/tests/
+fi
+if [ "$core" -gt 0 ] || grep -q '^apps/marquise-cli/' <<<"$changed"; then
+  uv run pytest -q apps/marquise-cli/tests/
+fi
+if grep -q '^web/' <<<"$changed"; then
+  pnpm -C web test
+  pnpm -C web build
+fi

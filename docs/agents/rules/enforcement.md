@@ -18,8 +18,8 @@ Each rule has one home: a topic file here, or a shared `coding-*` skill. This ma
 | Stage | What runs | Catches |
 |---|---|---|
 | Writing | The author reads the matching rule file and shared coding skill from [AGENTS.md](../../../AGENTS.md#rules) | Design: what a use case does, how it is split, what names mean |
-| Before commit | `uv run ruff format .`, `uv run ruff check .`, `uv run ty check packages/marquise-core/src`, unit tests | Everything automated, in seconds |
-| Agent finishes a turn | In T3 agent worktrees, the Claude Code Stop hook (`.claude/settings.json`, `scripts/agents/stop_checks.sh`) runs the same checks for the changed area and blocks the stop until they pass | Workers that report checks they never ran |
+| Before commit | The `scripts/githooks/pre-commit` git hook runs format check, lint and type check for the staged area | Format, lint and type errors, in seconds, from any agent or person |
+| Before push | The `scripts/githooks/pre-push` git hook runs the test suites and web build for the area the branch changes | Failing tests before CI, including from workers that report checks they never ran |
 | CI | The same commands in `.github/workflows/quality.yml`, plus integration tests | Everything automated, on every push |
 | Review | The reviewer follows [review-and-delivery](review-and-delivery.md#review) | Everything marked Review below |
 
