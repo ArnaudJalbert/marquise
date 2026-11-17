@@ -8,12 +8,13 @@ from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi_cache.decorator import cache
 from fastapi_pagination import Page, Params
 
-from marquise import GetMovieScreeningsQuery, GetMovieUseCase, ListMoviesUseCase
-from marquise_api.dependencies import (
-    get_list_movies_use_case,
-    get_movie_screenings_query,
-    get_movie_use_case,
+from marquise import (
+    GetMovieScreeningsQuery,
+    GetMovieUseCase,
+    ListMoviesUseCase,
+    MarquiseFactory,
 )
+from marquise_api.dependencies import get_factory
 from marquise_api.openapi_responses import error_responses
 from marquise_api.rate_limit import current_rate_limit, limiter
 from marquise_api.schemas import MovieResponse, ScreeningResponse
@@ -48,10 +49,10 @@ async def list_movies(
         ),
     ),
     params: Params = Depends(),
-    use_case: ListMoviesUseCase = Depends(get_list_movies_use_case),
+    factory: MarquiseFactory = Depends(get_factory),
 ) -> Page[MovieResponse]:
     """List movies, optionally filtered by title and/or fetched in bulk by ids."""
-    output = await use_case.execute(
+    output = await factory.movies.list_movies_use_case.execute(
         ListMoviesUseCase.InputData(
             title=title,
             ids=tuple(ids) if ids is not None else None,
@@ -77,10 +78,12 @@ async def get_movie(
     request: Request,
     response: Response,
     movie_id: str,
-    use_case: GetMovieUseCase = Depends(get_movie_use_case),
+    factory: MarquiseFactory = Depends(get_factory),
 ) -> MovieResponse:
     """Retrieve a single movie by its ID."""
-    output = await use_case.execute(GetMovieUseCase.InputData(movie_id=movie_id))
+    output = await factory.movies.get_movie_use_case.execute(
+        GetMovieUseCase.InputData(movie_id=movie_id)
+    )
     return MovieResponse.model_validate(output)
 
 
@@ -101,7 +104,7 @@ async def get_movie_screenings(
         description="Start of showtime range (inclusive). Unbounded if omitted.",
     ),
     params: Params = Depends(),
-    query: GetMovieScreeningsQuery = Depends(get_movie_screenings_query),
+    factory: MarquiseFactory = Depends(get_factory),
 ) -> Page[ScreeningResponse]:
     """List a movie's screenings, ordered by showtime then ID.
 
@@ -109,7 +112,7 @@ async def get_movie_screenings(
     all of them. Use ``GET /v1/screenings`` for end date, cinema, or language
     filters.
     """
-    output = await query.execute(
+    output = await factory.movies.get_movie_screenings_query.execute(
         GetMovieScreeningsQuery.InputData(
             movie_id=movie_id,
             start=from_,

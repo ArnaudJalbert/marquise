@@ -1523,6 +1523,25 @@ def test_screening_movies_page_and_validation(
     query.execute.assert_not_awaited()
 
 
+def test_screening_movies_inverted_range_returns_the_validation_envelope(
+    client: TestClient, factory: MagicMock
+) -> None:
+    """An inverted browse range fails params validation, like day counts."""
+    query = create_autospec(BrowseScreeningMoviesQuery, instance=True)
+    factory.browse_screening_movies_query = query
+    response = client.post(
+        "/v1/screening-movies?start=2026-11-02&end=2026-11-01", json={}
+    )
+    assert response.status_code == 422
+    body = response.json()
+    body.pop("request_id")
+    assert body == {
+        "detail": "Request validation failed",
+        "error_code": "invalid_input",
+    }
+    query.execute.assert_not_awaited()
+
+
 def test_screening_movies_filters_reach_the_query(
     client: TestClient, factory: MagicMock
 ) -> None:
