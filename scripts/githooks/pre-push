@@ -7,8 +7,8 @@ base=$(git merge-base origin/main HEAD)
 changed=$(git diff --name-only "$base" HEAD)
 [ -n "$changed" ] || exit 0
 
-# Both apps import core, so a core change runs every suite.
-core=$(grep -c '^packages/' <<<"$changed" || true)
+# Both apps import core, so a core or dependency change runs every suite.
+core=$(grep -cE '^(packages/|uv\.lock$|pyproject\.toml$)' <<<"$changed" || true)
 if [ "$core" -gt 0 ]; then
   uv run pytest -q packages/marquise-core/tests/unit_tests/ --cov=marquise --cov-fail-under=70
 fi
