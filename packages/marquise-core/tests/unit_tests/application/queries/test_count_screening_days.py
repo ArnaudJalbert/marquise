@@ -74,8 +74,8 @@ async def test_filters_reach_the_reader(
             title=" Dune ",
             cinemas=("c1",),
             languages=("VO",),
-            hours=query.HourFilter(
-                ranges=(query.HourRange(0, 17), query.HourRange(21, 24)),
+            hours=query.HourFilterInput(
+                ranges=(query.HourRangeInput(0, 17), query.HourRangeInput(21, 24)),
                 excluded=True,
             ),
             excluded_cinemas=("c3",),
@@ -132,7 +132,9 @@ async def test_invalid_hours_are_rejected_before_reading(
     ranges: tuple[tuple[int, int], ...],
 ) -> None:
     """An empty filter or an inverted or out-of-day range never reaches storage."""
-    hours = query.HourFilter(ranges=tuple(query.HourRange(*item) for item in ranges))
+    hours = query.HourFilterInput(
+        ranges=tuple(query.HourRangeInput(*item) for item in ranges)
+    )
 
     with pytest.raises(ValueError, match="hours"):
         await query.execute(query.InputData(DAY, DAY, hours=hours))
@@ -145,20 +147,20 @@ async def test_invalid_hours_are_rejected_before_reading(
 def test_hour_range_types_are_checked(hours: tuple) -> None:
     """A non-integer hour bound fails where it enters the application."""
     with pytest.raises(TypeError, match="must be int"):
-        CountScreeningDaysQuery.HourRange(*hours)
+        CountScreeningDaysQuery.HourRangeInput(*hours)
 
 
 @pytest.mark.parametrize(
     "fields",
     [
-        {"ranges": [CountScreeningDaysQuery.HourRange(0, 17)]},
-        {"ranges": (CountScreeningDaysQuery.HourRange(0, 17),), "excluded": 1},
+        {"ranges": [CountScreeningDaysQuery.HourRangeInput(0, 17)]},
+        {"ranges": (CountScreeningDaysQuery.HourRangeInput(0, 17),), "excluded": 1},
     ],
 )
 def test_hour_filter_types_are_checked(fields: dict) -> None:
     """Hour ranges must be a tuple and the exclusion flag a bool."""
     with pytest.raises(TypeError):
-        CountScreeningDaysQuery.HourFilter(**fields)
+        CountScreeningDaysQuery.HourFilterInput(**fields)
 
 
 @pytest.mark.parametrize(

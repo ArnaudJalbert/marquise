@@ -79,8 +79,10 @@ async def test_invalid_hours_are_rejected_before_reading(
     ranges: tuple[tuple[int, int], ...],
 ) -> None:
     """An empty filter or an inverted or out-of-day range never reaches storage."""
-    hours = BrowseScreeningMoviesQuery.HourFilter(
-        ranges=tuple(BrowseScreeningMoviesQuery.HourRange(*item) for item in ranges)
+    hours = BrowseScreeningMoviesQuery.HourFilterInput(
+        ranges=tuple(
+            BrowseScreeningMoviesQuery.HourRangeInput(*item) for item in ranges
+        )
     )
 
     with pytest.raises(ValueError, match="hours"):
@@ -94,20 +96,20 @@ async def test_invalid_hours_are_rejected_before_reading(
 def test_hour_range_types_are_checked(hours: tuple) -> None:
     """A non-integer hour bound fails where it enters the application."""
     with pytest.raises(TypeError, match="must be int"):
-        BrowseScreeningMoviesQuery.HourRange(*hours)
+        BrowseScreeningMoviesQuery.HourRangeInput(*hours)
 
 
 @pytest.mark.parametrize(
     "fields",
     [
-        {"ranges": [BrowseScreeningMoviesQuery.HourRange(0, 17)]},
-        {"ranges": (BrowseScreeningMoviesQuery.HourRange(0, 17),), "excluded": 1},
+        {"ranges": [BrowseScreeningMoviesQuery.HourRangeInput(0, 17)]},
+        {"ranges": (BrowseScreeningMoviesQuery.HourRangeInput(0, 17),), "excluded": 1},
     ],
 )
 def test_hour_filter_types_are_checked(fields: dict) -> None:
     """Hour ranges must be a tuple and the exclusion flag a bool."""
     with pytest.raises(TypeError):
-        BrowseScreeningMoviesQuery.HourFilter(**fields)
+        BrowseScreeningMoviesQuery.HourFilterInput(**fields)
 
 
 @pytest.mark.asyncio
@@ -122,8 +124,8 @@ async def test_filter_values_are_passed_to_the_reader() -> None:
         title=" Dune ",
         cinemas=("c1", "c2"),
         languages=("VO", "VOSTF"),
-        hours=BrowseScreeningMoviesQuery.HourFilter(
-            ranges=(BrowseScreeningMoviesQuery.HourRange(start=17, end=21),),
+        hours=BrowseScreeningMoviesQuery.HourFilterInput(
+            ranges=(BrowseScreeningMoviesQuery.HourRangeInput(start=17, end=21),),
             excluded=True,
         ),
         excluded_cinemas=("c3",),

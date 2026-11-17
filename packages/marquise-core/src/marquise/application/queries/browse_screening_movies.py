@@ -7,15 +7,15 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
-from marquise.domain import value_objects
 from marquise.domain.constants import MONTREAL_TIME_ZONE
+from marquise.domain.value_objects import HourFilter, HourRange
 
 
 class BrowseScreeningMoviesQuery:
     """Read one movie page using one clock instant for eligibility and previews."""
 
     @dataclass(frozen=True, slots=True)
-    class HourRange:
+    class HourRangeInput:
         """One half-open whole-hour Montréal range."""
 
         start: int
@@ -27,10 +27,10 @@ class BrowseScreeningMoviesQuery:
                 raise TypeError("start and end must be int")
 
     @dataclass(frozen=True, slots=True)
-    class HourFilter:
+    class HourFilterInput:
         """Hour ranges matched together before optional exclusion."""
 
-        ranges: tuple[BrowseScreeningMoviesQuery.HourRange, ...]
+        ranges: tuple[BrowseScreeningMoviesQuery.HourRangeInput, ...]
         excluded: bool = False
 
         def __post_init__(self) -> None:
@@ -54,7 +54,7 @@ class BrowseScreeningMoviesQuery:
         title: str | None = None
         cinemas: tuple[str, ...] = ()
         languages: tuple[str, ...] = ()
-        hours: BrowseScreeningMoviesQuery.HourFilter | None = None
+        hours: BrowseScreeningMoviesQuery.HourFilterInput | None = None
         excluded_cinemas: tuple[str, ...] = ()
 
         def __post_init__(self) -> None:
@@ -125,9 +125,7 @@ class BrowseScreeningMoviesQuery:
 
     @staticmethod
     def _to_hour_filter(
-        hours: BrowseScreeningMoviesQuery.HourFilter,
-    ) -> value_objects.HourFilter:
-        ranges = tuple(
-            value_objects.HourRange(item.start, item.end) for item in hours.ranges
-        )
-        return value_objects.HourFilter(ranges=ranges, excluded=hours.excluded)
+        hours: BrowseScreeningMoviesQuery.HourFilterInput,
+    ) -> HourFilter:
+        ranges = tuple(HourRange(item.start, item.end) for item in hours.ranges)
+        return HourFilter(ranges=ranges, excluded=hours.excluded)

@@ -9,8 +9,8 @@ from datetime import UTC, date, datetime, time, timedelta
 
 from marquise.application.exceptions import TooManyScreeningDaysError
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
-from marquise.domain import value_objects
 from marquise.domain.constants import MONTREAL_TIME_ZONE
+from marquise.domain.value_objects import HourFilter, HourRange
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ class CountScreeningDaysQuery:
     _MAX_DAYS = 42
 
     @dataclass(frozen=True, slots=True)
-    class HourRange:
+    class HourRangeInput:
         """One half-open whole-hour Montréal range."""
 
         start: int
@@ -33,10 +33,10 @@ class CountScreeningDaysQuery:
                 raise TypeError("start and end must be int")
 
     @dataclass(frozen=True, slots=True)
-    class HourFilter:
+    class HourFilterInput:
         """Hour ranges matched together before optional exclusion."""
 
-        ranges: tuple[CountScreeningDaysQuery.HourRange, ...]
+        ranges: tuple[CountScreeningDaysQuery.HourRangeInput, ...]
         excluded: bool = False
 
         def __post_init__(self) -> None:
@@ -55,7 +55,7 @@ class CountScreeningDaysQuery:
         title: str | None = None
         cinemas: tuple[str, ...] = ()
         languages: tuple[str, ...] = ()
-        hours: CountScreeningDaysQuery.HourFilter | None = None
+        hours: CountScreeningDaysQuery.HourFilterInput | None = None
         excluded_cinemas: tuple[str, ...] = ()
 
         def __post_init__(self) -> None:
@@ -68,9 +68,9 @@ class CountScreeningDaysQuery:
                 if not isinstance(getattr(self, name), tuple):
                     raise TypeError(f"{name} must be a tuple")
             if self.hours is not None and not isinstance(
-                self.hours, CountScreeningDaysQuery.HourFilter
+                self.hours, CountScreeningDaysQuery.HourFilterInput
             ):
-                raise TypeError("hours must be an HourFilter")
+                raise TypeError("hours must be an HourFilterInput")
             self._require_valid_dates(self.start, self.end)
 
         @staticmethod
@@ -120,15 +120,13 @@ class CountScreeningDaysQuery:
 
     @staticmethod
     def _to_hour_filter(
-        hours: CountScreeningDaysQuery.HourFilter,
-    ) -> value_objects.HourFilter:
-        ranges = tuple(
-            value_objects.HourRange(item.start, item.end) for item in hours.ranges
-        )
-        return value_objects.HourFilter(ranges=ranges, excluded=hours.excluded)
+        hours: CountScreeningDaysQuery.HourFilterInput,
+    ) -> HourFilter:
+        ranges = tuple(HourRange(item.start, item.end) for item in hours.ranges)
+        return HourFilter(ranges=ranges, excluded=hours.excluded)
 
     def _to_day_count_request(
-        self, input_data: InputData, hours: value_objects.HourFilter | None
+        self, input_data: InputData, hours: HourFilter | None
     ) -> ScreeningMovieReader.DayCountRequest:
         return ScreeningMovieReader.DayCountRequest(
             start=self._to_utc_day_start(input_data.start),
