@@ -101,7 +101,7 @@ class CreateCinemaUseCase:
                 f"A cinema with name '{input_data.name}' already exists."
             )
 
-        cinema_id = CinemaId(value=str(uuid4()))
+        cinema_id = CinemaId(value=uuid4().hex)
 
         cinema = Cinema(
             id=cinema_id,
