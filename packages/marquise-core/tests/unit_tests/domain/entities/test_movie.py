@@ -71,6 +71,11 @@ def test_search_title_strips_only_trailing_screening_labels(
     assert Movie.search_title(title) == film
 
 
+def test_collapse_title_whitespace_strips_and_squeezes_runs() -> None:
+    """A scraped title loses edge whitespace and keeps one space between words."""
+    assert Movie.collapse_title_whitespace("  Le\t Grand \n\nBleu  ") == "Le Grand Bleu"
+
+
 def test_title_key_ignores_case_accents_and_labels() -> None:
     """Label and case variants of one film share a key."""
     assert (

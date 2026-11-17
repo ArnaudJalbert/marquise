@@ -6,6 +6,7 @@ import logging
 from dataclasses import dataclass
 
 from marquise.application.exceptions.movie import MovieNotLinkedError
+from marquise.domain.entities import Movie
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +103,7 @@ class LinkScreeningsQuery:
 
     def _build_key(self, title: str, source_identifier: str | None) -> MovieKey:
         """Build the key a screening and its movie share."""
-        normalized_title = " ".join(title.strip().split()).lower()
+        normalized_title = Movie.collapse_title_whitespace(title).lower()
         return self.MovieKey(normalized_title, source_identifier)
 
     def _find_movie_id(

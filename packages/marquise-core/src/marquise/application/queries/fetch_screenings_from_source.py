@@ -18,6 +18,7 @@ from marquise.application.repositories import (
     SourceRegistryQuery,
 )
 from marquise.domain.constants import MONTREAL_TIME_ZONE
+from marquise.domain.entities import Movie
 from marquise.domain.value_objects import CinemaId
 
 logger = logging.getLogger(__name__)
@@ -157,7 +158,7 @@ class FetchScreeningsFromSourceQuery:
 
         seen_titles: dict[tuple[str, str | None], None] = {}
         for row in raw_rows:
-            norm = _normalize_title(row.movie_title)
+            norm = Movie.collapse_title_whitespace(row.movie_title)
             seen_titles[(norm, row.identifier)] = None
 
         movie_list: list[FetchScreeningsFromSourceQuery.FetchedMovieData] = []
@@ -243,8 +244,3 @@ async def _fetch_movie_details(
             )
         )
     )
-
-
-def _normalize_title(title: str) -> str:
-    """Strip and collapse internal whitespace in a scraped movie title."""
-    return " ".join(title.strip().split())
