@@ -80,6 +80,6 @@ def test_metadata_workflows_are_available_through_factory() -> None:
     from marquise.application.use_cases.refresh_movies import RefreshMoviesUseCase
 
     factory = MarquiseFactory()
-    factory._container._pool = MagicMock()
+    factory._pool = MagicMock()
     assert isinstance(factory.refresh_movies_use_case, RefreshMoviesUseCase)
     assert isinstance(factory.merge_movies_use_case, MergeMoviesUseCase)
