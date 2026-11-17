@@ -3,7 +3,18 @@
 # Enable once per clone: git config core.hooksPath scripts/githooks
 set -euo pipefail
 
-base=$(git merge-base origin/main HEAD)
+head=$(git rev-parse HEAD)
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$local_ref" != "(delete)" ] && [ "$local_sha" != "$head" ]; then
+    printf 'pre-push: check out %s before pushing it.\n' "${local_ref#refs/heads/}" >&2
+    exit 1
+  fi
+done
+
+base=$(git merge-base origin/main HEAD 2>/dev/null) || {
+  echo 'pre-push: no origin/main to compare against, skipping checks.' >&2
+  exit 0
+}
 changed=$(git diff --name-only "$base" HEAD)
 [ -n "$changed" ] || exit 0
 
