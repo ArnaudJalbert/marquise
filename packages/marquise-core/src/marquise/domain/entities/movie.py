@@ -102,6 +102,11 @@ class Movie:
             raise ValueError("Movie TMDB vote count must be a non-negative integer")
 
     @staticmethod
+    def collapse_title_whitespace(title: str) -> str:
+        """Return a scraped title stripped, with each whitespace run as one space."""
+        return " ".join(title.split())
+
+    @staticmethod
     def search_title(title: str) -> str:
         """Return the film title without trailing screening version labels."""
         title = " ".join(html.unescape(title).split())
