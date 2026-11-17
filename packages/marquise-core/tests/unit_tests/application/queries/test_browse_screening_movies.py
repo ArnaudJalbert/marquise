@@ -16,6 +16,21 @@ NOW = datetime(2026, 11, 3, 18, tzinfo=UTC)
 DAY = date(2026, 11, 3)
 
 
+@pytest.fixture
+def reader() -> ScreeningMovieReader:
+    return create_autospec(ScreeningMovieReader, instance=True)
+
+
+@pytest.fixture
+def clock() -> Mock:
+    return Mock(return_value=NOW)
+
+
+@pytest.fixture
+def query(reader: ScreeningMovieReader, clock: Mock) -> BrowseScreeningMoviesQuery:
+    return BrowseScreeningMoviesQuery(reader, clock)
+
+
 @pytest.mark.asyncio
 async def test_montreal_dst_window_and_single_clock() -> None:
     """The autumn transition includes both repeated hours and reads the clock once."""
@@ -58,11 +73,12 @@ def test_invalid_request(start: date, end: date, page: int) -> None:
     "ranges", [((21, 17),), ((17, 17),), ((-1, 5),), ((0, 25),), ()]
 )
 async def test_invalid_hours_are_rejected_before_reading(
+    query: BrowseScreeningMoviesQuery,
+    reader: ScreeningMovieReader,
+    clock: Mock,
     ranges: tuple[tuple[int, int], ...],
 ) -> None:
     """An empty filter or an inverted or out-of-day range never reaches storage."""
-    reader = create_autospec(ScreeningMovieReader, instance=True)
-    query = BrowseScreeningMoviesQuery(reader, Mock(return_value=NOW))
     hours = BrowseScreeningMoviesQuery.HourFilter(
         ranges=tuple(BrowseScreeningMoviesQuery.HourRange(*item) for item in ranges)
     )
@@ -70,6 +86,7 @@ async def test_invalid_hours_are_rejected_before_reading(
     with pytest.raises(ValueError, match="hours"):
         await query.execute(BrowseScreeningMoviesQuery.InputData(DAY, DAY, hours=hours))
 
+    clock.assert_not_called()
     reader.search.assert_not_awaited()
 
 

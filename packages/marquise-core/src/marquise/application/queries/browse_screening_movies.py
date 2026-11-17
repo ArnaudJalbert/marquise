@@ -81,7 +81,19 @@ class BrowseScreeningMoviesQuery:
         self._clock = clock
 
     async def execute(self, input_data: InputData) -> OutputData:
-        """Convert local date bounds and read one movie page."""
+        """Convert local date bounds and read one movie page.
+
+        Args:
+            input_data: The inclusive Montréal dates, page and listing filters.
+
+        Returns:
+            The page's movie cards and the distinct-movie total.
+
+        Raises:
+            ValueError: If the hour filter has no range, or a range is empty,
+                inverted or outside the day.
+        """
+        hours = self._to_hour_filter(input_data.hours)
         start = datetime.combine(
             input_data.start, time.min, MONTREAL_TIME_ZONE
         ).astimezone(UTC)
@@ -93,7 +105,6 @@ class BrowseScreeningMoviesQuery:
             if input_data.end is not None
             else None
         )
-        hours = self._to_hour_filter(input_data.hours)
         now = self._clock()
         page = await self._reader.search(
             ScreeningMovieReader.SearchRequest(

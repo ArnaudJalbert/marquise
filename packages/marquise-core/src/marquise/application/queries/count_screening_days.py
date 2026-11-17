@@ -105,27 +105,16 @@ class CountScreeningDaysQuery:
 
         Raises:
             TooManyScreeningDaysError: If the horizon exceeds 42 days.
+            ValueError: If the hour filter has no range, or a range is empty,
+                inverted or outside the day.
         """
         self._require_bounded_horizon(input_data.start, input_data.end)
-        request = self._to_day_count_request(input_data)
+        hours = self._to_hour_filter(input_data.hours)
+        request = self._to_day_count_request(input_data, hours)
         counts = await self._reader.count_days(request)
         days = self._fill_missing_days(input_data.start, input_data.end, counts)
         logger.info("Counted screenings on %d days", len(days))
         return self.OutputData(days=days)
-
-    def _to_day_count_request(
-        self, input_data: InputData
-    ) -> ScreeningMovieReader.DayCountRequest:
-        return ScreeningMovieReader.DayCountRequest(
-            start=self._to_utc_day_start(input_data.start),
-            end=self._to_utc_day_end(input_data.end),
-            now=self._clock(),
-            title=input_data.title,
-            cinemas=input_data.cinemas,
-            languages=input_data.languages,
-            hours=self._to_hour_filter(input_data.hours),
-            excluded_cinemas=input_data.excluded_cinemas,
-        )
 
     @staticmethod
     def _to_hour_filter(
@@ -137,6 +126,20 @@ class CountScreeningDaysQuery:
             value_objects.HourRange(item.start, item.end) for item in hours.ranges
         )
         return value_objects.HourFilter(ranges=ranges, excluded=hours.excluded)
+
+    def _to_day_count_request(
+        self, input_data: InputData, hours: value_objects.HourFilter | None
+    ) -> ScreeningMovieReader.DayCountRequest:
+        return ScreeningMovieReader.DayCountRequest(
+            start=self._to_utc_day_start(input_data.start),
+            end=self._to_utc_day_end(input_data.end),
+            now=self._clock(),
+            title=input_data.title,
+            cinemas=input_data.cinemas,
+            languages=input_data.languages,
+            hours=hours,
+            excluded_cinemas=input_data.excluded_cinemas,
+        )
 
     def _require_bounded_horizon(self, start: date, end: date) -> None:
         if (end - start).days + 1 > self._MAX_DAYS:

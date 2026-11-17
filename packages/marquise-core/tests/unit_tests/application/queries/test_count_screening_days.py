@@ -128,6 +128,7 @@ def test_invalid_date_range(start: date, end: date) -> None:
 async def test_invalid_hours_are_rejected_before_reading(
     query: CountScreeningDaysQuery,
     reader: ScreeningMovieReader,
+    clock: Mock,
     ranges: tuple[tuple[int, int], ...],
 ) -> None:
     """An empty filter or an inverted or out-of-day range never reaches storage."""
@@ -136,6 +137,7 @@ async def test_invalid_hours_are_rejected_before_reading(
     with pytest.raises(ValueError, match="hours"):
         await query.execute(query.InputData(DAY, DAY, hours=hours))
 
+    clock.assert_not_called()
     reader.count_days.assert_not_awaited()
 
 
