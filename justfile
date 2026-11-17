@@ -81,19 +81,16 @@ test: test-core test-api test-cli
 test-core:
     uv run --package marquise-core pytest packages/marquise-core/tests/unit_tests/ -q
 
-integration_db := "marquise_test"
-integration_url := "postgresql://marquise:marquise@localhost:55432/" + integration_db
-
 # Core integration tests on a fresh marquise_test database in the local postgres
-test-core-integrations: _reset-integration-db (_refuse-marquise-schema integration_url)
-    DATABASE_URL="{{ integration_url }}" uv run pytest integration_tests/ -q
+test-core-integrations: _reset-integration-db (_refuse-marquise-schema "postgresql://marquise:marquise@localhost:55432/marquise_test")
+    DATABASE_URL="postgresql://marquise:marquise@localhost:55432/marquise_test" uv run pytest integration_tests/ -q
 
-# Start postgres and recreate the integration database empty, next to the production copy
+# Start postgres and recreate marquise_test empty; literal names, so no override can reach the copy
 _reset-integration-db:
     {{ compose }} up -d --wait db
     {{ compose }} exec -T db psql -v ON_ERROR_STOP=1 -U marquise -d postgres \
-        -c "DROP DATABASE IF EXISTS {{ integration_db }} WITH (FORCE)" \
-        -c "CREATE DATABASE {{ integration_db }}"
+        -c "DROP DATABASE IF EXISTS marquise_test WITH (FORCE)" \
+        -c "CREATE DATABASE marquise_test"
 
 # Connect as the tests do and fail if the database holds the marquise schema (the copy or production)
 _refuse-marquise-schema $DISPOSABLE_DATABASE_URL:
