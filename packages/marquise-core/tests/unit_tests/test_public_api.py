@@ -29,8 +29,6 @@ EXPECTED_PUBLIC_SURFACE: set[str] = {
     "MergeMoviesUseCase",
     "BrowseScreeningMoviesQuery",
     "CountScreeningDaysQuery",
-    "HourFilter",
-    "HourRange",
     "ApplicationError",
     "AssignSourceUseCase",
     "CinemaAlreadyExistsError",

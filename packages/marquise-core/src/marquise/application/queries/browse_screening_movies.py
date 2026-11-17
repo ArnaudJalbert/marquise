@@ -7,12 +7,38 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
+from marquise.domain import value_objects
 from marquise.domain.constants import MONTREAL_TIME_ZONE
-from marquise.domain.value_objects import HourFilter
 
 
 class BrowseScreeningMoviesQuery:
     """Read one movie page using one clock instant for eligibility and previews."""
+
+    @dataclass(frozen=True, slots=True)
+    class HourRange:
+        """One half-open whole-hour Montréal range."""
+
+        start: int
+        end: int
+
+        def __post_init__(self) -> None:
+            """Check field types."""
+            if not isinstance(self.start, int) or not isinstance(self.end, int):
+                raise TypeError("start and end must be int")
+
+    @dataclass(frozen=True, slots=True)
+    class HourFilter:
+        """Hour ranges matched together before optional exclusion."""
+
+        ranges: tuple[BrowseScreeningMoviesQuery.HourRange, ...]
+        excluded: bool = False
+
+        def __post_init__(self) -> None:
+            """Check field types."""
+            if not isinstance(self.ranges, tuple):
+                raise TypeError("ranges must be a tuple")
+            if not isinstance(self.excluded, bool):
+                raise TypeError("excluded must be a bool")
 
     @dataclass(frozen=True, slots=True)
     class InputData:
@@ -28,7 +54,7 @@ class BrowseScreeningMoviesQuery:
         title: str | None = None
         cinemas: tuple[str, ...] = ()
         languages: tuple[str, ...] = ()
-        hours: HourFilter | None = None
+        hours: BrowseScreeningMoviesQuery.HourFilter | None = None
         excluded_cinemas: tuple[str, ...] = ()
 
         def __post_init__(self) -> None:
@@ -67,6 +93,7 @@ class BrowseScreeningMoviesQuery:
             if input_data.end is not None
             else None
         )
+        hours = self._to_hour_filter(input_data.hours)
         now = self._clock()
         page = await self._reader.search(
             ScreeningMovieReader.SearchRequest(
@@ -77,8 +104,19 @@ class BrowseScreeningMoviesQuery:
                 title=input_data.title,
                 cinemas=input_data.cinemas,
                 languages=input_data.languages,
-                hours=input_data.hours,
+                hours=hours,
                 excluded_cinemas=input_data.excluded_cinemas,
             )
         )
         return self.OutputData(movies=tuple(page.items), total=page.total)
+
+    @staticmethod
+    def _to_hour_filter(
+        hours: BrowseScreeningMoviesQuery.HourFilter | None,
+    ) -> value_objects.HourFilter | None:
+        if hours is None:
+            return None
+        ranges = tuple(
+            value_objects.HourRange(item.start, item.end) for item in hours.ranges
+        )
+        return value_objects.HourFilter(ranges=ranges, excluded=hours.excluded)

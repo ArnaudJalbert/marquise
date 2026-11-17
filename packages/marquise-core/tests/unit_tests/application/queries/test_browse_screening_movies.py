@@ -10,8 +10,9 @@ from marquise.application.queries.browse_screening_movies import (
 )
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
 from marquise.application.repositories.page import Page
-from marquise.domain.value_objects import HourFilter, HourRange
+from marquise.domain import value_objects
 
+NOW = datetime(2026, 11, 3, 18, tzinfo=UTC)
 DAY = date(2026, 11, 3)
 
 
@@ -52,19 +53,44 @@ def test_invalid_request(start: date, end: date, page: int) -> None:
         BrowseScreeningMoviesQuery.InputData(start, end, page)
 
 
-@pytest.mark.parametrize("hours", [(21, 17), (17, 17), (-1, 5), (0, 25)])
-def test_invalid_hour_range(hours: tuple[int, int]) -> None:
-    """An empty, inverted or out-of-day range is rejected even beside a valid one."""
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "ranges", [((21, 17),), ((17, 17),), ((-1, 5),), ((0, 25),), ()]
+)
+async def test_invalid_hours_are_rejected_before_reading(
+    ranges: tuple[tuple[int, int], ...],
+) -> None:
+    """An empty filter or an inverted or out-of-day range never reaches storage."""
+    reader = create_autospec(ScreeningMovieReader, instance=True)
+    query = BrowseScreeningMoviesQuery(reader, Mock(return_value=NOW))
+    hours = BrowseScreeningMoviesQuery.HourFilter(
+        ranges=tuple(BrowseScreeningMoviesQuery.HourRange(*item) for item in ranges)
+    )
+
     with pytest.raises(ValueError, match="hours"):
-        BrowseScreeningMoviesQuery.InputData(
-            DAY, DAY, hours=HourFilter(ranges=(HourRange(*hours),))
-        )
+        await query.execute(BrowseScreeningMoviesQuery.InputData(DAY, DAY, hours=hours))
+
+    reader.search.assert_not_awaited()
 
 
-def test_empty_hour_filter() -> None:
-    """An hour filter must name at least one range."""
-    with pytest.raises(ValueError, match="hours"):
-        BrowseScreeningMoviesQuery.InputData(DAY, DAY, hours=HourFilter(ranges=()))
+@pytest.mark.parametrize("hours", [("0", 17), (0, 17.0)])
+def test_hour_range_types_are_checked(hours: tuple) -> None:
+    """A non-integer hour bound fails where it enters the application."""
+    with pytest.raises(TypeError, match="must be int"):
+        BrowseScreeningMoviesQuery.HourRange(*hours)
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"ranges": [BrowseScreeningMoviesQuery.HourRange(0, 17)]},
+        {"ranges": (BrowseScreeningMoviesQuery.HourRange(0, 17),), "excluded": 1},
+    ],
+)
+def test_hour_filter_types_are_checked(fields: dict) -> None:
+    """Hour ranges must be a tuple and the exclusion flag a bool."""
+    with pytest.raises(TypeError):
+        BrowseScreeningMoviesQuery.HourFilter(**fields)
 
 
 @pytest.mark.asyncio
@@ -79,8 +105,8 @@ async def test_filter_values_are_passed_to_the_reader() -> None:
         title=" Dune ",
         cinemas=("c1", "c2"),
         languages=("VO", "VOSTF"),
-        hours=HourFilter(
-            ranges=(HourRange(start=17, end=21),),
+        hours=BrowseScreeningMoviesQuery.HourFilter(
+            ranges=(BrowseScreeningMoviesQuery.HourRange(start=17, end=21),),
             excluded=True,
         ),
         excluded_cinemas=("c3",),
@@ -97,8 +123,8 @@ async def test_filter_values_are_passed_to_the_reader() -> None:
             title=" Dune ",
             cinemas=("c1", "c2"),
             languages=("VO", "VOSTF"),
-            hours=HourFilter(
-                ranges=(HourRange(start=17, end=21),),
+            hours=value_objects.HourFilter(
+                ranges=(value_objects.HourRange(start=17, end=21),),
                 excluded=True,
             ),
             excluded_cinemas=("c3",),

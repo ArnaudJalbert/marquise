@@ -81,7 +81,6 @@ from marquise.bootstrap import (
     create_factory,
     create_factory_session,
 )
-from marquise.domain.value_objects import HourFilter, HourRange
 
 __all__ = [
     "ProviderIdentity",
@@ -103,8 +102,6 @@ __all__ = [
     "MergeMoviesUseCase",
     "BrowseScreeningMoviesQuery",
     "CountScreeningDaysQuery",
-    "HourFilter",
-    "HourRange",
     "ApplicationError",
     "AssignSourceUseCase",
     "CinemaAlreadyExistsError",
