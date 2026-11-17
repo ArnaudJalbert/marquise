@@ -109,7 +109,9 @@ class CountScreeningDaysQuery:
                 inverted or outside the day.
         """
         self._require_bounded_horizon(input_data.start, input_data.end)
-        hours = self._to_hour_filter(input_data.hours)
+        hours = (
+            None if input_data.hours is None else self._to_hour_filter(input_data.hours)
+        )
         request = self._to_day_count_request(input_data, hours)
         counts = await self._reader.count_days(request)
         days = self._fill_missing_days(input_data.start, input_data.end, counts)
@@ -118,10 +120,8 @@ class CountScreeningDaysQuery:
 
     @staticmethod
     def _to_hour_filter(
-        hours: CountScreeningDaysQuery.HourFilter | None,
-    ) -> value_objects.HourFilter | None:
-        if hours is None:
-            return None
+        hours: CountScreeningDaysQuery.HourFilter,
+    ) -> value_objects.HourFilter:
         ranges = tuple(
             value_objects.HourRange(item.start, item.end) for item in hours.ranges
         )

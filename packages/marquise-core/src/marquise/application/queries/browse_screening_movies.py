@@ -93,7 +93,9 @@ class BrowseScreeningMoviesQuery:
             ValueError: If the hour filter has no range, or a range is empty,
                 inverted or outside the day.
         """
-        hours = self._to_hour_filter(input_data.hours)
+        hours = (
+            None if input_data.hours is None else self._to_hour_filter(input_data.hours)
+        )
         start = datetime.combine(
             input_data.start, time.min, MONTREAL_TIME_ZONE
         ).astimezone(UTC)
@@ -123,10 +125,8 @@ class BrowseScreeningMoviesQuery:
 
     @staticmethod
     def _to_hour_filter(
-        hours: BrowseScreeningMoviesQuery.HourFilter | None,
-    ) -> value_objects.HourFilter | None:
-        if hours is None:
-            return None
+        hours: BrowseScreeningMoviesQuery.HourFilter,
+    ) -> value_objects.HourFilter:
         ranges = tuple(
             value_objects.HourRange(item.start, item.end) for item in hours.ranges
         )
