@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Run the test suites and web build for the areas a branch changes against main.
+# Enable once per clone: git config core.hooksPath scripts/githooks
+set -euo pipefail
+
+base=$(git merge-base origin/main HEAD)
+changed=$(git diff --name-only "$base" HEAD)
+[ -n "$changed" ] || exit 0
+
+# Both apps import core, so a core change runs every suite.
+core=$(grep -c '^packages/' <<<"$changed" || true)
+if [ "$core" -gt 0 ]; then
+  uv run pytest -q packages/marquise-core/tests/unit_tests/ --cov=marquise --cov-fail-under=70
+fi
+if [ "$core" -gt 0 ] || grep -q '^apps/marquise-api/' <<<"$changed"; then
+  uv run pytest -q apps/marquise-api/tests/
+fi
+if [ "$core" -gt 0 ] || grep -q '^apps/marquise-cli/' <<<"$changed"; then
+  uv run pytest -q apps/marquise-cli/tests/
+fi
+if grep -q '^web/' <<<"$changed"; then
+  pnpm -C web test
+  pnpm -C web build
+fi

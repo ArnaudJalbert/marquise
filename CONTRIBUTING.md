@@ -26,6 +26,7 @@ git clone https://github.com/ArnaudJalbert/marquise.git
 cd marquise
 uv sync
 cp .env.example .env   # fill in DATABASE_URL
+git config core.hooksPath scripts/githooks   # pre-commit and pre-push checks
 ```
 
 Bootstrap schema → [docs/setup.md](docs/setup.md).

@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Format, lint and type check the areas a commit touches. Tests run in pre-push.
+# Enable once per clone: git config core.hooksPath scripts/githooks
+set -euo pipefail
+
+changed=$(git diff --cached --name-only)
+[ -n "$changed" ] || exit 0
+
+if grep -qvE '^web/' <<<"$changed"; then
+  uv run ruff format --check .
+  uv run ruff check .
+  uv run ty check packages/marquise-core/src
+fi
+if grep -q '^web/' <<<"$changed"; then
+  pnpm -C web lint
+  pnpm -C web typecheck
+fi
