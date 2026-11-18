@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from marquise.application.exceptions import TooManyMovieIdsError
 from marquise.application.repositories import MovieRepository
@@ -26,32 +26,30 @@ class ListMoviesUseCase:
             ids: Optional list of movie IDs to fetch in bulk. May be
                 combined with title. At most MAX_MOVIE_IDS ids, and the
                 count must not exceed size.
-            page: Page number (1-based). Ignored when size is None. Must be
-                1 when ids is provided.
-            size: Max number of items per page. If None, all matching
-                movies are returned unbounded (page is ignored).
+            page: Page number (1-based). Must be 1 when ids is provided.
+            size: Max number of items per page.
         """
 
         title: str | None = None
         ids: tuple[str, ...] | None = None
         page: int = 1
-        size: int | None = None
+        size: int = field(kw_only=True)
 
         def __post_init__(self) -> None:
             """Validate input data.
 
             Raises:
                 ValueError: If title is provided but empty or whitespace-only,
-                    if size is provided but not positive, if page is less
-                    than 1, if ids is provided but empty, if ids' count
-                    exceeds size, or if page is not 1 when ids is provided.
+                    if size is not positive, if page is less than 1, if ids
+                    is provided but empty, if ids' count exceeds size, or if
+                    page is not 1 when ids is provided.
                 TooManyMovieIdsError: If more than MAX_MOVIE_IDS ids are
                     requested.
             """
             if self.title is not None and not self.title.strip():
                 raise ValueError("title must not be empty when provided")
-            if self.size is not None and self.size < 1:
-                raise ValueError("size must be positive when provided")
+            if self.size < 1:
+                raise ValueError("size must be positive")
             if self.page < 1:
                 raise ValueError("page must be at least 1")
             if self.ids is not None:
@@ -62,7 +60,7 @@ class ListMoviesUseCase:
                         f"At most {MAX_MOVIE_IDS} ids may be requested at"
                         f" once, got {len(self.ids)}"
                     )
-                if self.size is not None and len(self.ids) > self.size:
+                if len(self.ids) > self.size:
                     raise ValueError("ids count must not exceed size")
                 if self.page != 1:
                     raise ValueError("page must be 1 when ids is provided")
@@ -167,11 +165,7 @@ class ListMoviesUseCase:
             movie_data = [self._to_movie_data(m) for m in movies]
             return self.OutputData(movies=movie_data, total=len(movie_data))
 
-        limit, offset = (
-            (None, 0)
-            if input_data.size is None
-            else page_window(input_data.page, input_data.size)
-        )
+        limit, offset = page_window(input_data.page, input_data.size)
 
         page = await self.movie_repository.find_all(
             title_filter=input_data.title,

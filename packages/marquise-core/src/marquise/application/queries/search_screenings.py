@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 from marquise.application.exceptions import CinemaNotFoundError, MovieNotFoundError
@@ -30,9 +30,8 @@ class SearchScreeningsQuery:
             start_date: Optional start of the showtime range (inclusive).
             end_date: Optional end of the showtime range (inclusive).
             language: Optional exact language/subtitle version filter.
-            page: Page number (1-based). Ignored when size is None.
-            size: Max number of items per page. If None, all matching
-                screenings are returned unbounded (page is ignored).
+            page: Page number (1-based).
+            size: Max number of items per page.
         """
 
         movie: str | None = None
@@ -42,7 +41,7 @@ class SearchScreeningsQuery:
         end_date: datetime | None = None
         language: str | None = None
         page: int = 1
-        size: int | None = None
+        size: int = field(kw_only=True)
 
         def __post_init__(self) -> None:
             """Validate input data.
@@ -66,8 +65,8 @@ class SearchScreeningsQuery:
                 and self.start_date > self.end_date
             ):
                 raise ValueError("start_date must not be after end_date")
-            if self.size is not None and self.size < 1:
-                raise ValueError("size must be positive when provided")
+            if self.size < 1:
+                raise ValueError("size must be positive")
             if self.page < 1:
                 raise ValueError("page must be at least 1")
 
@@ -151,11 +150,7 @@ class SearchScreeningsQuery:
                 f"A cinema with ID '{input_data.cinema_id}' was not found"
             )
 
-        limit, offset = (
-            (None, 0)
-            if input_data.size is None
-            else page_window(input_data.page, input_data.size)
-        )
+        limit, offset = page_window(input_data.page, input_data.size)
 
         page = await self.screening_reader.search(
             movie_id=input_data.movie_id,

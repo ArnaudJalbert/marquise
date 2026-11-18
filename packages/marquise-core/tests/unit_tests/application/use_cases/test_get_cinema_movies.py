@@ -23,6 +23,7 @@ def _input() -> GetCinemaMoviesUseCase.InputData:
         cinema_id="cin-1",
         start_date=datetime(2026, 6, 27, tzinfo=UTC),
         end_date=datetime(2026, 6, 28, tzinfo=UTC),
+        size=10,
     )
 
 
@@ -95,12 +96,13 @@ def test_input_rejects_page_below_one() -> None:
             start_date=datetime(2026, 6, 27, tzinfo=UTC),
             end_date=datetime(2026, 6, 28, tzinfo=UTC),
             page=0,
+            size=10,
         )
 
 
 def test_input_rejects_non_positive_size() -> None:
-    """A non-positive size is rejected when provided."""
-    with pytest.raises(ValueError, match="size must be positive when provided"):
+    """A non-positive size is rejected."""
+    with pytest.raises(ValueError, match="size must be positive"):
         GetCinemaMoviesUseCase.InputData(
             cinema_id="cin-1",
             start_date=datetime(2026, 6, 27, tzinfo=UTC),
@@ -138,6 +140,7 @@ def test_input_rejects_invalid_range(
             cinema_id="cin-1",
             start_date=start_date,
             end_date=end_date,
+            size=10,
         )
 
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 from marquise.application.exceptions import MovieNotFoundError
@@ -22,14 +22,14 @@ class GetMovieScreeningsQuery:
         movie_id: str
         start: datetime | None = None
         page: int = 1
-        size: int | None = None
+        size: int = field(kw_only=True)
 
         def __post_init__(self) -> None:
             """Validate movie ID and pagination."""
             if not self.movie_id.strip():
                 raise ValueError("movie_id must not be empty")
-            if self.size is not None and self.size < 1:
-                raise ValueError("size must be positive when provided")
+            if self.size < 1:
+                raise ValueError("size must be positive")
             if self.page < 1:
                 raise ValueError("page must be at least 1")
 
@@ -57,11 +57,7 @@ class GetMovieScreeningsQuery:
             raise MovieNotFoundError(
                 f"A movie with ID '{input_data.movie_id}' was not found"
             )
-        limit, offset = (
-            (None, 0)
-            if input_data.size is None
-            else page_window(input_data.page, input_data.size)
-        )
+        limit, offset = page_window(input_data.page, input_data.size)
         start_filter = (
             {"start_date": input_data.start} if input_data.start is not None else {}
         )

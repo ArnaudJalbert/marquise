@@ -42,12 +42,12 @@ async def test_returns_reader_summaries() -> None:
     reader.search.return_value = Page(items=[_summary()], total=1)
 
     result = await _query(movie_repository, reader).execute(
-        GetMovieScreeningsQuery.InputData(movie_id="mov-1")
+        GetMovieScreeningsQuery.InputData(movie_id="mov-1", size=10)
     )
 
     assert result.screenings == (_summary(),)
     assert result.total == 1
-    reader.search.assert_awaited_once_with(movie_id="mov-1", limit=None, offset=0)
+    reader.search.assert_awaited_once_with(movie_id="mov-1", limit=10, offset=0)
 
 
 @pytest.mark.asyncio
@@ -94,7 +94,7 @@ async def test_raises_when_movie_missing() -> None:
 
     with pytest.raises(MovieNotFoundError):
         await _query(movie_repository, reader).execute(
-            GetMovieScreeningsQuery.InputData(movie_id="missing")
+            GetMovieScreeningsQuery.InputData(movie_id="missing", size=10)
         )
 
     reader.search.assert_not_awaited()
@@ -105,10 +105,10 @@ async def test_raises_when_movie_missing() -> None:
     [
         ({"movie_id": "  "}, "movie_id must not be empty"),
         ({"movie_id": "mov-1", "page": 0}, "page must be at least 1"),
-        ({"movie_id": "mov-1", "size": 0}, "size must be positive when provided"),
+        ({"movie_id": "mov-1", "size": 0}, "size must be positive"),
     ],
 )
 def test_input_rejects_invalid_values(kwargs: dict, message: str) -> None:
     """Invalid movie query input is rejected."""
     with pytest.raises(ValueError, match=message):
-        GetMovieScreeningsQuery.InputData(**kwargs)
+        GetMovieScreeningsQuery.InputData(**{"size": 10, **kwargs})

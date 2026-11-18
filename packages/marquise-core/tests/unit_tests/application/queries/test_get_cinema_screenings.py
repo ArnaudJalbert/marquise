@@ -44,12 +44,12 @@ async def test_returns_reader_summaries() -> None:
     reader.search.return_value = Page(items=[_summary()], total=1)
 
     result = await _query(cinema_repository, reader).execute(
-        GetCinemaScreeningsQuery.InputData(cinema_id="cin-1")
+        GetCinemaScreeningsQuery.InputData(cinema_id="cin-1", size=10)
     )
 
     assert result.screenings == (_summary(),)
     assert result.total == 1
-    reader.search.assert_awaited_once_with(cinema_id="cin-1", limit=None, offset=0)
+    reader.search.assert_awaited_once_with(cinema_id="cin-1", limit=10, offset=0)
 
 
 @pytest.mark.asyncio
@@ -78,7 +78,7 @@ async def test_raises_when_cinema_missing() -> None:
 
     with pytest.raises(CinemaNotFoundError):
         await _query(cinema_repository, reader).execute(
-            GetCinemaScreeningsQuery.InputData(cinema_id="missing")
+            GetCinemaScreeningsQuery.InputData(cinema_id="missing", size=10)
         )
 
     reader.search.assert_not_awaited()
@@ -89,10 +89,10 @@ async def test_raises_when_cinema_missing() -> None:
     [
         ({"cinema_id": "  "}, "cinema_id must not be empty"),
         ({"cinema_id": "cin-1", "page": 0}, "page must be at least 1"),
-        ({"cinema_id": "cin-1", "size": 0}, "size must be positive when provided"),
+        ({"cinema_id": "cin-1", "size": 0}, "size must be positive"),
     ],
 )
 def test_input_rejects_invalid_values(kwargs: dict, message: str) -> None:
     """Invalid cinema query input is rejected."""
     with pytest.raises(ValueError, match=message):
-        GetCinemaScreeningsQuery.InputData(**kwargs)
+        GetCinemaScreeningsQuery.InputData(**{"size": 10, **kwargs})

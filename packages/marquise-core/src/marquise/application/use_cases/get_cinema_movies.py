@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 from marquise.application.exceptions import CinemaNotFoundError
@@ -22,30 +22,29 @@ class GetCinemaMoviesUseCase:
             cinema_id: The cinema to fetch movies for.
             start_date: Timezone-aware start of the range (inclusive).
             end_date: Timezone-aware end of the range (inclusive).
-            page: Page number (1-based). Ignored when size is None.
-            size: Max number of movies per page. If None, all matching
-                movies are returned unbounded (page is ignored).
+            page: Page number (1-based).
+            size: Max number of movies per page.
         """
 
         cinema_id: str
         start_date: datetime
         end_date: datetime
         page: int = 1
-        size: int | None = None
+        size: int = field(kw_only=True)
 
         def __post_init__(self) -> None:
             """Validate input data.
 
             Raises:
                 ValueError: If cinema_id is empty, either date is naive, the
-                    range is inverted, size is provided but not positive,
+                    range is inverted, size is not positive,
                     or page is less than 1.
             """
             if not self.cinema_id.strip():
                 raise ValueError("cinema_id must not be empty")
             self._validate_date_range()
-            if self.size is not None and self.size < 1:
-                raise ValueError("size must be positive when provided")
+            if self.size < 1:
+                raise ValueError("size must be positive")
             if self.page < 1:
                 raise ValueError("page must be at least 1")
 
@@ -144,11 +143,7 @@ class GetCinemaMoviesUseCase:
         cinema = await self.cinema_repository.find_by_id(cinema_id)
         assert cinema is not None  # existence already verified above
 
-        limit, offset = (
-            (None, 0)
-            if input_data.size is None
-            else page_window(input_data.page, input_data.size)
-        )
+        limit, offset = page_window(input_data.page, input_data.size)
 
         page = await self.screening_repository.find_distinct_movies_by_cinema(
             cinema_id=cinema_id,
