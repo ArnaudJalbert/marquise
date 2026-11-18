@@ -9,6 +9,7 @@ from dataclasses import asdict
 import questionary
 
 from marquise import CinemaNotFoundError, MarquiseFactory
+from marquise_cli.helpers import run_with_factory
 
 
 def _cinema_choices(
@@ -29,7 +30,7 @@ def _cinema_choices(
 
 async def _select_cinema(factory: MarquiseFactory) -> dict[str, str | None] | None:
     """List cinemas and prompt for one to update."""
-    list_cinemas_use_case = factory.list_cinemas_use_case
+    list_cinemas_use_case = factory.cinemas.list_cinemas_use_case
     response = await list_cinemas_use_case.execute(list_cinemas_use_case.InputData())
     cinemas = [asdict(cinema) for cinema in response.cinemas]
     if not cinemas:
@@ -96,7 +97,7 @@ async def _update_cinema(
 ) -> dict[str, str | None]:
     """Execute update use case and report expected failures."""
     try:
-        update_cinema_use_case = factory.update_cinema_use_case
+        update_cinema_use_case = factory.cinemas.update_cinema_use_case
         response = await update_cinema_use_case.execute(
             update_cinema_use_case.InputData(cinema_id, name, address, city, website)
         )
@@ -121,25 +122,24 @@ def _print_cinema(cinema: dict[str, str | None]) -> None:
 
 async def run_update(factory: MarquiseFactory) -> None:
     """Update an existing cinema after interactive field selection."""
-    async with factory:
-        cinema = await _select_cinema(factory)
-        if cinema is None:
-            return
-        updates = await _collect_updates(cinema)
-        if updates is None:
-            return
-        _print_cinema(
-            await _update_cinema(
-                factory,
-                cinema["id"] or "",
-                updates.get("name", cinema["name"]) or "",
-                updates.get("address", cinema["address"]),
-                updates.get("city", cinema["city"]),
-                updates.get("website", cinema["website"]),
-            )
+    cinema = await _select_cinema(factory)
+    if cinema is None:
+        return
+    updates = await _collect_updates(cinema)
+    if updates is None:
+        return
+    _print_cinema(
+        await _update_cinema(
+            factory,
+            cinema["id"] or "",
+            updates.get("name", cinema["name"]) or "",
+            updates.get("address", cinema["address"]),
+            updates.get("city", cinema["city"]),
+            updates.get("website", cinema["website"]),
         )
+    )
 
 
 def update() -> None:
     """Update an existing cinema after interactive field selection."""
-    asyncio.run(run_update(MarquiseFactory()))
+    asyncio.run(run_with_factory(run_update))

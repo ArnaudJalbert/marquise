@@ -44,7 +44,7 @@ async def test_cinema_list_success(
     list_cinemas_use_case = _list_use_case(
         ListCinemasUseCase.OutputData(cinemas=cinemas, total=len(cinemas))
     )
-    mock_factory.list_cinemas_use_case = list_cinemas_use_case
+    mock_factory.cinemas.list_cinemas_use_case = list_cinemas_use_case
 
     await run_list_cinemas(mock_factory)
 
@@ -57,8 +57,6 @@ async def test_cinema_list_success(
     list_cinemas_use_case.execute.assert_awaited_once_with(
         ListCinemasUseCase.InputData()
     )
-    mock_factory.initialize.assert_called_once()
-    mock_factory.shutdown.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -70,32 +68,27 @@ async def test_cinema_list_empty(
     list_cinemas_use_case = _list_use_case(
         ListCinemasUseCase.OutputData(cinemas=[], total=0)
     )
-    mock_factory.list_cinemas_use_case = list_cinemas_use_case
+    mock_factory.cinemas.list_cinemas_use_case = list_cinemas_use_case
 
     await run_list_cinemas(mock_factory)
 
     captured = capsys.readouterr()
     assert "No cinemas found." in captured.out
-    mock_factory.initialize.assert_called_once()
-    mock_factory.shutdown.assert_called_once()
 
 
 @pytest.mark.asyncio
 async def test_cinema_list_failure(
     mock_factory: MagicMock,
 ) -> None:
-    """Unexpected list failures propagate after factory shutdown."""
+    """Unexpected list failures propagate to the caller."""
     list_cinemas_use_case = _list_use_case(
         ListCinemasUseCase.OutputData(cinemas=[], total=0)
     )
     list_cinemas_use_case.execute.side_effect = ValueError("Something went wrong")
-    mock_factory.list_cinemas_use_case = list_cinemas_use_case
+    mock_factory.cinemas.list_cinemas_use_case = list_cinemas_use_case
 
     with pytest.raises(ValueError, match="Something went wrong"):
         await run_list_cinemas(mock_factory)
-
-    mock_factory.initialize.assert_called_once()
-    mock_factory.shutdown.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -137,8 +130,8 @@ async def test_cinema_list_verbose(
             ]
         )
     )
-    mock_factory.list_cinemas_use_case = list_cinemas_use_case
-    mock_factory.list_cinema_source_assignments_query = mock_assignment_query
+    mock_factory.cinemas.list_cinemas_use_case = list_cinemas_use_case
+    mock_factory.sources.list_cinema_source_assignments_query = mock_assignment_query
 
     await run_list_cinemas(mock_factory, verbose=True)
 
@@ -159,8 +152,6 @@ async def test_cinema_list_verbose(
     mock_assignment_query.execute.assert_awaited_once_with(
         ListCinemaSourceAssignmentsQuery.InputData()
     )
-    mock_factory.initialize.assert_called_once()
-    mock_factory.shutdown.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -174,7 +165,7 @@ async def test_cinema_list_renders_markup_like_cinema_name(
             cinemas=[make_cinema_data(name="[/bold]")], total=1
         )
     )
-    mock_factory.list_cinemas_use_case = list_cinemas_use_case
+    mock_factory.cinemas.list_cinemas_use_case = list_cinemas_use_case
 
     await run_list_cinemas(mock_factory)
 
@@ -208,12 +199,10 @@ async def test_cinema_list_with_name_filter(
     list_cinemas_use_case = _list_use_case(
         ListCinemasUseCase.OutputData(cinemas=[], total=0)
     )
-    mock_factory.list_cinemas_use_case = list_cinemas_use_case
+    mock_factory.cinemas.list_cinemas_use_case = list_cinemas_use_case
 
     await run_list_cinemas(mock_factory, name="Parc")
 
     list_cinemas_use_case.execute.assert_awaited_once_with(
         ListCinemasUseCase.InputData(name="Parc")
     )
-    mock_factory.initialize.assert_called_once()
-    mock_factory.shutdown.assert_called_once()

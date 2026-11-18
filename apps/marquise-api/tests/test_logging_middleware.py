@@ -11,11 +11,13 @@ import pytest
 from fastapi.testclient import TestClient
 
 from marquise import (
+    CinemaUseCases,
     GetCinemaUseCase,
     GetMovieUseCase,
     ListCinemasUseCase,
     MarquiseFactory,
     MovieNotFoundError,
+    MovieUseCases,
 )
 from marquise_api.app import create_app
 from marquise_api.logging_middleware import (
@@ -81,12 +83,16 @@ def test_configure_logging_is_idempotent() -> None:
 def factory() -> MagicMock:
     """Provide fake factory with autospecced read use cases."""
     fake = create_autospec(MarquiseFactory, instance=True)
-    fake.list_cinemas_use_case = create_autospec(ListCinemasUseCase, instance=True)
-    fake.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+    fake.cinemas = create_autospec(CinemaUseCases, instance=True)
+    fake.cinemas.list_cinemas_use_case = create_autospec(
+        ListCinemasUseCase, instance=True
+    )
+    fake.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
         cinemas=[], total=0
     )
-    fake.get_cinema_use_case = create_autospec(GetCinemaUseCase, instance=True)
-    fake.get_movie_use_case = create_autospec(GetMovieUseCase, instance=True)
+    fake.cinemas.get_cinema_use_case = create_autospec(GetCinemaUseCase, instance=True)
+    fake.movies = create_autospec(MovieUseCases, instance=True)
+    fake.movies.get_movie_use_case = create_autospec(GetMovieUseCase, instance=True)
     return fake
 
 
@@ -132,7 +138,7 @@ def test_error_response_request_id_matches_header(
     client: TestClient, factory: MagicMock
 ) -> None:
     """An error envelope's request_id matches the X-Request-ID response header."""
-    factory.get_movie_use_case.execute.side_effect = MovieNotFoundError("nope")
+    factory.movies.get_movie_use_case.execute.side_effect = MovieNotFoundError("nope")
 
     response = client.get("/v1/movies/missing")
 

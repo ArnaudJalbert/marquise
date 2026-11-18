@@ -1,7 +1,7 @@
 """Marquise movie showtimes aggregator public API.
 
-Use :func:`create_factory` or :class:`MarquiseFactory` to obtain configured
-use cases through this supported facade. Internal package modules are private.
+Open create_factory_session to get a MarquiseFactory and its configured use
+cases through this supported facade. Internal package modules are private.
 """
 
 from marquise.application.exceptions import (
@@ -76,8 +76,14 @@ from marquise.application.use_cases.merge_movies import MergeMoviesUseCase
 from marquise.application.use_cases.refresh_movies import RefreshMoviesUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
-from marquise.bootstrap import create_factory, create_factory_session
+from marquise.bootstrap import create_factory_session
 from marquise.infrastructure.di.factory import MarquiseFactory
+from marquise.infrastructure.di.use_case_areas import (
+    CinemaUseCases,
+    MovieUseCases,
+    ScreeningUseCases,
+    SourceUseCases,
+)
 
 __all__ = [
     "ProviderIdentity",
@@ -120,7 +126,6 @@ __all__ = [
     "GetMovieScreeningsQuery",
     "GetMovieUseCase",
     "GetScreeningQuery",
-    "create_factory",
     "create_factory_session",
     "ListCinemaSourceAssignmentsQuery",
     "ListCinemasUseCase",
@@ -128,6 +133,10 @@ __all__ = [
     "ListRegistrySourcesUseCase",
     "ListSourcesUseCase",
     "MarquiseFactory",
+    "CinemaUseCases",
+    "MovieUseCases",
+    "ScreeningUseCases",
+    "SourceUseCases",
     "MovieNotFoundError",
     "ScreeningAlreadyExistsError",
     "ScreeningExternalIdConflictError",

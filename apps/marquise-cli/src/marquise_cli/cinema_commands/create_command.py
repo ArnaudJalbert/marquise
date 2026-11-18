@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import sys
 from dataclasses import asdict
+from functools import partial
 
 import questionary
 
@@ -16,7 +17,7 @@ from marquise import (
     MarquiseFactory,
     SourceNotFoundError,
 )
-from marquise_cli.helpers import select_source
+from marquise_cli.helpers import run_with_factory, select_source
 
 
 async def _create_cinema(
@@ -28,7 +29,7 @@ async def _create_cinema(
 ) -> dict[str, str | None]:
     """Create a cinema and display its details."""
     try:
-        create_cinema_use_case = factory.create_cinema_use_case
+        create_cinema_use_case = factory.cinemas.create_cinema_use_case
         response = await create_cinema_use_case.execute(
             create_cinema_use_case.InputData(
                 name=name,
@@ -67,7 +68,7 @@ async def _assign_source(factory: MarquiseFactory, cinema_id: str) -> None:
         return
 
     try:
-        assign_source_use_case = factory.assign_source_use_case
+        assign_source_use_case = factory.sources.assign_source_use_case
         assignment = await assign_source_use_case.execute(
             assign_source_use_case.InputData(
                 cinema_id=cinema_id,
@@ -99,15 +100,14 @@ async def run_create(
     website: str | None,
 ) -> None:
     """Create a cinema and optionally assign a source."""
-    async with factory:
-        cinema = await _create_cinema(
-            factory,
-            name=name,
-            address=address,
-            city=city,
-            website=website,
-        )
-        await _assign_source(factory, cinema["id"])
+    cinema = await _create_cinema(
+        factory,
+        name=name,
+        address=address,
+        city=city,
+        website=website,
+    )
+    await _assign_source(factory, cinema["id"])
 
 
 def create(
@@ -133,11 +133,13 @@ def create(
     website_val = website if website and website.strip() else None
 
     asyncio.run(
-        run_create(
-            MarquiseFactory(),
-            name=name,
-            address=address_val,
-            city=city_val,
-            website=website_val,
+        run_with_factory(
+            partial(
+                run_create,
+                name=name,
+                address=address_val,
+                city=city_val,
+                website=website_val,
+            )
         )
     )

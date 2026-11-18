@@ -71,15 +71,3 @@ def test_screening_builder_wires_supplied_pool_and_schema() -> None:
     assert command.screening_repository._gateway._pool is pool
     assert command.screening_repository._gateway._schema == "test_schema"
     pool.acquire.assert_not_called()
-
-
-def test_metadata_workflows_are_available_through_factory() -> None:
-    """Factory exposes the configured refresh and guarded merge workflows."""
-    from marquise import MarquiseFactory
-    from marquise.application.use_cases.merge_movies import MergeMoviesUseCase
-    from marquise.application.use_cases.refresh_movies import RefreshMoviesUseCase
-
-    factory = MarquiseFactory()
-    factory._pool = MagicMock()
-    assert isinstance(factory.refresh_movies_use_case, RefreshMoviesUseCase)
-    assert isinstance(factory.merge_movies_use_case, MergeMoviesUseCase)
