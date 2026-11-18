@@ -12,6 +12,7 @@ from marquise import (
     ListCinemasUseCase,
     MarquiseFactory,
 )
+from marquise_cli.helpers import run_with_factory
 
 
 def _cinema_choices(
@@ -32,7 +33,7 @@ def _cinema_choices(
 
 async def _select_cinema(factory: MarquiseFactory) -> tuple[str, str] | None:
     """List cinemas and interactively select one for deletion."""
-    list_cinemas_use_case = factory.list_cinemas_use_case
+    list_cinemas_use_case = factory.cinemas.list_cinemas_use_case
     response = await list_cinemas_use_case.execute(list_cinemas_use_case.InputData())
 
     if not response.cinemas:
@@ -72,7 +73,7 @@ async def _confirm_deletion(cinema_name: str) -> bool:
 async def _delete_cinema(factory: MarquiseFactory, cinema_id: str) -> None:
     """Delete selected cinema and report failures."""
     try:
-        delete_cinema_use_case = factory.delete_cinema_use_case
+        delete_cinema_use_case = factory.cinemas.delete_cinema_use_case
         await delete_cinema_use_case.execute(
             delete_cinema_use_case.InputData(cinema_id=cinema_id)
         )
@@ -83,15 +84,14 @@ async def _delete_cinema(factory: MarquiseFactory, cinema_id: str) -> None:
 
 async def run_delete(factory: MarquiseFactory) -> None:
     """Delete selected cinema after typed-name confirmation."""
-    async with factory:
-        selected = await _select_cinema(factory)
-        if selected is None:
-            return
-        cinema_id, cinema_name = selected
-        if not await _confirm_deletion(cinema_name):
-            return
-        await _delete_cinema(factory, cinema_id)
-        print(f'Cinema "{cinema_name}" (ID: {cinema_id}) deleted.')
+    selected = await _select_cinema(factory)
+    if selected is None:
+        return
+    cinema_id, cinema_name = selected
+    if not await _confirm_deletion(cinema_name):
+        return
+    await _delete_cinema(factory, cinema_id)
+    print(f'Cinema "{cinema_name}" (ID: {cinema_id}) deleted.')
 
 
 def delete() -> None:
@@ -100,4 +100,4 @@ def delete() -> None:
     Lists cinemas, exits without changes on cancellation, and requires exact
     cinema-name confirmation before deletion.
     """
-    asyncio.run(run_delete(MarquiseFactory()))
+    asyncio.run(run_with_factory(run_delete))

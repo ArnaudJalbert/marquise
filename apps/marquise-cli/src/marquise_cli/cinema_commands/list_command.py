@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import asdict
+from functools import partial
 from urllib.parse import urlsplit
 
 from rich import box
@@ -12,7 +13,7 @@ from rich.table import Table
 from rich.text import Text
 
 from marquise import ListCinemasUseCase, MarquiseFactory
-from marquise_cli.helpers import run_spinner
+from marquise_cli.helpers import run_spinner, run_with_factory
 
 _console = Console(markup=False)
 
@@ -72,32 +73,28 @@ async def run_list_cinemas(
     verbose: bool = False,
 ) -> None:
     """List all available cinemas."""
-    await run_spinner(factory.initialize(), description="Connecting...")
-    try:
-        list_cinemas_use_case = factory.list_cinemas_use_case
-        response = await run_spinner(
-            list_cinemas_use_case.execute(list_cinemas_use_case.InputData(name=name)),
-            description="Fetching cinemas...",
+    list_cinemas_use_case = factory.cinemas.list_cinemas_use_case
+    response = await run_spinner(
+        list_cinemas_use_case.execute(list_cinemas_use_case.InputData(name=name)),
+        description="Fetching cinemas...",
+    )
+    if not response.cinemas:
+        print("No cinemas found.")
+        return
+
+    source_names: dict[str, str] = {}
+    if verbose:
+        query = factory.sources.list_cinema_source_assignments_query
+        assignments = await run_spinner(
+            query.execute(query.InputData()),
+            description="Fetching source assignments...",
         )
-        if not response.cinemas:
-            print("No cinemas found.")
-            return
+        source_names = {
+            assignment.cinema_id: assignment.source_display_name
+            for assignment in assignments.assignments
+        }
 
-        source_names: dict[str, str] = {}
-        if verbose:
-            query = factory.list_cinema_source_assignments_query
-            assignments = await run_spinner(
-                query.execute(query.InputData()),
-                description="Fetching source assignments...",
-            )
-            source_names = {
-                assignment.cinema_id: assignment.source_display_name
-                for assignment in assignments.assignments
-            }
-
-        _console.print(_build_table(response, source_names, verbose))
-    finally:
-        await factory.shutdown()
+    _console.print(_build_table(response, source_names, verbose))
 
 
 def list_cinemas(
@@ -105,4 +102,4 @@ def list_cinemas(
     verbose: bool = False,
 ) -> None:
     """List all available cinemas."""
-    asyncio.run(run_list_cinemas(MarquiseFactory(), name=name, verbose=verbose))
+    asyncio.run(run_with_factory(partial(run_list_cinemas, name=name, verbose=verbose)))

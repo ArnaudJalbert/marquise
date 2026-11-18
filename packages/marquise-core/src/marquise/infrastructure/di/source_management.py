@@ -25,7 +25,7 @@ from marquise.interface_adapters.repositories.supabase.source_definition_reposit
 )
 
 
-def _source_repository(
+def _build_source_repository(
     pool: asyncpg.Pool, schema: str
 ) -> SupabaseSourceDefinitionRepository:
     return SupabaseSourceDefinitionRepository(
@@ -33,7 +33,7 @@ def _source_repository(
     )
 
 
-def _assignment_repository(
+def _build_assignment_repository(
     pool: asyncpg.Pool, schema: str
 ) -> SupabaseCinemaSourceAssignmentRepository:
     return SupabaseCinemaSourceAssignmentRepository(
@@ -45,19 +45,19 @@ def build_create_source_use_case(
     pool: asyncpg.Pool, schema: str
 ) -> CreateSourceUseCase:
     """Build source-creation use case."""
-    return CreateSourceUseCase(source_repository=_source_repository(pool, schema))
+    return CreateSourceUseCase(source_repository=_build_source_repository(pool, schema))
 
 
 def build_list_sources_use_case(pool: asyncpg.Pool, schema: str) -> ListSourcesUseCase:
     """Build source-listing use case."""
-    return ListSourcesUseCase(source_repository=_source_repository(pool, schema))
+    return ListSourcesUseCase(source_repository=_build_source_repository(pool, schema))
 
 
 def build_delete_source_use_case(
     pool: asyncpg.Pool, schema: str
 ) -> DeleteSourceUseCase:
     """Build source-deletion use case."""
-    return DeleteSourceUseCase(source_repository=_source_repository(pool, schema))
+    return DeleteSourceUseCase(source_repository=_build_source_repository(pool, schema))
 
 
 def build_assign_source_use_case(
@@ -68,8 +68,8 @@ def build_assign_source_use_case(
     """Build cinema-source assignment use case."""
     return AssignSourceUseCase(
         cinema_repository=cinema_repository,
-        source_definition_repository=_source_repository(pool, schema),
-        assignment_repository=_assignment_repository(pool, schema),
+        source_definition_repository=_build_source_repository(pool, schema),
+        assignment_repository=_build_assignment_repository(pool, schema),
     )
 
 
@@ -78,7 +78,7 @@ def build_unassign_source_use_case(
 ) -> UnassignSourceUseCase:
     """Build cinema-source unassignment use case."""
     return UnassignSourceUseCase(
-        assignment_repository=_assignment_repository(pool, schema)
+        assignment_repository=_build_assignment_repository(pool, schema)
     )
 
 
@@ -87,5 +87,5 @@ def build_get_cinema_source_use_case(
 ) -> GetCinemaSourceUseCase:
     """Build cinema-source lookup use case."""
     return GetCinemaSourceUseCase(
-        assignment_repository=_assignment_repository(pool, schema)
+        assignment_repository=_build_assignment_repository(pool, schema)
     )

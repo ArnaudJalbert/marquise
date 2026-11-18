@@ -12,7 +12,7 @@ from rich.console import Console
 from rich.table import Table
 
 from marquise import CreateSourceUseCase, MarquiseFactory, SourceAlreadyExistsError
-from marquise_cli.helpers import run_spinner
+from marquise_cli.helpers import run_spinner, run_with_factory
 
 _console = Console()
 
@@ -47,12 +47,12 @@ async def _load_sources(
     factory: MarquiseFactory,
 ) -> tuple[list, list]:
     """Load registry and registered source definitions."""
-    registry_use_case = factory.list_registry_sources_use_case
+    registry_use_case = factory.sources.list_registry_sources_use_case
     registry_response = await run_spinner(
         registry_use_case.execute(registry_use_case.InputData()),
         description="Fetching available sources...",
     )
-    list_use_case = factory.list_sources_use_case
+    list_use_case = factory.sources.list_sources_use_case
     registered_response = await run_spinner(
         list_use_case.execute(list_use_case.InputData()),
         description="Fetching registered sources...",
@@ -92,7 +92,7 @@ def _source_input(
 ) -> CreateSourceUseCase.InputData:
     """Build validated source input from prompt answers."""
     display_name, description = details
-    return factory.create_source_use_case.InputData(
+    return factory.sources.create_source_use_case.InputData(
         name=source_name, display_name=display_name, description=description
     )
 
@@ -102,7 +102,7 @@ async def _create_source(
 ) -> None:
     """Create one source and report its successful registration."""
     result = await run_spinner(
-        factory.create_source_use_case.execute(input_data),
+        factory.sources.create_source_use_case.execute(input_data),
         description=f"Registering {input_data.name}...",
     )
     print(f"  Created: {result.name}")
@@ -116,32 +116,26 @@ def _exit_failed(error: Exception) -> NoReturn:
 
 async def run_register_sources(factory: MarquiseFactory) -> None:
     """Register every source missing from persistent source definitions."""
-    await run_spinner(factory.initialize(), description="Connecting...")
-    try:
-        registry_sources, registered_sources = await _load_sources(factory)
-        registered_names = {source["name"] for source in registered_sources}
-        new_sources = [
-            source
-            for source in registry_sources
-            if source["name"] not in registered_names
-        ]
-        if not registry_sources:
-            print("No sources available in the registry.")
-            return
+    registry_sources, registered_sources = await _load_sources(factory)
+    registered_names = {source["name"] for source in registered_sources}
+    new_sources = [
+        source for source in registry_sources if source["name"] not in registered_names
+    ]
+    if not registry_sources:
+        print("No sources available in the registry.")
+        return
 
-        _console.print(_build_table(registry_sources, registered_names))
-        if not new_sources:
-            print("All registry sources are already in the database.")
-            return
+    _console.print(_build_table(registry_sources, registered_names))
+    if not new_sources:
+        print("All registry sources are already in the database.")
+        return
 
-        print(f"{len(new_sources)} source(s) can be registered.")
-        for source in new_sources:
-            if not await _register_source(factory, source):
-                return
-    finally:
-        await factory.shutdown()
+    print(f"{len(new_sources)} source(s) can be registered.")
+    for source in new_sources:
+        if not await _register_source(factory, source):
+            return
 
 
 def register_sources() -> None:
     """Register new showtime sources from registry into database."""
-    asyncio.run(run_register_sources(MarquiseFactory()))
+    asyncio.run(run_with_factory(run_register_sources))

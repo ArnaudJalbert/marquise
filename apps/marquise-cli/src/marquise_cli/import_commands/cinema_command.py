@@ -18,7 +18,7 @@ from marquise import (
     ImportScreeningsCommand,
     MarquiseFactory,
 )
-from marquise_cli.helpers import run_spinner, select_cinema
+from marquise_cli.helpers import run_spinner, run_with_factory, select_cinema
 
 _console = Console()
 _MONTREAL_TZ = ZoneInfo("America/Montreal")
@@ -62,7 +62,7 @@ async def _import_screenings(
     factory: MarquiseFactory, cinema_id: str, start_date: date, end_date: date
 ) -> dict:
     """Import one cinema date range as formatting data."""
-    result = await factory.import_screenings_use_case.execute(
+    result = await factory.screenings.import_screenings_command.execute(
         ImportScreeningsCommand.InputData(
             cinema_id=cinema_id,
             start_date=start_date,
@@ -120,36 +120,30 @@ def _summary(result: dict) -> Text:
 
 async def run_import_cinema(factory: MarquiseFactory) -> None:
     """Fetch showtimes from one cinema source and save them to database."""
-    await run_spinner(factory.initialize(), description="Connecting...")
-    try:
-        cinema = await select_cinema(
-            factory, "Select a cinema to import showtimes for:"
-        )
-        if cinema is None:
-            return
-        get_source_use_case = factory.get_cinema_source_use_case
-        assignment = await get_source_use_case.execute(
-            get_source_use_case.InputData(cinema_id=cinema.id)
-        )
-        print(f"  Cinema:        {cinema.name}")
-        print(f"  Assigned source: {assignment.source_display_name}")
-        date_range = await _select_date_range()
-        if date_range is None:
-            return
-        result = await run_spinner(
-            _import_screenings(factory, cinema.id, *date_range),
-            description="Importing screenings...",
-        )
-        _console.print(_screenings_table(result))
-        _console.print(_summary(result))
-    finally:
-        await factory.shutdown()
+    cinema = await select_cinema(factory, "Select a cinema to import showtimes for:")
+    if cinema is None:
+        return
+    get_source_use_case = factory.sources.get_cinema_source_use_case
+    assignment = await get_source_use_case.execute(
+        get_source_use_case.InputData(cinema_id=cinema.id)
+    )
+    print(f"  Cinema:        {cinema.name}")
+    print(f"  Assigned source: {assignment.source_display_name}")
+    date_range = await _select_date_range()
+    if date_range is None:
+        return
+    result = await run_spinner(
+        _import_screenings(factory, cinema.id, *date_range),
+        description="Importing screenings...",
+    )
+    _console.print(_screenings_table(result))
+    _console.print(_summary(result))
 
 
 def import_cinema() -> None:
     """Fetch showtimes from one cinema source and save them to database."""
     try:
-        asyncio.run(run_import_cinema(MarquiseFactory()))
+        asyncio.run(run_with_factory(run_import_cinema))
     except CinemaSourceAssignmentNotFoundError as error:
         print(str(error), file=sys.stderr)
         raise SystemExit(1) from error

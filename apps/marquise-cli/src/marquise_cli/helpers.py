@@ -2,19 +2,34 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable
+from collections.abc import Awaitable, Callable
 
 import questionary
 from rich.console import Console
 
-from marquise import ListCinemasUseCase, MarquiseFactory
+from marquise import ListCinemasUseCase, MarquiseFactory, create_factory_session
 
 _console = Console()
 
 
+async def run_with_factory[T](
+    command: Callable[[MarquiseFactory], Awaitable[T]],
+) -> T:
+    """Run a command inside one factory session, then close the database.
+
+    Args:
+        command: Coroutine function that receives the open factory.
+
+    Returns:
+        The command's result.
+    """
+    async with create_factory_session() as factory:
+        return await command(factory)
+
+
 async def select_source(factory: MarquiseFactory, prompt: str) -> str | None:
     """Let the user pick a source interactively from a list."""
-    list_sources_use_case = factory.list_sources_use_case
+    list_sources_use_case = factory.sources.list_sources_use_case
     response = await list_sources_use_case.execute(list_sources_use_case.InputData())
     if not response.sources:
         print("No sources available.")
@@ -41,7 +56,7 @@ async def select_cinema(
     prompt: str,
 ) -> ListCinemasUseCase.CinemaData | None:
     """Let user select a cinema, or cancel."""
-    list_cinemas_use_case = factory.list_cinemas_use_case
+    list_cinemas_use_case = factory.cinemas.list_cinemas_use_case
     response = await list_cinemas_use_case.execute(list_cinemas_use_case.InputData())
     if not response.cinemas:
         print("No cinemas available.")

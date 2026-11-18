@@ -22,10 +22,10 @@ Inside `application/` are `use_cases/` (`*UseCase`, plus a few `*Command` import
 Apps reach core only through `packages/marquise-core/src/marquise/__init__.py` (`__all__`):
 
 ```python
-from marquise import create_factory, create_factory_session
+from marquise import create_factory_session
 
 async with create_factory_session() as factory:
-    use_case = factory.get_cinema_use_case
+    use_case = factory.cinemas.get_cinema_use_case
     result = await use_case.execute(use_case.InputData(cinema_id="..."))
 ```
 
