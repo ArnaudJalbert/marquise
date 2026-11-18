@@ -1,4 +1,4 @@
-"""Tests for CLI helpers."""
+"""Tests for shared CLI helpers."""
 
 from __future__ import annotations
 
@@ -6,9 +6,24 @@ from unittest.mock import MagicMock, call
 
 import pytest
 
-from conftest import make_cinema_data, mock_use_case
+from conftest import make_cinema_data, mock_use_case, patch_factory_session
 from marquise import ListCinemasUseCase
-from marquise_cli.helpers import list_every_cinema
+from marquise_cli.helpers import connected_factory, list_every_cinema
+
+
+@pytest.mark.asyncio
+async def test_connected_factory_closes_the_session_after_a_failure(
+    mock_factory: MagicMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The factory session closes when the command body raises."""
+    session = patch_factory_session(monkeypatch, mock_factory)
+
+    with pytest.raises(RuntimeError, match="boom"):
+        async with connected_factory() as factory:
+            assert factory is mock_factory
+            raise RuntimeError("boom")
+
+    assert session.closed
 
 
 @pytest.mark.asyncio

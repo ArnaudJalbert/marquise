@@ -6,13 +6,10 @@ import asyncio
 import sys
 
 import questionary
-from rich.console import Console
 from rich.table import Table
 
 from marquise import MarquiseFactory, SourceNotFoundError
-from marquise_cli.helpers import run_spinner, run_with_factory
-
-_console = Console()
+from marquise_cli.helpers import connected_factory, console, run_spinner
 
 
 def _build_table(sources: list, registry_names: set[str]) -> Table:
@@ -89,7 +86,7 @@ async def run_unregister_sources(factory: MarquiseFactory) -> None:
         print("No sources registered in the database.")
         return
     registry_names = {source.name for source in registry_response.sources}
-    _console.print(_build_table(registered_response.sources, registry_names))
+    console.print(_build_table(registered_response.sources, registry_names))
     selected = await _select_sources(registered_response.sources)
     if selected is not None:
         await _delete_sources(factory, selected)
@@ -97,4 +94,9 @@ async def run_unregister_sources(factory: MarquiseFactory) -> None:
 
 def unregister_sources() -> None:
     """Remove selected showtime sources from database."""
-    asyncio.run(run_with_factory(run_unregister_sources))
+
+    async def run() -> None:
+        async with connected_factory() as factory:
+            await run_unregister_sources(factory)
+
+    asyncio.run(run())

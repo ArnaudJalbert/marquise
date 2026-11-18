@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from dataclasses import asdict
-from functools import partial
 
 import questionary
 
@@ -14,10 +12,11 @@ from marquise import (
     CinemaIdAlreadyExistsError,
     CinemaNotFoundError,
     CinemaSourceAssignmentAlreadyExistsError,
+    CreateCinemaUseCase,
     MarquiseFactory,
     SourceNotFoundError,
 )
-from marquise_cli.helpers import run_with_factory, select_source
+from marquise_cli.helpers import connected_factory, print_cinema, select_source
 
 
 async def _create_cinema(
@@ -26,7 +25,7 @@ async def _create_cinema(
     address: str | None,
     city: str | None,
     website: str | None,
-) -> dict[str, str | None]:
+) -> CreateCinemaUseCase.OutputData:
     """Create a cinema and display its details."""
     try:
         create_cinema_use_case = factory.cinemas.create_cinema_use_case
@@ -42,17 +41,8 @@ async def _create_cinema(
         print(f"There was an error when creating the cinema: {error}", file=sys.stderr)
         raise SystemExit(1) from error
 
-    cinema = asdict(response)
-    print("Cinema created:")
-    print(f"  ID:      {cinema['id']}")
-    print(f"  Name:    {cinema['name']}")
-    if cinema["address"]:
-        print(f"  Address: {cinema['address']}")
-    if cinema["city"]:
-        print(f"  City:    {cinema['city']}")
-    if cinema["website"]:
-        print(f"  Website: {cinema['website']}")
-    return cinema
+    print_cinema("Cinema created:", response)
+    return response
 
 
 async def _assign_source(factory: MarquiseFactory, cinema_id: str) -> None:
@@ -107,7 +97,7 @@ async def run_create(
         city=city,
         website=website,
     )
-    await _assign_source(factory, cinema["id"])
+    await _assign_source(factory, cinema.id)
 
 
 def create(
@@ -132,14 +122,14 @@ def create(
     city_val = city if city and city.strip() else None
     website_val = website if website and website.strip() else None
 
-    asyncio.run(
-        run_with_factory(
-            partial(
-                run_create,
+    async def run() -> None:
+        async with connected_factory() as factory:
+            await run_create(
+                factory,
                 name=name,
                 address=address_val,
                 city=city_val,
                 website=website_val,
             )
-        )
-    )
+
+    asyncio.run(run())

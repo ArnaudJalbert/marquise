@@ -9,7 +9,7 @@ from marquise import (
     CinemaSourceAssignmentNotFoundError,
     MarquiseFactory,
 )
-from marquise_cli.helpers import run_spinner, run_with_factory, select_cinema
+from marquise_cli.helpers import connected_factory, run_spinner, select_cinema
 
 
 async def run_unassign(factory: MarquiseFactory) -> None:
@@ -32,8 +32,13 @@ async def run_unassign(factory: MarquiseFactory) -> None:
 
 def unassign() -> None:
     """Remove showtime-source assignment from a cinema."""
+
+    async def run() -> None:
+        async with connected_factory() as factory:
+            await run_unassign(factory)
+
     try:
-        asyncio.run(run_with_factory(run_unassign))
+        asyncio.run(run())
     except CinemaSourceAssignmentNotFoundError as error:
         print(str(error), file=sys.stderr)
         raise SystemExit(1) from error

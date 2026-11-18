@@ -3,19 +3,19 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import asdict
-from functools import partial
 from urllib.parse import urlsplit
 
 from rich import box
-from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
 from marquise import ListCinemasUseCase, MarquiseFactory
-from marquise_cli.helpers import list_every_cinema, run_spinner, run_with_factory
-
-_console = Console(markup=False)
+from marquise_cli.helpers import (
+    connected_factory,
+    console,
+    list_every_cinema,
+    run_spinner,
+)
 
 
 def _website_text(website: str) -> Text:
@@ -51,15 +51,15 @@ def _build_table(
         table.add_column("Source", style="yellow", overflow="fold")
         table.add_column("ID", style="dim")
 
-    for cinema in map(asdict, cinemas):
-        row: list[str | Text] = [cinema["name"], cinema["city"] or "-"]
+    for cinema in cinemas:
+        row: list[str | Text] = [cinema.name, cinema.city or "-"]
         if verbose:
             row.extend(
                 [
-                    cinema["address"] or "-",
-                    _website_text(cinema["website"]) if cinema["website"] else "-",
-                    source_names.get(cinema["id"], ""),
-                    cinema["id"],
+                    cinema.address or "-",
+                    _website_text(cinema.website) if cinema.website else "-",
+                    source_names.get(cinema.id, ""),
+                    cinema.id,
                 ]
             )
         table.add_row(*row)
@@ -93,7 +93,7 @@ async def run_list_cinemas(
             for assignment in assignments.assignments
         }
 
-    _console.print(_build_table(cinemas, source_names, verbose))
+    console.print(_build_table(cinemas, source_names, verbose))
 
 
 def list_cinemas(
@@ -101,4 +101,9 @@ def list_cinemas(
     verbose: bool = False,
 ) -> None:
     """List all available cinemas."""
-    asyncio.run(run_with_factory(partial(run_list_cinemas, name=name, verbose=verbose)))
+
+    async def run() -> None:
+        async with connected_factory() as factory:
+            await run_list_cinemas(factory, name=name, verbose=verbose)
+
+    asyncio.run(run())

@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from conftest import make_cinema_data, mock_use_case
+from conftest import make_cinema_data, mock_use_case, patch_questionary
 from marquise import CinemaNotFoundError, DeleteCinemaUseCase, ListCinemasUseCase
 from marquise_cli.cinema_commands.delete_command import run_delete
 
@@ -32,7 +32,7 @@ async def test_cinema_delete_success(
     mock_factory.cinemas.list_cinemas_use_case = mock_list_cinemas_use_case
     mock_factory.cinemas.delete_cinema_use_case = mock_delete_use_case
 
-    with patch("marquise_cli.cinema_commands.delete_command.questionary") as mock_q:
+    with patch_questionary("marquise_cli.cinema_commands.delete_command") as mock_q:
         mock_q.select.return_value.ask_async = AsyncMock(return_value=cinema)
         mock_q.text.return_value.ask_async = AsyncMock(return_value="Test Cinema")
         await run_delete(mock_factory)
@@ -62,7 +62,7 @@ async def test_cinema_delete_name_mismatch(
     mock_factory.cinemas.delete_cinema_use_case = mock_delete_use_case
 
     with (
-        patch("marquise_cli.cinema_commands.delete_command.questionary") as mock_q,
+        patch_questionary("marquise_cli.cinema_commands.delete_command") as mock_q,
         pytest.raises(SystemExit),
     ):
         mock_q.select.return_value.ask_async = AsyncMock(
@@ -93,7 +93,7 @@ async def test_cinema_delete_no_cinemas(
     await run_delete(mock_factory)
 
     captured = capsys.readouterr()
-    assert "No cinemas available to delete." in captured.out
+    assert "No cinemas available." in captured.out
     mock_delete_use_case.execute.assert_not_awaited()
 
 
@@ -103,7 +103,7 @@ async def test_cinema_delete_list_failure(
     mock_list_cinemas_use_case: MagicMock,
     mock_delete_use_case: MagicMock,
 ) -> None:
-    """Unexpected cinema-list errors propagate after factory cleanup."""
+    """Unexpected cinema-list errors propagate."""
     mock_list_cinemas_use_case.execute.side_effect = ValueError("Database unavailable")
     mock_factory.cinemas.list_cinemas_use_case = mock_list_cinemas_use_case
     mock_factory.cinemas.delete_cinema_use_case = mock_delete_use_case
@@ -130,7 +130,7 @@ async def test_cinema_delete_cancelled_at_select(
     mock_factory.cinemas.list_cinemas_use_case = mock_list_cinemas_use_case
     mock_factory.cinemas.delete_cinema_use_case = mock_delete_use_case
 
-    with patch("marquise_cli.cinema_commands.delete_command.questionary") as mock_q:
+    with patch_questionary("marquise_cli.cinema_commands.delete_command") as mock_q:
         mock_q.select.return_value.ask_async = AsyncMock(return_value=selection)
         await run_delete(mock_factory)
 
@@ -153,7 +153,7 @@ async def test_cinema_delete_cancelled_at_confirmation(
     mock_factory.cinemas.list_cinemas_use_case = mock_list_cinemas_use_case
     mock_factory.cinemas.delete_cinema_use_case = mock_delete_use_case
 
-    with patch("marquise_cli.cinema_commands.delete_command.questionary") as mock_q:
+    with patch_questionary("marquise_cli.cinema_commands.delete_command") as mock_q:
         mock_q.select.return_value.ask_async = AsyncMock(
             return_value=make_cinema_data()
         )
@@ -189,7 +189,7 @@ async def test_cinema_delete_failure(
     mock_factory.cinemas.delete_cinema_use_case = mock_delete_use_case
 
     with (
-        patch("marquise_cli.cinema_commands.delete_command.questionary") as mock_q,
+        patch_questionary("marquise_cli.cinema_commands.delete_command") as mock_q,
         pytest.raises(SystemExit),
     ):
         mock_q.select.return_value.ask_async = AsyncMock(

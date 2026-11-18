@@ -14,7 +14,6 @@ from collections import Counter
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import date, timedelta
-from functools import partial
 
 from marquise import (
     CinemaNotFoundError,
@@ -23,7 +22,7 @@ from marquise import (
     ListCinemasUseCase,
     MarquiseFactory,
 )
-from marquise_cli.helpers import list_every_cinema, run_with_factory
+from marquise_cli.helpers import connected_factory, list_every_cinema
 
 
 @dataclass(frozen=True, slots=True)
@@ -224,7 +223,12 @@ def _print_results(results: list[CinemaImportResult]) -> int:
 
 def import_all(days: int) -> None:
     """Import showtimes for every cinema that has a source assignment."""
-    results = asyncio.run(run_with_factory(partial(run_import_all, days=days)))
+
+    async def run() -> list[CinemaImportResult]:
+        async with connected_factory() as factory:
+            return await run_import_all(factory, days)
+
+    results = asyncio.run(run())
 
     if _print_results(results):
         raise SystemExit(1)

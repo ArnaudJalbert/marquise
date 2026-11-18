@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator, Iterator
+from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from datetime import date
 from types import ModuleType
-from unittest.mock import AsyncMock, MagicMock, create_autospec
+from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 
 import pytest
 
@@ -74,6 +74,16 @@ def patch_factory_session(
     session = FactorySession(factory)
     monkeypatch.setattr(helpers, "create_factory_session", session.open)
     return session
+
+
+@contextmanager
+def patch_questionary(module_name: str) -> Iterator[MagicMock]:
+    """Patch questionary in a command module and in the shared pickers."""
+    with (
+        patch(f"{module_name}.questionary") as questionary,
+        patch("marquise_cli.helpers.questionary", questionary),
+    ):
+        yield questionary
 
 
 def mock_use_case(use_case_type: UseCaseType) -> MagicMock:

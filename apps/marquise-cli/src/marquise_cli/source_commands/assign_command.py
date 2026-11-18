@@ -12,8 +12,8 @@ from marquise import (
     SourceNotFoundError,
 )
 from marquise_cli.helpers import (
+    connected_factory,
     run_spinner,
-    run_with_factory,
     select_cinema,
     select_source,
 )
@@ -46,8 +46,13 @@ async def run_assign(factory: MarquiseFactory) -> None:
 
 def assign() -> None:
     """Assign a showtime source to a cinema after interactive selection."""
+
+    async def run() -> None:
+        async with connected_factory() as factory:
+            await run_assign(factory)
+
     try:
-        asyncio.run(run_with_factory(run_assign))
+        asyncio.run(run())
     except (
         CinemaNotFoundError,
         SourceNotFoundError,
