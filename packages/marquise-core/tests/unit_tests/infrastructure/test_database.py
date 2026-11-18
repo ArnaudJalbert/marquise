@@ -14,6 +14,8 @@ from marquise.infrastructure.supabase.database import Database, sanitize_dsn
 
 _TEST_SETTINGS = Settings(
     database_url="postgresql://user:pass@localhost:5432/test",
+    tmdb_api_key="tmdb-key",
+    schema="marquise",
 )
 
 
@@ -103,9 +105,7 @@ def test_constructor_sanitizes_dsn() -> None:
     """Verify the constructor sanitizes the DSN upfront."""
     dsn = "postgresql://user:pw#abc@host:5432/db"
     db = Database(
-        Settings(
-            database_url=dsn,
-        )
+        Settings(database_url=dsn, tmdb_api_key="tmdb-key", schema="marquise")
     )
     assert db._dsn != dsn
     assert "%23" in db._dsn

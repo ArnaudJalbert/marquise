@@ -12,15 +12,36 @@ from marquise.infrastructure.di.factory import MarquiseFactory
 from marquise.infrastructure.supabase.config.settings import Settings
 from marquise.infrastructure.supabase.database import Database
 
+_REQUIRED_VARIABLES = ("DATABASE_URL", "DATABASE_SCHEMA", "TMDB_API_KEY")
+
+
+def _require_variables() -> None:
+    """Check that every required environment variable is set and not empty.
+
+    Raises:
+        RuntimeError: Naming every required variable that is unset or empty.
+    """
+    missing = [name for name in _REQUIRED_VARIABLES if not os.environ.get(name)]
+    if missing:
+        names = ", ".join(missing)
+        raise RuntimeError(f"Missing required environment variables: {names}")
+
 
 def _read_settings() -> Settings:
-    """Load a local .env file, then read settings from the environment."""
+    """Load a local .env file, then read settings from the environment.
+
+    Returns:
+        Settings built from the required environment variables.
+
+    Raises:
+        RuntimeError: If a required variable is unset or empty.
+    """
     load_dotenv()
+    _require_variables()
     return Settings(
-        database_url=os.environ.get("DATABASE_URL", ""),
-        cineplex_api_key=os.environ.get("CINEPLEX_API_KEY", ""),
-        tmdb_api_key=os.environ.get("TMDB_API_KEY", ""),
-        schema=os.environ.get("DATABASE_SCHEMA", "marquise"),
+        database_url=os.environ["DATABASE_URL"],
+        tmdb_api_key=os.environ["TMDB_API_KEY"],
+        schema=os.environ["DATABASE_SCHEMA"],
     )
 
 
@@ -32,12 +53,7 @@ async def _connect_database(settings: Settings) -> Database:
 
     Returns:
         The connected database.
-
-    Raises:
-        RuntimeError: If DATABASE_URL is not configured.
     """
-    if not settings.database_url:
-        raise RuntimeError("DATABASE_URL is required")
     database = Database(settings)
     await database.connect()
     return database
@@ -54,7 +70,8 @@ async def create_factory_session() -> AsyncGenerator[MarquiseFactory]:
         A factory whose use cases share the open database pool.
 
     Raises:
-        RuntimeError: If DATABASE_URL is not configured.
+        RuntimeError: If DATABASE_URL, DATABASE_SCHEMA or TMDB_API_KEY is
+            unset or empty. Nothing is opened.
 
     Example:
         async with create_factory_session() as factory:

@@ -18,6 +18,7 @@ async def test_fetch_showtimes_filters_sessions_and_preserves_ticket_metadata(
     """Fetch a local API response and retain only sessions in the UTC window."""
     base_url, routes, requests = local_http
     monkeypatch.setattr(cineplex, "SHOWTIMES_URL", f"{base_url}/showtimes")
+    monkeypatch.setattr(cineplex, "_discover_subscription_key", lambda: "fixture-key")
     routes["/showtimes?LocationId=9172"] = (
         json.dumps(
             [
@@ -62,7 +63,7 @@ async def test_fetch_showtimes_filters_sessions_and_preserves_ticket_metadata(
         "application/json",
     )
 
-    results = await cineplex.CineplexSource(api_key="fixture-key").fetch_showtimes(
+    results = await cineplex.CineplexSource().fetch_showtimes(
         location_id=9172,
         start_date=datetime(2026, 2, 10, tzinfo=UTC),
         end_date=datetime(2026, 2, 11, tzinfo=UTC),
@@ -115,9 +116,7 @@ async def test_fetch_movie_detail_parses_next_data_from_local_page(
         "text/html",
     )
 
-    detail = await cineplex.CineplexSource(api_key="fixture-key").fetch_movie_detail(
-        "fixture-film"
-    )
+    detail = await cineplex.CineplexSource().fetch_movie_detail("fixture-film")
 
     assert detail == {
         "description": "A story & another.",

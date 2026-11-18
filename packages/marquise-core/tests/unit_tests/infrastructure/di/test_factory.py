@@ -54,7 +54,6 @@ from marquise.interface_adapters.repositories.source_registry import SourceRegis
 
 SETTINGS = Settings(
     database_url="postgresql://u:p@localhost:5432/db",
-    cineplex_api_key="cineplex-key",
     tmdb_api_key="tmdb-key",
     schema="marquise",
 )
@@ -173,7 +172,11 @@ async def test_use_cases_query_the_open_pool_in_the_configured_schema(
     database: MagicMock, connection: MagicMock, case: SchemaCase
 ) -> None:
     """A use case run through the factory sends its SQL to the configured schema."""
-    settings = Settings(database_url=SETTINGS.database_url, schema="custom_schema")
+    settings = Settings(
+        database_url=SETTINGS.database_url,
+        tmdb_api_key=SETTINGS.tmdb_api_key,
+        schema="custom_schema",
+    )
     use_case = _use_case_at(MarquiseFactory(settings, database), case.path)
 
     await use_case.execute(use_case.InputData(**case.input_fields))
@@ -207,14 +210,14 @@ def test_factory_wires_without_touching_the_pool(database: MagicMock) -> None:
 
 
 def test_factory_builds_the_source_registry_once(database: MagicMock) -> None:
-    """Import and registry listing share one registry built with the Cineplex key."""
+    """Import and registry listing share one source registry."""
     with patch(
         "marquise.infrastructure.di.factory.build_source_registry",
         return_value=SourceRegistry(),
     ) as build_source_registry:
         MarquiseFactory(SETTINGS, database)
 
-    build_source_registry.assert_called_once_with("cineplex-key")
+    build_source_registry.assert_called_once_with()
 
 
 @pytest.mark.asyncio

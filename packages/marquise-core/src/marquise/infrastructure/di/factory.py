@@ -36,12 +36,12 @@ class MarquiseFactory:
         """Wire every use case over the connected database.
 
         Args:
-            settings: Settings that name the schema and the provider API keys.
+            settings: Settings that name the schema and the TMDB API key.
             database: Database whose pool is already open.
         """
         self._database = database
         pool = database.pool
-        source_registry = build_source_registry(settings.cineplex_api_key)
+        source_registry = build_source_registry()
         self.cinemas = build_cinema_use_cases(pool, settings)
         self.movies = build_movie_use_cases(pool, settings)
         self.screenings = build_screening_use_cases(pool, settings, source_registry)

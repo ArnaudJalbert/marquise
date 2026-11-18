@@ -423,7 +423,7 @@ wheels = [
 
 [[package]]
 name = "marquise-api"
-version = "0.1.30"
+version = "0.1.31"
 source = { editable = "apps/marquise-api" }
 dependencies = [
     { name = "fastapi" },
@@ -448,7 +448,7 @@ requires-dist = [
 
 [[package]]
 name = "marquise-cli"
-version = "0.1.27"
+version = "0.1.28"
 source = { editable = "apps/marquise-cli" }
 dependencies = [
     { name = "marquise-core" },
@@ -465,7 +465,7 @@ requires-dist = [
 
 [[package]]
 name = "marquise-core"
-version = "0.2.80"
+version = "0.2.81"
 source = { editable = "packages/marquise-core" }
 dependencies = [
     { name = "asyncpg" },

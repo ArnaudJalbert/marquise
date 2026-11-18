@@ -83,7 +83,7 @@ test-core:
 
 # Core integration tests on a fresh marquise_test database in the local postgres
 test-core-integrations: _reset-integration-db (_refuse-marquise-schema "postgresql://marquise:marquise@localhost:55432/marquise_test")
-    DATABASE_URL="postgresql://marquise:marquise@localhost:55432/marquise_test" uv run pytest integration_tests/ -q
+    DATABASE_URL="postgresql://marquise:marquise@localhost:55432/marquise_test" TMDB_API_KEY="test-only" uv run pytest integration_tests/ -q
 
 # Start postgres and recreate marquise_test empty; literal names, so no override can reach the copy
 _reset-integration-db:
