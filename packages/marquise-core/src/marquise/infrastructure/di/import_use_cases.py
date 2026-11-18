@@ -94,7 +94,7 @@ def build_create_movies_use_case(
     )
 
 
-def _movie_metadata_repository(
+def _build_movie_metadata_repository(
     pool: asyncpg.Pool, schema: str
 ) -> SupabaseMovieMetadataRepository:
     """Build stable-ID movie persistence with its merge gateway."""
@@ -104,12 +104,12 @@ def _movie_metadata_repository(
     )
 
 
-def _tmdb_metadata(tmdb_api_key: str) -> TmdbMetadataAdapter:
+def _build_tmdb_metadata(tmdb_api_key: str) -> TmdbMetadataAdapter:
     """Build the TMDB metadata provider."""
     return TmdbMetadataAdapter(TmdbMetadataHttpSource(tmdb_api_key))
 
 
-def _movie_matcher(metadata: TmdbMetadataAdapter) -> MatchMoviesUseCase:
+def _build_movie_matcher(metadata: TmdbMetadataAdapter) -> MatchMoviesUseCase:
     """Build provider matching with fuzzy title distance."""
     return MatchMoviesUseCase(metadata, RapidFuzzNameDistance())
 
@@ -119,8 +119,8 @@ def build_refresh_movies_use_case(
 ) -> RefreshMoviesUseCase:
     """Compose the explicit refresh workflow."""
     return RefreshMoviesUseCase(
-        _movie_metadata_repository(pool, schema),
-        _tmdb_metadata(tmdb_api_key),
+        _build_movie_metadata_repository(pool, schema),
+        _build_tmdb_metadata(tmdb_api_key),
         lambda: datetime.now(UTC),
     )
 
@@ -130,8 +130,8 @@ def build_merge_movies_use_case(
 ) -> MergeMoviesUseCase:
     """Compose guarded merge preview and apply."""
     return MergeMoviesUseCase(
-        _movie_metadata_repository(pool, schema),
-        _movie_matcher(_tmdb_metadata(tmdb_api_key)),
+        _build_movie_metadata_repository(pool, schema),
+        _build_movie_matcher(_build_tmdb_metadata(tmdb_api_key)),
     )
 
 
@@ -153,16 +153,16 @@ def build_import_screenings_use_case(
     fetch_screenings_use_case: FetchScreeningsFromSourceQuery,
 ) -> ImportScreeningsCommand:
     """Build the application-level cinema import workflow."""
-    metadata = _tmdb_metadata(tmdb_api_key)
+    metadata = _build_tmdb_metadata(tmdb_api_key)
     return ImportScreeningsCommand(
         fetch_screenings=fetch_screenings_use_case,
-        match_movies=_movie_matcher(metadata),
+        match_movies=_build_movie_matcher(metadata),
         find_stored_movies=build_find_stored_movies_query(pool, schema),
         create_movies=build_create_movies_use_case(pool, schema),
         link_screenings=LinkScreeningsQuery(),
         create_screenings=build_create_screenings_use_case(pool, schema),
         enrich_movies=EnrichMoviesUseCase(
-            _movie_metadata_repository(pool, schema),
+            _build_movie_metadata_repository(pool, schema),
             metadata,
             lambda: datetime.now(UTC),
         ),
