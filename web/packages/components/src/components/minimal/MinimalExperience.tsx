@@ -76,6 +76,7 @@ function resourceState(resource: {
   return "ready";
 }
 
+const moviesPerPage = 24;
 const screeningLanguages = ["VO", "VOA", "VOF", "VOSTF", "VOSTA", "VF"];
 
 function parseFilter(type: ActiveCatalogueFilterType, value: string) {
@@ -221,7 +222,13 @@ export function MinimalExperience({
     useCallback(
       (page: number, signal: AbortSignal) =>
         client.fetchScreeningMoviesPage(
-          { start: selection.start, end: selection.end, page, ...filters },
+          {
+            start: selection.start,
+            end: selection.end,
+            page,
+            size: moviesPerPage,
+            ...filters,
+          },
           signal,
         ),
       [client, selection.start, selection.end, filters],
@@ -236,6 +243,7 @@ export function MinimalExperience({
             start: draft.start,
             end: draft.end,
             page: 1,
+            size: moviesPerPage,
             ...getScreeningFilters(draft, fixedCinemaId),
           },
           signal,
@@ -266,7 +274,12 @@ export function MinimalExperience({
     useCallback(
       (page: number, signal: AbortSignal) =>
         client.fetchScreeningMoviesPage(
-          { start: today, page, title: search.trim() || undefined },
+          {
+            start: today,
+            page,
+            size: moviesPerPage,
+            title: search.trim() || undefined,
+          },
           signal,
         ),
       [client, search, today],

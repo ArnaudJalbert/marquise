@@ -40,7 +40,7 @@ async def test_cinema_delete_success(
     captured = capsys.readouterr()
     assert 'Cinema "Test Cinema" (ID: cin-001) deleted.' in captured.out
     mock_list_cinemas_use_case.execute.assert_awaited_once_with(
-        ListCinemasUseCase.InputData()
+        ListCinemasUseCase.InputData(page=1, size=100)
     )
     mock_delete_use_case.execute.assert_awaited_once_with(
         DeleteCinemaUseCase.InputData(cinema_id="cin-001")

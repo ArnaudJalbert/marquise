@@ -59,6 +59,7 @@ export class HttpMarquiseClient implements BrowseClient {
     const params = new URLSearchParams({ start: query.start });
     if (query.end) params.set("end", query.end);
     params.set("page", String(query.page));
+    params.set("size", String(query.size));
     return this.postScreeningFilters("/v1/screening-movies", params, query, signal);
   }
   async fetchScreeningDayCounts(

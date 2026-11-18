@@ -23,7 +23,7 @@ from marquise import (
     ListCinemasUseCase,
     MarquiseFactory,
 )
-from marquise_cli.helpers import run_with_factory
+from marquise_cli.helpers import list_every_cinema, run_with_factory
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,10 +87,7 @@ async def run_import_all(
     end_date = today + timedelta(days=days - 1)
     print(f"Starting bulk import: {today} → {end_date} ({days} days)")
 
-    list_cinemas_use_case = factory.cinemas.list_cinemas_use_case
-    cinemas_response = await list_cinemas_use_case.execute(
-        list_cinemas_use_case.InputData()
-    )
+    cinemas = await list_every_cinema(factory, name=None)
 
     async def _import_cinema(
         cinema: ListCinemasUseCase.CinemaData,
@@ -139,7 +136,7 @@ async def run_import_all(
         await asyncio.gather(
             *(
                 _run_bounded_cinema_import(_import_cinema, cinema, semaphore)
-                for cinema in cinemas_response.cinemas
+                for cinema in cinemas
             )
         )
     )

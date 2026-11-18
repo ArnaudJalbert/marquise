@@ -26,6 +26,7 @@ export interface ScreeningMovieQuery extends ScreeningFilters {
   start: string;
   end?: string;
   page: number;
+  size: number;
 }
 /** An inclusive Montréal horizon of at most 42 days. */
 export interface ScreeningDayCountQuery extends ScreeningFilters {

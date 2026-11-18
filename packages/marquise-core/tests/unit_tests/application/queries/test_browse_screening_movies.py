@@ -39,7 +39,9 @@ async def test_montreal_dst_window_and_single_clock() -> None:
     now = datetime(2026, 11, 1, 4, tzinfo=UTC)
     clock = Mock(return_value=now)
     result = await BrowseScreeningMoviesQuery(reader, clock).execute(
-        BrowseScreeningMoviesQuery.InputData(date(2026, 11, 1), date(2026, 11, 1), 2)
+        BrowseScreeningMoviesQuery.InputData(
+            date(2026, 11, 1), date(2026, 11, 1), size=24, page=2
+        )
     )
     reader.search.assert_awaited_once_with(
         ScreeningMovieReader.SearchRequest(
@@ -47,6 +49,7 @@ async def test_montreal_dst_window_and_single_clock() -> None:
             end=datetime(2026, 11, 2, 4, 59, 59, 999999, tzinfo=UTC),
             now=now,
             page=2,
+            size=24,
         )
     )
     clock.assert_called_once_with()
@@ -65,7 +68,7 @@ async def test_montreal_dst_window_and_single_clock() -> None:
 def test_invalid_request(start: date, end: date, page: int) -> None:
     """Invalid ranges and pagination fail before reading storage."""
     with pytest.raises(ValueError):
-        BrowseScreeningMoviesQuery.InputData(start, end, page)
+        BrowseScreeningMoviesQuery.InputData(start, end, size=24, page=page)
 
 
 @pytest.mark.asyncio
@@ -86,7 +89,9 @@ async def test_invalid_hours_are_rejected_before_reading(
     )
 
     with pytest.raises(ValueError, match="hours"):
-        await query.execute(BrowseScreeningMoviesQuery.InputData(DAY, DAY, hours=hours))
+        await query.execute(
+            BrowseScreeningMoviesQuery.InputData(DAY, DAY, size=24, hours=hours, page=1)
+        )
 
     clock.assert_not_called()
     reader.search.assert_not_awaited()
@@ -121,6 +126,7 @@ async def test_filter_values_are_passed_to_the_reader() -> None:
     request = BrowseScreeningMoviesQuery.InputData(
         date(2026, 11, 3),
         date(2026, 11, 5),
+        size=24,
         title=" Dune ",
         cinemas=("c1", "c2"),
         languages=("VO", "VOSTF"),
@@ -129,6 +135,7 @@ async def test_filter_values_are_passed_to_the_reader() -> None:
             excluded=True,
         ),
         excluded_cinemas=("c3",),
+        page=1,
     )
 
     await BrowseScreeningMoviesQuery(reader, Mock(return_value=now)).execute(request)
@@ -139,6 +146,7 @@ async def test_filter_values_are_passed_to_the_reader() -> None:
             end=datetime(2026, 11, 6, 4, 59, 59, 999999, tzinfo=UTC),
             now=now,
             page=1,
+            size=24,
             title=" Dune ",
             cinemas=("c1", "c2"),
             languages=("VO", "VOSTF"),

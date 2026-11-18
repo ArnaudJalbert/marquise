@@ -55,7 +55,7 @@ async def test_cinema_list_success(
     assert "Quartier Latin" in captured.out
     assert "Montreal" in captured.out
     list_cinemas_use_case.execute.assert_awaited_once_with(
-        ListCinemasUseCase.InputData()
+        ListCinemasUseCase.InputData(page=1, size=100)
     )
 
 
@@ -204,5 +204,5 @@ async def test_cinema_list_with_name_filter(
     await run_list_cinemas(mock_factory, name="Parc")
 
     list_cinemas_use_case.execute.assert_awaited_once_with(
-        ListCinemasUseCase.InputData(name="Parc")
+        ListCinemasUseCase.InputData(page=1, size=100, name="Parc")
     )

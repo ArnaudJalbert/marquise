@@ -46,7 +46,7 @@ async def test_movie_projection_maps_metadata_previews_and_empty_pages() -> None
     )
     now = datetime(2026, 11, 1, 4, tzinfo=UTC)
     reader = SupabaseScreeningMovieReader(gateway)
-    request = ScreeningMovieReader.SearchRequest(now, now, now, 2)
+    request = ScreeningMovieReader.SearchRequest(now, now, now, 2, 24)
     result = await reader.search(request)
     gateway.search.assert_awaited_once_with(request)
     assert result.total == 25
@@ -57,7 +57,9 @@ async def test_movie_projection_maps_metadata_previews_and_empty_pages() -> None
     assert movie.screenings[0].language == "VO"
     assert movie.screenings[0].ticket_url is None
     gateway.search.return_value = GatewayPage(rows=[], total=25)
-    result = await reader.search(ScreeningMovieReader.SearchRequest(now, now, now, 3))
+    result = await reader.search(
+        ScreeningMovieReader.SearchRequest(now, now, now, 3, 24)
+    )
     assert result.total == 25 and result.items == []
 
 

@@ -22,6 +22,7 @@ class ScreeningMovieReader(ABC):
         end: datetime | None
         now: datetime
         page: int
+        size: int
         title: str | None = None
         cinemas: tuple[str, ...] = ()
         languages: tuple[str, ...] = ()
@@ -65,7 +66,7 @@ class ScreeningMovieReader(ABC):
 
     @abstractmethod
     async def search(self, request: SearchRequest) -> Page[MovieData]:
-        """Return a 24-movie page within inclusive bounds, strictly after now."""
+        """Return one movie page within inclusive bounds, strictly after now."""
         ...
 
     @abstractmethod
