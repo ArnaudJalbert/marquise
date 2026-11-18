@@ -13,13 +13,9 @@ from marquise import (
     GetCinemaScreeningsQuery,
     GetCinemaUseCase,
     ListCinemasUseCase,
+    MarquiseFactory,
 )
-from marquise_api.dependencies import (
-    get_cinema_movies_use_case,
-    get_cinema_screenings_query,
-    get_cinema_use_case,
-    get_list_cinemas_use_case,
-)
+from marquise_api.dependencies import get_factory
 from marquise_api.openapi_responses import error_responses
 from marquise_api.rate_limit import current_rate_limit, limiter
 from marquise_api.routers._dependencies import resolve_showtimes_date_range
@@ -46,10 +42,10 @@ async def list_cinemas(
         default=None, description="Filter cinemas by name (case-insensitive)."
     ),
     params: Params = Depends(),
-    use_case: ListCinemasUseCase = Depends(get_list_cinemas_use_case),
+    factory: MarquiseFactory = Depends(get_factory),
 ) -> Page[CinemaResponse]:
     """List cinemas, optionally filtered by name."""
-    output = await use_case.execute(
+    output = await factory.cinemas.list_cinemas_use_case.execute(
         ListCinemasUseCase.InputData(name=name, page=params.page, size=params.size)
     )
     return Page.create(
@@ -70,10 +66,12 @@ async def get_cinema(
     request: Request,
     response: Response,
     cinema_id: str,
-    use_case: GetCinemaUseCase = Depends(get_cinema_use_case),
+    factory: MarquiseFactory = Depends(get_factory),
 ) -> CinemaResponse:
     """Retrieve a single cinema by its ID."""
-    output = await use_case.execute(GetCinemaUseCase.InputData(cinema_id=cinema_id))
+    output = await factory.cinemas.get_cinema_use_case.execute(
+        GetCinemaUseCase.InputData(cinema_id=cinema_id)
+    )
     return CinemaResponse.model_validate(output)
 
 
@@ -89,14 +87,14 @@ async def get_cinema_screenings(
     response: Response,
     cinema_id: str,
     params: Params = Depends(),
-    query: GetCinemaScreeningsQuery = Depends(get_cinema_screenings_query),
+    factory: MarquiseFactory = Depends(get_factory),
 ) -> Page[ScreeningResponse]:
     """List all of a cinema's screenings.
 
     No filtering beyond the cinema itself — use ``GET /v1/screenings`` for
     date range, movie, or language filters.
     """
-    output = await query.execute(
+    output = await factory.cinemas.get_cinema_screenings_query.execute(
         GetCinemaScreeningsQuery.InputData(
             cinema_id=cinema_id,
             page=params.page,
@@ -124,11 +122,11 @@ async def get_cinema_movies(
     cinema_id: str,
     date_range: tuple[datetime, datetime] = Depends(resolve_showtimes_date_range),
     params: Params = Depends(),
-    use_case: GetCinemaMoviesUseCase = Depends(get_cinema_movies_use_case),
+    factory: MarquiseFactory = Depends(get_factory),
 ) -> Page[MovieResponse]:
     """List the distinct movies currently screening at a cinema."""
     from_, to = date_range
-    output = await use_case.execute(
+    output = await factory.cinemas.get_cinema_movies_use_case.execute(
         GetCinemaMoviesUseCase.InputData(
             cinema_id=cinema_id,
             start_date=from_,

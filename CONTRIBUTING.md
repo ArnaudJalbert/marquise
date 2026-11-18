@@ -51,7 +51,7 @@ Marquise is a `uv` workspace (`[tool.uv.workspace] members = ["packages/*", "app
 | Member | Role | Console script |
 |--------|------|----------------|
 | `packages/marquise-core` | Domain library (importable as `marquise`) | — |
-| `apps/marquise-api` | Public read-only screening FastAPI REST API | `marquise-api` |
+| `apps/marquise-api` | Public read-only screening FastAPI REST API | — |
 | `apps/marquise-cli` | argparse administration CLI (`cinema`, `source`, `import`, `movie`) | `marquise` |
 
 Root `pyproject.toml` is **virtual** — no `[project]`/`[build-system]` table. It
@@ -156,7 +156,7 @@ uv run ty check packages/marquise-core/src
 
 # CLI / API
 uv run marquise --help
-uv run marquise-api
+uv run uvicorn marquise_api.app:create_app --factory
 
 # Dependencies
 uv add --package marquise-core <package>
