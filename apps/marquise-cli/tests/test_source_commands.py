@@ -62,7 +62,7 @@ async def test_select_source_executes_list_use_case_and_handles_cancellation(
 ) -> None:
     """Verify source selection lists sources directly and preserves cancellation."""
     list_sources_use_case = _list_use_case([_SourceEntry("cinemacinema")])
-    mock_factory.list_sources_use_case = list_sources_use_case
+    mock_factory.sources.list_sources_use_case = list_sources_use_case
 
     with patch("marquise_cli.helpers.questionary.select") as select:
         select.return_value.ask_async = AsyncMock(return_value="__exit__")
@@ -84,7 +84,7 @@ async def test_select_cinema_executes_list_use_case_and_handles_cancellation(
     list_cinemas_use_case.execute.return_value = ListCinemasUseCase.OutputData(
         cinemas=[make_cinema_data()], total=1
     )
-    mock_factory.list_cinemas_use_case = list_cinemas_use_case
+    mock_factory.cinemas.list_cinemas_use_case = list_cinemas_use_case
 
     with patch("marquise_cli.helpers.questionary.select") as select:
         select.return_value.ask_async = AsyncMock(return_value="__exit__")
@@ -93,7 +93,7 @@ async def test_select_cinema_executes_list_use_case_and_handles_cancellation(
     assert selected is None
     assert "Cancelled." in capsys.readouterr().out
     list_cinemas_use_case.execute.assert_awaited_once_with(
-        ListCinemasUseCase.InputData()
+        ListCinemasUseCase.InputData(page=1, size=100)
     )
 
 
@@ -104,7 +104,7 @@ async def test_source_list_executes_list_use_case(
 ) -> None:
     """Verify source listing executes direct use case and cleans up factory."""
     list_sources_use_case = _list_use_case([_SourceEntry("cinemacinema")])
-    mock_factory.list_sources_use_case = list_sources_use_case
+    mock_factory.sources.list_sources_use_case = list_sources_use_case
 
     await run_list_registered_sources(mock_factory)
 
@@ -126,7 +126,7 @@ async def test_source_assign_executes_assign_use_case(
             source_name="cinemacinema",
         )
     )
-    mock_factory.assign_source_use_case = assign_source_use_case
+    mock_factory.sources.assign_source_use_case = assign_source_use_case
 
     with (
         patch(
@@ -157,7 +157,7 @@ async def test_source_unassign_executes_unassign_use_case(
     unassign_source_use_case.execute = AsyncMock(
         return_value=UnassignSourceUseCase.OutputData(cinema_id="cin-001")
     )
-    mock_factory.unassign_source_use_case = unassign_source_use_case
+    mock_factory.sources.unassign_source_use_case = unassign_source_use_case
 
     with patch(
         "marquise_cli.source_commands.unassign_command.select_cinema",
@@ -179,11 +179,11 @@ async def test_source_register_new_source(
     create_use_case.execute = AsyncMock(
         return_value=SimpleNamespace(name="cinemacinema")
     )
-    mock_factory.list_registry_sources_use_case = _registry_use_case(
+    mock_factory.sources.list_registry_sources_use_case = _registry_use_case(
         [_SourceEntry("cinemacinema")]
     )
-    mock_factory.list_sources_use_case = _list_use_case([])
-    mock_factory.create_source_use_case = create_use_case
+    mock_factory.sources.list_sources_use_case = _list_use_case([])
+    mock_factory.sources.create_source_use_case = create_use_case
 
     with patch("marquise_cli.source_commands.register_command.questionary") as mock_q:
         mock_q.text.return_value.ask_async = AsyncMock(
@@ -206,11 +206,13 @@ async def test_source_register_all_existing(
 ) -> None:
     """Verify source register does not create existing sources."""
     create_use_case = create_autospec(CreateSourceUseCase, instance=True)
-    mock_factory.list_registry_sources_use_case = _registry_use_case(
+    mock_factory.sources.list_registry_sources_use_case = _registry_use_case(
         [_SourceEntry("cinemacinema")]
     )
-    mock_factory.list_sources_use_case = _list_use_case([_SourceEntry("cinemacinema")])
-    mock_factory.create_source_use_case = create_use_case
+    mock_factory.sources.list_sources_use_case = _list_use_case(
+        [_SourceEntry("cinemacinema")]
+    )
+    mock_factory.sources.create_source_use_case = create_use_case
 
     await run_register_sources(mock_factory)
 
@@ -225,11 +227,13 @@ async def test_source_unregister_success(
     """Verify source unregister executes delete use case after confirmation."""
     delete_use_case = create_autospec(DeleteSourceUseCase, instance=True)
     delete_use_case.execute = AsyncMock()
-    mock_factory.list_registry_sources_use_case = _registry_use_case(
+    mock_factory.sources.list_registry_sources_use_case = _registry_use_case(
         [_SourceEntry("cinemacinema")]
     )
-    mock_factory.list_sources_use_case = _list_use_case([_SourceEntry("cinemacinema")])
-    mock_factory.delete_source_use_case = delete_use_case
+    mock_factory.sources.list_sources_use_case = _list_use_case(
+        [_SourceEntry("cinemacinema")]
+    )
+    mock_factory.sources.delete_source_use_case = delete_use_case
 
     with patch("marquise_cli.source_commands.unregister_command.questionary") as mock_q:
         mock_q.checkbox.return_value.ask_async = AsyncMock(
@@ -249,11 +253,13 @@ async def test_source_unregister_no_selection(
 ) -> None:
     """Verify source unregister does not delete without selection."""
     delete_use_case = create_autospec(DeleteSourceUseCase, instance=True)
-    mock_factory.list_registry_sources_use_case = _registry_use_case(
+    mock_factory.sources.list_registry_sources_use_case = _registry_use_case(
         [_SourceEntry("cinemacinema")]
     )
-    mock_factory.list_sources_use_case = _list_use_case([_SourceEntry("cinemacinema")])
-    mock_factory.delete_source_use_case = delete_use_case
+    mock_factory.sources.list_sources_use_case = _list_use_case(
+        [_SourceEntry("cinemacinema")]
+    )
+    mock_factory.sources.delete_source_use_case = delete_use_case
 
     with patch("marquise_cli.source_commands.unregister_command.questionary") as mock_q:
         mock_q.checkbox.return_value.ask_async = AsyncMock(return_value=[])
@@ -269,9 +275,9 @@ async def test_source_unregister_empty_db(
 ) -> None:
     """Verify source unregister exits when database has no sources."""
     delete_use_case = create_autospec(DeleteSourceUseCase, instance=True)
-    mock_factory.list_registry_sources_use_case = _registry_use_case([])
-    mock_factory.list_sources_use_case = _list_use_case([])
-    mock_factory.delete_source_use_case = delete_use_case
+    mock_factory.sources.list_registry_sources_use_case = _registry_use_case([])
+    mock_factory.sources.list_sources_use_case = _list_use_case([])
+    mock_factory.sources.delete_source_use_case = delete_use_case
 
     await run_unregister_sources(mock_factory)
 
@@ -285,11 +291,13 @@ async def test_source_unregister_cancelled_at_confirm(
 ) -> None:
     """Verify source unregister does not delete when confirmation is declined."""
     delete_use_case = create_autospec(DeleteSourceUseCase, instance=True)
-    mock_factory.list_registry_sources_use_case = _registry_use_case(
+    mock_factory.sources.list_registry_sources_use_case = _registry_use_case(
         [_SourceEntry("cinemacinema")]
     )
-    mock_factory.list_sources_use_case = _list_use_case([_SourceEntry("cinemacinema")])
-    mock_factory.delete_source_use_case = delete_use_case
+    mock_factory.sources.list_sources_use_case = _list_use_case(
+        [_SourceEntry("cinemacinema")]
+    )
+    mock_factory.sources.delete_source_use_case = delete_use_case
 
     with patch("marquise_cli.source_commands.unregister_command.questionary") as mock_q:
         mock_q.checkbox.return_value.ask_async = AsyncMock(
@@ -309,11 +317,13 @@ async def test_source_unregister_partial_failure(
     """Verify an unexpected delete failure stops unregister and propagates."""
     delete_use_case = create_autospec(DeleteSourceUseCase, instance=True)
     delete_use_case.execute = AsyncMock(side_effect=ValueError("Something went wrong"))
-    mock_factory.list_registry_sources_use_case = _registry_use_case(
+    mock_factory.sources.list_registry_sources_use_case = _registry_use_case(
         [_SourceEntry("cinemacinema")]
     )
-    mock_factory.list_sources_use_case = _list_use_case([_SourceEntry("cinemacinema")])
-    mock_factory.delete_source_use_case = delete_use_case
+    mock_factory.sources.list_sources_use_case = _list_use_case(
+        [_SourceEntry("cinemacinema")]
+    )
+    mock_factory.sources.delete_source_use_case = delete_use_case
 
     with patch("marquise_cli.source_commands.unregister_command.questionary") as mock_q:
         mock_q.checkbox.return_value.ask_async = AsyncMock(
@@ -327,14 +337,14 @@ async def test_source_unregister_partial_failure(
 ASSIGN = (
     ("source", "assign"),
     assign_command,
-    "assign_source_use_case",
+    "sources.assign_source_use_case",
     AssignSourceUseCase,
     {"select_cinema": make_cinema_data(), "select_source": "cineplex"},
 )
 UNASSIGN = (
     ("source", "unassign"),
     unassign_command,
-    "unassign_source_use_case",
+    "sources.unassign_source_use_case",
     UnassignSourceUseCase,
     {"select_cinema": make_cinema_data()},
 )
@@ -359,7 +369,7 @@ def test_documented_error_prints_message_and_exits_nonzero(
         main(command.argv)
     assert failure.value.code == 1
     assert str(error) in capsys.readouterr().err
-    command.factory.shutdown.assert_awaited_once()
+    assert command.session.closed
 
 
 @pytest.mark.parametrize(
@@ -383,4 +393,4 @@ def test_unlisted_source_errors_escape(
     with pytest.raises(error_type) as failure:
         main(command.argv)
     assert failure.value is error
-    command.factory.shutdown.assert_awaited_once()
+    assert command.session.closed

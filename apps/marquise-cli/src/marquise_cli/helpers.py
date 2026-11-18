@@ -18,10 +18,43 @@ from marquise import (
 
 console = Console(markup=False)
 
+_CINEMAS_PER_PAGE = 100
+
+
+async def list_every_cinema(
+    factory: MarquiseFactory, name: str | None
+) -> list[ListCinemasUseCase.CinemaData]:
+    """Read every cinema matching the name filter, one page at a time.
+
+    Args:
+        factory: The open factory.
+        name: Name filter, or None for every cinema.
+
+    Returns:
+        Every matching cinema, in repository order.
+    """
+    use_case = factory.cinemas.list_cinemas_use_case
+    cinemas: list[ListCinemasUseCase.CinemaData] = []
+    page = 1
+    while True:
+        output = await _read_cinema_page(use_case, page, name)
+        cinemas.extend(output.cinemas)
+        if not output.cinemas or len(cinemas) >= output.total:
+            return cinemas
+        page += 1
+
+
+async def _read_cinema_page(
+    use_case: ListCinemasUseCase, page: int, name: str | None
+) -> ListCinemasUseCase.OutputData:
+    return await use_case.execute(
+        use_case.InputData(page=page, size=_CINEMAS_PER_PAGE, name=name)
+    )
+
 
 async def select_source(factory: MarquiseFactory, prompt: str) -> str | None:
     """Let the user pick a source interactively from a list."""
-    list_sources_use_case = factory.list_sources_use_case
+    list_sources_use_case = factory.sources.list_sources_use_case
     response = await list_sources_use_case.execute(list_sources_use_case.InputData())
     if not response.sources:
         print("No sources available.")
@@ -48,9 +81,8 @@ async def select_cinema(
     prompt: str,
 ) -> ListCinemasUseCase.CinemaData | None:
     """Let user select a cinema, or cancel."""
-    list_cinemas_use_case = factory.list_cinemas_use_case
-    response = await list_cinemas_use_case.execute(list_cinemas_use_case.InputData())
-    if not response.cinemas:
+    cinemas = await list_every_cinema(factory, name=None)
+    if not cinemas:
         print("No cinemas available.")
         return None
 
@@ -60,7 +92,7 @@ async def select_cinema(
             f"{cinema.city or 'No city'}",
             value=cinema,
         )
-        for cinema in response.cinemas
+        for cinema in cinemas
     ]
     choices.append(questionary.Choice(title="← exit", value="__exit__"))
     selected = await questionary.select(prompt, choices=choices).ask_async()
@@ -106,7 +138,7 @@ async def connected_factory() -> AsyncIterator[MarquiseFactory]:
     """Open a factory session behind a "Connecting..." spinner.
 
     Yields:
-        The initialized factory, shut down when the block exits.
+        The open factory, closed when the block exits.
     """
     async with AsyncExitStack() as stack:
         factory = await run_spinner(

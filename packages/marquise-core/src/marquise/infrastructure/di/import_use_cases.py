@@ -94,38 +94,45 @@ def build_create_movies_use_case(
     )
 
 
-def build_metadata_workflows(
-    pool: asyncpg.Pool, schema: str, tmdb_api_key: str
-) -> tuple[SupabaseMovieMetadataRepository, MatchMoviesUseCase, EnrichMoviesUseCase]:
-    """Compose provider, matching and stable-ID persistence collaborators."""
-    movies = SupabaseMovieMetadataRepository(
+def _build_movie_metadata_repository(
+    pool: asyncpg.Pool, schema: str
+) -> SupabaseMovieMetadataRepository:
+    """Build stable-ID movie persistence with its merge gateway."""
+    return SupabaseMovieMetadataRepository(
         SupabaseMovieMetadataGateway(pool, schema),
         SupabaseMovieMergeGateway(pool, schema),
     )
-    metadata = TmdbMetadataAdapter(TmdbMetadataHttpSource(tmdb_api_key))
-    matcher = MatchMoviesUseCase(metadata, RapidFuzzNameDistance())
-    return (
-        movies,
-        matcher,
-        EnrichMoviesUseCase(movies, metadata, lambda: datetime.now(UTC)),
-    )
+
+
+def _build_tmdb_metadata(tmdb_api_key: str) -> TmdbMetadataAdapter:
+    """Build the TMDB metadata provider."""
+    return TmdbMetadataAdapter(TmdbMetadataHttpSource(tmdb_api_key))
+
+
+def _build_movie_matcher(metadata: TmdbMetadataAdapter) -> MatchMoviesUseCase:
+    """Build provider matching with fuzzy title distance."""
+    return MatchMoviesUseCase(metadata, RapidFuzzNameDistance())
 
 
 def build_refresh_movies_use_case(
     pool: asyncpg.Pool, schema: str, tmdb_api_key: str
 ) -> RefreshMoviesUseCase:
     """Compose the explicit refresh workflow."""
-    movies, _, _ = build_metadata_workflows(pool, schema, tmdb_api_key)
-    metadata = TmdbMetadataAdapter(TmdbMetadataHttpSource(tmdb_api_key))
-    return RefreshMoviesUseCase(movies, metadata, lambda: datetime.now(UTC))
+    return RefreshMoviesUseCase(
+        _build_movie_metadata_repository(pool, schema),
+        _build_tmdb_metadata(tmdb_api_key),
+        lambda: datetime.now(UTC),
+    )
 
 
 def build_merge_movies_use_case(
     pool: asyncpg.Pool, schema: str, tmdb_api_key: str
 ) -> MergeMoviesUseCase:
     """Compose guarded merge preview and apply."""
-    movies, matcher, _ = build_metadata_workflows(pool, schema, tmdb_api_key)
-    return MergeMoviesUseCase(movies, matcher)
+    return MergeMoviesUseCase(
+        _build_movie_metadata_repository(pool, schema),
+        _build_movie_matcher(_build_tmdb_metadata(tmdb_api_key)),
+    )
 
 
 def build_create_screenings_use_case(
@@ -146,13 +153,17 @@ def build_import_screenings_use_case(
     fetch_screenings_use_case: FetchScreeningsFromSourceQuery,
 ) -> ImportScreeningsCommand:
     """Build the application-level cinema import workflow."""
-    _, matcher, enricher = build_metadata_workflows(pool, schema, tmdb_api_key)
+    metadata = _build_tmdb_metadata(tmdb_api_key)
     return ImportScreeningsCommand(
         fetch_screenings=fetch_screenings_use_case,
-        match_movies=matcher,
+        match_movies=_build_movie_matcher(metadata),
         find_stored_movies=build_find_stored_movies_query(pool, schema),
         create_movies=build_create_movies_use_case(pool, schema),
         link_screenings=LinkScreeningsQuery(),
         create_screenings=build_create_screenings_use_case(pool, schema),
-        enrich_movies=enricher,
+        enrich_movies=EnrichMoviesUseCase(
+            _build_movie_metadata_repository(pool, schema),
+            metadata,
+            lambda: datetime.now(UTC),
+        ),
     )

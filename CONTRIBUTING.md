@@ -51,7 +51,7 @@ Marquise is a `uv` workspace (`[tool.uv.workspace] members = ["packages/*", "app
 | Member | Role | Console script |
 |--------|------|----------------|
 | `packages/marquise-core` | Domain library (importable as `marquise`) | — |
-| `apps/marquise-api` | Public read-only screening FastAPI REST API | `marquise-api` |
+| `apps/marquise-api` | Public read-only screening FastAPI REST API | — |
 | `apps/marquise-cli` | argparse administration CLI (`cinema`, `source`, `import`, `movie`) | `marquise` |
 
 Root `pyproject.toml` is **virtual** — no `[project]`/`[build-system]` table. It
@@ -97,8 +97,9 @@ Package roles and dependency rules: [web rules](docs/agents/rules/web.md).
 | `MARQUISE_API_LOG_LEVEL` | No | API log level (default: `INFO`) |
 | `VITE_MARQUISE_API_BASE_URL` | No (web) | API origin for the interface build (default: same origin; the Docker build sets `https://api.marquise.mov`) |
 
-Importing `marquise.infrastructure.di.container` runs `load_dotenv()`, so a local
-`.env` leaks into any process or test that builds the factory.
+Building a `MarquiseFactory` runs `load_dotenv()` before it reads settings, so a
+local `.env` reaches any process or test that builds the factory. Importing
+`marquise` reads no `.env`.
 
 ---
 
@@ -155,7 +156,7 @@ uv run ty check packages/marquise-core/src
 
 # CLI / API
 uv run marquise --help
-uv run marquise-api
+uv run uvicorn marquise_api.app:create_app --factory
 
 # Dependencies
 uv add --package marquise-core <package>

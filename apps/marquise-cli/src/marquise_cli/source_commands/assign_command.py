@@ -29,7 +29,7 @@ async def run_assign(factory: MarquiseFactory) -> None:
     if source_name is None:
         return
 
-    assign_source_use_case = factory.assign_source_use_case
+    assign_source_use_case = factory.sources.assign_source_use_case
     response = await run_spinner(
         assign_source_use_case.execute(
             assign_source_use_case.InputData(

@@ -23,7 +23,7 @@ def _build_table(sources: list) -> Table:
 
 async def run_list_registered_sources(factory: MarquiseFactory) -> None:
     """List registered showtime sources in database."""
-    list_sources_use_case = factory.list_sources_use_case
+    list_sources_use_case = factory.sources.list_sources_use_case
     response = await run_spinner(
         list_sources_use_case.execute(list_sources_use_case.InputData()),
         description="Fetching registered sources...",

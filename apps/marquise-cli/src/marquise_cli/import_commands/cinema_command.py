@@ -59,7 +59,7 @@ async def _import_screenings(
     factory: MarquiseFactory, cinema_id: str, start_date: date, end_date: date
 ) -> ImportScreeningsCommand.OutputData:
     """Import one cinema date range."""
-    return await factory.import_screenings_use_case.execute(
+    return await factory.screenings.import_screenings_command.execute(
         ImportScreeningsCommand.InputData(
             cinema_id=cinema_id,
             start_date=start_date,
@@ -115,7 +115,7 @@ async def run_import_cinema(factory: MarquiseFactory) -> None:
     cinema = await select_cinema(factory, "Select a cinema to import showtimes for:")
     if cinema is None:
         return
-    get_source_use_case = factory.get_cinema_source_use_case
+    get_source_use_case = factory.sources.get_cinema_source_use_case
     assignment = await get_source_use_case.execute(
         get_source_use_case.InputData(cinema_id=cinema.id)
     )

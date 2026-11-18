@@ -10,8 +10,8 @@ from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi_cache.decorator import cache
 from fastapi_pagination import Page, Params
 
-from marquise import GetScreeningQuery, SearchScreeningsQuery
-from marquise_api.dependencies import get_screening_query, get_search_screenings_query
+from marquise import GetScreeningQuery, MarquiseFactory, SearchScreeningsQuery
+from marquise_api.dependencies import get_factory
 from marquise_api.openapi_responses import error_responses
 from marquise_api.rate_limit import current_rate_limit, limiter
 from marquise_api.schemas import ScreeningResponse
@@ -64,10 +64,10 @@ async def search_screenings(
         default=None, description="Filter by exact language/subtitle version."
     ),
     params: Params = Depends(),
-    query: SearchScreeningsQuery = Depends(get_search_screenings_query),
+    factory: MarquiseFactory = Depends(get_factory),
 ) -> Page[ScreeningResponse]:
     """Search screenings across all cinemas by any combination of filters."""
-    output = await query.execute(
+    output = await factory.screenings.search_screenings_query.execute(
         SearchScreeningsQuery.InputData(
             movie=movie,
             movie_id=movie_id,
@@ -97,8 +97,10 @@ async def get_screening(
     request: Request,
     response: Response,
     screening_id: str,
-    query: GetScreeningQuery = Depends(get_screening_query),
+    factory: MarquiseFactory = Depends(get_factory),
 ) -> ScreeningResponse:
     """Retrieve a single screening by its ID."""
-    output = await query.execute(GetScreeningQuery.InputData(screening_id=screening_id))
+    output = await factory.screenings.get_screening_query.execute(
+        GetScreeningQuery.InputData(screening_id=screening_id)
+    )
     return ScreeningResponse.model_validate(output)

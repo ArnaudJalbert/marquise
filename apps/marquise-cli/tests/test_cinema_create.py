@@ -44,7 +44,7 @@ async def test_cinema_create_success(
 ) -> None:
     """Verify cinema create uses the direct use case and prints details."""
     use_case = _mock_create_use_case(response=_created_cinema())
-    mock_factory.create_cinema_use_case = use_case
+    mock_factory.cinemas.create_cinema_use_case = use_case
 
     with patch(
         "marquise_cli.cinema_commands.create_command.questionary.confirm"
@@ -81,8 +81,8 @@ async def test_cinema_create_assigns_source_after_success(
     assign_use_case.execute = AsyncMock(
         return_value=SimpleNamespace(cinema_id="cin-001", source_name="cineplex")
     )
-    mock_factory.create_cinema_use_case = use_case
-    mock_factory.assign_source_use_case = assign_use_case
+    mock_factory.cinemas.create_cinema_use_case = use_case
+    mock_factory.sources.assign_source_use_case = assign_use_case
 
     with (
         patch(
@@ -121,8 +121,8 @@ async def test_cinema_create_declines_source_assignment(
     """Verify declining source assignment leaves cinema created."""
     use_case = _mock_create_use_case(response=_created_cinema())
     assign_use_case = create_autospec(AssignSourceUseCase, instance=True)
-    mock_factory.create_cinema_use_case = use_case
-    mock_factory.assign_source_use_case = assign_use_case
+    mock_factory.cinemas.create_cinema_use_case = use_case
+    mock_factory.sources.assign_source_use_case = assign_use_case
 
     with (
         patch(
@@ -154,8 +154,8 @@ async def test_cinema_create_assignment_failure(
     use_case = _mock_create_use_case(response=_created_cinema())
     assign_use_case = create_autospec(AssignSourceUseCase, instance=True)
     assign_use_case.execute = AsyncMock(side_effect=ValueError("Source unavailable"))
-    mock_factory.create_cinema_use_case = use_case
-    mock_factory.assign_source_use_case = assign_use_case
+    mock_factory.cinemas.create_cinema_use_case = use_case
+    mock_factory.sources.assign_source_use_case = assign_use_case
 
     with (
         patch(
@@ -198,7 +198,7 @@ async def test_cinema_create_failure(
 ) -> None:
     """Every create use-case error is shown and exits unsuccessfully."""
     use_case = _mock_create_use_case(error=error)
-    mock_factory.create_cinema_use_case = use_case
+    mock_factory.cinemas.create_cinema_use_case = use_case
 
     with pytest.raises(SystemExit):
         await run_create(
@@ -218,8 +218,8 @@ async def test_cinema_create_failure(
 async def test_cinema_create_unexpected_failure_propagates(
     mock_factory: MagicMock,
 ) -> None:
-    """Unexpected create failures propagate."""
-    mock_factory.create_cinema_use_case = _mock_create_use_case(
+    """Unexpected create failures propagate after factory cleanup."""
+    mock_factory.cinemas.create_cinema_use_case = _mock_create_use_case(
         error=RuntimeError("database unavailable")
     )
 

@@ -28,7 +28,7 @@ async def _create_cinema(
 ) -> CreateCinemaUseCase.OutputData:
     """Create a cinema and display its details."""
     try:
-        create_cinema_use_case = factory.create_cinema_use_case
+        create_cinema_use_case = factory.cinemas.create_cinema_use_case
         response = await create_cinema_use_case.execute(
             create_cinema_use_case.InputData(
                 name=name,
@@ -58,7 +58,7 @@ async def _assign_source(factory: MarquiseFactory, cinema_id: str) -> None:
         return
 
     try:
-        assign_source_use_case = factory.assign_source_use_case
+        assign_source_use_case = factory.sources.assign_source_use_case
         assignment = await assign_source_use_case.execute(
             assign_source_use_case.InputData(
                 cinema_id=cinema_id,

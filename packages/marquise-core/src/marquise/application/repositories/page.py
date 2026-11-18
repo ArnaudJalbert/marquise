@@ -18,3 +18,16 @@ class Page[T]:
 
     items: list[T]
     total: int
+
+
+def get_page_offset(page: int, size: int) -> int:
+    """Return how many items come before a 1-based page of the given size.
+
+    Args:
+        page: The 1-based page number.
+        size: The page size.
+
+    Returns:
+        The offset of the page's first item.
+    """
+    return (page - 1) * size

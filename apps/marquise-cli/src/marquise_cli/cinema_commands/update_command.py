@@ -67,7 +67,7 @@ async def _update_cinema(
 ) -> UpdateCinemaUseCase.OutputData:
     """Execute update use case and report expected failures."""
     try:
-        update_cinema_use_case = factory.update_cinema_use_case
+        update_cinema_use_case = factory.cinemas.update_cinema_use_case
         response = await update_cinema_use_case.execute(
             update_cinema_use_case.InputData(cinema_id, name, address, city, website)
         )

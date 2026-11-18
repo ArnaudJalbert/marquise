@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Callable, Iterator
-from contextlib import AbstractAsyncContextManager, asynccontextmanager, contextmanager
+from collections.abc import AsyncIterator, Iterator
+from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from datetime import date
 from types import ModuleType
@@ -12,14 +12,19 @@ from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 import pytest
 
 from marquise import (
+    CinemaUseCases,
     CreateSourceUseCase,
     DeleteCinemaUseCase,
     DeleteSourceUseCase,
     GetCinemaSourceUseCase,
     ListCinemasUseCase,
     MarquiseFactory,
+    MovieUseCases,
+    ScreeningUseCases,
+    SourceUseCases,
     UpdateCinemaUseCase,
 )
+from marquise_cli import helpers
 
 UseCaseType = type[
     CreateSourceUseCase
@@ -30,26 +35,44 @@ UseCaseType = type[
 ]
 
 
-@pytest.fixture
-def mock_factory() -> MagicMock:
-    """Provide a mocked MarquiseFactory."""
+def stub_factory() -> MagicMock:
+    """Provide a mocked MarquiseFactory with an autospecced container per area."""
     factory = create_autospec(MarquiseFactory, instance=True)
-    factory.__aenter__.return_value = factory
-    factory.__aexit__.return_value = False
+    factory.cinemas = create_autospec(CinemaUseCases, instance=True)
+    factory.movies = create_autospec(MovieUseCases, instance=True)
+    factory.screenings = create_autospec(ScreeningUseCases, instance=True)
+    factory.sources = create_autospec(SourceUseCases, instance=True)
     return factory
 
 
-def factory_session(factory: MagicMock) -> Callable[[], AbstractAsyncContextManager]:
-    """Replace create_factory_session with a session around the given factory."""
+@pytest.fixture
+def mock_factory() -> MagicMock:
+    """Provide a mocked MarquiseFactory."""
+    return stub_factory()
+
+
+@dataclass
+class FactorySession:
+    """Stand in for create_factory_session and record whether it closed."""
+
+    factory: MagicMock
+    closed: bool = False
 
     @asynccontextmanager
-    async def session() -> AsyncIterator[MagicMock]:
-        await factory.initialize()
+    async def open(self) -> AsyncIterator[MagicMock]:
+        """Yield the stub factory, then record that the session closed."""
         try:
-            yield factory
+            yield self.factory
         finally:
-            await factory.shutdown()
+            self.closed = True
 
+
+def patch_factory_session(
+    monkeypatch: pytest.MonkeyPatch, factory: MagicMock
+) -> FactorySession:
+    """Make every CLI command open a session over the given stub factory."""
+    session = FactorySession(factory)
+    monkeypatch.setattr(helpers, "create_factory_session", session.open)
     return session
 
 
@@ -99,7 +122,7 @@ class Command:
     """A selected CLI command and its failing application dependency."""
 
     argv: tuple[str, ...]
-    factory: MagicMock
+    session: FactorySession
     use_case: MagicMock
 
 
@@ -107,26 +130,25 @@ class Command:
 def command(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> Command:
     """Supply interactive selections and a factory without external services."""
     argv, module, attribute, use_case_type, selections = request.param
-    factory = _stub_factory()
+    factory = _stub_factory_with_cineplex_source()
     use_case = create_autospec(use_case_type, instance=True)
     use_case.InputData = use_case_type.InputData
-    setattr(factory, attribute, use_case)
-    monkeypatch.setattr(
-        "marquise_cli.helpers.create_factory_session", factory_session(factory)
-    )
+    area, use_case_name = attribute.split(".")
+    setattr(getattr(factory, area), use_case_name, use_case)
+    session = patch_factory_session(monkeypatch, factory)
     _stub_selections(module, selections, monkeypatch)
-    return Command(argv, factory, use_case)
+    return Command(argv, session, use_case)
 
 
-def _stub_factory() -> MagicMock:
+def _stub_factory_with_cineplex_source() -> MagicMock:
     """Provide a factory whose source lookup resolves to Cineplex."""
-    factory = create_autospec(MarquiseFactory, instance=True)
+    factory = stub_factory()
     source = create_autospec(GetCinemaSourceUseCase, instance=True)
     source.InputData = GetCinemaSourceUseCase.InputData
     source.execute.return_value = GetCinemaSourceUseCase.OutputData(
         "cin-001", "cineplex", "Cineplex"
     )
-    factory.get_cinema_source_use_case = source
+    factory.sources.get_cinema_source_use_case = source
     return factory
 
 

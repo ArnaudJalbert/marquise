@@ -8,6 +8,7 @@ from datetime import datetime
 from marquise.application.exceptions import CinemaNotFoundError, MovieNotFoundError
 from marquise.application.readers import ScreeningReader
 from marquise.application.repositories import CinemaRepository, MovieRepository
+from marquise.application.repositories.page import get_page_offset
 from marquise.domain.value_objects import CinemaId, MovieId
 
 
@@ -29,19 +30,18 @@ class SearchScreeningsQuery:
             start_date: Optional start of the showtime range (inclusive).
             end_date: Optional end of the showtime range (inclusive).
             language: Optional exact language/subtitle version filter.
-            page: Page number (1-based). Ignored when size is None.
-            size: Max number of items per page. If None, all matching
-                screenings are returned unbounded (page is ignored).
+            page: Page number (1-based).
+            size: Max number of items per page.
         """
 
+        page: int
+        size: int
         movie: str | None = None
         movie_id: str | None = None
         cinema_id: str | None = None
         start_date: datetime | None = None
         end_date: datetime | None = None
         language: str | None = None
-        page: int = 1
-        size: int | None = None
 
         def __post_init__(self) -> None:
             """Validate input data.
@@ -65,8 +65,8 @@ class SearchScreeningsQuery:
                 and self.start_date > self.end_date
             ):
                 raise ValueError("start_date must not be after end_date")
-            if self.size is not None and self.size < 1:
-                raise ValueError("size must be positive when provided")
+            if self.size < 1:
+                raise ValueError("size must be positive")
             if self.page < 1:
                 raise ValueError("page must be at least 1")
 
@@ -150,13 +150,6 @@ class SearchScreeningsQuery:
                 f"A cinema with ID '{input_data.cinema_id}' was not found"
             )
 
-        if input_data.size is not None:
-            limit = input_data.size
-            offset = (input_data.page - 1) * input_data.size
-        else:
-            limit = None
-            offset = 0
-
         page = await self.screening_reader.search(
             movie_id=input_data.movie_id,
             movie_title=input_data.movie,
@@ -164,8 +157,8 @@ class SearchScreeningsQuery:
             start_date=input_data.start_date,
             end_date=input_data.end_date,
             language=input_data.language,
-            limit=limit,
-            offset=offset,
+            limit=input_data.size,
+            offset=get_page_offset(input_data.page, input_data.size),
         )
 
         return self.OutputData(

@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, call, create_autospec, patch
 
 import pytest
 
-from conftest import factory_session, make_cinema_data
+from conftest import FactorySession, make_cinema_data
 from marquise import ImportScreeningsCommand, ListCinemasUseCase
 from marquise_cli.app import main
 
@@ -21,8 +21,8 @@ def bulk_import_factory(mock_factory: MagicMock) -> MagicMock:
     imports.execute.return_value = ImportScreeningsCommand.OutputData(
         "cin-1", "Test Cinema", "cineplex", (), 0, 0, 0, 0
     )
-    mock_factory.list_cinemas_use_case = cinemas
-    mock_factory.import_screenings_use_case = imports
+    mock_factory.cinemas.list_cinemas_use_case = cinemas
+    mock_factory.screenings.import_screenings_command = imports
     return mock_factory
 
 
@@ -33,7 +33,7 @@ def test_import_all_displays_the_imported_window_across_midnight(
     with (
         patch(
             "marquise_cli.helpers.create_factory_session",
-            factory_session(bulk_import_factory),
+            FactorySession(bulk_import_factory).open,
         ),
         patch("marquise_cli.import_commands.all_command.date", wraps=date) as clock,
     ):
@@ -43,15 +43,18 @@ def test_import_all_displays_the_imported_window_across_midnight(
     assert "Starting bulk import: 2026-11-14 → 2026-11-16 (3 days)" in (
         capsys.readouterr().out
     )
-    assert bulk_import_factory.import_screenings_use_case.execute.await_args_list == [
-        call(
-            ImportScreeningsCommand.InputData(
-                "cin-1", date(2026, 11, 14), date(2026, 11, 16)
-            )
-        ),
-        call(
-            ImportScreeningsCommand.InputData(
-                "cin-2", date(2026, 11, 14), date(2026, 11, 16)
-            )
-        ),
-    ]
+    assert (
+        bulk_import_factory.screenings.import_screenings_command.execute.await_args_list
+        == [
+            call(
+                ImportScreeningsCommand.InputData(
+                    "cin-1", date(2026, 11, 14), date(2026, 11, 16)
+                )
+            ),
+            call(
+                ImportScreeningsCommand.InputData(
+                    "cin-2", date(2026, 11, 14), date(2026, 11, 16)
+                )
+            ),
+        ]
+    )

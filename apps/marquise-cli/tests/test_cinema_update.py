@@ -28,8 +28,8 @@ def _update_setup(
     mock_list_cinemas_use_case.execute.return_value = ListCinemasUseCase.OutputData(
         cinemas=[cinema], total=1
     )
-    mock_factory.list_cinemas_use_case = mock_list_cinemas_use_case
-    mock_factory.update_cinema_use_case = mock_update_use_case
+    mock_factory.cinemas.list_cinemas_use_case = mock_list_cinemas_use_case
+    mock_factory.cinemas.update_cinema_use_case = mock_update_use_case
     return cinema
 
 
@@ -60,7 +60,7 @@ async def test_cinema_update_success(
     captured = capsys.readouterr()
     assert "Cinema updated:" in captured.out
     mock_list_cinemas_use_case.execute.assert_awaited_once_with(
-        ListCinemasUseCase.InputData()
+        ListCinemasUseCase.InputData(page=1, size=100)
     )
     mock_update_use_case.execute.assert_awaited_once_with(
         UpdateCinemaUseCase.InputData(
@@ -171,8 +171,8 @@ async def test_cinema_update_no_cinemas(
     mock_list_cinemas_use_case.execute.return_value = ListCinemasUseCase.OutputData(
         cinemas=[], total=0
     )
-    mock_factory.list_cinemas_use_case = mock_list_cinemas_use_case
-    mock_factory.update_cinema_use_case = mock_update_use_case
+    mock_factory.cinemas.list_cinemas_use_case = mock_list_cinemas_use_case
+    mock_factory.cinemas.update_cinema_use_case = mock_update_use_case
 
     await run_update(mock_factory)
 

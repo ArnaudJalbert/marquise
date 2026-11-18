@@ -33,7 +33,7 @@ async def _confirm_deletion(cinema_name: str) -> bool:
 async def _delete_cinema(factory: MarquiseFactory, cinema_id: str) -> None:
     """Delete selected cinema and report failures."""
     try:
-        delete_cinema_use_case = factory.delete_cinema_use_case
+        delete_cinema_use_case = factory.cinemas.delete_cinema_use_case
         await delete_cinema_use_case.execute(
             delete_cinema_use_case.InputData(cinema_id=cinema_id)
         )

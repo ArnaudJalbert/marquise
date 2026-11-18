@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from conftest import factory_session
+from conftest import FactorySession, stub_factory
 from marquise_cli.metadata_commands import merge_apply, merge_preview, refresh
 
 
@@ -28,9 +28,7 @@ def test_metadata_handlers_show_the_connecting_spinner(
     handler_name: str, preview_file: str
 ) -> None:
     """Each metadata handler opens its factory session behind the spinner."""
-    factory = MagicMock()
-    factory.initialize = AsyncMock()
-    factory.shutdown = AsyncMock()
+    session = FactorySession(stub_factory())
     handlers: dict[str, Callable[[], int]] = {
         "refresh": lambda: refresh(None, True),
         "merge_preview": lambda: merge_preview("a", ["b"]),
@@ -39,7 +37,7 @@ def test_metadata_handlers_show_the_connecting_spinner(
     merge_result = MagicMock(status="preview")
 
     with (
-        patch("marquise_cli.helpers.create_factory_session", factory_session(factory)),
+        patch("marquise_cli.helpers.create_factory_session", session.open),
         patch("marquise_cli.helpers.console.status") as status,
         patch(
             "marquise_cli.metadata_commands.run_refresh_movies",
@@ -58,4 +56,4 @@ def test_metadata_handlers_show_the_connecting_spinner(
         handlers[handler_name]()
 
     status.assert_called_once_with("Connecting...", spinner="dots")
-    factory.shutdown.assert_awaited_once()
+    assert session.closed

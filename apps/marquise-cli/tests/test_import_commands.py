@@ -9,14 +9,13 @@ from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 
 import pytest
 
-from conftest import Command, factory_session, make_cinema_data
+from conftest import Command, FactorySession, make_cinema_data, stub_factory
 from marquise import (
     CinemaNotFoundError,
     CinemaSourceAssignmentNotFoundError,
     GetCinemaSourceUseCase,
     ImportScreeningsCommand,
     ListCinemasUseCase,
-    MarquiseFactory,
     SourceNotFoundError,
 )
 from marquise_cli.app import main
@@ -35,27 +34,29 @@ def _make_factory(
     | list[ImportScreeningsCommand.OutputData | BaseException],
 ) -> MagicMock:
     """Build fake factory with the import use case."""
-    factory = create_autospec(MarquiseFactory, instance=True)
-    factory.list_cinemas_use_case = create_autospec(ListCinemasUseCase, instance=True)
-    factory.list_cinemas_use_case.execute = AsyncMock(
-        return_value=SimpleNamespace(cinemas=cinemas)
+    factory = stub_factory()
+    factory.cinemas.list_cinemas_use_case = create_autospec(
+        ListCinemasUseCase, instance=True
+    )
+    factory.cinemas.list_cinemas_use_case.execute = AsyncMock(
+        return_value=SimpleNamespace(cinemas=cinemas, total=len(cinemas))
     )
     import_use_case = create_autospec(ImportScreeningsCommand, instance=True)
     import_use_case.execute = AsyncMock(side_effect=import_side_effect)
-    factory.import_screenings_use_case = import_use_case
+    factory.screenings.import_screenings_command = import_use_case
     return factory
 
 
 @pytest.mark.asyncio
 async def test_import_screenings_delegates_to_import_use_case() -> None:
     """Single-cinema import passes its input to the application use case."""
-    factory = create_autospec(MarquiseFactory, instance=True)
+    factory = stub_factory()
     import_use_case = create_autospec(ImportScreeningsCommand, instance=True)
     expected = ImportScreeningsCommand.OutputData(
         "cin-1", "Cinema One", "cineplex", (), 0, 0, 0, 0
     )
     import_use_case.execute = AsyncMock(return_value=expected)
-    factory.import_screenings_use_case = import_use_case
+    factory.screenings.import_screenings_command = import_use_case
 
     result = await _import_screenings(
         factory, "cin-1", date(2026, 8, 25), date(2026, 8, 26)
@@ -85,7 +86,7 @@ async def test_run_import_cinema_looks_up_source_and_spins_full_import(
             source_display_name="Cinéma Cinéma",
         )
     )
-    mock_factory.get_cinema_source_use_case = get_source_use_case
+    mock_factory.sources.get_cinema_source_use_case = get_source_use_case
     import_result = ImportScreeningsCommand.OutputData(
         "cin-001", "Test Cinema", "cinemacinema", (), 0, 0, 0, 0
     )
@@ -148,7 +149,7 @@ async def test_run_import_all_imports_each_cinema() -> None:
     assert [result.status for result in results] == ["imported", "imported"]
     assert results[0].imported_count == 3
     assert results[1].updated_count == 5
-    assert factory.import_screenings_use_case.execute.await_count == 2
+    assert factory.screenings.import_screenings_command.execute.await_count == 2
 
 
 @pytest.mark.asyncio
@@ -162,7 +163,7 @@ async def test_run_import_all_skips_cinema_without_source() -> None:
     results = await run_import_all(factory, days=7)
 
     assert results[0].status == "skipped"
-    factory.import_screenings_use_case.execute.assert_awaited_once()
+    factory.screenings.import_screenings_command.execute.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -203,7 +204,7 @@ async def test_run_import_all_passes_inclusive_date_window() -> None:
 
     await run_import_all(factory, days=3)
 
-    request = factory.import_screenings_use_case.execute.call_args.args[0]
+    request = factory.screenings.import_screenings_command.execute.call_args.args[0]
     assert isinstance(request, ImportScreeningsCommand.InputData)
     assert (request.end_date - request.start_date).days == 2
 
@@ -230,7 +231,7 @@ async def test_run_import_all_limits_active_cinema_pipelines() -> None:
             request.cinema_id, request.cinema_id, "cineplex", (), 1, 1, 0, 0
         )
 
-    factory.import_screenings_use_case.execute.side_effect = import_cinema
+    factory.screenings.import_screenings_command.execute.side_effect = import_cinema
 
     results = await run_import_all(factory, days=1)
 
@@ -245,7 +246,10 @@ def test_import_all_turns_red_when_a_cinema_fails() -> None:
         import_side_effect=RuntimeError("TMDB unavailable"),
     )
     with (
-        patch("marquise_cli.helpers.create_factory_session", factory_session(factory)),
+        patch(
+            "marquise_cli.helpers.create_factory_session",
+            FactorySession(factory).open,
+        ),
         pytest.raises(SystemExit) as exit_info,
     ):
         import_all(days=1)
@@ -290,7 +294,10 @@ def test_import_all_reports_skipped_and_unmatched_movies(
             ),
         ],
     )
-    with patch("marquise_cli.helpers.create_factory_session", factory_session(factory)):
+    with patch(
+        "marquise_cli.helpers.create_factory_session",
+        FactorySession(factory).open,
+    ):
         import_all(days=1)
 
     output = capsys.readouterr().out
@@ -328,7 +335,10 @@ def test_import_all_reports_a_run_with_every_movie_matched(
             )
         ],
     )
-    with patch("marquise_cli.helpers.create_factory_session", factory_session(factory)):
+    with patch(
+        "marquise_cli.helpers.create_factory_session",
+        FactorySession(factory).open,
+    ):
         import_all(days=1)
 
     output = capsys.readouterr().out
@@ -343,14 +353,14 @@ IMPORT_SELECTIONS = {
 IMPORT_LOOKUP = (
     ("import", "cinema"),
     cinema_command,
-    "get_cinema_source_use_case",
+    "sources.get_cinema_source_use_case",
     GetCinemaSourceUseCase,
     IMPORT_SELECTIONS,
 )
 IMPORT = (
     ("import", "cinema"),
     cinema_command,
-    "import_screenings_use_case",
+    "screenings.import_screenings_command",
     ImportScreeningsCommand,
     IMPORT_SELECTIONS,
 )
@@ -373,7 +383,7 @@ def test_documented_error_prints_message_and_exits_nonzero(
         main(command.argv)
     assert failure.value.code == 1
     assert str(error) in capsys.readouterr().err
-    command.factory.shutdown.assert_awaited_once()
+    assert command.session.closed
 
 
 @pytest.mark.parametrize(
@@ -397,7 +407,7 @@ def test_unlisted_import_errors_escape(
     with pytest.raises(error_type) as failure:
         main(command.argv)
     assert failure.value is error
-    command.factory.shutdown.assert_awaited_once()
+    assert command.session.closed
 
 
 def test_import_all_shows_the_connecting_spinner() -> None:
@@ -405,7 +415,10 @@ def test_import_all_shows_the_connecting_spinner() -> None:
     factory = _make_factory([], import_side_effect=[])
 
     with (
-        patch("marquise_cli.helpers.create_factory_session", factory_session(factory)),
+        patch(
+            "marquise_cli.helpers.create_factory_session",
+            FactorySession(factory).open,
+        ),
         patch("marquise_cli.helpers.console.status") as status,
     ):
         import_all(days=1)

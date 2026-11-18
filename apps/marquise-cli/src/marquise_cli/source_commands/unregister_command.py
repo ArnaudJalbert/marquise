@@ -60,7 +60,7 @@ async def _delete_sources(factory: MarquiseFactory, source_names: list[str]) -> 
 
 async def _delete_source(factory: MarquiseFactory, source_name: str) -> None:
     """Delete one source and report its successful removal."""
-    delete_source_use_case = factory.delete_source_use_case
+    delete_source_use_case = factory.sources.delete_source_use_case
     await run_spinner(
         delete_source_use_case.execute(
             delete_source_use_case.InputData(source_name=source_name)
@@ -72,12 +72,12 @@ async def _delete_source(factory: MarquiseFactory, source_name: str) -> None:
 
 async def run_unregister_sources(factory: MarquiseFactory) -> None:
     """Select and remove persistent source definitions."""
-    registry_use_case = factory.list_registry_sources_use_case
+    registry_use_case = factory.sources.list_registry_sources_use_case
     registry_response = await run_spinner(
         registry_use_case.execute(registry_use_case.InputData()),
         description="Fetching available sources...",
     )
-    list_use_case = factory.list_sources_use_case
+    list_use_case = factory.sources.list_sources_use_case
     registered_response = await run_spinner(
         list_use_case.execute(list_use_case.InputData()),
         description="Fetching registered sources...",

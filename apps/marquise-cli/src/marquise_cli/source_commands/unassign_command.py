@@ -20,7 +20,7 @@ async def run_unassign(factory: MarquiseFactory) -> None:
     if selected is None:
         return
 
-    unassign_source_use_case = factory.unassign_source_use_case
+    unassign_source_use_case = factory.sources.unassign_source_use_case
     response = await run_spinner(
         unassign_source_use_case.execute(
             unassign_source_use_case.InputData(cinema_id=selected.id)

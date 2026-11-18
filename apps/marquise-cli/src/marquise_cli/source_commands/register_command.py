@@ -55,12 +55,12 @@ async def _load_sources(
     list[ListSourcesUseCase.SourceData],
 ]:
     """Load registry and registered source definitions."""
-    registry_use_case = factory.list_registry_sources_use_case
+    registry_use_case = factory.sources.list_registry_sources_use_case
     registry_response = await run_spinner(
         registry_use_case.execute(registry_use_case.InputData()),
         description="Fetching available sources...",
     )
-    list_use_case = factory.list_sources_use_case
+    list_use_case = factory.sources.list_sources_use_case
     registered_response = await run_spinner(
         list_use_case.execute(list_use_case.InputData()),
         description="Fetching registered sources...",
@@ -99,7 +99,7 @@ def _source_input(
 ) -> CreateSourceUseCase.InputData:
     """Build validated source input from prompt answers."""
     display_name, description = details
-    return factory.create_source_use_case.InputData(
+    return factory.sources.create_source_use_case.InputData(
         name=source_name, display_name=display_name, description=description
     )
 
@@ -109,7 +109,7 @@ async def _create_source(
 ) -> None:
     """Create one source and report its successful registration."""
     result = await run_spinner(
-        factory.create_source_use_case.execute(input_data),
+        factory.sources.create_source_use_case.execute(input_data),
         description=f"Registering {input_data.name}...",
     )
     print(f"  Created: {result.name}")

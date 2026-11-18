@@ -183,7 +183,7 @@ it("appends catalogue pages at the end and stops at the reported last page", asy
   await screen.findByRole("link", { name: "View Movie 3" });
   expect(client.fetchScreeningMoviesPage).toHaveBeenNthCalledWith(
     2,
-    { start: "2026-11-01", page: 2, title: undefined },
+    { start: "2026-11-01", page: 2, size: 24, title: undefined },
     expect.any(AbortSignal),
   );
   await reachEnd();
@@ -438,6 +438,7 @@ it("opens today's movie-first page without catalogue reads or poster fan-out", a
       start: "2026-11-01",
       end: "2026-11-01",
       page: 1,
+      size: 24,
       title: "",
       cinemas: [],
       excludedCinemas: [],
@@ -488,7 +489,7 @@ it("counts the visible week's screenings with the listing filters and reloads on
     expect.any(AbortSignal),
   );
   expect(client.fetchScreeningMoviesPage).toHaveBeenLastCalledWith(
-    { start: "2026-11-01", end: "2026-11-01", page: 1, ...filters },
+    { start: "2026-11-01", end: "2026-11-01", page: 1, size: 24, ...filters },
     expect.any(AbortSignal),
   );
 
@@ -663,6 +664,7 @@ it("searches only movies with upcoming screenings and keeps navigation active", 
       {
         start: "2026-11-01",
         page: 1,
+        size: 24,
         title: "never screened",
       },
       expect.any(AbortSignal),

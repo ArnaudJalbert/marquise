@@ -69,7 +69,7 @@ def test_scanner_catches_forbidden_import(tmp_path: Path) -> None:
     violating_dir.mkdir()
     (violating_dir / "bad_app.py").write_text(
         textwrap.dedent("""\
-            from marquise.bootstrap import create_factory
+            from marquise.bootstrap import create_factory_session
         """)
     )
 
@@ -85,7 +85,7 @@ def test_scanner_allows_public_surface_imports(tmp_path: Path) -> None:
     clean_dir.mkdir()
     (clean_dir / "good_app.py").write_text(
         textwrap.dedent("""\
-            from marquise import MarquiseFactory, create_factory
+            from marquise import MarquiseFactory, create_factory_session
             from marquise import ListCinemasUseCase
         """)
     )
