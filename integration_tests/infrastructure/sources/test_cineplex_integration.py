@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from marquise.infrastructure.sources.cineplex.gateways import source as cineplex
+from marquise.infrastructure.sources import cineplex
 
 
 @pytest.mark.asyncio

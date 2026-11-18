@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from marquise.infrastructure.sources.cinemacinema.gateways.source import (
-    _extract_film_detail,
-)
+from marquise.infrastructure.sources.cinemacinema import _extract_film_detail
 
 
 def _film(**overrides: object) -> dict:

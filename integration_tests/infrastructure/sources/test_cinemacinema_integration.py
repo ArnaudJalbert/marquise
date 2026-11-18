@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 
-from marquise.infrastructure.sources.cinemacinema.gateways import source as cinema
+from marquise.infrastructure.sources import cinemacinema as cinema
 
 
 def _svelte_response(root: dict[str, Any]) -> bytes:

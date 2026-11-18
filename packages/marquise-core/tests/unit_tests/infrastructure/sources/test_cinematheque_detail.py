@@ -4,12 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from marquise.infrastructure.sources.cinematheque.gateways.detail import (
+from marquise.infrastructure.sources.cinematheque import (
     extract_detail,
     find_detail_url,
 )
 
-_FIXTURES = Path(__file__).parents[5] / "fixtures" / "source_identity"
+_FIXTURES = Path(__file__).parents[3] / "fixtures" / "source_identity"
 
 
 @pytest.mark.parametrize(

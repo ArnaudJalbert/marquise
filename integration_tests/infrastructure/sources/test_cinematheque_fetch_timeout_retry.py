@@ -10,7 +10,7 @@ from unittest.mock import Mock, call, create_autospec
 
 import pytest
 
-from marquise.infrastructure.sources.cinematheque.gateways import source
+from marquise.infrastructure.sources import cinematheque as source
 
 _STALL_SECONDS = 0.5
 

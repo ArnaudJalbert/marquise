@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from marquise.infrastructure.sources.cinemapublic.gateways.source import (
+from marquise.infrastructure.sources.cinemapublic import (
     _extract_cinemapublic_film_detail,
     fetch_showtimes,
 )
@@ -49,7 +49,7 @@ async def test_fetch_showtimes_converts_montreal_local_to_utc() -> None:
     html = _jsonld_page_html("2026-07-13T17:00")
 
     with patch(
-        "marquise.infrastructure.sources.cinemapublic.gateways.source._fetch",
+        "marquise.infrastructure.sources.cinemapublic._fetch",
         return_value=html,
     ):
         rows = fetch_showtimes(
@@ -68,7 +68,7 @@ async def test_fetch_showtimes_converts_montreal_local_to_utc_in_winter() -> Non
     html = _jsonld_page_html("2026-01-13T17:00")
 
     with patch(
-        "marquise.infrastructure.sources.cinemapublic.gateways.source._fetch",
+        "marquise.infrastructure.sources.cinemapublic._fetch",
         return_value=html,
     ):
         rows = fetch_showtimes(
@@ -89,7 +89,7 @@ async def test_fetch_showtimes_repairs_malformed_ticket_host() -> None:
     )
 
     with patch(
-        "marquise.infrastructure.sources.cinemapublic.gateways.source._fetch",
+        "marquise.infrastructure.sources.cinemapublic._fetch",
         return_value=html,
     ):
         rows = fetch_showtimes(

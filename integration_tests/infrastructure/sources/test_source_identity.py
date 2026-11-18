@@ -4,11 +4,11 @@ from pathlib import Path
 
 import pytest
 
-from marquise.infrastructure.sources.cinematheque.gateways import source as cinema
-from marquise.infrastructure.sources.cineplex.gateways import source as cineplex
+from marquise.infrastructure.sources import cinematheque as cinema
+from marquise.infrastructure.sources import cineplex
 
 _FIXTURES = (
-    Path(__file__).resolve().parents[5]
+    Path(__file__).resolve().parents[3]
     / "packages/marquise-core/tests/fixtures/source_identity"
 )
 

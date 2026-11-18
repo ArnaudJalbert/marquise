@@ -11,7 +11,7 @@ from urllib.error import HTTPError
 
 import pytest
 
-from marquise.infrastructure.sources.cinematheque.gateways.source import (
+from marquise.infrastructure.sources.cinematheque import (
     BASE_URL,
     CinemathequeSource,
     _extract_available_dates,
@@ -27,7 +27,7 @@ def _schedule_html(movie_data: dict, option_dates: list[str] | None = None) -> s
     """Build a minimal schedule page around a ``gMovieData`` payload.
 
     Mirrors the real page's structure closely enough for the regexes in
-    ``source.py`` to extract from: a ``var gMovieData = {...};`` script
+    ``cinematheque.py`` to extract from: a ``var gMovieData = {...};`` script
     block followed immediately by ``</script>``, and, further down, a
     ``<select id="calendar">`` with one ``<option>`` per other available
     date.
@@ -242,7 +242,7 @@ def _frozen_clock(now: datetime) -> Iterator[None]:
         Control while the gateway clock is frozen.
     """
     with patch(
-        "marquise.infrastructure.sources.cinematheque.gateways.source.datetime",
+        "marquise.infrastructure.sources.cinematheque.datetime",
         wraps=datetime,
     ) as patched_datetime:
         patched_datetime.now.return_value = now
@@ -261,7 +261,7 @@ def _patch_fetch(pages_by_url: dict[str, str]) -> AbstractContextManager[Mock]:
         A patcher for the gateway's ``_fetch``.
     """
     return patch(
-        "marquise.infrastructure.sources.cinematheque.gateways.source._fetch",
+        "marquise.infrastructure.sources.cinematheque._fetch",
         autospec=True,
         side_effect=pages_by_url.__getitem__,
     )
@@ -292,7 +292,7 @@ async def test_fetch_showtimes_excludes_out_of_range_dates() -> None:
         return today_html
 
     with patch(
-        "marquise.infrastructure.sources.cinematheque.gateways.source._fetch",
+        "marquise.infrastructure.sources.cinematheque._fetch",
         side_effect=fake_fetch,
     ):
         fetch_showtimes(
@@ -314,7 +314,7 @@ async def test_fetch_showtimes_accepts_timezone_aware_range() -> None:
     today_html = _schedule_html({}, option_dates=["2026-12-25"])
 
     with patch(
-        "marquise.infrastructure.sources.cinematheque.gateways.source._fetch",
+        "marquise.infrastructure.sources.cinematheque._fetch",
         return_value=today_html,
     ):
         rows = fetch_showtimes(
@@ -331,7 +331,7 @@ async def test_source_fetch_showtimes_delegates_to_module_function() -> None:
     html = _schedule_html({})
 
     with patch(
-        "marquise.infrastructure.sources.cinematheque.gateways.source._fetch",
+        "marquise.infrastructure.sources.cinematheque._fetch",
         return_value=html,
     ):
         source = CinemathequeSource()
@@ -358,7 +358,7 @@ async def test_fetch_movie_detail_returns_enrichment_from_matching_film() -> Non
     html = _schedule_html(movie_data)
 
     with patch(
-        "marquise.infrastructure.sources.cinematheque.gateways.source._fetch",
+        "marquise.infrastructure.sources.cinematheque._fetch",
         return_value=html,
     ):
         source = CinemathequeSource()
@@ -381,7 +381,7 @@ async def test_fetch_movie_detail_returns_none_for_unknown_film_code() -> None:
     html = _schedule_html({"999": _film("999", "Some Other Movie")})
 
     with patch(
-        "marquise.infrastructure.sources.cinematheque.gateways.source._fetch",
+        "marquise.infrastructure.sources.cinematheque._fetch",
         return_value=html,
     ):
         source = CinemathequeSource()
@@ -395,9 +395,7 @@ async def test_fetch_movie_detail_returns_none_for_malformed_identifier() -> Non
     """An identifier missing the date/code separator is rejected without a fetch."""
     source = CinemathequeSource()
 
-    with patch(
-        "marquise.infrastructure.sources.cinematheque.gateways.source._fetch"
-    ) as mock_fetch:
+    with patch("marquise.infrastructure.sources.cinematheque._fetch") as mock_fetch:
         result = await source.fetch_movie_detail("not-a-valid-identifier")
 
     assert result is None
@@ -410,7 +408,7 @@ async def test_fetch_movie_detail_returns_none_on_http_error() -> None:
     source = CinemathequeSource()
 
     with patch(
-        "marquise.infrastructure.sources.cinematheque.gateways.source._fetch",
+        "marquise.infrastructure.sources.cinematheque._fetch",
         side_effect=HTTPError("url", 404, "Not Found", {}, None),  # type: ignore[arg-type]
     ):
         result = await source.fetch_movie_detail("2026-07-09|123")
@@ -435,7 +433,7 @@ async def test_unavailable_cinema_website_keeps_ticketing_facts(
         {"123": _film("123", "Source Film", synopsis=["Source synopsis"])}
     )
     with patch(
-        "marquise.infrastructure.sources.cinematheque.gateways.source._fetch",
+        "marquise.infrastructure.sources.cinematheque._fetch",
         side_effect=[html, failure],
     ):
         result = await CinemathequeSource().fetch_movie_detail("2026-07-09|123")

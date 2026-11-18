@@ -8,7 +8,7 @@ from urllib.error import HTTPError
 
 import pytest
 
-from marquise.infrastructure.sources.cinemamoderne.gateways.source import (
+from marquise.infrastructure.sources.cinemamoderne import (
     CinemaModerneSource,
     _extract_cinemamoderne_film_detail,
     _parse_schedule_page,
@@ -188,7 +188,7 @@ async def test_fetch_showtimes_fetches_each_month_in_range() -> None:
         return _schedule_page_html()
 
     with patch(
-        "marquise.infrastructure.sources.cinemamoderne.gateways.source._fetch",
+        "marquise.infrastructure.sources.cinemamoderne._fetch",
         side_effect=fake_fetch,
     ):
         fetch_showtimes(
@@ -219,7 +219,7 @@ async def test_fetch_showtimes_dedupes_rows_from_overlapping_months() -> None:
         return _schedule_page_html(shared_day)
 
     with patch(
-        "marquise.infrastructure.sources.cinemamoderne.gateways.source._fetch",
+        "marquise.infrastructure.sources.cinemamoderne._fetch",
         side_effect=fake_fetch,
     ):
         rows = fetch_showtimes(
@@ -239,7 +239,7 @@ async def test_fetch_showtimes_excludes_out_of_range_dates() -> None:
     )
 
     with patch(
-        "marquise.infrastructure.sources.cinemamoderne.gateways.source._fetch",
+        "marquise.infrastructure.sources.cinemamoderne._fetch",
         return_value=html,
     ):
         rows = fetch_showtimes(
@@ -258,7 +258,7 @@ async def test_fetch_showtimes_converts_montreal_local_to_utc() -> None:
     )
 
     with patch(
-        "marquise.infrastructure.sources.cinemamoderne.gateways.source._fetch",
+        "marquise.infrastructure.sources.cinemamoderne._fetch",
         return_value=html,
     ):
         rows = fetch_showtimes(
@@ -278,7 +278,7 @@ async def test_fetch_showtimes_converts_montreal_local_to_utc_in_winter() -> Non
     )
 
     with patch(
-        "marquise.infrastructure.sources.cinemamoderne.gateways.source._fetch",
+        "marquise.infrastructure.sources.cinemamoderne._fetch",
         return_value=html,
     ):
         rows = fetch_showtimes(
@@ -293,7 +293,7 @@ async def test_fetch_showtimes_converts_montreal_local_to_utc_in_winter() -> Non
 async def test_fetch_showtimes_accepts_timezone_aware_range() -> None:
     """Timezone-aware start/end (as ImportScreeningsUseCase passes) don't crash."""
     with patch(
-        "marquise.infrastructure.sources.cinemamoderne.gateways.source._fetch",
+        "marquise.infrastructure.sources.cinemamoderne._fetch",
         return_value=_schedule_page_html(),
     ):
         rows = fetch_showtimes(
@@ -314,7 +314,7 @@ async def test_fetch_showtimes_skips_months_that_fail_to_fetch() -> None:
         return _schedule_page_html(_day_html("2026-08-01", _event_html()))
 
     with patch(
-        "marquise.infrastructure.sources.cinemamoderne.gateways.source._fetch",
+        "marquise.infrastructure.sources.cinemamoderne._fetch",
         side_effect=fake_fetch,
     ):
         rows = fetch_showtimes(
@@ -329,7 +329,7 @@ async def test_fetch_showtimes_skips_months_that_fail_to_fetch() -> None:
 async def test_source_fetch_showtimes_delegates_to_module_function() -> None:
     """CinemaModerneSource.fetch_showtimes wraps the module-level function."""
     with patch(
-        "marquise.infrastructure.sources.cinemamoderne.gateways.source._fetch",
+        "marquise.infrastructure.sources.cinemamoderne._fetch",
         return_value=_schedule_page_html(),
     ):
         source = CinemaModerneSource()
@@ -380,7 +380,7 @@ async def test_fetch_movie_detail_returns_enrichment_from_identifier_url() -> No
     html = _film_detail_html()
 
     with patch(
-        "marquise.infrastructure.sources.cinemamoderne.gateways.source._fetch",
+        "marquise.infrastructure.sources.cinemamoderne._fetch",
         return_value=html,
     ) as mock_fetch:
         source = CinemaModerneSource()
@@ -395,7 +395,7 @@ async def test_fetch_movie_detail_returns_enrichment_from_identifier_url() -> No
 async def test_fetch_movie_detail_returns_none_on_http_error() -> None:
     """An HTTP error while fetching the film page is treated as no data."""
     with patch(
-        "marquise.infrastructure.sources.cinemamoderne.gateways.source._fetch",
+        "marquise.infrastructure.sources.cinemamoderne._fetch",
         side_effect=HTTPError(_FILM_URL, 404, "Not Found", {}, None),  # type: ignore[arg-type]
     ):
         source = CinemaModerneSource()

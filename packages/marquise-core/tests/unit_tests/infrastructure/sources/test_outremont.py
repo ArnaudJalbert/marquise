@@ -14,7 +14,7 @@ from urllib.error import HTTPError
 
 import pytest
 
-from marquise.infrastructure.sources.outremont.gateways.source import (
+from marquise.infrastructure.sources.outremont import (
     OutremontSource,
     _clean_title,
     _extract_outremont_film_detail,
@@ -22,7 +22,7 @@ from marquise.infrastructure.sources.outremont.gateways.source import (
     fetch_showtimes,
 )
 
-_MODULE = "marquise.infrastructure.sources.outremont.gateways.source"
+_MODULE = "marquise.infrastructure.sources.outremont"
 
 # firstgroup report-category id -> name, mirroring the real node.
 _CATEGORY_NAMES = {

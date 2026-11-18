@@ -8,12 +8,10 @@ import pytest
 from marquise.application.repositories import MovieRepository
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
-from marquise.infrastructure.sources.cinemamoderne.gateways.source import (
+from marquise.infrastructure.sources.cinemamoderne import (
     _extract_cinemamoderne_film_detail,
 )
-from marquise.infrastructure.sources.cineplex.gateways.source import (
-    _extract_movie_detail,
-)
+from marquise.infrastructure.sources.cineplex import _extract_movie_detail
 from support.movie_import import build_match, build_matcher, build_movie_import
 
 

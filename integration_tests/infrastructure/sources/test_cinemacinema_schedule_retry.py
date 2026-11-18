@@ -10,7 +10,7 @@ from unittest.mock import create_autospec
 
 import pytest
 
-from marquise.infrastructure.sources.cinemacinema.gateways import source
+from marquise.infrastructure.sources import cinemacinema as source
 
 
 @pytest.fixture

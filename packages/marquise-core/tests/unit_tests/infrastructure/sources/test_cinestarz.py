@@ -8,7 +8,7 @@ from urllib.error import HTTPError
 
 import pytest
 
-from marquise.infrastructure.sources.cinestarz.gateways.source import (
+from marquise.infrastructure.sources.cinestarz import (
     CineStarzSource,
     _extract_movie_detail,
     _parse_schedule,
@@ -102,7 +102,7 @@ def test_fetch_showtimes_fetches_each_date_and_keeps_venue_isolated() -> None:
         )
 
     with patch(
-        "marquise.infrastructure.sources.cinestarz.gateways.source._fetch",
+        "marquise.infrastructure.sources.cinestarz._fetch",
         side_effect=fake_fetch,
     ):
         rows = fetch_showtimes(
@@ -129,7 +129,7 @@ def test_fetch_showtimes_skips_failed_dates() -> None:
         return _schedule_html()
 
     with patch(
-        "marquise.infrastructure.sources.cinestarz.gateways.source._fetch",
+        "marquise.infrastructure.sources.cinestarz._fetch",
         side_effect=fake_fetch,
     ):
         rows = fetch_showtimes(
@@ -170,7 +170,7 @@ async def test_source_fetch_movie_detail_returns_none_when_page_has_no_metadata(
 ):
     """Source converts empty parsed metadata to None."""
     with patch(
-        "marquise.infrastructure.sources.cinestarz.gateways.source._fetch",
+        "marquise.infrastructure.sources.cinestarz._fetch",
         return_value="<html></html>",
     ):
         assert (
@@ -187,7 +187,7 @@ async def test_source_fetch_movie_detail_returns_none_on_http_error() -> None:
     identifier = "https://cinestarz.ca/movie/CotedesNeiges/MISSING"
 
     with patch(
-        "marquise.infrastructure.sources.cinestarz.gateways.source._fetch",
+        "marquise.infrastructure.sources.cinestarz._fetch",
         side_effect=HTTPError(identifier, 404, "Not Found", {}, None),  # type: ignore[arg-type]
     ):
         assert await CineStarzSource().fetch_movie_detail(identifier) is None
