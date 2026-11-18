@@ -31,7 +31,6 @@ from marquise.application.use_cases.import_screenings import ImportScreeningsCom
 from marquise.application.use_cases.match_movies import MatchMoviesUseCase
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
-from marquise.infrastructure.name_distance import RapidFuzzNameDistance
 from support.movie_import import (
     MovieImport,
     Outcome,
@@ -131,7 +130,6 @@ async def test_real_matcher_and_enricher_capture_selected_source_movie() -> None
     )
     from marquise.application.use_cases.enrich_movies import EnrichMoviesUseCase
     from marquise.application.use_cases.match_movies import MatchMoviesUseCase
-    from marquise.infrastructure.name_distance import RapidFuzzNameDistance
 
     identity = ProviderIdentity("tmdb", "123")
     candidate = MetadataMovie(
@@ -149,7 +147,7 @@ async def test_real_matcher_and_enricher_capture_selected_source_movie() -> None
     metadata_movies.get.side_effect = lambda movie_id: MovieMetadataSnapshot(
         movie_id, "1", MovieMetadataValues(title="CINEMANIA: Julián"), tmdb_id="123"
     )
-    matcher = MatchMoviesUseCase(provider, RapidFuzzNameDistance())
+    matcher = MatchMoviesUseCase(provider)
     enricher = EnrichMoviesUseCase(
         metadata_movies, provider, lambda: datetime(2026, 10, 31, tzinfo=UTC)
     )
@@ -207,7 +205,7 @@ async def _import_with_tmdb(
     movies: MovieRepository, provider: MetadataRepository, *titles: str
 ) -> MovieImport.OutputData:
     """Import the titles through the real matcher and the given TMDB source."""
-    matcher = MatchMoviesUseCase(provider, RapidFuzzNameDistance())
+    matcher = MatchMoviesUseCase(provider)
     command = build_movie_import(movies, matcher)
     return await command.execute(
         command.InputData(

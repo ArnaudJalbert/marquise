@@ -5,7 +5,9 @@ from __future__ import annotations
 import logging
 import unicodedata
 from dataclasses import dataclass
-from typing import Literal, Protocol
+from typing import Literal
+
+from rapidfuzz.distance import DamerauLevenshtein
 
 from marquise.application.exceptions import (
     MetadataFailure,
@@ -33,14 +35,6 @@ _OUTAGE_FAILURES = (
     MetadataRequestRefusedError,
     MetadataRateLimitedError,
 )
-
-
-class NameDistance(Protocol):
-    """Injected deterministic Damerau-Levenshtein calculation."""
-
-    def distance(self, left: str, right: str) -> int:
-        """Count edits, including an adjacent swap as one edit."""
-        ...
 
 
 def _normalize(value: str) -> str:
@@ -120,10 +114,9 @@ class MatchMoviesUseCase:
     class OutputData:
         matches: tuple[MatchMoviesUseCase.MovieMatch, ...]
 
-    def __init__(self, metadata: MetadataRepository, distance: NameDistance) -> None:
-        """Inject discovery and distance without binding policy to a provider."""
+    def __init__(self, metadata: MetadataRepository) -> None:
+        """Inject discovery without binding policy to a provider."""
         self._metadata = metadata
-        self._distance = distance
 
     def _person_match(self, name: str, person: PersonFact) -> int | None:
         source = _normalize(name)
@@ -136,7 +129,7 @@ class MatchMoviesUseCase:
             if (
                 sum(char.isalpha() for char in source) >= 8
                 and sum(char.isalpha() for char in spelling) >= 8
-                and self._distance.distance(source, spelling) <= 1
+                and DamerauLevenshtein.distance(source, spelling) <= 1
             ):
                 return 1
         return None
