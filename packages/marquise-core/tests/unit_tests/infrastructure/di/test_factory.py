@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from unittest.mock import MagicMock, create_autospec, patch
 
 import asyncpg
@@ -104,6 +106,50 @@ def test_factory_wires_every_use_case_in_its_area(
     factory = MarquiseFactory(SETTINGS, database)
 
     assert isinstance(getattr(getattr(factory, area), field), use_case_type)
+
+
+@pytest.fixture
+def connection(database: MagicMock) -> MagicMock:
+    """Provide the connection the pool hands out, answering every read empty."""
+    acquired = create_autospec(asyncpg.Connection, instance=True)
+    acquired.fetch.return_value = []
+    acquired.fetchval.return_value = 0
+
+    @asynccontextmanager
+    async def acquire() -> AsyncIterator[MagicMock]:
+        yield acquired
+
+    database.pool.acquire.side_effect = acquire
+    return acquired
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("area", "field", "table"),
+    [
+        ("cinemas", "list_cinemas_use_case", "cinemas"),
+        ("movies", "list_movies_use_case", "movies"),
+        ("screenings", "search_screenings_query", "screenings"),
+        ("sources", "list_sources_use_case", "source_definitions"),
+        (
+            "sources",
+            "list_cinema_source_assignments_query",
+            "cinema_source_assignments",
+        ),
+    ],
+)
+async def test_use_cases_query_the_open_pool_in_the_configured_schema(
+    database: MagicMock, connection: MagicMock, area: str, field: str, table: str
+) -> None:
+    """A use case run through the factory sends its SQL to the configured schema."""
+    settings = Settings(database_url=SETTINGS.database_url, schema="custom_schema")
+    use_case = getattr(getattr(MarquiseFactory(settings, database), area), field)
+
+    await use_case.execute(use_case.InputData())
+
+    database.pool.acquire.assert_called()
+    executed_sql = " ".join(call.args[0] for call in connection.fetch.call_args_list)
+    assert f'"custom_schema".{table}' in executed_sql
 
 
 def test_factory_wires_without_touching_the_pool(database: MagicMock) -> None:
