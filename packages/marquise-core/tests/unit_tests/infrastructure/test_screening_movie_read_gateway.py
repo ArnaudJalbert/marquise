@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import create_autospec
 
 import asyncpg
 import pytest
@@ -19,15 +19,15 @@ from marquise.infrastructure.supabase.gateways.screening_movie_reader import (
 @pytest.mark.asyncio
 async def test_search_binds_page_limit_and_offset() -> None:
     """Page 3 of size 24 binds the page window as the last two SQL arguments."""
-    connection = MagicMock(spec=asyncpg.Connection)
-    connection.fetch = AsyncMock(return_value=[{"total": 0, "id": None}])
-    pool = MagicMock(spec=asyncpg.Pool)
+    connection = create_autospec(asyncpg.Connection, instance=True)
+    connection.fetch.return_value = [{"total": 0, "id": None}]
+    pool = create_autospec(asyncpg.Pool, instance=True)
 
     @asynccontextmanager
     async def acquire() -> AsyncIterator[asyncpg.Connection]:
         yield connection
 
-    pool.acquire = acquire
+    pool.acquire.side_effect = acquire
     now = datetime(2026, 11, 1, tzinfo=UTC)
     gateway = SupabaseScreeningMovieReadGateway(pool, "public")
 

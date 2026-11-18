@@ -45,13 +45,19 @@ async def list_every_cinema(
     cinemas: list[ListCinemasUseCase.CinemaData] = []
     page = 1
     while True:
-        output = await use_case.execute(
-            use_case.InputData(page=page, size=_CINEMAS_PER_PAGE, name=name)
-        )
+        output = await _read_cinema_page(use_case, page, name)
         cinemas.extend(output.cinemas)
         if not output.cinemas or len(cinemas) >= output.total:
             return cinemas
         page += 1
+
+
+async def _read_cinema_page(
+    use_case: ListCinemasUseCase, page: int, name: str | None
+) -> ListCinemasUseCase.OutputData:
+    return await use_case.execute(
+        use_case.InputData(page=page, size=_CINEMAS_PER_PAGE, name=name)
+    )
 
 
 async def select_source(factory: MarquiseFactory, prompt: str) -> str | None:
