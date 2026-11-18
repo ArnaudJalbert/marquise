@@ -26,6 +26,9 @@ services:
       # Same database as .env.local, reached over the Compose network.
       DATABASE_URL: postgresql://marquise:marquise@db:5432/marquise
       DATABASE_SCHEMA: ${DATABASE_SCHEMA:?run through just}
+      # Passed through from your shell, not interpolated, so database-only
+      # commands work without it. The API refuses to start when it is unset.
+      TMDB_API_KEY:
       MARQUISE_API_CORS_ORIGINS: ${MARQUISE_API_CORS_ORIGINS:?run through just}
     ports:
       - "127.0.0.1:18000:8000"

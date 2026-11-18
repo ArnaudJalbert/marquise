@@ -14,13 +14,18 @@ from marquise.bootstrap import create_factory_session
 from marquise.infrastructure.di.factory import MarquiseFactory
 from marquise.infrastructure.supabase.database import Database
 
-DATABASE_URL = "postgresql://u:p@localhost:5432/db"
+REQUIRED_ENV = {
+    "DATABASE_URL": "postgresql://u:p@localhost:5432/db",
+    "DATABASE_SCHEMA": "marquise",
+    "TMDB_API_KEY": "tmdb-key",
+}
 
 
 @pytest.fixture(autouse=True)
 def _mock_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Set the database URL and keep any local .env file out of the tests."""
-    monkeypatch.setenv("DATABASE_URL", DATABASE_URL)
+    """Set every required variable and keep any local .env file out of the tests."""
+    for name, value in REQUIRED_ENV.items():
+        monkeypatch.setenv(name, value)
     monkeypatch.setattr("marquise.bootstrap.load_dotenv", lambda: True)
 
 
@@ -57,17 +62,50 @@ async def test_session_disconnects_when_the_caller_fails(database: MagicMock) ->
 
 
 @pytest.mark.asyncio
-async def test_session_requires_database_url(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A missing DATABASE_URL fails before any database is opened."""
-    monkeypatch.delenv("DATABASE_URL")
+@pytest.mark.parametrize("name", sorted(REQUIRED_ENV))
+async def test_session_requires_each_variable(
+    monkeypatch: pytest.MonkeyPatch, name: str
+) -> None:
+    """An unset required variable fails, naming it, before the database opens."""
+    monkeypatch.delenv(name)
     with (
         patch("marquise.bootstrap.Database") as database_class,
-        pytest.raises(RuntimeError, match="DATABASE_URL is required"),
+        pytest.raises(RuntimeError, match=f"variables: {name}$"),
     ):
         async with create_factory_session():
             pass
 
     database_class.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("name", sorted(REQUIRED_ENV))
+async def test_session_rejects_each_empty_variable(
+    monkeypatch: pytest.MonkeyPatch, name: str
+) -> None:
+    """An empty required variable fails, naming it, before the database opens."""
+    monkeypatch.setenv(name, "")
+    with (
+        patch("marquise.bootstrap.Database") as database_class,
+        pytest.raises(RuntimeError, match=f"variables: {name}$"),
+    ):
+        async with create_factory_session():
+            pass
+
+    database_class.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_session_names_every_missing_variable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Several missing variables are all named in one error."""
+    for name in REQUIRED_ENV:
+        monkeypatch.delenv(name)
+    expected = "variables: DATABASE_URL, DATABASE_SCHEMA, TMDB_API_KEY$"
+    with pytest.raises(RuntimeError, match=expected):
+        async with create_factory_session():
+            pass
 
 
 @pytest.mark.asyncio
