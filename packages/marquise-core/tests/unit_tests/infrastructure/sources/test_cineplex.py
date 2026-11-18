@@ -10,9 +10,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from marquise.infrastructure.sources.cineplex.gateways.source import CineplexSource
+from marquise.infrastructure.sources.cineplex import CineplexSource
 
-_MODULE = "marquise.infrastructure.sources.cineplex.gateways.source"
+_MODULE = "marquise.infrastructure.sources.cineplex"
 
 
 @pytest.fixture
