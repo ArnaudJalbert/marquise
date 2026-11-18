@@ -4,13 +4,10 @@ from __future__ import annotations
 
 import asyncio
 
-from rich.console import Console
 from rich.table import Table
 
 from marquise import MarquiseFactory
-from marquise_cli.helpers import run_spinner
-
-_console = Console()
+from marquise_cli.helpers import connected_factory, console, run_spinner
 
 
 def _build_table(sources: list) -> Table:
@@ -26,23 +23,24 @@ def _build_table(sources: list) -> Table:
 
 async def run_list_registered_sources(factory: MarquiseFactory) -> None:
     """List registered showtime sources in database."""
-    await run_spinner(factory.initialize(), description="Connecting...")
-    try:
-        list_sources_use_case = factory.list_sources_use_case
-        response = await run_spinner(
-            list_sources_use_case.execute(list_sources_use_case.InputData()),
-            description="Fetching registered sources...",
-        )
-    finally:
-        await factory.shutdown()
+    list_sources_use_case = factory.list_sources_use_case
+    response = await run_spinner(
+        list_sources_use_case.execute(list_sources_use_case.InputData()),
+        description="Fetching registered sources...",
+    )
 
     if not response.sources:
         print("No sources registered.")
         return
 
-    _console.print(_build_table(response.sources))
+    console.print(_build_table(response.sources))
 
 
 def list_registered_sources() -> None:
     """List registered showtime sources in database."""
-    asyncio.run(run_list_registered_sources(MarquiseFactory()))
+
+    async def run() -> None:
+        async with connected_factory() as factory:
+            await run_list_registered_sources(factory)
+
+    asyncio.run(run())

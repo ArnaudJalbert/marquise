@@ -69,8 +69,6 @@ async def test_cinema_create_success(
     assert request.address == "123 Test St"
     assert request.city == "Montreal"
     assert request.website == "https://example.com"
-    mock_factory.__aenter__.assert_awaited_once()
-    mock_factory.__aexit__.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -105,8 +103,6 @@ async def test_cinema_create_assigns_source_after_success(
         )
 
     captured = capsys.readouterr()
-    mock_factory.__aenter__.assert_awaited_once()
-    mock_factory.__aexit__.assert_awaited_once()
     assert "Source assigned:" in captured.out
     request = use_case.execute.call_args.args[0]
     assert request.address is None
@@ -146,8 +142,6 @@ async def test_cinema_create_declines_source_assignment(
             website=None,
         )
 
-    mock_factory.__aenter__.assert_awaited_once()
-    mock_factory.__aexit__.assert_awaited_once()
     select_source.assert_not_awaited()
     assign_use_case.execute.assert_not_awaited()
 
@@ -186,7 +180,6 @@ async def test_cinema_create_assignment_failure(
     assert (
         "There was an error when assigning the source to the cinema: Source unavailable"
     ) in captured.err
-    mock_factory.__aexit__.assert_awaited_once()
 
 
 @pytest.mark.parametrize(
@@ -219,14 +212,13 @@ async def test_cinema_create_failure(
     captured = capsys.readouterr()
     assert f"There was an error when creating the cinema: {error}" in captured.err
     assert "Created" not in captured.out
-    mock_factory.__aexit__.assert_awaited_once()
 
 
 @pytest.mark.asyncio
 async def test_cinema_create_unexpected_failure_propagates(
     mock_factory: MagicMock,
 ) -> None:
-    """Unexpected create failures propagate after factory cleanup."""
+    """Unexpected create failures propagate."""
     mock_factory.create_cinema_use_case = _mock_create_use_case(
         error=RuntimeError("database unavailable")
     )
@@ -239,5 +231,3 @@ async def test_cinema_create_unexpected_failure_propagates(
             city=None,
             website=None,
         )
-
-    mock_factory.__aexit__.assert_awaited_once()

@@ -57,8 +57,6 @@ async def test_cinema_list_success(
     list_cinemas_use_case.execute.assert_awaited_once_with(
         ListCinemasUseCase.InputData()
     )
-    mock_factory.initialize.assert_called_once()
-    mock_factory.shutdown.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -76,15 +74,13 @@ async def test_cinema_list_empty(
 
     captured = capsys.readouterr()
     assert "No cinemas found." in captured.out
-    mock_factory.initialize.assert_called_once()
-    mock_factory.shutdown.assert_called_once()
 
 
 @pytest.mark.asyncio
 async def test_cinema_list_failure(
     mock_factory: MagicMock,
 ) -> None:
-    """Unexpected list failures propagate after factory shutdown."""
+    """Unexpected list failures propagate."""
     list_cinemas_use_case = _list_use_case(
         ListCinemasUseCase.OutputData(cinemas=[], total=0)
     )
@@ -93,9 +89,6 @@ async def test_cinema_list_failure(
 
     with pytest.raises(ValueError, match="Something went wrong"):
         await run_list_cinemas(mock_factory)
-
-    mock_factory.initialize.assert_called_once()
-    mock_factory.shutdown.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -159,8 +152,6 @@ async def test_cinema_list_verbose(
     mock_assignment_query.execute.assert_awaited_once_with(
         ListCinemaSourceAssignmentsQuery.InputData()
     )
-    mock_factory.initialize.assert_called_once()
-    mock_factory.shutdown.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -215,5 +206,3 @@ async def test_cinema_list_with_name_filter(
     list_cinemas_use_case.execute.assert_awaited_once_with(
         ListCinemasUseCase.InputData(name="Parc")
     )
-    mock_factory.initialize.assert_called_once()
-    mock_factory.shutdown.assert_called_once()

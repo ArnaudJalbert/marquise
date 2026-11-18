@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator, Callable, Iterator
+from contextlib import AbstractAsyncContextManager, asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from datetime import date
 from types import ModuleType
-from unittest.mock import AsyncMock, MagicMock, create_autospec
+from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 
 import pytest
 
@@ -35,6 +37,30 @@ def mock_factory() -> MagicMock:
     factory.__aenter__.return_value = factory
     factory.__aexit__.return_value = False
     return factory
+
+
+def factory_session(factory: MagicMock) -> Callable[[], AbstractAsyncContextManager]:
+    """Replace create_factory_session with a session around the given factory."""
+
+    @asynccontextmanager
+    async def session() -> AsyncIterator[MagicMock]:
+        await factory.initialize()
+        try:
+            yield factory
+        finally:
+            await factory.shutdown()
+
+    return session
+
+
+@contextmanager
+def patch_questionary(module_name: str) -> Iterator[MagicMock]:
+    """Patch questionary in a command module and in the shared pickers."""
+    with (
+        patch(f"{module_name}.questionary") as questionary,
+        patch("marquise_cli.helpers.questionary", questionary),
+    ):
+        yield questionary
 
 
 def mock_use_case(use_case_type: UseCaseType) -> MagicMock:
@@ -85,7 +111,9 @@ def command(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> 
     use_case = create_autospec(use_case_type, instance=True)
     use_case.InputData = use_case_type.InputData
     setattr(factory, attribute, use_case)
-    monkeypatch.setattr(module, "MarquiseFactory", lambda: factory)
+    monkeypatch.setattr(
+        "marquise_cli.helpers.create_factory_session", factory_session(factory)
+    )
     _stub_selections(module, selections, monkeypatch)
     return Command(argv, factory, use_case)
 

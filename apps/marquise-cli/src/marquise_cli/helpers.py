@@ -2,14 +2,21 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable
+from collections.abc import AsyncIterator, Awaitable
+from contextlib import AsyncExitStack, asynccontextmanager
 
 import questionary
 from rich.console import Console
 
-from marquise import ListCinemasUseCase, MarquiseFactory
+from marquise import (
+    CreateCinemaUseCase,
+    ListCinemasUseCase,
+    MarquiseFactory,
+    UpdateCinemaUseCase,
+    create_factory_session,
+)
 
-_console = Console()
+console = Console(markup=False)
 
 
 async def select_source(factory: MarquiseFactory, prompt: str) -> str | None:
@@ -64,6 +71,22 @@ async def select_cinema(
     return selected
 
 
+def print_cinema(
+    heading: str,
+    cinema: CreateCinemaUseCase.OutputData | UpdateCinemaUseCase.OutputData,
+) -> None:
+    """Print a saved cinema's details under a heading."""
+    print(heading)
+    print(f"  ID:      {cinema.id}")
+    print(f"  Name:    {cinema.name}")
+    if cinema.address:
+        print(f"  Address: {cinema.address}")
+    if cinema.city:
+        print(f"  City:    {cinema.city}")
+    if cinema.website:
+        print(f"  Website: {cinema.website}")
+
+
 async def run_spinner[T](coro: Awaitable[T], description: str = "Working") -> T:
     """Execute an awaitable while displaying a spinner animation.
 
@@ -74,5 +97,20 @@ async def run_spinner[T](coro: Awaitable[T], description: str = "Working") -> T:
     Returns:
         The result of the awaitable.
     """
-    with _console.status(description, spinner="dots"):
+    with console.status(description, spinner="dots"):
         return await coro
+
+
+@asynccontextmanager
+async def connected_factory() -> AsyncIterator[MarquiseFactory]:
+    """Open a factory session behind a "Connecting..." spinner.
+
+    Yields:
+        The initialized factory, shut down when the block exits.
+    """
+    async with AsyncExitStack() as stack:
+        factory = await run_spinner(
+            stack.enter_async_context(create_factory_session()),
+            description="Connecting...",
+        )
+        yield factory

@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, create_autospec
 
 import pytest
 
-from conftest import mock_use_case
+from conftest import factory_session, mock_use_case
 from marquise import (
     CreateSourceUseCase,
     DeleteSourceUseCase,
@@ -44,8 +44,9 @@ def source_prompts(
     monkeypatch: pytest.MonkeyPatch, source_factory: MagicMock
 ) -> MagicMock:
     """Use deterministic prompt answers and replace only the factory boundary."""
-    monkeypatch.setattr(register_command, "MarquiseFactory", lambda: source_factory)
-    monkeypatch.setattr(unregister_command, "MarquiseFactory", lambda: source_factory)
+    monkeypatch.setattr(
+        "marquise_cli.helpers.create_factory_session", factory_session(source_factory)
+    )
     questionary = create_autospec(register_command.questionary)
     questionary.text.return_value.ask_async = AsyncMock(return_value="Source details")
     questionary.checkbox.return_value.ask_async = AsyncMock(

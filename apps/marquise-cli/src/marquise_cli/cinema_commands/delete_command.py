@@ -7,47 +7,8 @@ import sys
 
 import questionary
 
-from marquise import (
-    CinemaNotFoundError,
-    ListCinemasUseCase,
-    MarquiseFactory,
-)
-
-
-def _cinema_choices(
-    cinemas: list[ListCinemasUseCase.CinemaData],
-) -> list[questionary.Choice]:
-    """Build deletion choices with an exit option."""
-    choices = [
-        questionary.Choice(
-            title=f"{cinema.name} — {cinema.address or 'No address'}, "
-            f"{cinema.city or 'No city'}",
-            value=cinema,
-        )
-        for cinema in cinemas
-    ]
-    choices.append(questionary.Choice(title="← exit", value="__exit__"))
-    return choices
-
-
-async def _select_cinema(factory: MarquiseFactory) -> tuple[str, str] | None:
-    """List cinemas and interactively select one for deletion."""
-    list_cinemas_use_case = factory.list_cinemas_use_case
-    response = await list_cinemas_use_case.execute(list_cinemas_use_case.InputData())
-
-    if not response.cinemas:
-        print("No cinemas available to delete.")
-        return None
-
-    selected = await questionary.select(
-        "Select a cinema to delete:",
-        choices=_cinema_choices(response.cinemas),
-    ).ask_async()
-
-    if selected is None or selected == "__exit__":
-        print("Cancelled.")
-        return None
-    return selected.id, selected.name
+from marquise import CinemaNotFoundError, MarquiseFactory
+from marquise_cli.helpers import connected_factory, select_cinema
 
 
 async def _confirm_deletion(cinema_name: str) -> bool:
@@ -83,15 +44,13 @@ async def _delete_cinema(factory: MarquiseFactory, cinema_id: str) -> None:
 
 async def run_delete(factory: MarquiseFactory) -> None:
     """Delete selected cinema after typed-name confirmation."""
-    async with factory:
-        selected = await _select_cinema(factory)
-        if selected is None:
-            return
-        cinema_id, cinema_name = selected
-        if not await _confirm_deletion(cinema_name):
-            return
-        await _delete_cinema(factory, cinema_id)
-        print(f'Cinema "{cinema_name}" (ID: {cinema_id}) deleted.')
+    cinema = await select_cinema(factory, "Select a cinema to delete:")
+    if cinema is None:
+        return
+    if not await _confirm_deletion(cinema.name):
+        return
+    await _delete_cinema(factory, cinema.id)
+    print(f'Cinema "{cinema.name}" (ID: {cinema.id}) deleted.')
 
 
 def delete() -> None:
@@ -100,4 +59,9 @@ def delete() -> None:
     Lists cinemas, exits without changes on cancellation, and requires exact
     cinema-name confirmation before deletion.
     """
-    asyncio.run(run_delete(MarquiseFactory()))
+
+    async def run() -> None:
+        async with connected_factory() as factory:
+            await run_delete(factory)
+
+    asyncio.run(run())

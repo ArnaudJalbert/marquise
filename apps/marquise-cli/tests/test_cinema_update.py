@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from conftest import make_cinema_data, mock_use_case
+from conftest import make_cinema_data, mock_use_case, patch_questionary
 from marquise import CinemaNotFoundError, ListCinemasUseCase, UpdateCinemaUseCase
 from marquise_cli.cinema_commands.update_command import run_update
 
@@ -23,7 +22,7 @@ def _update_setup(
     mock_list_cinemas_use_case: MagicMock,
     mock_update_use_case: MagicMock,
     cinema: ListCinemasUseCase.CinemaData | None = None,
-) -> dict[str, str | None]:
+) -> ListCinemasUseCase.CinemaData:
     """Wire update command collaborators with one cinema."""
     cinema = cinema or make_cinema_data()
     mock_list_cinemas_use_case.execute.return_value = ListCinemasUseCase.OutputData(
@@ -31,7 +30,7 @@ def _update_setup(
     )
     mock_factory.list_cinemas_use_case = mock_list_cinemas_use_case
     mock_factory.update_cinema_use_case = mock_update_use_case
-    return asdict(cinema)
+    return cinema
 
 
 @pytest.mark.asyncio
@@ -48,7 +47,7 @@ async def test_cinema_update_success(
     mock_update_use_case.execute.return_value = UpdateCinemaUseCase.OutputData(
         "cin-001", "Updated Name", "456 New Ave", "Montreal", "https://example.com"
     )
-    with patch("marquise_cli.cinema_commands.update_command.questionary") as mock_q:
+    with patch_questionary("marquise_cli.cinema_commands.update_command") as mock_q:
         mock_q.select.return_value.ask_async = AsyncMock(return_value=cinema)
         mock_q.checkbox.return_value.ask_async = AsyncMock(
             return_value=["name", "address"]
@@ -68,8 +67,6 @@ async def test_cinema_update_success(
             "cin-001", "Updated Name", "456 New Ave", "Montreal", "https://example.com"
         )
     )
-    mock_factory.__aenter__.assert_awaited_once()
-    mock_factory.__aexit__.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -85,7 +82,7 @@ async def test_cinema_update_clear_optional_field(
     mock_update_use_case.execute.return_value = UpdateCinemaUseCase.OutputData(
         "cin-001", "Test Cinema"
     )
-    with patch("marquise_cli.cinema_commands.update_command.questionary") as mock_q:
+    with patch_questionary("marquise_cli.cinema_commands.update_command") as mock_q:
         mock_q.select.return_value.ask_async = AsyncMock(return_value=cinema)
         mock_q.checkbox.return_value.ask_async = AsyncMock(return_value=["address"])
         mock_q.text.return_value.ask_async = AsyncMock(return_value="")
@@ -109,7 +106,7 @@ async def test_cinema_update_cancelled_at_select(
 ) -> None:
     """Verify cinema selection cancellation performs no update."""
     _update_setup(mock_factory, mock_list_cinemas_use_case, mock_update_use_case)
-    with patch("marquise_cli.cinema_commands.update_command.questionary") as mock_q:
+    with patch_questionary("marquise_cli.cinema_commands.update_command") as mock_q:
         mock_q.select.return_value.ask_async = AsyncMock(return_value=selection)
         await run_update(mock_factory)
 
@@ -131,7 +128,7 @@ async def test_cinema_update_cancelled_at_fields(
     cinema = _update_setup(
         mock_factory, mock_list_cinemas_use_case, mock_update_use_case
     )
-    with patch("marquise_cli.cinema_commands.update_command.questionary") as mock_q:
+    with patch_questionary("marquise_cli.cinema_commands.update_command") as mock_q:
         mock_q.select.return_value.ask_async = AsyncMock(return_value=cinema)
         mock_q.checkbox.return_value.ask_async = AsyncMock(return_value=fields)
         await run_update(mock_factory)
@@ -152,7 +149,7 @@ async def test_cinema_update_cancelled_at_value(
     cinema = _update_setup(
         mock_factory, mock_list_cinemas_use_case, mock_update_use_case
     )
-    with patch("marquise_cli.cinema_commands.update_command.questionary") as mock_q:
+    with patch_questionary("marquise_cli.cinema_commands.update_command") as mock_q:
         mock_q.select.return_value.ask_async = AsyncMock(return_value=cinema)
         mock_q.checkbox.return_value.ask_async = AsyncMock(return_value=["name"])
         mock_q.text.return_value.ask_async = AsyncMock(return_value=None)
@@ -180,7 +177,7 @@ async def test_cinema_update_no_cinemas(
     await run_update(mock_factory)
 
     captured = capsys.readouterr()
-    assert "No cinemas available to update." in captured.out
+    assert "No cinemas available." in captured.out
     mock_update_use_case.execute.assert_not_awaited()
 
 
@@ -202,7 +199,7 @@ async def test_cinema_update_failure(
     )
     mock_update_use_case.execute.side_effect = error
     with (
-        patch("marquise_cli.cinema_commands.update_command.questionary") as mock_q,
+        patch_questionary("marquise_cli.cinema_commands.update_command") as mock_q,
         pytest.raises(SystemExit),
     ):
         mock_q.select.return_value.ask_async = AsyncMock(return_value=cinema)
@@ -220,18 +217,16 @@ async def test_cinema_update_unexpected_failure_propagates(
     mock_list_cinemas_use_case: MagicMock,
     mock_update_use_case: MagicMock,
 ) -> None:
-    """Verify unexpected update failures propagate after factory cleanup."""
+    """Verify unexpected update failures propagate."""
     cinema = _update_setup(
         mock_factory, mock_list_cinemas_use_case, mock_update_use_case
     )
     mock_update_use_case.execute.side_effect = RuntimeError("database unavailable")
     with (
-        patch("marquise_cli.cinema_commands.update_command.questionary") as mock_q,
+        patch_questionary("marquise_cli.cinema_commands.update_command") as mock_q,
         pytest.raises(RuntimeError, match="database unavailable"),
     ):
         mock_q.select.return_value.ask_async = AsyncMock(return_value=cinema)
         mock_q.checkbox.return_value.ask_async = AsyncMock(return_value=["name"])
         mock_q.text.return_value.ask_async = AsyncMock(return_value="New Name")
         await run_update(mock_factory)
-
-    mock_factory.__aexit__.assert_awaited_once()

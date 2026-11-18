@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 
 import pytest
 
-from conftest import Command, make_cinema_data
+from conftest import Command, factory_session, make_cinema_data
 from marquise import (
     CinemaNotFoundError,
     CinemaSourceAssignmentNotFoundError,
@@ -21,7 +21,8 @@ from marquise import (
 )
 from marquise_cli.app import main
 from marquise_cli.helpers import run_spinner
-from marquise_cli.import_commands import cinema_command, import_all, run_import_all
+from marquise_cli.import_commands import cinema_command, import_all
+from marquise_cli.import_commands.all_command import run_import_all
 from marquise_cli.import_commands.cinema_command import (
     _import_screenings,
     run_import_cinema,
@@ -60,19 +61,7 @@ async def test_import_screenings_delegates_to_import_use_case() -> None:
         factory, "cin-1", date(2026, 8, 25), date(2026, 8, 26)
     )
 
-    assert result == {
-        "cinema_id": "cin-1",
-        "cinema_name": "Cinema One",
-        "source_name": "cineplex",
-        "screenings": (),
-        "total_count": 0,
-        "imported_count": 0,
-        "updated_count": 0,
-        "rescheduled_count": 0,
-        "skipped_count": 0,
-        "skipped_movies": (),
-        "unmatched_movies": (),
-    }
+    assert result == expected
     import_use_case.execute.assert_awaited_once_with(
         ImportScreeningsCommand.InputData(
             cinema_id="cin-1",
@@ -86,7 +75,7 @@ async def test_import_screenings_delegates_to_import_use_case() -> None:
 async def test_run_import_cinema_looks_up_source_and_spins_full_import(
     mock_factory: MagicMock,
 ) -> None:
-    """Verify source lookup and full import retain direct DTOs, spinner, and cleanup."""
+    """Verify source lookup and full import retain direct DTOs and spinner."""
     get_source_use_case = create_autospec(GetCinemaSourceUseCase, instance=True)
     get_source_use_case.InputData = GetCinemaSourceUseCase.InputData
     get_source_use_case.execute = AsyncMock(
@@ -97,15 +86,9 @@ async def test_run_import_cinema_looks_up_source_and_spins_full_import(
         )
     )
     mock_factory.get_cinema_source_use_case = get_source_use_case
-    import_result = {
-        "cinema_name": "Test Cinema",
-        "source_name": "cinemacinema",
-        "screenings": (),
-        "total_count": 0,
-        "imported_count": 0,
-        "updated_count": 0,
-        "skipped_count": 0,
-    }
+    import_result = ImportScreeningsCommand.OutputData(
+        "cin-001", "Test Cinema", "cinemacinema", (), 0, 0, 0, 0
+    )
 
     with (
         patch(
@@ -136,10 +119,9 @@ async def test_run_import_cinema_looks_up_source_and_spins_full_import(
         date(2026, 8, 25),
         date(2026, 8, 26),
     )
-    assert spinner.await_args_list[1].kwargs == {
+    assert spinner.await_args_list[0].kwargs == {
         "description": "Importing screenings..."
     }
-    mock_factory.shutdown.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -263,10 +245,7 @@ def test_import_all_turns_red_when_a_cinema_fails() -> None:
         import_side_effect=RuntimeError("TMDB unavailable"),
     )
     with (
-        patch(
-            "marquise_cli.import_commands.all_command.MarquiseFactory",
-            return_value=factory,
-        ),
+        patch("marquise_cli.helpers.create_factory_session", factory_session(factory)),
         pytest.raises(SystemExit) as exit_info,
     ):
         import_all(days=1)
@@ -311,10 +290,7 @@ def test_import_all_reports_skipped_and_unmatched_movies(
             ),
         ],
     )
-    with patch(
-        "marquise_cli.import_commands.all_command.MarquiseFactory",
-        return_value=factory,
-    ):
+    with patch("marquise_cli.helpers.create_factory_session", factory_session(factory)):
         import_all(days=1)
 
     output = capsys.readouterr().out
@@ -352,10 +328,7 @@ def test_import_all_reports_a_run_with_every_movie_matched(
             )
         ],
     )
-    with patch(
-        "marquise_cli.import_commands.all_command.MarquiseFactory",
-        return_value=factory,
-    ):
+    with patch("marquise_cli.helpers.create_factory_session", factory_session(factory)):
         import_all(days=1)
 
     output = capsys.readouterr().out
@@ -425,3 +398,16 @@ def test_unlisted_import_errors_escape(
         main(command.argv)
     assert failure.value is error
     command.factory.shutdown.assert_awaited_once()
+
+
+def test_import_all_shows_the_connecting_spinner() -> None:
+    """Bulk import opens its factory session behind the connecting spinner."""
+    factory = _make_factory([], import_side_effect=[])
+
+    with (
+        patch("marquise_cli.helpers.create_factory_session", factory_session(factory)),
+        patch("marquise_cli.helpers.console.status") as status,
+    ):
+        import_all(days=1)
+
+    status.assert_called_once_with("Connecting...", spinner="dots")

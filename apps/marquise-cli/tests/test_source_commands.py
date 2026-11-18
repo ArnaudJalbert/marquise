@@ -111,8 +111,6 @@ async def test_source_list_executes_list_use_case(
     assert "cinemacinema" in capsys.readouterr().out
     list_sources_use_case.InputData.assert_called_once_with()
     list_sources_use_case.execute.assert_awaited_once()
-    mock_factory.initialize.assert_awaited_once()
-    mock_factory.shutdown.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -147,8 +145,6 @@ async def test_source_assign_executes_assign_use_case(
         cinema_id="cin-001", source_name="cinemacinema"
     )
     assign_source_use_case.execute.assert_awaited_once()
-    mock_factory.initialize.assert_awaited_once()
-    mock_factory.shutdown.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -172,8 +168,6 @@ async def test_source_unassign_executes_unassign_use_case(
     assert "Source unassigned from cinema cin-001." in capsys.readouterr().out
     unassign_source_use_case.InputData.assert_called_once_with(cinema_id="cin-001")
     unassign_source_use_case.execute.assert_awaited_once()
-    mock_factory.initialize.assert_awaited_once()
-    mock_factory.shutdown.assert_awaited_once()
 
 
 @pytest.mark.asyncio

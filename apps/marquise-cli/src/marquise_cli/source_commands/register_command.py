@@ -4,28 +4,33 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from dataclasses import asdict
 from typing import NoReturn
 
 import questionary
-from rich.console import Console
 from rich.table import Table
 
-from marquise import CreateSourceUseCase, MarquiseFactory, SourceAlreadyExistsError
-from marquise_cli.helpers import run_spinner
+from marquise import (
+    CreateSourceUseCase,
+    ListRegistrySourcesUseCase,
+    ListSourcesUseCase,
+    MarquiseFactory,
+    SourceAlreadyExistsError,
+)
+from marquise_cli.helpers import connected_factory, console, run_spinner
 
-_console = Console()
 
-
-def _build_table(registry_sources: list, registered_names: set[str]) -> Table:
+def _build_table(
+    registry_sources: list[ListRegistrySourcesUseCase.SourceEntry],
+    registered_names: set[str],
+) -> Table:
     """Build registry registration-status table."""
     table = Table(title="Sources available in registry")
     table.add_column("Name", style="cyan")
     table.add_column("Status")
     for source in registry_sources:
         table.add_row(
-            source["name"],
-            "already registered" if source["name"] in registered_names else "new",
+            source.name,
+            "already registered" if source.name in registered_names else "new",
         )
     return table
 
@@ -45,7 +50,10 @@ async def _source_details() -> tuple[str, str | None] | None:
 
 async def _load_sources(
     factory: MarquiseFactory,
-) -> tuple[list, list]:
+) -> tuple[
+    list[ListRegistrySourcesUseCase.SourceEntry],
+    list[ListSourcesUseCase.SourceData],
+]:
     """Load registry and registered source definitions."""
     registry_use_case = factory.list_registry_sources_use_case
     registry_response = await run_spinner(
@@ -57,19 +65,18 @@ async def _load_sources(
         list_use_case.execute(list_use_case.InputData()),
         description="Fetching registered sources...",
     )
-    return (
-        [asdict(source) for source in registry_response.sources],
-        [asdict(source) for source in registered_response.sources],
-    )
+    return registry_response.sources, registered_response.sources
 
 
-async def _register_source(factory: MarquiseFactory, source: dict) -> bool:
+async def _register_source(
+    factory: MarquiseFactory, source: ListRegistrySourcesUseCase.SourceEntry
+) -> bool:
     """Prompt for and register one source definition."""
-    print(f"\n--- Registering: {source['name']} ---")
+    print(f"\n--- Registering: {source.name} ---")
     details = await _source_details()
     if details is None:
         return False
-    await _create_source_or_exit(factory, source["name"], details)
+    await _create_source_or_exit(factory, source.name, details)
     return True
 
 
@@ -116,32 +123,31 @@ def _exit_failed(error: Exception) -> NoReturn:
 
 async def run_register_sources(factory: MarquiseFactory) -> None:
     """Register every source missing from persistent source definitions."""
-    await run_spinner(factory.initialize(), description="Connecting...")
-    try:
-        registry_sources, registered_sources = await _load_sources(factory)
-        registered_names = {source["name"] for source in registered_sources}
-        new_sources = [
-            source
-            for source in registry_sources
-            if source["name"] not in registered_names
-        ]
-        if not registry_sources:
-            print("No sources available in the registry.")
-            return
+    registry_sources, registered_sources = await _load_sources(factory)
+    registered_names = {source.name for source in registered_sources}
+    new_sources = [
+        source for source in registry_sources if source.name not in registered_names
+    ]
+    if not registry_sources:
+        print("No sources available in the registry.")
+        return
 
-        _console.print(_build_table(registry_sources, registered_names))
-        if not new_sources:
-            print("All registry sources are already in the database.")
-            return
+    console.print(_build_table(registry_sources, registered_names))
+    if not new_sources:
+        print("All registry sources are already in the database.")
+        return
 
-        print(f"{len(new_sources)} source(s) can be registered.")
-        for source in new_sources:
-            if not await _register_source(factory, source):
-                return
-    finally:
-        await factory.shutdown()
+    print(f"{len(new_sources)} source(s) can be registered.")
+    for source in new_sources:
+        if not await _register_source(factory, source):
+            return
 
 
 def register_sources() -> None:
     """Register new showtime sources from registry into database."""
-    asyncio.run(run_register_sources(MarquiseFactory()))
+
+    async def run() -> None:
+        async with connected_factory() as factory:
+            await run_register_sources(factory)
+
+    asyncio.run(run())

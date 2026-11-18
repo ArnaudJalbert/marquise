@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, call, create_autospec, patch
 
 import pytest
 
-from conftest import make_cinema_data
+from conftest import factory_session, make_cinema_data
 from marquise import ImportScreeningsCommand, ListCinemasUseCase
 from marquise_cli.app import main
 
@@ -32,8 +32,8 @@ def test_import_all_displays_the_imported_window_across_midnight(
     """Midnight cannot shift cinema imports away from the displayed window."""
     with (
         patch(
-            "marquise_cli.import_commands.all_command.MarquiseFactory",
-            return_value=bulk_import_factory,
+            "marquise_cli.helpers.create_factory_session",
+            factory_session(bulk_import_factory),
         ),
         patch("marquise_cli.import_commands.all_command.date", wraps=date) as clock,
     ):
