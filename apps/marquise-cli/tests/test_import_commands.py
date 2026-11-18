@@ -15,7 +15,7 @@ from marquise import (
     CinemaSourceAssignmentNotFoundError,
     GetCinemaSourceUseCase,
     ImportScreeningsCommand,
-    ListAllCinemasUseCase,
+    ListCinemasUseCase,
     SourceNotFoundError,
 )
 from marquise_cli.app import main
@@ -34,11 +34,11 @@ def _make_factory(
 ) -> MagicMock:
     """Build fake factory with the import use case."""
     factory = stub_factory()
-    factory.cinemas.list_all_cinemas_use_case = create_autospec(
-        ListAllCinemasUseCase, instance=True
+    factory.cinemas.list_cinemas_use_case = create_autospec(
+        ListCinemasUseCase, instance=True
     )
-    factory.cinemas.list_all_cinemas_use_case.execute = AsyncMock(
-        return_value=SimpleNamespace(cinemas=cinemas)
+    factory.cinemas.list_cinemas_use_case.execute = AsyncMock(
+        return_value=SimpleNamespace(cinemas=cinemas, total=len(cinemas))
     )
     import_use_case = create_autospec(ImportScreeningsCommand, instance=True)
     import_use_case.execute = AsyncMock(side_effect=import_side_effect)

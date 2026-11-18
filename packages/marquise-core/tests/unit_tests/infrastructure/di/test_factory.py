@@ -146,7 +146,6 @@ def connection(database: MagicMock) -> MagicMock:
     "case",
     [
         SchemaCase("cinemas.list_cinemas_use_case", "cinemas", {"page": 1, "size": 10}),
-        SchemaCase("cinemas.list_all_cinemas_use_case", "cinemas"),
         SchemaCase(
             "cinemas.get_cinema_movies_use_case",
             "screenings",

@@ -58,8 +58,8 @@ async def create_factory_session() -> AsyncGenerator[MarquiseFactory]:
 
     Example:
         async with create_factory_session() as factory:
-            use_case = factory.cinemas.list_all_cinemas_use_case
-            result = await use_case.execute(use_case.InputData())
+            use_case = factory.cinemas.list_cinemas_use_case
+            result = await use_case.execute(use_case.InputData(page=1, size=50))
     """
     settings = _read_settings()
     database = await _connect_database(settings)

@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from conftest import make_cinema_data, mock_use_case
-from marquise import CinemaNotFoundError, ListAllCinemasUseCase, UpdateCinemaUseCase
+from marquise import CinemaNotFoundError, ListCinemasUseCase, UpdateCinemaUseCase
 from marquise_cli.cinema_commands.update_command import run_update
 
 
@@ -20,16 +20,16 @@ def mock_update_use_case() -> MagicMock:
 
 def _update_setup(
     mock_factory: MagicMock,
-    mock_list_all_cinemas_use_case: MagicMock,
+    mock_list_cinemas_use_case: MagicMock,
     mock_update_use_case: MagicMock,
-    cinema: ListAllCinemasUseCase.CinemaData | None = None,
+    cinema: ListCinemasUseCase.CinemaData | None = None,
 ) -> dict[str, str | None]:
     """Wire update command collaborators with one cinema."""
     cinema = cinema or make_cinema_data()
-    mock_list_all_cinemas_use_case.execute.return_value = (
-        ListAllCinemasUseCase.OutputData(cinemas=[cinema])
+    mock_list_cinemas_use_case.execute.return_value = ListCinemasUseCase.OutputData(
+        cinemas=[cinema], total=1
     )
-    mock_factory.cinemas.list_all_cinemas_use_case = mock_list_all_cinemas_use_case
+    mock_factory.cinemas.list_cinemas_use_case = mock_list_cinemas_use_case
     mock_factory.cinemas.update_cinema_use_case = mock_update_use_case
     return asdict(cinema)
 
@@ -37,13 +37,13 @@ def _update_setup(
 @pytest.mark.asyncio
 async def test_cinema_update_success(
     mock_factory: MagicMock,
-    mock_list_all_cinemas_use_case: MagicMock,
+    mock_list_cinemas_use_case: MagicMock,
     mock_update_use_case: MagicMock,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Verify cinema update executes use case with selected replacements."""
     cinema = _update_setup(
-        mock_factory, mock_list_all_cinemas_use_case, mock_update_use_case
+        mock_factory, mock_list_cinemas_use_case, mock_update_use_case
     )
     mock_update_use_case.execute.return_value = UpdateCinemaUseCase.OutputData(
         "cin-001", "Updated Name", "456 New Ave", "Montreal", "https://example.com"
@@ -60,8 +60,8 @@ async def test_cinema_update_success(
 
     captured = capsys.readouterr()
     assert "Cinema updated:" in captured.out
-    mock_list_all_cinemas_use_case.execute.assert_awaited_once_with(
-        ListAllCinemasUseCase.InputData()
+    mock_list_cinemas_use_case.execute.assert_awaited_once_with(
+        ListCinemasUseCase.InputData(page=1, size=100)
     )
     mock_update_use_case.execute.assert_awaited_once_with(
         UpdateCinemaUseCase.InputData(
@@ -73,12 +73,12 @@ async def test_cinema_update_success(
 @pytest.mark.asyncio
 async def test_cinema_update_clear_optional_field(
     mock_factory: MagicMock,
-    mock_list_all_cinemas_use_case: MagicMock,
+    mock_list_cinemas_use_case: MagicMock,
     mock_update_use_case: MagicMock,
 ) -> None:
     """Verify cinema update supports clearing optional fields."""
     cinema = _update_setup(
-        mock_factory, mock_list_all_cinemas_use_case, mock_update_use_case
+        mock_factory, mock_list_cinemas_use_case, mock_update_use_case
     )
     mock_update_use_case.execute.return_value = UpdateCinemaUseCase.OutputData(
         "cin-001", "Test Cinema"
@@ -101,12 +101,12 @@ async def test_cinema_update_clear_optional_field(
 async def test_cinema_update_cancelled_at_select(
     selection: str | None,
     mock_factory: MagicMock,
-    mock_list_all_cinemas_use_case: MagicMock,
+    mock_list_cinemas_use_case: MagicMock,
     mock_update_use_case: MagicMock,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Verify cinema selection cancellation performs no update."""
-    _update_setup(mock_factory, mock_list_all_cinemas_use_case, mock_update_use_case)
+    _update_setup(mock_factory, mock_list_cinemas_use_case, mock_update_use_case)
     with patch("marquise_cli.cinema_commands.update_command.questionary") as mock_q:
         mock_q.select.return_value.ask_async = AsyncMock(return_value=selection)
         await run_update(mock_factory)
@@ -121,13 +121,13 @@ async def test_cinema_update_cancelled_at_select(
 async def test_cinema_update_cancelled_at_fields(
     fields: list[str] | None,
     mock_factory: MagicMock,
-    mock_list_all_cinemas_use_case: MagicMock,
+    mock_list_cinemas_use_case: MagicMock,
     mock_update_use_case: MagicMock,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Verify empty field selection performs no update."""
     cinema = _update_setup(
-        mock_factory, mock_list_all_cinemas_use_case, mock_update_use_case
+        mock_factory, mock_list_cinemas_use_case, mock_update_use_case
     )
     with patch("marquise_cli.cinema_commands.update_command.questionary") as mock_q:
         mock_q.select.return_value.ask_async = AsyncMock(return_value=cinema)
@@ -142,13 +142,13 @@ async def test_cinema_update_cancelled_at_fields(
 @pytest.mark.asyncio
 async def test_cinema_update_cancelled_at_value(
     mock_factory: MagicMock,
-    mock_list_all_cinemas_use_case: MagicMock,
+    mock_list_cinemas_use_case: MagicMock,
     mock_update_use_case: MagicMock,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Verify field-value cancellation performs no update."""
     cinema = _update_setup(
-        mock_factory, mock_list_all_cinemas_use_case, mock_update_use_case
+        mock_factory, mock_list_cinemas_use_case, mock_update_use_case
     )
     with patch("marquise_cli.cinema_commands.update_command.questionary") as mock_q:
         mock_q.select.return_value.ask_async = AsyncMock(return_value=cinema)
@@ -164,15 +164,15 @@ async def test_cinema_update_cancelled_at_value(
 @pytest.mark.asyncio
 async def test_cinema_update_no_cinemas(
     mock_factory: MagicMock,
-    mock_list_all_cinemas_use_case: MagicMock,
+    mock_list_cinemas_use_case: MagicMock,
     mock_update_use_case: MagicMock,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Verify empty cinema list is reported clearly."""
-    mock_list_all_cinemas_use_case.execute.return_value = (
-        ListAllCinemasUseCase.OutputData(cinemas=[])
+    mock_list_cinemas_use_case.execute.return_value = ListCinemasUseCase.OutputData(
+        cinemas=[], total=0
     )
-    mock_factory.cinemas.list_all_cinemas_use_case = mock_list_all_cinemas_use_case
+    mock_factory.cinemas.list_cinemas_use_case = mock_list_cinemas_use_case
     mock_factory.cinemas.update_cinema_use_case = mock_update_use_case
 
     await run_update(mock_factory)
@@ -190,13 +190,13 @@ async def test_cinema_update_no_cinemas(
 async def test_cinema_update_failure(
     error: Exception,
     mock_factory: MagicMock,
-    mock_list_all_cinemas_use_case: MagicMock,
+    mock_list_cinemas_use_case: MagicMock,
     mock_update_use_case: MagicMock,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Verify documented update errors reach stderr with exit code one."""
     cinema = _update_setup(
-        mock_factory, mock_list_all_cinemas_use_case, mock_update_use_case
+        mock_factory, mock_list_cinemas_use_case, mock_update_use_case
     )
     mock_update_use_case.execute.side_effect = error
     with (
@@ -215,12 +215,12 @@ async def test_cinema_update_failure(
 @pytest.mark.asyncio
 async def test_cinema_update_unexpected_failure_propagates(
     mock_factory: MagicMock,
-    mock_list_all_cinemas_use_case: MagicMock,
+    mock_list_cinemas_use_case: MagicMock,
     mock_update_use_case: MagicMock,
 ) -> None:
     """Verify unexpected update failures propagate after factory cleanup."""
     cinema = _update_setup(
-        mock_factory, mock_list_all_cinemas_use_case, mock_update_use_case
+        mock_factory, mock_list_cinemas_use_case, mock_update_use_case
     )
     mock_update_use_case.execute.side_effect = RuntimeError("database unavailable")
     with (
