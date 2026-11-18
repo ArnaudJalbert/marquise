@@ -18,14 +18,14 @@ _MODULE = "marquise.infrastructure.sources.cineplex.gateways.source"
 @pytest.fixture
 def discover_key() -> Iterator[MagicMock]:
     """Stand in for scraping the key from the Cineplex frontend."""
-    with patch(f"{_MODULE}._discover_subscription_key") as discover:
+    with patch(f"{_MODULE}._discover_subscription_key", autospec=True) as discover:
         yield discover
 
 
 @pytest.fixture
 def fetch_json() -> Iterator[MagicMock]:
     """Stand in for the theatrical API call."""
-    with patch(f"{_MODULE}._fetch_json", return_value=[]) as fetch:
+    with patch(f"{_MODULE}._fetch_json", autospec=True, return_value=[]) as fetch:
         yield fetch
 
 
