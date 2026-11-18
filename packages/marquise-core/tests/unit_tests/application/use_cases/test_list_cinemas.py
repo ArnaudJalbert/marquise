@@ -35,7 +35,7 @@ async def test_list_cinemas_returns_all_when_no_filter() -> None:
     )
 
     use_case = ListCinemasUseCase(cinema_repository=mock_repo)
-    request = ListCinemasUseCase.InputData()
+    request = ListCinemasUseCase.InputData(page=1, size=10)
 
     response = await use_case.execute(request)
 
@@ -45,7 +45,7 @@ async def test_list_cinemas_returns_all_when_no_filter() -> None:
     assert response.cinemas[1].id == "id-2"
     assert response.cinemas[1].name == "Cinema B"
     assert response.total == 2
-    mock_repo.find_all.assert_awaited_once_with(name_filter=None, limit=None, offset=0)
+    mock_repo.find_all.assert_awaited_once_with(name_filter=None, limit=10, offset=0)
 
 
 @pytest.mark.asyncio
@@ -82,14 +82,14 @@ async def test_list_cinemas_filters_by_name() -> None:
     )
 
     use_case = ListCinemasUseCase(cinema_repository=mock_repo)
-    request = ListCinemasUseCase.InputData(name="Cinema A")
+    request = ListCinemasUseCase.InputData(name="Cinema A", page=1, size=10)
 
     response = await use_case.execute(request)
 
     assert len(response.cinemas) == 1
     assert response.cinemas[0].name == "Cinema A"
     mock_repo.find_all.assert_awaited_once_with(
-        name_filter="Cinema A", limit=None, offset=0
+        name_filter="Cinema A", limit=10, offset=0
     )
 
 
@@ -100,14 +100,14 @@ async def test_list_cinemas_returns_empty_list_when_no_matches() -> None:
     mock_repo.find_all.return_value = Page(items=[], total=0)
 
     use_case = ListCinemasUseCase(cinema_repository=mock_repo)
-    request = ListCinemasUseCase.InputData(name="NonExistent")
+    request = ListCinemasUseCase.InputData(name="NonExistent", page=1, size=10)
 
     response = await use_case.execute(request)
 
     assert len(response.cinemas) == 0
     assert response.total == 0
     mock_repo.find_all.assert_awaited_once_with(
-        name_filter="NonExistent", limit=None, offset=0
+        name_filter="NonExistent", limit=10, offset=0
     )
 
 
@@ -129,7 +129,7 @@ async def test_list_cinemas_maps_all_fields_correctly() -> None:
     )
 
     use_case = ListCinemasUseCase(cinema_repository=mock_repo)
-    request = ListCinemasUseCase.InputData()
+    request = ListCinemasUseCase.InputData(page=1, size=10)
 
     response = await use_case.execute(request)
 
@@ -156,7 +156,7 @@ async def test_list_cinemas_maps_optional_none_fields() -> None:
     )
 
     use_case = ListCinemasUseCase(cinema_repository=mock_repo)
-    request = ListCinemasUseCase.InputData()
+    request = ListCinemasUseCase.InputData(page=1, size=10)
 
     response = await use_case.execute(request)
 
@@ -180,7 +180,7 @@ async def test_list_cinemas_output_total_reflects_repository_total() -> None:
     )
 
     use_case = ListCinemasUseCase(cinema_repository=mock_repo)
-    request = ListCinemasUseCase.InputData(size=1)
+    request = ListCinemasUseCase.InputData(size=1, page=1)
 
     response = await use_case.execute(request)
 
@@ -192,11 +192,11 @@ async def test_list_cinemas_output_total_reflects_repository_total() -> None:
 async def test_list_cinemas_rejects_page_below_one() -> None:
     """A page number less than 1 is rejected before the repository is called."""
     with pytest.raises(ValueError, match="page must be at least 1"):
-        ListCinemasUseCase.InputData(page=0)
+        ListCinemasUseCase.InputData(page=0, size=10)
 
 
 @pytest.mark.asyncio
 async def test_list_cinemas_rejects_zero_or_negative_size() -> None:
     """A non-positive size is rejected before the repository is called."""
-    with pytest.raises(ValueError, match="size must be positive when provided"):
-        ListCinemasUseCase.InputData(size=0)
+    with pytest.raises(ValueError, match="size must be positive"):
+        ListCinemasUseCase.InputData(size=0, page=1)

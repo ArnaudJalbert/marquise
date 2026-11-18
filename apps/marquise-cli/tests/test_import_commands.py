@@ -38,7 +38,7 @@ def _make_factory(
         ListCinemasUseCase, instance=True
     )
     factory.cinemas.list_cinemas_use_case.execute = AsyncMock(
-        return_value=SimpleNamespace(cinemas=cinemas)
+        return_value=SimpleNamespace(cinemas=cinemas, total=len(cinemas))
     )
     import_use_case = create_autospec(ImportScreeningsCommand, instance=True)
     import_use_case.execute = AsyncMock(side_effect=import_side_effect)

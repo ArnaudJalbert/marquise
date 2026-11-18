@@ -145,7 +145,7 @@ def connection(database: MagicMock) -> MagicMock:
 @pytest.mark.parametrize(
     "case",
     [
-        SchemaCase("cinemas.list_cinemas_use_case", "cinemas"),
+        SchemaCase("cinemas.list_cinemas_use_case", "cinemas", {"page": 1, "size": 10}),
         SchemaCase(
             "cinemas.get_cinema_movies_use_case",
             "screenings",
@@ -153,10 +153,14 @@ def connection(database: MagicMock) -> MagicMock:
                 "cinema_id": "cin-1",
                 "start_date": datetime(2026, 11, 18, tzinfo=UTC),
                 "end_date": datetime(2026, 11, 19, tzinfo=UTC),
+                "page": 1,
+                "size": 10,
             },
         ),
-        SchemaCase("movies.list_movies_use_case", "movies"),
-        SchemaCase("screenings.search_screenings_query", "screenings"),
+        SchemaCase("movies.list_movies_use_case", "movies", {"page": 1, "size": 10}),
+        SchemaCase(
+            "screenings.search_screenings_query", "screenings", {"page": 1, "size": 10}
+        ),
         SchemaCase("sources.list_sources_use_case", "source_definitions"),
         SchemaCase(
             "sources.list_cinema_source_assignments_query",

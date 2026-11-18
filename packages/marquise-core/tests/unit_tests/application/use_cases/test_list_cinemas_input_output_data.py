@@ -10,13 +10,13 @@ from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 def test_input_data_rejects_empty_name() -> None:
     """Verify InputData rejects an empty name string."""
     with pytest.raises(ValueError, match="name must not be empty when provided"):
-        ListCinemasUseCase.InputData(name="")
+        ListCinemasUseCase.InputData(name="", page=1, size=10)
 
 
 def test_input_data_rejects_whitespace_name() -> None:
     """Verify InputData rejects a whitespace-only name."""
     with pytest.raises(ValueError, match="name must not be empty when provided"):
-        ListCinemasUseCase.InputData(name="   ")
+        ListCinemasUseCase.InputData(name="   ", page=1, size=10)
 
 
 def test_cinema_data_allows_none_optional_fields() -> None:

@@ -65,7 +65,7 @@ class ScreeningMoviePage(BaseModel):
     items: list[ScreeningMovieResponse]
     total: int
     page: int
-    size: int = 24
+    size: int
     pages: int
 
 
@@ -100,9 +100,10 @@ class ScreeningMovieParams(BaseModel):
 
 
 class BrowseScreeningMovieParams(ScreeningMovieParams):
-    """The listing's dates and filters, and a page of 24 movies."""
+    """The listing's dates and filters, and one page of movies."""
 
-    page: int = Field(default=1, ge=1)
+    page: int = Field(ge=1)
+    size: int = Field(ge=1, le=100)
 
 
 @router.post(
@@ -118,7 +119,7 @@ async def browse_screening_movies(
     filters: ScreeningMovieFilters,
     factory: MarquiseFactory = Depends(get_factory),
 ) -> ScreeningMoviePage:
-    """List 24 distinct movies in inclusive Montreal dates, excluding started shows.
+    """List one page of distinct upcoming movies in inclusive Montreal dates.
 
     This endpoint is uncached so upcoming eligibility uses the current request's
     clock rather than a cached response's clock.
@@ -129,6 +130,7 @@ async def browse_screening_movies(
             start=params.start,
             end=params.end,
             page=params.page,
+            size=params.size,
             title=params.title,
             cinemas=tuple(params.cinema),
             languages=tuple(params.language),
@@ -146,7 +148,8 @@ async def browse_screening_movies(
         items=[ScreeningMovieResponse.model_validate(movie) for movie in result.movies],
         total=result.total,
         page=params.page,
-        pages=ceil(result.total / 24),
+        size=params.size,
+        pages=ceil(result.total / params.size),
     )
 
 

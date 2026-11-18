@@ -9,7 +9,7 @@ from dataclasses import asdict
 import questionary
 
 from marquise import CinemaNotFoundError, MarquiseFactory
-from marquise_cli.helpers import run_with_factory
+from marquise_cli.helpers import list_every_cinema, run_with_factory
 
 
 def _cinema_choices(
@@ -30,9 +30,7 @@ def _cinema_choices(
 
 async def _select_cinema(factory: MarquiseFactory) -> dict[str, str | None] | None:
     """List cinemas and prompt for one to update."""
-    list_cinemas_use_case = factory.cinemas.list_cinemas_use_case
-    response = await list_cinemas_use_case.execute(list_cinemas_use_case.InputData())
-    cinemas = [asdict(cinema) for cinema in response.cinemas]
+    cinemas = [asdict(cinema) for cinema in await list_every_cinema(factory, name=None)]
     if not cinemas:
         print("No cinemas available to update.")
         return None

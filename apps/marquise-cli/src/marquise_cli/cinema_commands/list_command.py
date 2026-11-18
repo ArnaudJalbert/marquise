@@ -13,7 +13,7 @@ from rich.table import Table
 from rich.text import Text
 
 from marquise import ListCinemasUseCase, MarquiseFactory
-from marquise_cli.helpers import run_spinner, run_with_factory
+from marquise_cli.helpers import list_every_cinema, run_spinner, run_with_factory
 
 _console = Console(markup=False)
 
@@ -32,7 +32,7 @@ def _website_text(website: str) -> Text:
 
 
 def _build_table(
-    response: ListCinemasUseCase.OutputData,
+    cinemas: list[ListCinemasUseCase.CinemaData],
     source_names: dict[str, str],
     verbose: bool,
 ) -> Table:
@@ -51,7 +51,7 @@ def _build_table(
         table.add_column("Source", style="yellow", overflow="fold")
         table.add_column("ID", style="dim")
 
-    for cinema in map(asdict, response.cinemas):
+    for cinema in map(asdict, cinemas):
         row: list[str | Text] = [cinema["name"], cinema["city"] or "-"]
         if verbose:
             row.extend(
@@ -73,12 +73,11 @@ async def run_list_cinemas(
     verbose: bool = False,
 ) -> None:
     """List all available cinemas."""
-    list_cinemas_use_case = factory.cinemas.list_cinemas_use_case
-    response = await run_spinner(
-        list_cinemas_use_case.execute(list_cinemas_use_case.InputData(name=name)),
+    cinemas = await run_spinner(
+        list_every_cinema(factory, name=name),
         description="Fetching cinemas...",
     )
-    if not response.cinemas:
+    if not cinemas:
         print("No cinemas found.")
         return
 
@@ -94,7 +93,7 @@ async def run_list_cinemas(
             for assignment in assignments.assignments
         }
 
-    _console.print(_build_table(response, source_names, verbose))
+    _console.print(_build_table(cinemas, source_names, verbose))
 
 
 def list_cinemas(

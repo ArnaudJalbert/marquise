@@ -93,7 +93,7 @@ async def test_select_cinema_executes_list_use_case_and_handles_cancellation(
     assert selected is None
     assert "Cancelled." in capsys.readouterr().out
     list_cinemas_use_case.execute.assert_awaited_once_with(
-        ListCinemasUseCase.InputData()
+        ListCinemasUseCase.InputData(page=1, size=100)
     )
 
 

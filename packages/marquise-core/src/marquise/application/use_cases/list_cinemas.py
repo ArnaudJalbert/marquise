@@ -5,38 +5,37 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from marquise.application.repositories import CinemaRepository
+from marquise.application.repositories.page import get_page_offset
 
 
 class ListCinemasUseCase:
-    """Use case for listing cinemas with optional name filtering."""
+    """Use case for listing one page of cinemas with optional name filtering."""
 
     @dataclass(frozen=True, slots=True)
     class InputData:
         """Input data for listing cinemas.
 
         Attributes:
+            page: Page number (1-based).
+            size: Max number of items per page.
             name: Optional name filter (substring, case-insensitive).
-            page: Page number (1-based). Ignored when size is None.
-            size: Max number of items per page. If None, all matching
-                cinemas are returned unbounded (page is ignored).
         """
 
+        page: int
+        size: int
         name: str | None = None
-        page: int = 1
-        size: int | None = None
 
         def __post_init__(self) -> None:
             """Validate input data.
 
             Raises:
                 ValueError: If name is provided but empty or whitespace-only,
-                    if size is provided but not positive, or if page is less
-                    than 1.
+                    if size is not positive, or if page is less than 1.
             """
             if self.name is not None and not self.name.strip():
                 raise ValueError("name must not be empty when provided")
-            if self.size is not None and self.size < 1:
-                raise ValueError("size must be positive when provided")
+            if self.size < 1:
+                raise ValueError("size must be positive")
             if self.page < 1:
                 raise ValueError("page must be at least 1")
 
@@ -107,7 +106,7 @@ class ListCinemasUseCase:
         self.cinema_repository = cinema_repository
 
     async def execute(self, input_data: InputData) -> OutputData:
-        """List cinemas, optionally filtered by name and paginated.
+        """List one page of cinemas, optionally filtered by name.
 
         Args:
             input_data: The input data containing optional name filter and
@@ -117,17 +116,10 @@ class ListCinemasUseCase:
             The output data containing the matching page of cinemas and the
             total count.
         """
-        if input_data.size is not None:
-            limit = input_data.size
-            offset = (input_data.page - 1) * input_data.size
-        else:
-            limit = None
-            offset = 0
-
         page = await self.cinema_repository.find_all(
             name_filter=input_data.name,
-            limit=limit,
-            offset=offset,
+            limit=input_data.size,
+            offset=get_page_offset(input_data.page, input_data.size),
         )
 
         cinema_data = [

@@ -61,7 +61,7 @@ async def test_cinema_update_success(
     captured = capsys.readouterr()
     assert "Cinema updated:" in captured.out
     mock_list_cinemas_use_case.execute.assert_awaited_once_with(
-        ListCinemasUseCase.InputData()
+        ListCinemasUseCase.InputData(page=1, size=100)
     )
     mock_update_use_case.execute.assert_awaited_once_with(
         UpdateCinemaUseCase.InputData(
