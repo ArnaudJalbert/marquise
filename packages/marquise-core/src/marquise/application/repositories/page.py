@@ -20,17 +20,14 @@ class Page[T]:
     total: int
 
 
-def page_window(page: int, size: int | None) -> tuple[int | None, int]:
+def page_window(page: int, size: int) -> tuple[int, int]:
     """Turn a 1-based page number and page size into a limit and offset.
 
     Args:
         page: The 1-based page number.
-        size: The page size, or ``None`` for no pagination.
+        size: The page size.
 
     Returns:
-        A ``(limit, offset)`` pair. With ``size=None`` the limit is ``None``
-        and the offset is 0.
+        A ``(limit, offset)`` pair.
     """
-    if size is None:
-        return None, 0
     return size, (page - 1) * size

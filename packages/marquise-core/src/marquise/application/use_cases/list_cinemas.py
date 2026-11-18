@@ -118,7 +118,11 @@ class ListCinemasUseCase:
             The output data containing the matching page of cinemas and the
             total count.
         """
-        limit, offset = page_window(input_data.page, input_data.size)
+        limit, offset = (
+            (None, 0)
+            if input_data.size is None
+            else page_window(input_data.page, input_data.size)
+        )
 
         page = await self.cinema_repository.find_all(
             name_filter=input_data.name,

@@ -55,7 +55,11 @@ class GetCinemaScreeningsQuery:
             raise CinemaNotFoundError(
                 f"A cinema with ID '{input_data.cinema_id}' was not found"
             )
-        limit, offset = page_window(input_data.page, input_data.size)
+        limit, offset = (
+            (None, 0)
+            if input_data.size is None
+            else page_window(input_data.page, input_data.size)
+        )
         page = await self.screening_reader.search(
             cinema_id=input_data.cinema_id,
             limit=limit,

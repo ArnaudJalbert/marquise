@@ -57,7 +57,11 @@ class GetMovieScreeningsQuery:
             raise MovieNotFoundError(
                 f"A movie with ID '{input_data.movie_id}' was not found"
             )
-        limit, offset = page_window(input_data.page, input_data.size)
+        limit, offset = (
+            (None, 0)
+            if input_data.size is None
+            else page_window(input_data.page, input_data.size)
+        )
         start_filter = (
             {"start_date": input_data.start} if input_data.start is not None else {}
         )

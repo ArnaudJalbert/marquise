@@ -167,7 +167,11 @@ class ListMoviesUseCase:
             movie_data = [self._to_movie_data(m) for m in movies]
             return self.OutputData(movies=movie_data, total=len(movie_data))
 
-        limit, offset = page_window(input_data.page, input_data.size)
+        limit, offset = (
+            (None, 0)
+            if input_data.size is None
+            else page_window(input_data.page, input_data.size)
+        )
 
         page = await self.movie_repository.find_all(
             title_filter=input_data.title,

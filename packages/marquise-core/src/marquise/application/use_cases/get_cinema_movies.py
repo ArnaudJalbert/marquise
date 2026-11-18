@@ -144,7 +144,11 @@ class GetCinemaMoviesUseCase:
         cinema = await self.cinema_repository.find_by_id(cinema_id)
         assert cinema is not None  # existence already verified above
 
-        limit, offset = page_window(input_data.page, input_data.size)
+        limit, offset = (
+            (None, 0)
+            if input_data.size is None
+            else page_window(input_data.page, input_data.size)
+        )
 
         page = await self.screening_repository.find_distinct_movies_by_cinema(
             cinema_id=cinema_id,
