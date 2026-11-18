@@ -19,7 +19,6 @@ from marquise.application.use_cases.import_screenings import ImportScreeningsCom
 from marquise.application.use_cases.match_movies import MatchMoviesUseCase
 from marquise.application.use_cases.merge_movies import MergeMoviesUseCase
 from marquise.application.use_cases.refresh_movies import RefreshMoviesUseCase
-from marquise.infrastructure.name_distance import RapidFuzzNameDistance
 from marquise.infrastructure.sources.tmdb_metadata import TmdbMetadataHttpSource
 from marquise.infrastructure.supabase.gateways.cinema import SupabaseCinemaGateway
 from marquise.infrastructure.supabase.gateways.cinema_source_assignment import (
@@ -110,8 +109,8 @@ def _build_tmdb_metadata(tmdb_api_key: str) -> TmdbMetadataAdapter:
 
 
 def _build_movie_matcher(metadata: TmdbMetadataAdapter) -> MatchMoviesUseCase:
-    """Build provider matching with fuzzy title distance."""
-    return MatchMoviesUseCase(metadata, RapidFuzzNameDistance())
+    """Build provider matching."""
+    return MatchMoviesUseCase(metadata)
 
 
 def build_refresh_movies_use_case(
