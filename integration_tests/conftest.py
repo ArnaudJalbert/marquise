@@ -34,6 +34,8 @@ def settings() -> Settings:
     load_dotenv()
     return Settings(
         database_url=os.environ["DATABASE_URL"],
+        tmdb_api_key=os.environ["TMDB_API_KEY"],
+        schema=TEST_SCHEMA,
     )
 
 

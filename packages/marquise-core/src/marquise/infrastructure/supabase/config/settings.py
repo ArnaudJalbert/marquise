@@ -11,11 +11,10 @@ class Settings:
 
     Attributes:
         database_url: Full PostgreSQL connection string used by asyncpg.
-        schema: Database schema for all tables (default ``"marquise"``).
-        cineplex_api_key: API key for the Cineplex theatrical API.
+        tmdb_api_key: API key for TMDB movie metadata.
+        schema: Database schema for all tables.
     """
 
-    database_url: str = field(default="", repr=False)
-    cineplex_api_key: str = field(default="", repr=False)
-    tmdb_api_key: str = field(default="", repr=False)
-    schema: str = "marquise"
+    database_url: str = field(repr=False)
+    tmdb_api_key: str = field(repr=False)
+    schema: str

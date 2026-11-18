@@ -41,7 +41,7 @@ from marquise.interface_adapters.repositories.source_adapters.outremont import (
 from marquise.interface_adapters.repositories.source_registry import SourceRegistry
 
 
-def build_source_registry(cineplex_api_key: str) -> SourceRegistry:
+def build_source_registry() -> SourceRegistry:
     """Build registry containing every configured showtime source."""
     registry = SourceRegistry()
     registry.register("cinemacinema", CinemaCinemaAdapter(CinemaCinemaSource()))
@@ -49,8 +49,6 @@ def build_source_registry(cineplex_api_key: str) -> SourceRegistry:
     registry.register("cinemapublic", CinemaPublicAdapter(CinemaPublicSource()))
     registry.register("cinestarz", CineStarzAdapter(CineStarzSource()))
     registry.register("cinematheque", CinemathequeAdapter(CinemathequeSource()))
-    registry.register(
-        "cineplex", CineplexAdapter(CineplexSource(api_key=cineplex_api_key))
-    )
+    registry.register("cineplex", CineplexAdapter(CineplexSource()))
     registry.register("outremont", OutremontAdapter(OutremontSource()))
     return registry
