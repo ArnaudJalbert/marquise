@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from marquise.application.repositories.page import get_page_offset
+from marquise.application.page import get_page_offset
 
 
 @pytest.mark.parametrize(

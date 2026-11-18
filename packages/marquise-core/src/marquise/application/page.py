@@ -1,4 +1,4 @@
-"""Generic paginated result carrier for repository list queries."""
+"""Generic paginated result carrier for list queries."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True, slots=True)
-class Page[T]:
+class Page[ItemT]:
     """A page of domain entities plus the total count matching the query.
 
     Attributes:
@@ -16,7 +16,7 @@ class Page[T]:
             limit/offset.
     """
 
-    items: list[T]
+    items: list[ItemT]
     total: int
 
 

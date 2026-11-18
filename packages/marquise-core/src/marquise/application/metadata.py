@@ -99,10 +99,10 @@ class MetadataMovie:
 
 
 @dataclass(frozen=True, slots=True)
-class MetadataBatch[T]:
+class MetadataBatch[FactT]:
     """Ordered facts; partial retrieval may carry useful items and a failure."""
 
-    items: tuple[T, ...] = ()
+    items: tuple[FactT, ...] = ()
     complete: bool = True
     failure: MetadataFailure | None = None
 

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from marquise.application.page import get_page_offset
 from marquise.application.repositories import CinemaRepository
-from marquise.application.repositories.page import get_page_offset
 
 
 class ListCinemasUseCase:

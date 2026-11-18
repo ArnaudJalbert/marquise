@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from marquise.application.exceptions import TooManyMovieIdsError
+from marquise.application.page import get_page_offset
 from marquise.application.repositories import MovieRepository
-from marquise.application.repositories.page import get_page_offset
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
 

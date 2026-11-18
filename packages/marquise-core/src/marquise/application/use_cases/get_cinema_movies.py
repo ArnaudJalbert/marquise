@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from marquise.application.exceptions import CinemaNotFoundError
+from marquise.application.page import get_page_offset
 from marquise.application.repositories import CinemaRepository, ScreeningRepository
-from marquise.application.repositories.page import get_page_offset
 from marquise.domain.value_objects import CinemaId
 
 

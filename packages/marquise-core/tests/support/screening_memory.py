@@ -5,7 +5,7 @@ from copy import deepcopy
 from datetime import UTC, datetime
 
 from marquise.application.exceptions.screening import ScreeningWriteConflictError
-from marquise.application.repositories.page import Page
+from marquise.application.page import Page
 from marquise.application.repositories.screening_repository import ScreeningRepository
 from marquise.domain.entities import Movie, Screening
 from marquise.domain.value_objects import CinemaId, ScreeningId

@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from datetime import datetime
 
-from marquise.application.repositories.page import Page
+from marquise.application.page import Page
 from marquise.domain.entities import Movie, Screening
 from marquise.domain.value_objects import CinemaId, ScreeningId
 

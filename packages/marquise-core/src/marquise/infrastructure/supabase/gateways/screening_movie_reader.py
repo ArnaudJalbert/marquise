@@ -6,8 +6,8 @@ from datetime import datetime
 
 import asyncpg
 
+from marquise.application.page import get_page_offset
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
-from marquise.application.repositories.page import get_page_offset
 from marquise.domain.constants import MONTREAL_TIME_ZONE
 from marquise.domain.value_objects import HourFilter
 from marquise.infrastructure.supabase.gateways.screening_reader import _naive_utc
