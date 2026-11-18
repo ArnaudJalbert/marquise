@@ -42,7 +42,7 @@ class BrowseScreeningMoviesQuery:
 
     @dataclass(frozen=True, slots=True)
     class InputData:
-        """Inclusive Montreal dates, open-ended without end, and a page of 24.
+        """Inclusive Montreal dates, open-ended without end, and one page of movies.
 
         ``hours`` holds named Montréal ranges matched with OR before optional
         exclusion. No hour filter means any hour.
@@ -50,6 +50,7 @@ class BrowseScreeningMoviesQuery:
 
         start: date
         end: date | None
+        size: int
         page: int = 1
         title: str | None = None
         cinemas: tuple[str, ...] = ()
@@ -65,6 +66,8 @@ class BrowseScreeningMoviesQuery:
                 raise ValueError("end is outside the supported date range")
             if self.page < 1:
                 raise ValueError("page must be at least 1")
+            if self.size < 1:
+                raise ValueError("size must be at least 1")
 
     @dataclass(frozen=True, slots=True)
     class OutputData:
@@ -114,6 +117,7 @@ class BrowseScreeningMoviesQuery:
                 end=end,
                 now=now,
                 page=input_data.page,
+                size=input_data.size,
                 title=input_data.title,
                 cinemas=input_data.cinemas,
                 languages=input_data.languages,

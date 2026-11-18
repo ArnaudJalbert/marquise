@@ -13,8 +13,6 @@ from marquise.domain.value_objects import HourFilter
 from marquise.infrastructure.supabase.gateways.screening_reader import _naive_utc
 from marquise.interface_adapters.repositories.protocols.base import GatewayPage
 
-_MOVIES_PER_PAGE = 24
-
 type _FilterRequest = (
     ScreeningMovieReader.SearchRequest | ScreeningMovieReader.DayCountRequest
 )
@@ -58,7 +56,7 @@ class SupabaseScreeningMovieReadGateway:
                 ORDER BY p.next_showtime, p.movie_id, q.showtime, q.id
                 ''',
                 *self._bind_filter_arguments(request),
-                *page_window(request.page, _MOVIES_PER_PAGE),
+                *page_window(request.page, request.size),
             )
         movies: dict[str, dict] = {}
         for row in rows:

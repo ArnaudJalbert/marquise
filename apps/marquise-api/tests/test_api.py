@@ -1449,7 +1449,9 @@ def test_screening_movies_page_and_validation(
         "total": 25,
     }
     query.execute.assert_awaited_once_with(
-        BrowseScreeningMoviesQuery.InputData(date(2026, 11, 1), date(2026, 11, 1), 2)
+        BrowseScreeningMoviesQuery.InputData(
+            date(2026, 11, 1), date(2026, 11, 1), size=24, page=2
+        )
     )
     query.execute.reset_mock()
     for params in [
@@ -1480,6 +1482,7 @@ def test_screening_movies_filters_reach_the_query(
     query.execute.assert_awaited_once_with(
         BrowseScreeningMoviesQuery.InputData(
             start=date(2026, 11, 1),
+            size=24,
             end=date(2026, 11, 5),
             page=1,
             title="Dune",
@@ -1515,6 +1518,7 @@ def test_screening_movies_accepts_an_hour_filter_with_several_ranges(
     query.execute.assert_awaited_once_with(
         BrowseScreeningMoviesQuery.InputData(
             start=date(2026, 11, 1),
+            size=24,
             end=None,
             hours=BrowseScreeningMoviesQuery.HourFilterInput(
                 ranges=(
@@ -1548,6 +1552,7 @@ def test_screening_movies_maps_a_negative_hour_filter(
     query.execute.assert_awaited_once_with(
         BrowseScreeningMoviesQuery.InputData(
             start=date(2026, 11, 1),
+            size=24,
             end=None,
             hours=BrowseScreeningMoviesQuery.HourFilterInput(
                 ranges=(BrowseScreeningMoviesQuery.HourRangeInput(start=17, end=21),),

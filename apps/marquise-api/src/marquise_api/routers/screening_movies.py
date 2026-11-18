@@ -18,6 +18,8 @@ from marquise_api.schemas import MovieResponse, ScreeningResponse
 
 router = APIRouter(tags=["movies"])
 
+_MOVIES_PER_PAGE = 24
+
 
 class HourRangeRequest(BaseModel):
     """One half-open whole-hour Montréal range."""
@@ -63,7 +65,7 @@ class ScreeningMoviePage(BaseModel):
     items: list[ScreeningMovieResponse]
     total: int
     page: int
-    size: int = 24
+    size: int
     pages: int
 
 
@@ -111,6 +113,7 @@ async def browse_screening_movies(
         BrowseScreeningMoviesQuery.InputData(
             start=start,
             end=end,
+            size=_MOVIES_PER_PAGE,
             page=page,
             title=title,
             cinemas=tuple(cinema or ()),
@@ -131,7 +134,8 @@ async def browse_screening_movies(
         items=[ScreeningMovieResponse.model_validate(movie) for movie in result.movies],
         total=result.total,
         page=page,
-        pages=ceil(result.total / 24),
+        size=_MOVIES_PER_PAGE,
+        pages=ceil(result.total / _MOVIES_PER_PAGE),
     )
 
 
