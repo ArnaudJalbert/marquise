@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from unittest.mock import create_autospec
 
 import pytest
@@ -96,3 +97,20 @@ async def test_create_cinema_raises_error_when_id_collision() -> None:
 
     mock_repo.find_by_name_and_address.assert_awaited_once()
     mock_repo.save.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_create_cinema_saves_hex_uuid_id() -> None:
+    """Verify a new cinema is saved with a 32-character hex ID, no hyphens."""
+    mock_repo = create_autospec(CinemaRepository, instance=True)
+    mock_repo.find_by_name_and_address.return_value = None
+    mock_repo.save.side_effect = lambda cinema: cinema
+
+    use_case = CreateCinemaUseCase(cinema_repository=mock_repo)
+    response = await use_case.execute(
+        CreateCinemaUseCase.InputData(
+            name="Test Cinema", address="123 Test St", city="Montreal"
+        )
+    )
+
+    assert re.fullmatch(r"[0-9a-f]{32}", response.id)
