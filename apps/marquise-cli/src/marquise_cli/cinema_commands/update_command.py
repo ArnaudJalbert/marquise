@@ -30,7 +30,7 @@ def _cinema_choices(
 
 async def _select_cinema(factory: MarquiseFactory) -> dict[str, str | None] | None:
     """List cinemas and prompt for one to update."""
-    list_cinemas_use_case = factory.cinemas.list_cinemas_use_case
+    list_cinemas_use_case = factory.cinemas.list_all_cinemas_use_case
     response = await list_cinemas_use_case.execute(list_cinemas_use_case.InputData())
     cinemas = [asdict(cinema) for cinema in response.cinemas]
     if not cinemas:

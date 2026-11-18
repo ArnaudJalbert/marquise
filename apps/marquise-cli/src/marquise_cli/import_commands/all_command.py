@@ -20,7 +20,7 @@ from marquise import (
     CinemaNotFoundError,
     CinemaSourceAssignmentNotFoundError,
     ImportScreeningsCommand,
-    ListCinemasUseCase,
+    ListAllCinemasUseCase,
     MarquiseFactory,
 )
 from marquise_cli.helpers import run_with_factory
@@ -57,9 +57,9 @@ class CinemaImportResult:
 
 async def _run_bounded_cinema_import(
     import_cinema: Callable[
-        [ListCinemasUseCase.CinemaData], Awaitable[CinemaImportResult]
+        [ListAllCinemasUseCase.CinemaData], Awaitable[CinemaImportResult]
     ],
-    cinema: ListCinemasUseCase.CinemaData,
+    cinema: ListAllCinemasUseCase.CinemaData,
     semaphore: asyncio.Semaphore,
 ) -> CinemaImportResult:
     """Run one cinema import while respecting the bulk concurrency limit."""
@@ -87,13 +87,13 @@ async def run_import_all(
     end_date = today + timedelta(days=days - 1)
     print(f"Starting bulk import: {today} → {end_date} ({days} days)")
 
-    list_cinemas_use_case = factory.cinemas.list_cinemas_use_case
+    list_cinemas_use_case = factory.cinemas.list_all_cinemas_use_case
     cinemas_response = await list_cinemas_use_case.execute(
         list_cinemas_use_case.InputData()
     )
 
     async def _import_cinema(
-        cinema: ListCinemasUseCase.CinemaData,
+        cinema: ListAllCinemasUseCase.CinemaData,
     ) -> CinemaImportResult:
         print(f"  Importing {cinema.name}...")
         try:

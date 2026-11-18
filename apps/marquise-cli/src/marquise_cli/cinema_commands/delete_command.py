@@ -9,14 +9,14 @@ import questionary
 
 from marquise import (
     CinemaNotFoundError,
-    ListCinemasUseCase,
+    ListAllCinemasUseCase,
     MarquiseFactory,
 )
 from marquise_cli.helpers import run_with_factory
 
 
 def _cinema_choices(
-    cinemas: list[ListCinemasUseCase.CinemaData],
+    cinemas: list[ListAllCinemasUseCase.CinemaData],
 ) -> list[questionary.Choice]:
     """Build deletion choices with an exit option."""
     choices = [
@@ -33,7 +33,7 @@ def _cinema_choices(
 
 async def _select_cinema(factory: MarquiseFactory) -> tuple[str, str] | None:
     """List cinemas and interactively select one for deletion."""
-    list_cinemas_use_case = factory.cinemas.list_cinemas_use_case
+    list_cinemas_use_case = factory.cinemas.list_all_cinemas_use_case
     response = await list_cinemas_use_case.execute(list_cinemas_use_case.InputData())
 
     if not response.cinemas:

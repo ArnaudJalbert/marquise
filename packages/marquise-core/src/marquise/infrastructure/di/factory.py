@@ -28,7 +28,7 @@ class MarquiseFactory:
 
     Example:
         async with create_factory_session() as factory:
-            use_case = factory.cinemas.list_cinemas_use_case
+            use_case = factory.cinemas.list_all_cinemas_use_case
             result = await use_case.execute(use_case.InputData())
     """
 

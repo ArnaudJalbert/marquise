@@ -7,7 +7,7 @@ from collections.abc import Awaitable, Callable
 import questionary
 from rich.console import Console
 
-from marquise import ListCinemasUseCase, MarquiseFactory, create_factory_session
+from marquise import ListAllCinemasUseCase, MarquiseFactory, create_factory_session
 
 _console = Console()
 
@@ -54,9 +54,9 @@ async def select_source(factory: MarquiseFactory, prompt: str) -> str | None:
 async def select_cinema(
     factory: MarquiseFactory,
     prompt: str,
-) -> ListCinemasUseCase.CinemaData | None:
+) -> ListAllCinemasUseCase.CinemaData | None:
     """Let user select a cinema, or cancel."""
-    list_cinemas_use_case = factory.cinemas.list_cinemas_use_case
+    list_cinemas_use_case = factory.cinemas.list_all_cinemas_use_case
     response = await list_cinemas_use_case.execute(list_cinemas_use_case.InputData())
     if not response.cinemas:
         print("No cinemas available.")

@@ -12,7 +12,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
-from marquise import ListCinemasUseCase, MarquiseFactory
+from marquise import ListAllCinemasUseCase, MarquiseFactory
 from marquise_cli.helpers import run_spinner, run_with_factory
 
 _console = Console(markup=False)
@@ -32,7 +32,7 @@ def _website_text(website: str) -> Text:
 
 
 def _build_table(
-    response: ListCinemasUseCase.OutputData,
+    response: ListAllCinemasUseCase.OutputData,
     source_names: dict[str, str],
     verbose: bool,
 ) -> Table:
@@ -73,7 +73,7 @@ async def run_list_cinemas(
     verbose: bool = False,
 ) -> None:
     """List all available cinemas."""
-    list_cinemas_use_case = factory.cinemas.list_cinemas_use_case
+    list_cinemas_use_case = factory.cinemas.list_all_cinemas_use_case
     response = await run_spinner(
         list_cinemas_use_case.execute(list_cinemas_use_case.InputData(name=name)),
         description="Fetching cinemas...",
