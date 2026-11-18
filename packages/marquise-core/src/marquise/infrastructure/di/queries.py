@@ -40,13 +40,25 @@ from marquise.interface_adapters.repositories.supabase.movie_repository import (
 )
 
 
+def _build_screening_reader(pool: asyncpg.Pool, schema: str) -> SupabaseScreeningReader:
+    """Build the screening display reader."""
+    return SupabaseScreeningReader(
+        gateway=SupabaseScreeningReadGateway(pool=pool, schema=schema)
+    )
+
+
+def _build_screening_movie_reader(
+    pool: asyncpg.Pool, schema: str
+) -> SupabaseScreeningMovieReader:
+    """Build the movie-first screening reader."""
+    return SupabaseScreeningMovieReader(
+        gateway=SupabaseScreeningMovieReadGateway(pool, schema)
+    )
+
+
 def build_get_screening_query(pool: asyncpg.Pool, schema: str) -> GetScreeningQuery:
     """Build the single-screening query with its display reader."""
-    return GetScreeningQuery(
-        screening_reader=SupabaseScreeningReader(
-            gateway=SupabaseScreeningReadGateway(pool=pool, schema=schema)
-        )
-    )
+    return GetScreeningQuery(screening_reader=_build_screening_reader(pool, schema))
 
 
 def build_get_cinema_screenings_query(
@@ -57,9 +69,7 @@ def build_get_cinema_screenings_query(
         cinema_repository=SupabaseCinemaRepository(
             gateway=SupabaseCinemaGateway(pool=pool, schema=schema)
         ),
-        screening_reader=SupabaseScreeningReader(
-            gateway=SupabaseScreeningReadGateway(pool=pool, schema=schema)
-        ),
+        screening_reader=_build_screening_reader(pool, schema),
     )
 
 
@@ -71,9 +81,7 @@ def build_get_movie_screenings_query(
         movie_repository=SupabaseMovieRepository(
             gateway=SupabaseMovieGateway(pool=pool, schema=schema)
         ),
-        screening_reader=SupabaseScreeningReader(
-            gateway=SupabaseScreeningReadGateway(pool=pool, schema=schema)
-        ),
+        screening_reader=_build_screening_reader(pool, schema),
     )
 
 
@@ -91,9 +99,7 @@ def build_search_screenings_query(
 ) -> SearchScreeningsQuery:
     """Build screening-search query."""
     return SearchScreeningsQuery(
-        screening_reader=SupabaseScreeningReader(
-            gateway=SupabaseScreeningReadGateway(pool=pool, schema=schema)
-        ),
+        screening_reader=_build_screening_reader(pool, schema),
         cinema_repository=SupabaseCinemaRepository(
             gateway=SupabaseCinemaGateway(pool=pool, schema=schema)
         ),
@@ -108,9 +114,7 @@ def build_browse_screening_movies_query(
 ) -> BrowseScreeningMoviesQuery:
     """Build the movie-first reader and inject the request clock."""
     return BrowseScreeningMoviesQuery(
-        reader=SupabaseScreeningMovieReader(
-            gateway=SupabaseScreeningMovieReadGateway(pool, schema)
-        ),
+        reader=_build_screening_movie_reader(pool, schema),
         clock=lambda: datetime.now(UTC),
     )
 
@@ -120,8 +124,6 @@ def build_count_screening_days_query(
 ) -> CountScreeningDaysQuery:
     """Build the daily screening-count reader and inject the request clock."""
     return CountScreeningDaysQuery(
-        reader=SupabaseScreeningMovieReader(
-            gateway=SupabaseScreeningMovieReadGateway(pool, schema)
-        ),
+        reader=_build_screening_movie_reader(pool, schema),
         clock=lambda: datetime.now(UTC),
     )

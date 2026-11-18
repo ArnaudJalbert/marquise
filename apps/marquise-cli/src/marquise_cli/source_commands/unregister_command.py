@@ -10,7 +10,7 @@ from rich.console import Console
 from rich.table import Table
 
 from marquise import MarquiseFactory, SourceNotFoundError
-from marquise_cli.helpers import run_spinner
+from marquise_cli.helpers import run_spinner, run_with_factory
 
 _console = Console()
 
@@ -63,7 +63,7 @@ async def _delete_sources(factory: MarquiseFactory, source_names: list[str]) -> 
 
 async def _delete_source(factory: MarquiseFactory, source_name: str) -> None:
     """Delete one source and report its successful removal."""
-    delete_source_use_case = factory.delete_source_use_case
+    delete_source_use_case = factory.sources.delete_source_use_case
     await run_spinner(
         delete_source_use_case.execute(
             delete_source_use_case.InputData(source_name=source_name)
@@ -75,30 +75,26 @@ async def _delete_source(factory: MarquiseFactory, source_name: str) -> None:
 
 async def run_unregister_sources(factory: MarquiseFactory) -> None:
     """Select and remove persistent source definitions."""
-    await run_spinner(factory.initialize(), description="Connecting...")
-    try:
-        registry_use_case = factory.list_registry_sources_use_case
-        registry_response = await run_spinner(
-            registry_use_case.execute(registry_use_case.InputData()),
-            description="Fetching available sources...",
-        )
-        list_use_case = factory.list_sources_use_case
-        registered_response = await run_spinner(
-            list_use_case.execute(list_use_case.InputData()),
-            description="Fetching registered sources...",
-        )
-        if not registered_response.sources:
-            print("No sources registered in the database.")
-            return
-        registry_names = {source.name for source in registry_response.sources}
-        _console.print(_build_table(registered_response.sources, registry_names))
-        selected = await _select_sources(registered_response.sources)
-        if selected is not None:
-            await _delete_sources(factory, selected)
-    finally:
-        await factory.shutdown()
+    registry_use_case = factory.sources.list_registry_sources_use_case
+    registry_response = await run_spinner(
+        registry_use_case.execute(registry_use_case.InputData()),
+        description="Fetching available sources...",
+    )
+    list_use_case = factory.sources.list_sources_use_case
+    registered_response = await run_spinner(
+        list_use_case.execute(list_use_case.InputData()),
+        description="Fetching registered sources...",
+    )
+    if not registered_response.sources:
+        print("No sources registered in the database.")
+        return
+    registry_names = {source.name for source in registry_response.sources}
+    _console.print(_build_table(registered_response.sources, registry_names))
+    selected = await _select_sources(registered_response.sources)
+    if selected is not None:
+        await _delete_sources(factory, selected)
 
 
 def unregister_sources() -> None:
     """Remove selected showtime sources from database."""
-    asyncio.run(run_unregister_sources(MarquiseFactory()))
+    asyncio.run(run_with_factory(run_unregister_sources))

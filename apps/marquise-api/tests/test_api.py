@@ -7,6 +7,8 @@ so these tests touch no database.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncIterator, Callable
+from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, create_autospec
@@ -18,6 +20,7 @@ from fastapi_cache.backends.inmemory import InMemoryBackend
 from marquise import (
     BrowseScreeningMoviesQuery,
     CinemaNotFoundError,
+    CinemaUseCases,
     CountScreeningDaysQuery,
     GetCinemaMoviesUseCase,
     GetCinemaScreeningsQuery,
@@ -29,7 +32,9 @@ from marquise import (
     ListMoviesUseCase,
     MarquiseFactory,
     MovieNotFoundError,
+    MovieUseCases,
     ScreeningNotFoundError,
+    ScreeningUseCases,
     SearchScreeningsQuery,
     TooManyScreeningDaysError,
 )
@@ -47,28 +52,37 @@ def _clear_response_cache() -> None:
 def factory() -> MagicMock:
     """Provide fake factory with autospecced read use cases."""
     fake = create_autospec(MarquiseFactory, instance=True)
-    fake.list_cinemas_use_case = create_autospec(ListCinemasUseCase, instance=True)
-    fake.get_cinema_use_case = create_autospec(GetCinemaUseCase, instance=True)
-    fake.get_cinema_screenings_query = create_autospec(
+    fake.cinemas = create_autospec(CinemaUseCases, instance=True)
+    fake.cinemas.list_cinemas_use_case = create_autospec(
+        ListCinemasUseCase, instance=True
+    )
+    fake.cinemas.get_cinema_use_case = create_autospec(GetCinemaUseCase, instance=True)
+    fake.cinemas.get_cinema_screenings_query = create_autospec(
         GetCinemaScreeningsQuery, instance=True
     )
-    fake.get_cinema_movies_use_case = create_autospec(
+    fake.cinemas.get_cinema_movies_use_case = create_autospec(
         GetCinemaMoviesUseCase, instance=True
     )
-    fake.list_movies_use_case = create_autospec(ListMoviesUseCase, instance=True)
-    fake.get_movie_use_case = create_autospec(GetMovieUseCase, instance=True)
-    fake.get_movie_screenings_query = create_autospec(
+    fake.movies = create_autospec(MovieUseCases, instance=True)
+    fake.movies.list_movies_use_case = create_autospec(ListMoviesUseCase, instance=True)
+    fake.movies.get_movie_use_case = create_autospec(GetMovieUseCase, instance=True)
+    fake.movies.get_movie_screenings_query = create_autospec(
         GetMovieScreeningsQuery, instance=True
     )
-    fake.search_screenings_query = create_autospec(SearchScreeningsQuery, instance=True)
-    fake.get_screening_query = create_autospec(GetScreeningQuery, instance=True)
+    fake.screenings = create_autospec(ScreeningUseCases, instance=True)
+    fake.screenings.search_screenings_query = create_autospec(
+        SearchScreeningsQuery, instance=True
+    )
+    fake.screenings.get_screening_query = create_autospec(
+        GetScreeningQuery, instance=True
+    )
     return fake
 
 
 @pytest.fixture
-def client(factory: MagicMock) -> TestClient:
+def client(factory: MagicMock, client_opener: Callable[..., TestClient]) -> TestClient:
     """Provide a TestClient backed by the fake container."""
-    return TestClient(create_app(factory=factory))
+    return client_opener(factory)
 
 
 def test_health(client: TestClient) -> None:
@@ -102,13 +116,37 @@ def test_ready_returns_503_when_database_unhealthy(
     assert response.json() == {"status": "unavailable"}
 
 
-def test_ready_is_exempt_from_rate_limiting(
+def test_app_holds_one_factory_session_for_its_lifetime(
     monkeypatch: pytest.MonkeyPatch, factory: MagicMock
+) -> None:
+    """Without an injected factory, startup opens a session and shutdown closes it."""
+    session_events: list[str] = []
+
+    @asynccontextmanager
+    async def fake_factory_session() -> AsyncIterator[MagicMock]:
+        session_events.append("opened")
+        yield factory
+        session_events.append("closed")
+
+    monkeypatch.setattr("marquise_api.app.create_factory_session", fake_factory_session)
+    factory.check_database_health = AsyncMock(return_value=True)
+
+    with TestClient(create_app()) as client:
+        assert client.get("/ready").status_code == 200
+        assert session_events == ["opened"]
+
+    assert session_events == ["opened", "closed"]
+
+
+def test_ready_is_exempt_from_rate_limiting(
+    monkeypatch: pytest.MonkeyPatch,
+    factory: MagicMock,
+    client_opener: Callable[..., TestClient],
 ) -> None:
     """/ready keeps responding even past the configured rate limit."""
     monkeypatch.setenv("MARQUISE_API_RATE_LIMIT", "1/minute")
     factory.check_database_health = AsyncMock(return_value=True)
-    client = TestClient(create_app(factory=factory))
+    client = client_opener(factory)
 
     responses = [client.get("/ready") for _ in range(5)]
 
@@ -117,7 +155,7 @@ def test_ready_is_exempt_from_rate_limiting(
 
 def test_list_cinemas(client: TestClient, factory: MagicMock) -> None:
     """GET /cinemas returns the use case's cinemas."""
-    factory.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+    factory.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
         cinemas=[
             SimpleNamespace(
                 id="cin-1",
@@ -146,21 +184,21 @@ def test_list_cinemas_executes_use_case_dto(
     client: TestClient, factory: MagicMock
 ) -> None:
     """GET /cinemas executes list use case with filter and pagination DTO."""
-    factory.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+    factory.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
         cinemas=[], total=0
     )
 
     response = client.get("/v1/cinemas", params={"name": "Cineplex"})
 
     assert response.status_code == 200
-    factory.list_cinemas_use_case.execute.assert_awaited_once_with(
+    factory.cinemas.list_cinemas_use_case.execute.assert_awaited_once_with(
         ListCinemasUseCase.InputData(name="Cineplex", page=1, size=50)
     )
 
 
 def test_get_cinema_screenings(client: TestClient, factory: MagicMock) -> None:
     """GET /cinemas/{id}/screenings returns screenings in range."""
-    factory.get_cinema_screenings_query.execute.return_value = SimpleNamespace(
+    factory.cinemas.get_cinema_screenings_query.execute.return_value = SimpleNamespace(
         cinema_id="cin-1",
         cinema_name="Cinema One",
         screenings=[
@@ -200,7 +238,7 @@ def test_list_cinemas_pagination(client: TestClient, factory: MagicMock) -> None
     the router passes params through and reports ``total`` from the
     response rather than computing it from the page length.
     """
-    factory.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+    factory.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
         cinemas=[
             SimpleNamespace(
                 id="cin-1", name="Cinema 1", address=None, city=None, website=None
@@ -220,7 +258,7 @@ def test_list_cinemas_pagination(client: TestClient, factory: MagicMock) -> None
     assert body["total"] == 5
     assert body["page"] == 2
     assert body["size"] == 2
-    factory.list_cinemas_use_case.execute.assert_awaited_once_with(
+    factory.cinemas.list_cinemas_use_case.execute.assert_awaited_once_with(
         ListCinemasUseCase.InputData(name=None, page=2, size=2)
     )
 
@@ -236,7 +274,7 @@ def test_list_cinemas_size_out_of_range_is_rejected(
 
 def test_get_cinema(client: TestClient, factory: MagicMock) -> None:
     """GET /cinemas/{id} returns the cinema."""
-    factory.get_cinema_use_case.execute.return_value = SimpleNamespace(
+    factory.cinemas.get_cinema_use_case.execute.return_value = SimpleNamespace(
         id="cin-1",
         name="Cinema One",
         address="123 Rue Sainte-Catherine",
@@ -253,14 +291,16 @@ def test_get_cinema(client: TestClient, factory: MagicMock) -> None:
     assert body["address"] == "123 Rue Sainte-Catherine"
     assert body["city"] == "Montréal"
     assert body["website"] is None
-    factory.get_cinema_use_case.execute.assert_awaited_once_with(
+    factory.cinemas.get_cinema_use_case.execute.assert_awaited_once_with(
         GetCinemaUseCase.InputData(cinema_id="cin-1")
     )
 
 
 def test_get_cinema_not_found(client: TestClient, factory: MagicMock) -> None:
     """A missing cinema yields 404 with the standard error envelope."""
-    factory.get_cinema_use_case.execute.side_effect = CinemaNotFoundError("nope")
+    factory.cinemas.get_cinema_use_case.execute.side_effect = CinemaNotFoundError(
+        "nope"
+    )
 
     response = client.get("/v1/cinemas/missing")
 
@@ -272,7 +312,7 @@ def test_get_cinema_not_found(client: TestClient, factory: MagicMock) -> None:
 
 def test_get_cinema_is_cached(client: TestClient, factory: MagicMock) -> None:
     """A second request for the same cinema reuses the cached response."""
-    factory.get_cinema_use_case.execute.return_value = SimpleNamespace(
+    factory.cinemas.get_cinema_use_case.execute.return_value = SimpleNamespace(
         id="cin-1",
         name="Cinema One",
         address=None,
@@ -288,7 +328,7 @@ def test_get_cinema_is_cached(client: TestClient, factory: MagicMock) -> None:
     assert first.headers.get("X-FastAPI-Cache") == "MISS"
     assert second.headers.get("X-FastAPI-Cache") == "HIT"
     assert second.json() == first.json()
-    factory.get_cinema_use_case.execute.assert_awaited_once()
+    factory.cinemas.get_cinema_use_case.execute.assert_awaited_once()
 
 
 def test_different_cinemas_have_separate_cache_entries(
@@ -305,7 +345,7 @@ def test_different_cinemas_have_separate_cache_entries(
             website=None,
         )
 
-    factory.get_cinema_use_case.execute.side_effect = mock_execute
+    factory.cinemas.get_cinema_use_case.execute.side_effect = mock_execute
 
     response1 = client.get("/v1/cinemas/cin-1")
     response2 = client.get("/v1/cinemas/cin-2")
@@ -314,21 +354,23 @@ def test_different_cinemas_have_separate_cache_entries(
     assert response1.json()["id"] == "cin-1"
     assert response2.json()["id"] == "cin-2"
     assert response1_again.json() == response1.json()
-    assert factory.get_cinema_use_case.execute.call_count == 2
+    assert factory.cinemas.get_cinema_use_case.execute.call_count == 2
 
 
 def test_get_cinema_not_found_errors_are_not_cached(
     client: TestClient, factory: MagicMock
 ) -> None:
     """404 responses are not cached; repeat requests re-execute the use case."""
-    factory.get_cinema_use_case.execute.side_effect = CinemaNotFoundError("not found")
+    factory.cinemas.get_cinema_use_case.execute.side_effect = CinemaNotFoundError(
+        "not found"
+    )
 
     response1 = client.get("/v1/cinemas/missing")
     response2 = client.get("/v1/cinemas/missing")
 
     assert response1.status_code == 404
     assert response2.status_code == 404
-    assert factory.get_cinema_use_case.execute.call_count == 2
+    assert factory.cinemas.get_cinema_use_case.execute.call_count == 2
 
 
 def test_get_cinema_screenings_pagination(
@@ -341,7 +383,7 @@ def test_get_cinema_screenings_pagination(
     router passes params through and reports ``total`` from the response
     rather than computing it from the page length.
     """
-    factory.get_cinema_screenings_query.execute.return_value = SimpleNamespace(
+    factory.cinemas.get_cinema_screenings_query.execute.return_value = SimpleNamespace(
         cinema_id="cin-1",
         cinema_name="Cinema One",
         screenings=[
@@ -382,7 +424,7 @@ def test_get_cinema_screenings_pagination(
     assert body["total"] == 5
     assert body["page"] == 2
     assert body["size"] == 2
-    factory.get_cinema_screenings_query.execute.assert_awaited_once_with(
+    factory.cinemas.get_cinema_screenings_query.execute.assert_awaited_once_with(
         GetCinemaScreeningsQuery.InputData(cinema_id="cin-1", page=2, size=2)
     )
 
@@ -391,8 +433,8 @@ def test_get_cinema_screenings_not_found(
     client: TestClient, factory: MagicMock
 ) -> None:
     """A missing cinema yields 404 with the standard error envelope."""
-    factory.get_cinema_screenings_query.execute.side_effect = CinemaNotFoundError(
-        "nope"
+    factory.cinemas.get_cinema_screenings_query.execute.side_effect = (
+        CinemaNotFoundError("nope")
     )
 
     response = client.get(
@@ -410,7 +452,9 @@ def test_get_cinema_screenings_unexpected_value_error_returns_422_envelope(
     client: TestClient, factory: MagicMock
 ) -> None:
     """A ValueError from the use case yields a 422 envelope."""
-    factory.get_cinema_screenings_query.execute.side_effect = ValueError("bad input")
+    factory.cinemas.get_cinema_screenings_query.execute.side_effect = ValueError(
+        "bad input"
+    )
 
     response = client.get("/v1/cinemas/cin-1/screenings")
 
@@ -424,7 +468,7 @@ def test_get_cinema_screenings_ignores_unsupported_query_params(
     client: TestClient, factory: MagicMock
 ) -> None:
     """Filters beyond cinema scope aren't accepted — use GET /v1/screenings instead."""
-    factory.get_cinema_screenings_query.execute.return_value = SimpleNamespace(
+    factory.cinemas.get_cinema_screenings_query.execute.return_value = SimpleNamespace(
         cinema_id="cin-1",
         cinema_name="Cinema One",
         screenings=[],
@@ -440,14 +484,14 @@ def test_get_cinema_screenings_ignores_unsupported_query_params(
     body = response.json()
     assert len(body["items"]) == 0
     assert body["total"] == 0
-    factory.get_cinema_screenings_query.execute.assert_awaited_once_with(
+    factory.cinemas.get_cinema_screenings_query.execute.assert_awaited_once_with(
         GetCinemaScreeningsQuery.InputData(cinema_id="cin-1", page=1, size=50)
     )
 
 
 def test_get_movie(client: TestClient, factory: MagicMock) -> None:
     """GET /movies/{id} returns the movie."""
-    factory.get_movie_use_case.execute.return_value = SimpleNamespace(
+    factory.movies.get_movie_use_case.execute.return_value = SimpleNamespace(
         id="mov-1",
         title="The Odyssey",
         release_year=2026,
@@ -473,14 +517,14 @@ def test_get_movie(client: TestClient, factory: MagicMock) -> None:
     assert body["release_year"] == 2026
     assert body["tmdb_rating"] == 8.1
     assert body["tmdb_vote_count"] == 1234
-    factory.get_movie_use_case.execute.assert_awaited_once_with(
+    factory.movies.get_movie_use_case.execute.assert_awaited_once_with(
         GetMovieUseCase.InputData(movie_id="mov-1")
     )
 
 
 def test_get_movie_not_found(client: TestClient, factory: MagicMock) -> None:
     """A missing movie yields 404 with the standard error envelope."""
-    factory.get_movie_use_case.execute.side_effect = MovieNotFoundError("nope")
+    factory.movies.get_movie_use_case.execute.side_effect = MovieNotFoundError("nope")
 
     response = client.get("/v1/movies/missing")
 
@@ -490,7 +534,9 @@ def test_get_movie_not_found(client: TestClient, factory: MagicMock) -> None:
     assert body == {"detail": "nope", "error_code": "not_found"}
 
 
-def test_unhandled_exception_returns_generic_500(factory: MagicMock) -> None:
+def test_unhandled_exception_returns_generic_500(
+    factory: MagicMock, client_opener: Callable[..., TestClient]
+) -> None:
     """An unexpected exception from a use case yields a generic 500 envelope.
 
     Uses a separate TestClient with raise_server_exceptions=False: the
@@ -498,8 +544,8 @@ def test_unhandled_exception_returns_generic_500(factory: MagicMock) -> None:
     handler's response is sent (Starlette's ServerErrorMiddleware behavior),
     which would make this test raise instead of asserting on the response.
     """
-    factory.get_movie_use_case.execute.side_effect = RuntimeError("db exploded")
-    client = TestClient(create_app(factory=factory), raise_server_exceptions=False)
+    factory.movies.get_movie_use_case.execute.side_effect = RuntimeError("db exploded")
+    client = client_opener(factory, raise_server_exceptions=False)
 
     response = client.get("/v1/movies/mov-1")
 
@@ -514,7 +560,7 @@ def test_unhandled_exception_returns_generic_500(factory: MagicMock) -> None:
 
 def test_list_movies(client: TestClient, factory: MagicMock) -> None:
     """GET /movies returns the use case's movies."""
-    factory.list_movies_use_case.execute.return_value = SimpleNamespace(
+    factory.movies.list_movies_use_case.execute.return_value = SimpleNamespace(
         movies=[
             SimpleNamespace(
                 id="mov-1",
@@ -555,14 +601,14 @@ def test_list_movies_delegates_to_use_case_with_title_filter(
     client: TestClient, factory: MagicMock
 ) -> None:
     """GET /movies calls list_movies_use_case with the title filter and paging."""
-    factory.list_movies_use_case.execute.return_value = SimpleNamespace(
+    factory.movies.list_movies_use_case.execute.return_value = SimpleNamespace(
         movies=[], total=0
     )
 
     response = client.get("/v1/movies", params={"title": "Odyssey"})
 
     assert response.status_code == 200
-    factory.list_movies_use_case.execute.assert_awaited_once_with(
+    factory.movies.list_movies_use_case.execute.assert_awaited_once_with(
         ListMoviesUseCase.InputData(title="Odyssey", page=1, size=50)
     )
 
@@ -571,7 +617,7 @@ def test_list_movies_converts_ids_to_tuple(
     client: TestClient, factory: MagicMock
 ) -> None:
     """GET /movies maps repeated IDs into immutable use-case DTO input."""
-    factory.list_movies_use_case.execute.return_value = SimpleNamespace(
+    factory.movies.list_movies_use_case.execute.return_value = SimpleNamespace(
         movies=[], total=0
     )
 
@@ -581,14 +627,14 @@ def test_list_movies_converts_ids_to_tuple(
     )
 
     assert response.status_code == 200
-    factory.list_movies_use_case.execute.assert_awaited_once_with(
+    factory.movies.list_movies_use_case.execute.assert_awaited_once_with(
         ListMoviesUseCase.InputData(ids=("mov-1", "mov-2"), page=1, size=2)
     )
 
 
 def test_list_movies_pagination(client: TestClient, factory: MagicMock) -> None:
     """The router forwards page/size and reports the use case's total."""
-    factory.list_movies_use_case.execute.return_value = SimpleNamespace(
+    factory.movies.list_movies_use_case.execute.return_value = SimpleNamespace(
         movies=[
             SimpleNamespace(
                 id="mov-1",
@@ -632,7 +678,7 @@ def test_list_movies_pagination(client: TestClient, factory: MagicMock) -> None:
     assert body["total"] == 5
     assert body["page"] == 2
     assert body["size"] == 2
-    factory.list_movies_use_case.execute.assert_awaited_once_with(
+    factory.movies.list_movies_use_case.execute.assert_awaited_once_with(
         ListMoviesUseCase.InputData(title=None, page=2, size=2)
     )
 
@@ -648,7 +694,7 @@ def test_list_movies_size_out_of_range_is_rejected(
 
 def test_list_cinemas_is_cached(client: TestClient, factory: MagicMock) -> None:
     """A second identical request reuses the cached result instead of re-executing."""
-    factory.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+    factory.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
         cinemas=[
             SimpleNamespace(
                 id="cin-1",
@@ -669,12 +715,12 @@ def test_list_cinemas_is_cached(client: TestClient, factory: MagicMock) -> None:
     assert second.status_code == 200
     assert second.headers.get("X-FastAPI-Cache") == "HIT"
     assert first.json() == second.json()
-    factory.list_cinemas_use_case.execute.assert_awaited_once()
+    factory.cinemas.list_cinemas_use_case.execute.assert_awaited_once()
 
 
 def test_get_movie_is_cached(client: TestClient, factory: MagicMock) -> None:
     """A second request for the same movie reuses the cached response."""
-    factory.get_movie_use_case.execute.return_value = SimpleNamespace(
+    factory.movies.get_movie_use_case.execute.return_value = SimpleNamespace(
         id="mov-1",
         title="The Odyssey",
         release_year=2026,
@@ -698,12 +744,12 @@ def test_get_movie_is_cached(client: TestClient, factory: MagicMock) -> None:
     assert first.headers.get("X-FastAPI-Cache") == "MISS"
     assert second.headers.get("X-FastAPI-Cache") == "HIT"
     assert second.json() == first.json()
-    factory.get_movie_use_case.execute.assert_awaited_once()
+    factory.movies.get_movie_use_case.execute.assert_awaited_once()
 
 
 def test_list_movies_is_cached(client: TestClient, factory: MagicMock) -> None:
     """A second identical request reuses the cached result instead of re-executing."""
-    factory.list_movies_use_case.execute.return_value = SimpleNamespace(
+    factory.movies.list_movies_use_case.execute.return_value = SimpleNamespace(
         movies=[
             SimpleNamespace(
                 id="mov-1",
@@ -730,14 +776,14 @@ def test_list_movies_is_cached(client: TestClient, factory: MagicMock) -> None:
     assert first.status_code == 200
     assert second.status_code == 200
     assert first.json() == second.json()
-    factory.list_movies_use_case.execute.assert_awaited_once()
+    factory.movies.list_movies_use_case.execute.assert_awaited_once()
 
 
 def test_get_cinema_screenings_is_cached(
     client: TestClient, factory: MagicMock
 ) -> None:
     """A second request reuses the cached response."""
-    factory.get_cinema_screenings_query.execute.return_value = SimpleNamespace(
+    factory.cinemas.get_cinema_screenings_query.execute.return_value = SimpleNamespace(
         cinema_id="cin-1",
         cinema_name="Cinema One",
         screenings=[],
@@ -752,7 +798,7 @@ def test_get_cinema_screenings_is_cached(
     assert first.headers.get("X-FastAPI-Cache") == "MISS"
     assert second.headers.get("X-FastAPI-Cache") == "HIT"
     assert second.json() == first.json()
-    factory.get_cinema_screenings_query.execute.assert_awaited_once()
+    factory.cinemas.get_cinema_screenings_query.execute.assert_awaited_once()
 
 
 def test_different_movies_have_separate_cache_entries(
@@ -777,7 +823,7 @@ def test_different_movies_have_separate_cache_entries(
             origin_countries=None,
         )
 
-    factory.get_movie_use_case.execute.side_effect = mock_execute
+    factory.movies.get_movie_use_case.execute.side_effect = mock_execute
 
     response1 = client.get("/v1/movies/mov-1")
     response2 = client.get("/v1/movies/mov-2")
@@ -786,21 +832,23 @@ def test_different_movies_have_separate_cache_entries(
     assert response1.json()["id"] == "mov-1"
     assert response2.json()["id"] == "mov-2"
     assert response1_again.json() == response1.json()
-    assert factory.get_movie_use_case.execute.call_count == 2
+    assert factory.movies.get_movie_use_case.execute.call_count == 2
 
 
 def test_not_found_errors_are_not_cached(
     client: TestClient, factory: MagicMock
 ) -> None:
     """404 responses are not cached; repeat requests re-execute the use case."""
-    factory.get_movie_use_case.execute.side_effect = MovieNotFoundError("not found")
+    factory.movies.get_movie_use_case.execute.side_effect = MovieNotFoundError(
+        "not found"
+    )
 
     response1 = client.get("/v1/movies/missing")
     response2 = client.get("/v1/movies/missing")
 
     assert response1.status_code == 404
     assert response2.status_code == 404
-    assert factory.get_movie_use_case.execute.call_count == 2
+    assert factory.movies.get_movie_use_case.execute.call_count == 2
 
 
 def test_list_cinemas_with_name_filter_creates_separate_cache_entry(
@@ -831,7 +879,7 @@ def test_list_cinemas_with_name_filter_creates_separate_cache_entry(
             ]
         return SimpleNamespace(cinemas=cinemas, total=len(cinemas))
 
-    factory.list_cinemas_use_case.execute.side_effect = mock_list
+    factory.cinemas.list_cinemas_use_case.execute.side_effect = mock_list
 
     response1 = client.get("/v1/cinemas", params={"name": "Cineplex"})
     response2 = client.get("/v1/cinemas", params={"name": "Landmark"})
@@ -841,7 +889,7 @@ def test_list_cinemas_with_name_filter_creates_separate_cache_entry(
     assert response2.json()["items"][0]["name"] == "Landmark Cinemas"
     assert response1_again.json() == response1.json()
     assert response1_again.headers.get("X-FastAPI-Cache") == "HIT"
-    assert factory.list_cinemas_use_case.execute.call_count == 2
+    assert factory.cinemas.list_cinemas_use_case.execute.call_count == 2
 
 
 def test_cors_not_configured_by_default(
@@ -859,14 +907,16 @@ def test_cors_not_configured_by_default(
 
 
 def test_cors_headers_present_when_configured(
-    monkeypatch: pytest.MonkeyPatch, factory: MagicMock
+    monkeypatch: pytest.MonkeyPatch,
+    factory: MagicMock,
+    client_opener: Callable[..., TestClient],
 ) -> None:
     """CORS headers are returned when MARQUISE_API_CORS_ORIGINS is set."""
     monkeypatch.setenv("MARQUISE_API_CORS_ORIGINS", "http://localhost:3000")
-    factory.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+    factory.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
         cinemas=[], total=0
     )
-    client = TestClient(create_app(factory=factory))
+    client = client_opener(factory)
 
     response = client.get(
         "/v1/cinemas",
@@ -878,14 +928,16 @@ def test_cors_headers_present_when_configured(
 
 
 def test_cors_preflight_when_configured(
-    monkeypatch: pytest.MonkeyPatch, factory: MagicMock
+    monkeypatch: pytest.MonkeyPatch,
+    factory: MagicMock,
+    client_opener: Callable[..., TestClient],
 ) -> None:
     """OPTIONS preflight requests return CORS headers when configured."""
     monkeypatch.setenv("MARQUISE_API_CORS_ORIGINS", "http://localhost:3000")
-    factory.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+    factory.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
         cinemas=[], total=0
     )
-    client = TestClient(create_app(factory=factory))
+    client = client_opener(factory)
 
     response = client.options(
         "/v1/cinemas",
@@ -904,14 +956,16 @@ def test_cors_preflight_when_configured(
 
 
 def test_cors_origin_not_allowed_rejected(
-    monkeypatch: pytest.MonkeyPatch, factory: MagicMock
+    monkeypatch: pytest.MonkeyPatch,
+    factory: MagicMock,
+    client_opener: Callable[..., TestClient],
 ) -> None:
     """Requests from an origin not in the allowed list get no CORS headers."""
     monkeypatch.setenv("MARQUISE_API_CORS_ORIGINS", "http://localhost:3000")
-    factory.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+    factory.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
         cinemas=[], total=0
     )
-    client = TestClient(create_app(factory=factory))
+    client = client_opener(factory)
 
     response = client.get(
         "/v1/cinemas",
@@ -926,7 +980,7 @@ def test_rate_limit_headers_present_on_success(
     client: TestClient, factory: MagicMock
 ) -> None:
     """A normal request under the limit reports rate-limit headers."""
-    factory.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+    factory.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
         cinemas=[], total=0
     )
 
@@ -939,14 +993,16 @@ def test_rate_limit_headers_present_on_success(
 
 
 def test_rate_limit_exceeded_returns_429(
-    monkeypatch: pytest.MonkeyPatch, factory: MagicMock
+    monkeypatch: pytest.MonkeyPatch,
+    factory: MagicMock,
+    client_opener: Callable[..., TestClient],
 ) -> None:
     """A client exceeding the configured rate limit gets a 429 with Retry-After."""
     monkeypatch.setenv("MARQUISE_API_RATE_LIMIT", "1/minute")
-    factory.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+    factory.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
         cinemas=[], total=0
     )
-    client = TestClient(create_app(factory=factory))
+    client = client_opener(factory)
 
     first = client.get("/v1/cinemas")
     second = client.get("/v1/cinemas")
@@ -958,11 +1014,13 @@ def test_rate_limit_exceeded_returns_429(
 
 
 def test_health_is_exempt_from_rate_limiting(
-    monkeypatch: pytest.MonkeyPatch, factory: MagicMock
+    monkeypatch: pytest.MonkeyPatch,
+    factory: MagicMock,
+    client_opener: Callable[..., TestClient],
 ) -> None:
     """/health keeps responding 200 even past the configured rate limit."""
     monkeypatch.setenv("MARQUISE_API_RATE_LIMIT", "1/minute")
-    client = TestClient(create_app(factory=factory))
+    client = client_opener(factory)
 
     responses = [client.get("/health") for _ in range(5)]
 
@@ -970,14 +1028,16 @@ def test_health_is_exempt_from_rate_limiting(
 
 
 def test_rate_limit_is_configurable_via_env_var(
-    monkeypatch: pytest.MonkeyPatch, factory: MagicMock
+    monkeypatch: pytest.MonkeyPatch,
+    factory: MagicMock,
+    client_opener: Callable[..., TestClient],
 ) -> None:
     """A higher configured limit allows more requests before a 429."""
     monkeypatch.setenv("MARQUISE_API_RATE_LIMIT", "5/minute")
-    factory.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+    factory.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
         cinemas=[], total=0
     )
-    client = TestClient(create_app(factory=factory))
+    client = client_opener(factory)
 
     responses = [client.get("/v1/cinemas") for _ in range(5)]
 
@@ -987,7 +1047,7 @@ def test_rate_limit_is_configurable_via_env_var(
 
 def test_search_screenings(client: TestClient, factory: MagicMock) -> None:
     """GET /screenings returns the use case's screenings."""
-    factory.search_screenings_query.execute.return_value = SimpleNamespace(
+    factory.screenings.search_screenings_query.execute.return_value = SimpleNamespace(
         screenings=[
             SimpleNamespace(
                 id="scr-1",
@@ -1017,7 +1077,7 @@ def test_search_screenings_delegates_to_use_case_with_filters(
     client: TestClient, factory: MagicMock
 ) -> None:
     """GET /screenings forwards all query params to the use case."""
-    factory.search_screenings_query.execute.return_value = SimpleNamespace(
+    factory.screenings.search_screenings_query.execute.return_value = SimpleNamespace(
         screenings=[], total=0
     )
 
@@ -1032,7 +1092,7 @@ def test_search_screenings_delegates_to_use_case_with_filters(
     )
 
     assert response.status_code == 200
-    factory.search_screenings_query.execute.assert_awaited_once_with(
+    factory.screenings.search_screenings_query.execute.assert_awaited_once_with(
         SearchScreeningsQuery.InputData(
             movie="Odyssey",
             movie_id="mov-1",
@@ -1046,7 +1106,7 @@ def test_search_screenings_delegates_to_use_case_with_filters(
 
 def test_search_screenings_pagination(client: TestClient, factory: MagicMock) -> None:
     """GET /screenings supports page/size pagination."""
-    factory.search_screenings_query.execute.return_value = SimpleNamespace(
+    factory.screenings.search_screenings_query.execute.return_value = SimpleNamespace(
         screenings=[
             SimpleNamespace(
                 id="scr-1",
@@ -1081,7 +1141,7 @@ def test_search_screenings_pagination(client: TestClient, factory: MagicMock) ->
     assert body["total"] == 10
     assert body["page"] == 2
     assert body["size"] == 2
-    factory.search_screenings_query.execute.assert_awaited_once()
+    factory.screenings.search_screenings_query.execute.assert_awaited_once()
 
 
 @pytest.mark.parametrize(
@@ -1101,15 +1161,15 @@ def test_invalid_screening_query_is_rejected(
     response = client.get(url)
     assert response.status_code == 422
     assert response.json()["error_code"] == "invalid_input"
-    factory.search_screenings_query.execute.assert_not_awaited()
-    factory.get_cinema_movies_use_case.execute.assert_not_awaited()
+    factory.screenings.search_screenings_query.execute.assert_not_awaited()
+    factory.cinemas.get_cinema_movies_use_case.execute.assert_not_awaited()
 
 
 def test_search_screenings_invalid_range_returns_422_envelope(
     client: TestClient, factory: MagicMock
 ) -> None:
     """An invalid date range from the use case is surfaced as a 422 envelope."""
-    factory.search_screenings_query.execute.side_effect = ValueError(
+    factory.screenings.search_screenings_query.execute.side_effect = ValueError(
         "start_date must not be after end_date"
     )
 
@@ -1125,7 +1185,7 @@ def test_search_screenings_invalid_range_returns_422_envelope(
 
 def test_search_screenings_is_cached(client: TestClient, factory: MagicMock) -> None:
     """Repeated identical requests to /screenings reuse cached response."""
-    factory.search_screenings_query.execute.return_value = SimpleNamespace(
+    factory.screenings.search_screenings_query.execute.return_value = SimpleNamespace(
         screenings=[], total=0
     )
 
@@ -1136,7 +1196,7 @@ def test_search_screenings_is_cached(client: TestClient, factory: MagicMock) -> 
     assert first.headers.get("X-FastAPI-Cache") == "MISS"
     assert second.status_code == 200
     assert second.headers.get("X-FastAPI-Cache") == "HIT"
-    assert factory.search_screenings_query.execute.await_count == 1
+    assert factory.screenings.search_screenings_query.execute.await_count == 1
 
 
 def test_search_screenings_cache_ignores_fresh_injected_query(
@@ -1146,7 +1206,7 @@ def test_search_screenings_cache_ignores_fresh_injected_query(
     first_query = create_autospec(SearchScreeningsQuery, instance=True)
     first_query.execute.return_value = SimpleNamespace(screenings=[], total=0)
     second_query = create_autospec(SearchScreeningsQuery, instance=True)
-    type(factory).search_screenings_query = PropertyMock(
+    type(factory.screenings).search_screenings_query = PropertyMock(
         side_effect=[first_query, second_query]
     )
 
@@ -1163,7 +1223,7 @@ def test_search_screenings_different_filters_use_separate_cache_entries(
     client: TestClient, factory: MagicMock
 ) -> None:
     """Different query strings get separate cache entries and re-execute."""
-    factory.search_screenings_query.execute.return_value = SimpleNamespace(
+    factory.screenings.search_screenings_query.execute.return_value = SimpleNamespace(
         screenings=[], total=0
     )
 
@@ -1173,14 +1233,14 @@ def test_search_screenings_different_filters_use_separate_cache_entries(
     assert first.status_code == 200
     assert second.status_code == 200
     assert second.headers.get("X-FastAPI-Cache") == "MISS"
-    assert factory.search_screenings_query.execute.await_count == 2
+    assert factory.screenings.search_screenings_query.execute.await_count == 2
 
 
 def test_search_screenings_different_pages_use_separate_cache_entries(
     client: TestClient, factory: MagicMock
 ) -> None:
     """Different page/size combinations get separate cache entries."""
-    factory.search_screenings_query.execute.return_value = SimpleNamespace(
+    factory.screenings.search_screenings_query.execute.return_value = SimpleNamespace(
         screenings=[], total=0
     )
 
@@ -1190,21 +1250,23 @@ def test_search_screenings_different_pages_use_separate_cache_entries(
     assert first.status_code == 200
     assert second.status_code == 200
     assert second.headers.get("X-FastAPI-Cache") == "MISS"
-    assert factory.search_screenings_query.execute.await_count == 2
+    assert factory.screenings.search_screenings_query.execute.await_count == 2
 
 
 def test_get_screening(client: TestClient, factory: MagicMock) -> None:
     """GET /screenings/{id} returns the screening."""
-    factory.get_screening_query.execute.return_value = GetScreeningQuery.OutputData(
-        id="scr-1",
-        movie_id="mov-1",
-        movie_title="The Odyssey",
-        cinema_id="cin-1",
-        cinema_name="Cinema One",
-        showtime=datetime.fromisoformat("2026-06-27T19:30:00+00:00"),
-        ticket_url=None,
-        room=None,
-        language=None,
+    factory.screenings.get_screening_query.execute.return_value = (
+        GetScreeningQuery.OutputData(
+            id="scr-1",
+            movie_id="mov-1",
+            movie_title="The Odyssey",
+            cinema_id="cin-1",
+            cinema_name="Cinema One",
+            showtime=datetime.fromisoformat("2026-06-27T19:30:00+00:00"),
+            ticket_url=None,
+            room=None,
+            language=None,
+        )
     )
 
     response = client.get("/v1/screenings/scr-1")
@@ -1222,14 +1284,14 @@ def test_get_screening(client: TestClient, factory: MagicMock) -> None:
         "room": None,
         "language": None,
     }
-    factory.get_screening_query.execute.assert_awaited_once_with(
+    factory.screenings.get_screening_query.execute.assert_awaited_once_with(
         GetScreeningQuery.InputData(screening_id="scr-1")
     )
 
 
 def test_get_screening_not_found(client: TestClient, factory: MagicMock) -> None:
     """GET /screenings/{id} returns a 404 envelope for a missing screening."""
-    factory.get_screening_query.execute.side_effect = ScreeningNotFoundError(
+    factory.screenings.get_screening_query.execute.side_effect = ScreeningNotFoundError(
         "A screening with ID 'missing' was not found"
     )
 
@@ -1242,7 +1304,7 @@ def test_get_screening_not_found(client: TestClient, factory: MagicMock) -> None
 
 def test_get_movie_screenings(client: TestClient, factory: MagicMock) -> None:
     """GET /movies/{id}/screenings returns all of the movie's screenings."""
-    factory.get_movie_screenings_query.execute.return_value = SimpleNamespace(
+    factory.movies.get_movie_screenings_query.execute.return_value = SimpleNamespace(
         movie_id="mov-1",
         movie_title="The Odyssey",
         screenings=[
@@ -1274,7 +1336,7 @@ def test_get_movie_screenings_without_from_keeps_unfiltered_call(
     client: TestClient, factory: MagicMock
 ) -> None:
     """Omitting from keeps the current call; cinema and language stay ignored."""
-    factory.get_movie_screenings_query.execute.return_value = SimpleNamespace(
+    factory.movies.get_movie_screenings_query.execute.return_value = SimpleNamespace(
         movie_id="mov-1", movie_title="The Odyssey", screenings=[], total=0
     )
 
@@ -1284,7 +1346,7 @@ def test_get_movie_screenings_without_from_keeps_unfiltered_call(
     )
 
     assert response.status_code == 200
-    factory.get_movie_screenings_query.execute.assert_awaited_once_with(
+    factory.movies.get_movie_screenings_query.execute.assert_awaited_once_with(
         GetMovieScreeningsQuery.InputData(movie_id="mov-1", page=1, size=50)
     )
 
@@ -1293,7 +1355,7 @@ def test_get_movie_screenings_passes_from_as_start(
     client: TestClient, factory: MagicMock
 ) -> None:
     """The from query parameter is parsed and passed to the query as start."""
-    factory.get_movie_screenings_query.execute.return_value = SimpleNamespace(
+    factory.movies.get_movie_screenings_query.execute.return_value = SimpleNamespace(
         movie_id="mov-1", movie_title="The Odyssey", screenings=[], total=0
     )
 
@@ -1303,7 +1365,7 @@ def test_get_movie_screenings_passes_from_as_start(
     )
 
     assert response.status_code == 200
-    factory.get_movie_screenings_query.execute.assert_awaited_once_with(
+    factory.movies.get_movie_screenings_query.execute.assert_awaited_once_with(
         GetMovieScreeningsQuery.InputData(
             movie_id="mov-1",
             start=datetime(2026, 6, 27, 18, 0, tzinfo=UTC),
@@ -1317,7 +1379,7 @@ def test_get_movie_screenings_preserves_opaque_slash_id(
     client: TestClient, factory: MagicMock
 ) -> None:
     """An encoded slash in the movie ID reaches the query as the exact ID."""
-    factory.get_movie_screenings_query.execute.return_value = SimpleNamespace(
+    factory.movies.get_movie_screenings_query.execute.return_value = SimpleNamespace(
         movie_id="catalogue/id", movie_title="Slash film", screenings=[], total=0
     )
 
@@ -1327,7 +1389,7 @@ def test_get_movie_screenings_preserves_opaque_slash_id(
     )
 
     assert response.status_code == 200
-    factory.get_movie_screenings_query.execute.assert_awaited_once_with(
+    factory.movies.get_movie_screenings_query.execute.assert_awaited_once_with(
         GetMovieScreeningsQuery.InputData(
             movie_id="catalogue/id",
             start=datetime(2026, 6, 27, 18, 0, tzinfo=UTC),
@@ -1339,7 +1401,7 @@ def test_get_movie_screenings_preserves_opaque_slash_id(
 
 def test_get_movie_screenings_not_found(client: TestClient, factory: MagicMock) -> None:
     """GET /movies/{id}/screenings returns a 404 envelope for a missing movie."""
-    factory.get_movie_screenings_query.execute.side_effect = MovieNotFoundError(
+    factory.movies.get_movie_screenings_query.execute.side_effect = MovieNotFoundError(
         "A movie with ID 'missing' was not found"
     )
 
@@ -1352,7 +1414,7 @@ def test_get_movie_screenings_not_found(client: TestClient, factory: MagicMock) 
 
 def test_get_cinema_movies(client: TestClient, factory: MagicMock) -> None:
     """GET /cinemas/{id}/movies returns the cinema's distinct movies."""
-    factory.get_cinema_movies_use_case.execute.return_value = SimpleNamespace(
+    factory.cinemas.get_cinema_movies_use_case.execute.return_value = SimpleNamespace(
         cinema_id="cin-1",
         cinema_name="Cinema One",
         movies=[
@@ -1385,7 +1447,7 @@ def test_get_cinema_movies(client: TestClient, factory: MagicMock) -> None:
     assert body["items"][0]["title"] == "The Odyssey"
     assert body["total"] == 1
 
-    factory.get_cinema_movies_use_case.execute.assert_awaited_once_with(
+    factory.cinemas.get_cinema_movies_use_case.execute.assert_awaited_once_with(
         GetCinemaMoviesUseCase.InputData(
             cinema_id="cin-1",
             start_date=datetime(2026, 6, 27, tzinfo=UTC),
@@ -1398,8 +1460,8 @@ def test_get_cinema_movies(client: TestClient, factory: MagicMock) -> None:
 
 def test_get_cinema_movies_not_found(client: TestClient, factory: MagicMock) -> None:
     """GET /cinemas/{id}/movies returns a 404 envelope for an unknown cinema."""
-    factory.get_cinema_movies_use_case.execute.side_effect = CinemaNotFoundError(
-        "A cinema with ID 'missing' was not found"
+    factory.cinemas.get_cinema_movies_use_case.execute.side_effect = (
+        CinemaNotFoundError("A cinema with ID 'missing' was not found")
     )
 
     response = client.get("/v1/cinemas/missing/movies")
@@ -1411,7 +1473,7 @@ def test_get_cinema_movies_not_found(client: TestClient, factory: MagicMock) -> 
 
 def test_get_cinema_movies_pagination(client: TestClient, factory: MagicMock) -> None:
     """The router forwards page/size and reports the use case's total."""
-    factory.get_cinema_movies_use_case.execute.return_value = SimpleNamespace(
+    factory.cinemas.get_cinema_movies_use_case.execute.return_value = SimpleNamespace(
         cinema_id="cin-1",
         cinema_name="Cinema One",
         movies=[],
@@ -1432,7 +1494,7 @@ def test_screening_movies_page_and_validation(
 ) -> None:
     """Movie-first reads return terminal metadata and validate before querying."""
     query = create_autospec(BrowseScreeningMoviesQuery, instance=True)
-    factory.browse_screening_movies_query = query
+    factory.screenings.browse_screening_movies_query = query
     query.execute.return_value = BrowseScreeningMoviesQuery.OutputData(
         movies=(), total=25
     )
@@ -1466,7 +1528,7 @@ def test_screening_movies_filters_reach_the_query(
 ) -> None:
     """Repeated filters, one hour range and exclusions reach one movie-first query."""
     query = create_autospec(BrowseScreeningMoviesQuery, instance=True)
-    factory.browse_screening_movies_query = query
+    factory.screenings.browse_screening_movies_query = query
     query.execute.return_value = BrowseScreeningMoviesQuery.OutputData(
         movies=(), total=0
     )
@@ -1498,7 +1560,7 @@ def test_screening_movies_accepts_an_hour_filter_with_several_ranges(
 ) -> None:
     """A structured hour filter keeps several ranges matched with OR."""
     query = create_autospec(BrowseScreeningMoviesQuery, instance=True)
-    factory.browse_screening_movies_query = query
+    factory.screenings.browse_screening_movies_query = query
     query.execute.return_value = BrowseScreeningMoviesQuery.OutputData(
         movies=(), total=0
     )
@@ -1531,7 +1593,7 @@ def test_screening_movies_maps_a_negative_hour_filter(
 ) -> None:
     """A negative hour filter reaches the query without client complements."""
     query = create_autospec(BrowseScreeningMoviesQuery, instance=True)
-    factory.browse_screening_movies_query = query
+    factory.screenings.browse_screening_movies_query = query
     query.execute.return_value = BrowseScreeningMoviesQuery.OutputData(
         movies=(), total=0
     )
@@ -1574,7 +1636,7 @@ def test_screening_movies_rejects_invalid_hour_ranges(
 ) -> None:
     """Invalid operators and ranges fail Pydantic validation before querying."""
     query = create_autospec(BrowseScreeningMoviesQuery, instance=True)
-    factory.browse_screening_movies_query = query
+    factory.screenings.browse_screening_movies_query = query
     response = client.post(
         "/v1/screening-movies?start=2026-11-01",
         json={"hours": hours},
@@ -1588,7 +1650,7 @@ def test_screening_movie_metadata_and_preview_response(
 ) -> None:
     """Card metadata, source language and the original booking URL reach delivery."""
     query = create_autospec(BrowseScreeningMoviesQuery, instance=True)
-    factory.browse_screening_movies_query = query
+    factory.screenings.browse_screening_movies_query = query
     query.execute.return_value = SimpleNamespace(
         movies=[
             SimpleNamespace(
@@ -1641,7 +1703,7 @@ def test_screening_day_counts_return_every_day_and_reach_the_query(
 ) -> None:
     """One request carries every filter and returns each day's total, zeros too."""
     query = create_autospec(CountScreeningDaysQuery, instance=True)
-    factory.count_screening_days_query = query
+    factory.screenings.count_screening_days_query = query
     query.execute.return_value = SimpleNamespace(
         days=(_day_count(date(2026, 11, 1), 0), _day_count(date(2026, 11, 2), 7))
     )
@@ -1698,7 +1760,7 @@ def test_screening_day_counts_reject_invalid_ranges_before_querying(
 ) -> None:
     """A missing, malformed or inverted horizon, or a bad hour range, is a 422."""
     query = create_autospec(CountScreeningDaysQuery, instance=True)
-    factory.count_screening_days_query = query
+    factory.screenings.count_screening_days_query = query
     response = client.post(f"/v1/screening-day-counts?{params}", json=body)
     assert response.status_code == 422
     query.execute.assert_not_awaited()
@@ -1709,7 +1771,7 @@ def test_screening_day_counts_map_an_oversized_horizon_to_422(
 ) -> None:
     """The query's horizon limit reaches clients as invalid input."""
     query = create_autospec(CountScreeningDaysQuery, instance=True)
-    factory.count_screening_days_query = query
+    factory.screenings.count_screening_days_query = query
     query.execute.side_effect = TooManyScreeningDaysError("too many days")
     response = client.post(
         "/v1/screening-day-counts?start=2026-11-01&end=2026-12-31", json={}
@@ -1722,11 +1784,11 @@ def test_list_movies_preserves_opaque_slash_id(
     client: TestClient, factory: MagicMock
 ) -> None:
     """The one-ID query preserves slashes that cannot survive route matching."""
-    factory.list_movies_use_case.execute.return_value = SimpleNamespace(
+    factory.movies.list_movies_use_case.execute.return_value = SimpleNamespace(
         movies=[], total=0
     )
     response = client.get("/v1/movies?ids=catalogue%2Fid&page=1&size=1")
     assert response.status_code == 200
-    factory.list_movies_use_case.execute.assert_awaited_once_with(
+    factory.movies.list_movies_use_case.execute.assert_awaited_once_with(
         ListMoviesUseCase.InputData(ids=("catalogue/id",), page=1, size=1)
     )

@@ -14,6 +14,7 @@ from collections import Counter
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import date, timedelta
+from functools import partial
 
 from marquise import (
     CinemaNotFoundError,
@@ -22,6 +23,7 @@ from marquise import (
     ListCinemasUseCase,
     MarquiseFactory,
 )
+from marquise_cli.helpers import run_with_factory
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,66 +87,62 @@ async def run_import_all(
     end_date = today + timedelta(days=days - 1)
     print(f"Starting bulk import: {today} → {end_date} ({days} days)")
 
-    await factory.initialize()
-    try:
-        list_cinemas_use_case = factory.list_cinemas_use_case
-        cinemas_response = await list_cinemas_use_case.execute(
-            list_cinemas_use_case.InputData()
-        )
+    list_cinemas_use_case = factory.cinemas.list_cinemas_use_case
+    cinemas_response = await list_cinemas_use_case.execute(
+        list_cinemas_use_case.InputData()
+    )
 
-        async def _import_cinema(
-            cinema: ListCinemasUseCase.CinemaData,
-        ) -> CinemaImportResult:
-            print(f"  Importing {cinema.name}...")
-            try:
-                output = await factory.import_screenings_use_case.execute(
-                    ImportScreeningsCommand.InputData(
-                        cinema_id=cinema.id,
-                        start_date=today,
-                        end_date=end_date,
-                    )
-                )
-            except CinemaSourceAssignmentNotFoundError:
-                return CinemaImportResult(
-                    cinema_name=cinema.name,
-                    status="skipped",
-                    detail="no source assigned",
-                )
-            except CinemaNotFoundError as exc:
-                return CinemaImportResult(
-                    cinema_name=cinema.name,
-                    status="failed",
-                    detail=str(exc),
-                )
-            except Exception as exc:
-                return CinemaImportResult(
-                    cinema_name=cinema.name,
-                    status="failed",
-                    detail=f"{type(exc).__name__}: {exc}",
-                )
-            else:
-                return CinemaImportResult(
-                    cinema_name=cinema.name,
-                    status="imported",
-                    imported_count=output.imported_count,
-                    updated_count=output.updated_count,
-                    rescheduled_count=output.rescheduled_count,
-                    skipped_screenings_count=output.skipped_count,
-                    skipped_movies=output.skipped_movies,
-                    unmatched_movies=output.unmatched_movies,
-                )
-
-        semaphore = asyncio.Semaphore(2)
-        return list(
-            await asyncio.gather(
-                *(
-                    _run_bounded_cinema_import(_import_cinema, cinema, semaphore)
-                    for cinema in cinemas_response.cinemas
+    async def _import_cinema(
+        cinema: ListCinemasUseCase.CinemaData,
+    ) -> CinemaImportResult:
+        print(f"  Importing {cinema.name}...")
+        try:
+            output = await factory.screenings.import_screenings_command.execute(
+                ImportScreeningsCommand.InputData(
+                    cinema_id=cinema.id,
+                    start_date=today,
+                    end_date=end_date,
                 )
             )
+        except CinemaSourceAssignmentNotFoundError:
+            return CinemaImportResult(
+                cinema_name=cinema.name,
+                status="skipped",
+                detail="no source assigned",
+            )
+        except CinemaNotFoundError as exc:
+            return CinemaImportResult(
+                cinema_name=cinema.name,
+                status="failed",
+                detail=str(exc),
+            )
+        except Exception as exc:
+            return CinemaImportResult(
+                cinema_name=cinema.name,
+                status="failed",
+                detail=f"{type(exc).__name__}: {exc}",
+            )
+        else:
+            return CinemaImportResult(
+                cinema_name=cinema.name,
+                status="imported",
+                imported_count=output.imported_count,
+                updated_count=output.updated_count,
+                rescheduled_count=output.rescheduled_count,
+                skipped_screenings_count=output.skipped_count,
+                skipped_movies=output.skipped_movies,
+                unmatched_movies=output.unmatched_movies,
+            )
+
+    semaphore = asyncio.Semaphore(2)
+    return list(
+        await asyncio.gather(
+            *(
+                _run_bounded_cinema_import(_import_cinema, cinema, semaphore)
+                for cinema in cinemas_response.cinemas
+            )
         )
-    finally:
-        await factory.shutdown()
+    )
 
 
 def _print_totals(
@@ -229,7 +227,7 @@ def _print_results(results: list[CinemaImportResult]) -> int:
 
 def import_all(days: int) -> None:
     """Import showtimes for every cinema that has a source assignment."""
-    results = asyncio.run(run_import_all(MarquiseFactory(), days))
+    results = asyncio.run(run_with_factory(partial(run_import_all, days=days)))
 
     if _print_results(results):
         raise SystemExit(1)

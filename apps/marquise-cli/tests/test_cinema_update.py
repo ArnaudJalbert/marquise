@@ -29,8 +29,8 @@ def _update_setup(
     mock_list_cinemas_use_case.execute.return_value = ListCinemasUseCase.OutputData(
         cinemas=[cinema], total=1
     )
-    mock_factory.list_cinemas_use_case = mock_list_cinemas_use_case
-    mock_factory.update_cinema_use_case = mock_update_use_case
+    mock_factory.cinemas.list_cinemas_use_case = mock_list_cinemas_use_case
+    mock_factory.cinemas.update_cinema_use_case = mock_update_use_case
     return asdict(cinema)
 
 
@@ -68,8 +68,6 @@ async def test_cinema_update_success(
             "cin-001", "Updated Name", "456 New Ave", "Montreal", "https://example.com"
         )
     )
-    mock_factory.__aenter__.assert_awaited_once()
-    mock_factory.__aexit__.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -174,8 +172,8 @@ async def test_cinema_update_no_cinemas(
     mock_list_cinemas_use_case.execute.return_value = ListCinemasUseCase.OutputData(
         cinemas=[], total=0
     )
-    mock_factory.list_cinemas_use_case = mock_list_cinemas_use_case
-    mock_factory.update_cinema_use_case = mock_update_use_case
+    mock_factory.cinemas.list_cinemas_use_case = mock_list_cinemas_use_case
+    mock_factory.cinemas.update_cinema_use_case = mock_update_use_case
 
     await run_update(mock_factory)
 
@@ -233,5 +231,3 @@ async def test_cinema_update_unexpected_failure_propagates(
         mock_q.checkbox.return_value.ask_async = AsyncMock(return_value=["name"])
         mock_q.text.return_value.ask_async = AsyncMock(return_value="New Name")
         await run_update(mock_factory)
-
-    mock_factory.__aexit__.assert_awaited_once()
