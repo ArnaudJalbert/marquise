@@ -8,8 +8,8 @@ def test_sensitive_dataclass_reprs_do_not_include_credentials() -> None:
     values = [
         Settings(
             database_url="postgresql://user:database-password@example.com/db",
-            cineplex_api_key="cineplex-secret",
             tmdb_api_key="tmdb-secret",
+            schema="marquise",
         ),
     ]
 
@@ -17,7 +17,6 @@ def test_sensitive_dataclass_reprs_do_not_include_credentials() -> None:
 
     for secret in (
         "database-password",
-        "cineplex-secret",
         "tmdb-secret",
     ):
         assert secret not in rendered

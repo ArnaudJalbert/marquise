@@ -10,9 +10,7 @@ Env vars → [CONTRIBUTING.md](../CONTRIBUTING.md#environment-variables).
 
 1. Create a Supabase project (or local PostgreSQL).
 2. Open the SQL Editor and run [scripts/marquise-schema.sql](../scripts/marquise-schema.sql).
-3. Copy `.env.example` → `.env` and set `DATABASE_URL` to your connection string.
-
-Optional: `DATABASE_SCHEMA` (default `marquise`).
+3. Copy `.env.example` → `.env` and set `DATABASE_URL`, `DATABASE_SCHEMA` and `TMDB_API_KEY`. All three are required.
 
 ## Integration tests
 
@@ -26,4 +24,5 @@ Run integration tests:
 uv run pytest integration_tests/ -q
 ```
 
-Requires `DATABASE_URL` in `.env`.
+Requires `DATABASE_URL` and `TMDB_API_KEY` in `.env`. The tests always use the
+`"marquise-test"` schema.

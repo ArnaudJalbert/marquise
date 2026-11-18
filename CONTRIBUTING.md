@@ -88,9 +88,8 @@ Package roles and dependency rules: [web rules](docs/agents/rules/web.md).
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `DATABASE_URL` | Yes | PostgreSQL connection string |
-| `CINEPLEX_API_KEY` | No | Cineplex API subscription key |
-| `TMDB_API_KEY` | Imports | TMDB API key for matching movies during import; imports fail if it is absent |
-| `DATABASE_SCHEMA` | No | Schema name (default: `marquise`) |
+| `DATABASE_SCHEMA` | Yes | Schema name, `marquise` in production |
+| `TMDB_API_KEY` | Yes | TMDB API key for movie metadata |
 | `MARQUISE_API_CACHE_TTL_SECONDS` | No | API in-memory cache TTL (default: 3600) |
 | `MARQUISE_API_CORS_ORIGINS` | No | Comma-separated CORS origins (default: none) |
 | `MARQUISE_API_RATE_LIMIT` | No | Per-IP rate limit (default: `3000/minute`) |
@@ -99,7 +98,9 @@ Package roles and dependency rules: [web rules](docs/agents/rules/web.md).
 
 Building a `MarquiseFactory` runs `load_dotenv()` before it reads settings, so a
 local `.env` reaches any process or test that builds the factory. Importing
-`marquise` reads no `.env`.
+`marquise` reads no `.env`. `create_factory_session` raises before it opens the
+database when `DATABASE_URL`, `DATABASE_SCHEMA` or `TMDB_API_KEY` is unset or
+empty, and the error names each missing variable.
 
 ---
 

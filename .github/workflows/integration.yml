@@ -25,6 +25,8 @@ jobs:
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       DATABASE_URL: postgresql://marquise:test-only@127.0.0.1:5432/marquise_test
+      DATABASE_SCHEMA: marquise-test
+      TMDB_API_KEY: test-only
 
     steps:
       - uses: actions/checkout@v7

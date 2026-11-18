@@ -24,14 +24,10 @@ SHOWTIMES_URL = "https://apis.cineplex.com/prod/cpx/theatrical/api/v1/showtimes"
 MOVIE_DETAIL_TPL = "https://www.cineplex.com/movie/{slug}"
 HOMEPAGE_URL = "https://www.cineplex.com/"
 
-# Public Azure API Management subscription key embedded in Cineplex's own
-# web frontend (cineplex.com ships it in plain JS and sends it on every
-# anonymous request). The theatrical API began returning HTTP 401 for
-# keyless requests, so we send the same anonymous key the website uses.
-# Cineplex rotates this key periodically, so it is discovered at runtime
-# from the live frontend (see ``_discover_subscription_key``); this baked-in
-# value is only a last-resort fallback if discovery fails.
-_PUBLIC_SUBSCRIPTION_KEY = "dcdac5601d864addbc2675a2e96cb1f8"
+# The theatrical API needs the public Azure API Management subscription key
+# that Cineplex's own web frontend ships in plain JS and sends on every
+# anonymous request. Cineplex rotates it, so it is discovered at runtime from
+# the live frontend (see ``_discover_subscription_key``).
 
 # Locates JS bundle chunks referenced by a Next.js page.
 _CHUNK_URL_RE = re.compile(r"/_next/static/chunks/[^\"']+\.js")
@@ -360,30 +356,33 @@ def _flatten_showtimes(
 class CineplexSource:
     """Showtime source for Cineplex theatres."""
 
-    def __init__(self, api_key: str = "") -> None:
-        # An explicitly configured key (CINEPLEX_API_KEY) always wins. When it
-        # is empty we discover Cineplex's rotating anonymous key at request
-        # time; ``_last_known_key`` retains the most recent value (seeded with
-        # the baked-in fallback) for when a discovery attempt fails.
-        self._configured_api_key = api_key
-        self._last_known_key = _PUBLIC_SUBSCRIPTION_KEY
+    def __init__(self) -> None:
+        # Holds the last key discovered from the Cineplex frontend, reused
+        # when a later discovery attempt fails.
+        self._last_discovered_key: str | None = None
 
     def _resolve_api_key(self) -> str:
         """Return the subscription key to use for the next API request.
 
-        A configured key is returned as-is. Otherwise the current anonymous key
-        is scraped fresh from the Cineplex frontend so we follow key rotations;
-        if that fails we reuse the last key that worked.
+        The current anonymous key is scraped fresh from the Cineplex frontend
+        so requests follow key rotations. If discovery fails, the last
+        discovered key is reused.
 
         Returns:
             The subscription key to send with the request.
+
+        Raises:
+            RuntimeError: If discovery fails and no key was ever discovered.
         """
-        if self._configured_api_key:
-            return self._configured_api_key
         discovered = _discover_subscription_key()
         if discovered:
-            self._last_known_key = discovered
-        return self._last_known_key
+            self._last_discovered_key = discovered
+        if self._last_discovered_key is None:
+            raise RuntimeError(
+                "Cineplex subscription key discovery failed and no key was "
+                "discovered earlier"
+            )
+        return self._last_discovered_key
 
     async def fetch_showtimes(
         self,
@@ -406,6 +405,7 @@ class CineplexSource:
 
         Raises:
             urllib.error.HTTPError: On API errors.
+            RuntimeError: If no subscription key could be discovered.
         """
         url = f"{SHOWTIMES_URL}?LocationId={location_id}"
         data = _fetch_json(url, api_key=self._resolve_api_key())

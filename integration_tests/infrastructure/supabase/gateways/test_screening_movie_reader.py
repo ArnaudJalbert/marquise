@@ -65,13 +65,13 @@ async def test_distinct_movie_pages_previews_and_end_metadata(
     )
     end = datetime(2026, 11, 2, 4, 59, 59, 999999, tzinfo=UTC)
     first = await reader.search(
-        ScreeningMovieReader.SearchRequest(start, end, start, 1)
+        ScreeningMovieReader.SearchRequest(start, end, start, 1, 24)
     )
     second = await reader.search(
-        ScreeningMovieReader.SearchRequest(start, end, start, 2)
+        ScreeningMovieReader.SearchRequest(start, end, start, 2, 24)
     )
     beyond = await reader.search(
-        ScreeningMovieReader.SearchRequest(start, end, start, 3)
+        ScreeningMovieReader.SearchRequest(start, end, start, 3, 24)
     )
     assert [m.id for m in first.items] == [f"m{i:02}" for i in range(24)]
     assert [m.id for m in second.items] == ["m24", "m25", "m26"]
@@ -92,7 +92,7 @@ async def test_distinct_movie_pages_previews_and_end_metadata(
     assert all(s.showtime.tzinfo is not None for s in preview.screenings)
     empty = await reader.search(
         ScreeningMovieReader.SearchRequest(
-            end + timedelta(days=1), end + timedelta(days=2), start, 1
+            end + timedelta(days=1), end + timedelta(days=2), start, 1, 24
         )
     )
     assert empty.items == [] and empty.total == 0
@@ -124,7 +124,7 @@ async def test_inclusive_dst_bounds_ordering_and_started_previews(
     start = datetime(2026, 11, 1, 4, tzinfo=UTC)
     end = datetime(2026, 11, 2, 4, 59, 59, 999999, tzinfo=UTC)
     result = await gateway.search(
-        ScreeningMovieReader.SearchRequest(start, end, start, 1)
+        ScreeningMovieReader.SearchRequest(start, end, start, 1, 24)
     )
     assert [m["id"] for m in result.rows] == ["z", "a"]
     assert result.total == 2
@@ -167,6 +167,7 @@ async def test_filters_apply_to_qualifying_screenings_before_preview_selection(
             end=datetime(2026, 11, 4, 4, 59, tzinfo=UTC),
             now=datetime(2026, 11, 3, 5, tzinfo=UTC),
             page=1,
+            size=24,
             title="Dune",
             cinemas=("c2",),
             languages=("VOSTF",),
@@ -215,6 +216,7 @@ async def test_hour_ranges_support_negation_in_montreal_time_and_cinema_exclusio
             end=datetime(2026, 11, 6, 4, 59, 59, tzinfo=UTC),
             now=now,
             page=1,
+            size=24,
             hours=HourFilter(
                 ranges=(HourRange(17, 21),),
                 excluded=True,
@@ -226,7 +228,7 @@ async def test_hour_ranges_support_negation_in_montreal_time_and_cinema_exclusio
     assert result.total == 2
     unfiltered = await gateway.search(
         ScreeningMovieReader.SearchRequest(
-            now, datetime(2026, 11, 6, 4, 59, 59, tzinfo=UTC), now, 1
+            now, datetime(2026, 11, 6, 4, 59, 59, tzinfo=UTC), now, 1, 24
         )
     )
     assert unfiltered.total == 5
