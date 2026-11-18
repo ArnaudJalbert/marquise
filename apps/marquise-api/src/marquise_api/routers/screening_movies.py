@@ -18,8 +18,6 @@ from marquise_api.schemas import MovieResponse, ScreeningResponse
 
 router = APIRouter(tags=["movies"])
 
-_MOVIES_PER_PAGE = 24
-
 
 class HourRangeRequest(BaseModel):
     """One half-open whole-hour Montréal range."""
@@ -94,14 +92,15 @@ async def browse_screening_movies(
     start: date,
     filters: ScreeningMovieFilters,
     end: date | None = None,
-    page: int = Query(default=1, ge=1),
+    page: int = Query(ge=1),
+    size: int = Query(ge=1, le=100),
     title: str | None = Query(default=None, max_length=200),
     cinema: list[str] | None = Query(default=None),
     exclude_cinema: list[str] | None = Query(default=None),
     language: list[str] | None = Query(default=None),
     query: BrowseScreeningMoviesQuery = Depends(get_browse_screening_movies_query),
 ) -> ScreeningMoviePage:
-    """List 24 distinct movies in inclusive Montreal dates, excluding started shows.
+    """List one page of distinct upcoming movies in inclusive Montreal dates.
 
     This endpoint is uncached so upcoming eligibility uses the current request's
     clock rather than a cached response's clock.
@@ -113,8 +112,8 @@ async def browse_screening_movies(
         BrowseScreeningMoviesQuery.InputData(
             start=start,
             end=end,
-            size=_MOVIES_PER_PAGE,
             page=page,
+            size=size,
             title=title,
             cinemas=tuple(cinema or ()),
             languages=tuple(language or ()),
@@ -134,8 +133,8 @@ async def browse_screening_movies(
         items=[ScreeningMovieResponse.model_validate(movie) for movie in result.movies],
         total=result.total,
         page=page,
-        size=_MOVIES_PER_PAGE,
-        pages=ceil(result.total / _MOVIES_PER_PAGE),
+        size=size,
+        pages=ceil(result.total / size),
     )
 
 

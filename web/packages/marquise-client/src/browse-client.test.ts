@@ -18,7 +18,7 @@ it("requests one movie-first page with inclusive local dates and no metadata fan
     ),
   ).toEqual(result);
   expect(fetch).toHaveBeenCalledExactlyOnceWith(
-    "https://api.example/v1/screening-movies?start=2026-11-01&end=2026-11-02&page=2",
+    "https://api.example/v1/screening-movies?start=2026-11-01&end=2026-11-02&page=2&size=24",
     {
       body: "{}",
       headers: { "Content-Type": "application/json" },
@@ -75,6 +75,7 @@ it("serializes combined movie-first filters with repeated alternatives", async (
     ["start", "2026-11-01"],
     ["end", "2026-11-05"],
     ["page", "1"],
+    ["size", "24"],
     ["title", "Dune"],
     ["cinema", "c1"],
     ["cinema", "c2"],

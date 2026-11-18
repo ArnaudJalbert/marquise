@@ -1499,7 +1499,7 @@ def test_screening_movies_page_and_validation(
         movies=(), total=25
     )
     response = client.post(
-        "/v1/screening-movies?start=2026-11-01&end=2026-11-01&page=2",
+        "/v1/screening-movies?start=2026-11-01&end=2026-11-01&page=2&size=24",
         json={},
     )
     assert response.status_code == 200
@@ -1517,9 +1517,12 @@ def test_screening_movies_page_and_validation(
     )
     query.execute.reset_mock()
     for params in [
-        "start=bad&end=2026-11-01",
-        "start=2026-11-02&end=2026-11-01",
-        "start=2026-11-01&end=2026-11-01&page=0",
+        "start=bad&end=2026-11-01&page=1&size=24",
+        "start=2026-11-02&end=2026-11-01&page=1&size=24",
+        "start=2026-11-01&end=2026-11-01&page=0&size=24",
+        "start=2026-11-01&end=2026-11-01&size=24",
+        "start=2026-11-01&end=2026-11-01&page=1",
+        "start=2026-11-01&end=2026-11-01&page=1&size=0",
     ]:
         assert client.post(f"/v1/screening-movies?{params}", json={}).status_code == 422
     query.execute.assert_not_awaited()
@@ -1535,7 +1538,7 @@ def test_screening_movies_filters_reach_the_query(
         movies=(), total=0
     )
     response = client.post(
-        "/v1/screening-movies?start=2026-11-01&end=2026-11-05&page=1"
+        "/v1/screening-movies?start=2026-11-01&end=2026-11-05&page=1&size=24"
         "&title=Dune&cinema=c1&cinema=c2&language=VO&language=VOSTF"
         "&exclude_cinema=c3&exclude_cinema=c4",
         json={"hours": {"operator": "is", "ranges": [{"start": 17, "end": 21}]}},
@@ -1568,7 +1571,7 @@ def test_screening_movies_accepts_an_hour_filter_with_several_ranges(
         movies=(), total=0
     )
     response = client.post(
-        "/v1/screening-movies?start=2026-11-01",
+        "/v1/screening-movies?start=2026-11-01&page=1&size=24",
         json={
             "hours": {
                 "operator": "is",
@@ -1580,6 +1583,7 @@ def test_screening_movies_accepts_an_hour_filter_with_several_ranges(
     query.execute.assert_awaited_once_with(
         BrowseScreeningMoviesQuery.InputData(
             start=date(2026, 11, 1),
+            page=1,
             size=24,
             end=None,
             hours=BrowseScreeningMoviesQuery.HourFilterInput(
@@ -1602,7 +1606,7 @@ def test_screening_movies_maps_a_negative_hour_filter(
         movies=(), total=0
     )
     response = client.post(
-        "/v1/screening-movies?start=2026-11-01",
+        "/v1/screening-movies?start=2026-11-01&page=1&size=24",
         json={
             "hours": {
                 "operator": "is_not",
@@ -1614,6 +1618,7 @@ def test_screening_movies_maps_a_negative_hour_filter(
     query.execute.assert_awaited_once_with(
         BrowseScreeningMoviesQuery.InputData(
             start=date(2026, 11, 1),
+            page=1,
             size=24,
             end=None,
             hours=BrowseScreeningMoviesQuery.HourFilterInput(
@@ -1643,7 +1648,7 @@ def test_screening_movies_rejects_invalid_hour_ranges(
     query = create_autospec(BrowseScreeningMoviesQuery, instance=True)
     factory.screenings.browse_screening_movies_query = query
     response = client.post(
-        "/v1/screening-movies?start=2026-11-01",
+        "/v1/screening-movies?start=2026-11-01&page=1&size=24",
         json={"hours": hours},
     )
     assert response.status_code == 422
@@ -1686,7 +1691,8 @@ def test_screening_movie_metadata_and_preview_response(
         total=1,
     )
     data = client.post(
-        "/v1/screening-movies?start=2026-11-01&end=2026-11-01", json={}
+        "/v1/screening-movies?start=2026-11-01&end=2026-11-01&page=1&size=24",
+        json={},
     ).json()
     assert data["total"] == 1 and data["pages"] == 1
     assert data["items"][0]["directors"] == ["Director"]
