@@ -9,6 +9,7 @@
 #
 # Secrets that MUST be set:
 #   fly secrets set DATABASE_URL="postgresql://..."
+#   fly secrets set TMDB_API_KEY="..."
 #
 # To list currently set secrets:
 #   fly secrets list
@@ -27,7 +28,7 @@ primary_region = 'yyz'
   min_machines_running = 0
 
 [env]
-  # Optional — overrides the default "marquise" database schema.
+  # Required database schema.
   DATABASE_SCHEMA = "marquise"
   # Public browser client allowed to call the API directly.
   MARQUISE_API_CORS_ORIGINS = "https://marquise.mov,https://marquise-interface.fly.dev"

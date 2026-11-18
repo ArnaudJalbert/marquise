@@ -8,6 +8,8 @@
 #     docker build -t marquise-api -f apps/marquise-api/Dockerfile .
 #     docker run --rm -p 8000:8000 \
 #         -e DATABASE_URL=... \
+#         -e DATABASE_SCHEMA=marquise \
+#         -e TMDB_API_KEY=... \
 #         marquise-api
 
 # ---------------------------------------------------------------------------

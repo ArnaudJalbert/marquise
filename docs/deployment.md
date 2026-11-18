@@ -5,6 +5,16 @@ Production deployments are automated via GitHub Actions (`.github/workflows/fly-
 The API and the scheduled import use Supabase. A manual dispatch of
 `scheduled-import.yml` runs the same Supabase import.
 
+## Required configuration
+
+Both fail at startup until `DATABASE_URL`, `DATABASE_SCHEMA` and `TMDB_API_KEY`
+are set and not empty.
+
+| Runs in | `DATABASE_URL` | `DATABASE_SCHEMA` | `TMDB_API_KEY` |
+|---|---|---|---|
+| API (Fly) | `fly secrets set` | `[env]` in `apps/marquise-api/fly.toml` | `fly secrets set` |
+| Scheduled import (GitHub Actions) | `DATABASE_URL` repository secret | Set in `scheduled-import.yml` | `TMDB_API_KEY` repository secret |
+
 ## Architecture
 
 - **Backend API (`apps/marquise-api`)**: Built from the monorepo root context using `apps/marquise-api/fly.toml`.
