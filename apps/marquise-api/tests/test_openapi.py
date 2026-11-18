@@ -21,9 +21,9 @@ def _clear_response_cache() -> None:
 
 
 @pytest.fixture
-def client(open_client: Callable[..., TestClient]) -> TestClient:
+def client(client_opener: Callable[..., TestClient]) -> TestClient:
     """Provide a TestClient backed by a fake container."""
-    return open_client(MagicMock())
+    return client_opener(MagicMock())
 
 
 def test_openapi_schema_generation_succeeds(client: TestClient) -> None:

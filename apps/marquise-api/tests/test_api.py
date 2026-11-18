@@ -80,9 +80,9 @@ def factory() -> MagicMock:
 
 
 @pytest.fixture
-def client(factory: MagicMock, open_client: Callable[..., TestClient]) -> TestClient:
+def client(factory: MagicMock, client_opener: Callable[..., TestClient]) -> TestClient:
     """Provide a TestClient backed by the fake container."""
-    return open_client(factory)
+    return client_opener(factory)
 
 
 def test_health(client: TestClient) -> None:
@@ -141,12 +141,12 @@ def test_app_holds_one_factory_session_for_its_lifetime(
 def test_ready_is_exempt_from_rate_limiting(
     monkeypatch: pytest.MonkeyPatch,
     factory: MagicMock,
-    open_client: Callable[..., TestClient],
+    client_opener: Callable[..., TestClient],
 ) -> None:
     """/ready keeps responding even past the configured rate limit."""
     monkeypatch.setenv("MARQUISE_API_RATE_LIMIT", "1/minute")
     factory.check_database_health = AsyncMock(return_value=True)
-    client = open_client(factory)
+    client = client_opener(factory)
 
     responses = [client.get("/ready") for _ in range(5)]
 
@@ -535,7 +535,7 @@ def test_get_movie_not_found(client: TestClient, factory: MagicMock) -> None:
 
 
 def test_unhandled_exception_returns_generic_500(
-    factory: MagicMock, open_client: Callable[..., TestClient]
+    factory: MagicMock, client_opener: Callable[..., TestClient]
 ) -> None:
     """An unexpected exception from a use case yields a generic 500 envelope.
 
@@ -545,7 +545,7 @@ def test_unhandled_exception_returns_generic_500(
     which would make this test raise instead of asserting on the response.
     """
     factory.movies.get_movie_use_case.execute.side_effect = RuntimeError("db exploded")
-    client = open_client(factory, raise_server_exceptions=False)
+    client = client_opener(factory, raise_server_exceptions=False)
 
     response = client.get("/v1/movies/mov-1")
 
@@ -909,14 +909,14 @@ def test_cors_not_configured_by_default(
 def test_cors_headers_present_when_configured(
     monkeypatch: pytest.MonkeyPatch,
     factory: MagicMock,
-    open_client: Callable[..., TestClient],
+    client_opener: Callable[..., TestClient],
 ) -> None:
     """CORS headers are returned when MARQUISE_API_CORS_ORIGINS is set."""
     monkeypatch.setenv("MARQUISE_API_CORS_ORIGINS", "http://localhost:3000")
     factory.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
         cinemas=[], total=0
     )
-    client = open_client(factory)
+    client = client_opener(factory)
 
     response = client.get(
         "/v1/cinemas",
@@ -930,14 +930,14 @@ def test_cors_headers_present_when_configured(
 def test_cors_preflight_when_configured(
     monkeypatch: pytest.MonkeyPatch,
     factory: MagicMock,
-    open_client: Callable[..., TestClient],
+    client_opener: Callable[..., TestClient],
 ) -> None:
     """OPTIONS preflight requests return CORS headers when configured."""
     monkeypatch.setenv("MARQUISE_API_CORS_ORIGINS", "http://localhost:3000")
     factory.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
         cinemas=[], total=0
     )
-    client = open_client(factory)
+    client = client_opener(factory)
 
     response = client.options(
         "/v1/cinemas",
@@ -958,14 +958,14 @@ def test_cors_preflight_when_configured(
 def test_cors_origin_not_allowed_rejected(
     monkeypatch: pytest.MonkeyPatch,
     factory: MagicMock,
-    open_client: Callable[..., TestClient],
+    client_opener: Callable[..., TestClient],
 ) -> None:
     """Requests from an origin not in the allowed list get no CORS headers."""
     monkeypatch.setenv("MARQUISE_API_CORS_ORIGINS", "http://localhost:3000")
     factory.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
         cinemas=[], total=0
     )
-    client = open_client(factory)
+    client = client_opener(factory)
 
     response = client.get(
         "/v1/cinemas",
@@ -995,14 +995,14 @@ def test_rate_limit_headers_present_on_success(
 def test_rate_limit_exceeded_returns_429(
     monkeypatch: pytest.MonkeyPatch,
     factory: MagicMock,
-    open_client: Callable[..., TestClient],
+    client_opener: Callable[..., TestClient],
 ) -> None:
     """A client exceeding the configured rate limit gets a 429 with Retry-After."""
     monkeypatch.setenv("MARQUISE_API_RATE_LIMIT", "1/minute")
     factory.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
         cinemas=[], total=0
     )
-    client = open_client(factory)
+    client = client_opener(factory)
 
     first = client.get("/v1/cinemas")
     second = client.get("/v1/cinemas")
@@ -1016,11 +1016,11 @@ def test_rate_limit_exceeded_returns_429(
 def test_health_is_exempt_from_rate_limiting(
     monkeypatch: pytest.MonkeyPatch,
     factory: MagicMock,
-    open_client: Callable[..., TestClient],
+    client_opener: Callable[..., TestClient],
 ) -> None:
     """/health keeps responding 200 even past the configured rate limit."""
     monkeypatch.setenv("MARQUISE_API_RATE_LIMIT", "1/minute")
-    client = open_client(factory)
+    client = client_opener(factory)
 
     responses = [client.get("/health") for _ in range(5)]
 
@@ -1030,14 +1030,14 @@ def test_health_is_exempt_from_rate_limiting(
 def test_rate_limit_is_configurable_via_env_var(
     monkeypatch: pytest.MonkeyPatch,
     factory: MagicMock,
-    open_client: Callable[..., TestClient],
+    client_opener: Callable[..., TestClient],
 ) -> None:
     """A higher configured limit allows more requests before a 429."""
     monkeypatch.setenv("MARQUISE_API_RATE_LIMIT", "5/minute")
     factory.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
         cinemas=[], total=0
     )
-    client = open_client(factory)
+    client = client_opener(factory)
 
     responses = [client.get("/v1/cinemas") for _ in range(5)]
 

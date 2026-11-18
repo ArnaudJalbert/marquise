@@ -97,9 +97,9 @@ def factory() -> MagicMock:
 
 
 @pytest.fixture
-def client(factory: MagicMock, open_client: Callable[..., TestClient]) -> TestClient:
+def client(factory: MagicMock, client_opener: Callable[..., TestClient]) -> TestClient:
     """Provide a TestClient backed by the fake container."""
-    return open_client(factory)
+    return client_opener(factory)
 
 
 def test_incoming_request_id_header_is_echoed_back(client: TestClient) -> None:

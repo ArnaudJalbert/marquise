@@ -13,7 +13,7 @@ from marquise_api.app import create_app
 
 
 @pytest.fixture
-def open_client(
+def client_opener(
     monkeypatch: pytest.MonkeyPatch,
 ) -> Iterator[Callable[..., TestClient]]:
     """Provide a function that serves the app over a fake factory.
@@ -24,7 +24,9 @@ def open_client(
     """
     with ExitStack() as stack:
 
-        def open_client(factory: MagicMock, **client_options: bool) -> TestClient:
+        def open_client(
+            factory: MagicMock, *, raise_server_exceptions: bool = True
+        ) -> TestClient:
             @asynccontextmanager
             async def fake_factory_session() -> AsyncIterator[MagicMock]:
                 yield factory
@@ -32,6 +34,10 @@ def open_client(
             monkeypatch.setattr(
                 "marquise_api.app.create_factory_session", fake_factory_session
             )
-            return stack.enter_context(TestClient(create_app(), **client_options))
+            return stack.enter_context(
+                TestClient(
+                    create_app(), raise_server_exceptions=raise_server_exceptions
+                )
+            )
 
         yield open_client
