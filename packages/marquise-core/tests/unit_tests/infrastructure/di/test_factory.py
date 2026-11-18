@@ -178,7 +178,7 @@ async def test_use_cases_query_the_open_pool_in_the_configured_schema(
 
 
 # Any: each path names a different use case type, and callers use its InputData.
-def _use_case_at(factory: MarquiseFactory, path: str) -> Any:
+def _use_case_at(factory: MarquiseFactory, path: str) -> Any:  # noqa: ANN401
     """Return the use case at an "area.field" path on the factory."""
     area, use_case_field = path.split(".")
     return getattr(getattr(factory, area), use_case_field)
