@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
 from fastapi_cache.backends.inmemory import InMemoryBackend
 
-from marquise_api.app import CACHE_PREFIX, create_app
+from marquise_api.app import CACHE_PREFIX
 
 
 @pytest.fixture(autouse=True)
@@ -20,9 +21,9 @@ def _clear_response_cache() -> None:
 
 
 @pytest.fixture
-def client() -> TestClient:
+def client(open_client: Callable[..., TestClient]) -> TestClient:
     """Provide a TestClient backed by a fake container."""
-    return TestClient(create_app(factory=MagicMock()))
+    return open_client(MagicMock())
 
 
 def test_openapi_schema_generation_succeeds(client: TestClient) -> None:

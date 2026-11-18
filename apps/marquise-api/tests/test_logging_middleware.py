@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Callable
 from types import SimpleNamespace
 from unittest.mock import MagicMock, create_autospec
 
@@ -19,7 +20,6 @@ from marquise import (
     MovieNotFoundError,
     MovieUseCases,
 )
-from marquise_api.app import create_app
 from marquise_api.logging_middleware import (
     JsonFormatter,
     configure_logging,
@@ -97,9 +97,9 @@ def factory() -> MagicMock:
 
 
 @pytest.fixture
-def client(factory: MagicMock) -> TestClient:
+def client(factory: MagicMock, open_client: Callable[..., TestClient]) -> TestClient:
     """Provide a TestClient backed by the fake container."""
-    return TestClient(create_app(factory=factory))
+    return open_client(factory)
 
 
 def test_incoming_request_id_header_is_echoed_back(client: TestClient) -> None:

@@ -98,11 +98,6 @@ def _initialize_cache() -> None:
     FastAPICache.init(InMemoryBackend(), prefix=CACHE_PREFIX, expire=cache_ttl_seconds)
 
 
-def _configure_state(app: FastAPI, factory: MarquiseFactory | None) -> None:
-    if factory is not None:
-        app.state.factory = factory
-
-
 def _configure_rate_limiting(app: FastAPI) -> None:
     limiter.reset()
     app.state.limiter = limiter
@@ -227,13 +222,11 @@ def _configure_api_routes(app: FastAPI) -> None:
     app.include_router(v1_router)
 
 
-def create_app(factory: MarquiseFactory | None = None) -> FastAPI:
+def create_app() -> FastAPI:
     """Build the FastAPI application.
 
-    Args:
-        factory: An optional pre-built factory. When provided, it is used as-is
-            and its lifecycle is the caller's responsibility. When omitted, a
-            factory session is opened for the app's lifetime.
+    The lifespan opens one factory session for the app's lifetime and stores
+    the factory on the app state.
 
     Returns:
         A configured FastAPI instance.
@@ -299,9 +292,8 @@ Server operators can allow specific origins via `MARQUISE_API_CORS_ORIGINS`.
 Configured origins support GET and POST.
 """,
         version="1.0.0",
-        lifespan=_factory_session_lifespan if factory is None else None,
+        lifespan=_factory_session_lifespan,
     )
-    _configure_state(app, factory)
     _configure_middleware(app)
     # Registered last so request logging wraps the complete middleware stack.
     app.add_middleware(RequestLoggingMiddleware)
