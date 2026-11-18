@@ -1,9 +1,7 @@
 """Small live checks, run separately from deterministic integration tests."""
 
-from marquise.infrastructure.sources.cinemacinema.gateways.source import (
-    _fetch_schedule,
-)
-from marquise.infrastructure.sources.cineplex.gateways.source import (
+from marquise.infrastructure.sources.cinemacinema import _fetch_schedule
+from marquise.infrastructure.sources.cineplex import (
     SHOWTIMES_URL,
     CineplexSource,
     _fetch_json,
