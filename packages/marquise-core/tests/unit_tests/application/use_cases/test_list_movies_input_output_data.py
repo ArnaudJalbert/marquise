@@ -10,7 +10,7 @@ from marquise.application.use_cases.list_movies import ListMoviesUseCase
 def test_input_data_rejects_empty_title() -> None:
     """Verify InputData rejects an empty title string."""
     with pytest.raises(ValueError, match="title must not be empty when provided"):
-        ListMoviesUseCase.InputData(title="", size=10)
+        ListMoviesUseCase.InputData(title="", size=10, page=1)
 
 
 def test_movie_data_allows_none_optional_fields() -> None:

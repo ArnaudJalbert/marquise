@@ -17,7 +17,7 @@ from marquise.infrastructure.supabase.gateways.screening_movie_reader import (
 
 
 @pytest.mark.asyncio
-async def test_search_binds_page_window_limit_and_offset() -> None:
+async def test_search_binds_page_limit_and_offset() -> None:
     """Page 3 of size 24 binds the page window as the last two SQL arguments."""
     connection = MagicMock(spec=asyncpg.Connection)
     connection.fetch = AsyncMock(return_value=[{"total": 0, "id": None}])

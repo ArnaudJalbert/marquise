@@ -44,7 +44,7 @@ async def test_returns_reader_summaries() -> None:
     reader.search.return_value = Page(items=[_summary()], total=1)
 
     result = await _query(cinema_repository, reader).execute(
-        GetCinemaScreeningsQuery.InputData(cinema_id="cin-1", size=10)
+        GetCinemaScreeningsQuery.InputData(cinema_id="cin-1", size=10, page=1)
     )
 
     assert result.screenings == (_summary(),)
@@ -78,7 +78,7 @@ async def test_raises_when_cinema_missing() -> None:
 
     with pytest.raises(CinemaNotFoundError):
         await _query(cinema_repository, reader).execute(
-            GetCinemaScreeningsQuery.InputData(cinema_id="missing", size=10)
+            GetCinemaScreeningsQuery.InputData(cinema_id="missing", size=10, page=1)
         )
 
     reader.search.assert_not_awaited()
@@ -95,4 +95,4 @@ async def test_raises_when_cinema_missing() -> None:
 def test_input_rejects_invalid_values(kwargs: dict, message: str) -> None:
     """Invalid cinema query input is rejected."""
     with pytest.raises(ValueError, match=message):
-        GetCinemaScreeningsQuery.InputData(**{"size": 10, **kwargs})
+        GetCinemaScreeningsQuery.InputData(**{"page": 1, "size": 10, **kwargs})

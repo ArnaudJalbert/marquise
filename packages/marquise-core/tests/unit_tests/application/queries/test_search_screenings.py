@@ -38,7 +38,7 @@ async def test_returns_matching_screenings() -> None:
         cinema_repository=cinema_repo,
         movie_repository=movie_repo,
     )
-    result = await query.execute(SearchScreeningsQuery.InputData(size=10))
+    result = await query.execute(SearchScreeningsQuery.InputData(size=10, page=1))
 
     assert result.screenings == (
         SearchScreeningsQuery.ScreeningData(
@@ -75,6 +75,7 @@ async def test_passes_all_filters_to_reader() -> None:
         end_date=datetime(2026, 6, 28, tzinfo=UTC),
         language="V.O.",
         size=10,
+        page=1,
     )
 
     await query.execute(request)
@@ -133,7 +134,7 @@ async def test_raises_when_movie_id_filter_missing() -> None:
 
     with pytest.raises(MovieNotFoundError):
         await query.execute(
-            SearchScreeningsQuery.InputData(movie_id="missing", size=10)
+            SearchScreeningsQuery.InputData(movie_id="missing", size=10, page=1)
         )
 
     reader.search.assert_not_awaited()
@@ -153,7 +154,7 @@ async def test_raises_when_cinema_id_filter_missing() -> None:
 
     with pytest.raises(CinemaNotFoundError):
         await query.execute(
-            SearchScreeningsQuery.InputData(cinema_id="missing", size=10)
+            SearchScreeningsQuery.InputData(cinema_id="missing", size=10, page=1)
         )
 
     reader.search.assert_not_awaited()
@@ -168,7 +169,7 @@ def test_input_rejects_page_below_one() -> None:
 def test_input_rejects_non_positive_size() -> None:
     """A non-positive size is rejected."""
     with pytest.raises(ValueError, match="size must be positive"):
-        SearchScreeningsQuery.InputData(size=0)
+        SearchScreeningsQuery.InputData(size=0, page=1)
 
 
 def test_input_rejects_inverted_range() -> None:
@@ -178,6 +179,7 @@ def test_input_rejects_inverted_range() -> None:
             start_date=datetime(2026, 6, 28, tzinfo=UTC),
             end_date=datetime(2026, 6, 27, tzinfo=UTC),
             size=10,
+            page=1,
         )
 
 
@@ -193,4 +195,4 @@ def test_input_rejects_inverted_range() -> None:
 def test_input_rejects_blank_string_filters(field: str, value: str) -> None:
     """Whitespace-only string filters are rejected."""
     with pytest.raises(ValueError, match="must not be empty when provided"):
-        SearchScreeningsQuery.InputData(**{field: value}, size=10)
+        SearchScreeningsQuery.InputData(**{field: value}, size=10, page=1)

@@ -50,8 +50,8 @@ class BrowseScreeningMoviesQuery:
 
         start: date
         end: date | None
+        page: int
         size: int
-        page: int = 1
         title: str | None = None
         cinemas: tuple[str, ...] = ()
         languages: tuple[str, ...] = ()

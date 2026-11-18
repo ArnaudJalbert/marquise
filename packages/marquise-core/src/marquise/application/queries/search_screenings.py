@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 
 from marquise.application.exceptions import CinemaNotFoundError, MovieNotFoundError
 from marquise.application.readers import ScreeningReader
 from marquise.application.repositories import CinemaRepository, MovieRepository
-from marquise.application.repositories.page import page_window
+from marquise.application.repositories.page import get_page_offset
 from marquise.domain.value_objects import CinemaId, MovieId
 
 
@@ -34,14 +34,14 @@ class SearchScreeningsQuery:
             size: Max number of items per page.
         """
 
+        page: int
+        size: int
         movie: str | None = None
         movie_id: str | None = None
         cinema_id: str | None = None
         start_date: datetime | None = None
         end_date: datetime | None = None
         language: str | None = None
-        page: int = 1
-        size: int = field(kw_only=True)
 
         def __post_init__(self) -> None:
             """Validate input data.
@@ -150,8 +150,6 @@ class SearchScreeningsQuery:
                 f"A cinema with ID '{input_data.cinema_id}' was not found"
             )
 
-        limit, offset = page_window(input_data.page, input_data.size)
-
         page = await self.screening_reader.search(
             movie_id=input_data.movie_id,
             movie_title=input_data.movie,
@@ -159,8 +157,8 @@ class SearchScreeningsQuery:
             start_date=input_data.start_date,
             end_date=input_data.end_date,
             language=input_data.language,
-            limit=limit,
-            offset=offset,
+            limit=input_data.size,
+            offset=get_page_offset(input_data.page, input_data.size),
         )
 
         return self.OutputData(

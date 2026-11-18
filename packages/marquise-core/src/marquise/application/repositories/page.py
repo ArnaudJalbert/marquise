@@ -20,14 +20,14 @@ class Page[T]:
     total: int
 
 
-def page_window(page: int, size: int) -> tuple[int, int]:
-    """Turn a 1-based page number and page size into a limit and offset.
+def get_page_offset(page: int, size: int) -> int:
+    """Return how many items come before a 1-based page of the given size.
 
     Args:
         page: The 1-based page number.
         size: The page size.
 
     Returns:
-        A ``(limit, offset)`` pair.
+        The offset of the page's first item.
     """
-    return size, (page - 1) * size
+    return (page - 1) * size

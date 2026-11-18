@@ -26,7 +26,7 @@ async def test_list_movies_returns_all_when_no_filter() -> None:
     )
 
     use_case = ListMoviesUseCase(movie_repository=mock_repo)
-    request = ListMoviesUseCase.InputData(size=10)
+    request = ListMoviesUseCase.InputData(size=10, page=1)
 
     response = await use_case.execute(request)
 
@@ -66,7 +66,7 @@ async def test_list_movies_filters_by_title() -> None:
     )
 
     use_case = ListMoviesUseCase(movie_repository=mock_repo)
-    request = ListMoviesUseCase.InputData(title="Movie A", size=10)
+    request = ListMoviesUseCase.InputData(title="Movie A", size=10, page=1)
 
     response = await use_case.execute(request)
 
@@ -84,7 +84,7 @@ async def test_list_movies_returns_empty_list_when_no_matches() -> None:
     mock_repo.find_all.return_value = Page(items=[], total=0)
 
     use_case = ListMoviesUseCase(movie_repository=mock_repo)
-    request = ListMoviesUseCase.InputData(title="NonExistent", size=10)
+    request = ListMoviesUseCase.InputData(title="NonExistent", size=10, page=1)
 
     response = await use_case.execute(request)
 
@@ -123,7 +123,7 @@ async def test_list_movies_maps_all_fields_correctly() -> None:
     )
 
     use_case = ListMoviesUseCase(movie_repository=mock_repo)
-    request = ListMoviesUseCase.InputData(size=10)
+    request = ListMoviesUseCase.InputData(size=10, page=1)
 
     response = await use_case.execute(request)
 
@@ -154,7 +154,7 @@ async def test_list_movies_maps_optional_none_fields() -> None:
     )
 
     use_case = ListMoviesUseCase(movie_repository=mock_repo)
-    request = ListMoviesUseCase.InputData(size=10)
+    request = ListMoviesUseCase.InputData(size=10, page=1)
 
     response = await use_case.execute(request)
 
@@ -185,7 +185,7 @@ async def test_list_movies_output_total_reflects_repository_total() -> None:
     )
 
     use_case = ListMoviesUseCase(movie_repository=mock_repo)
-    request = ListMoviesUseCase.InputData(size=1)
+    request = ListMoviesUseCase.InputData(size=1, page=1)
 
     response = await use_case.execute(request)
 
@@ -204,14 +204,14 @@ async def test_list_movies_rejects_page_below_one() -> None:
 async def test_list_movies_rejects_zero_or_negative_size() -> None:
     """A non-positive size is rejected before the repository is called."""
     with pytest.raises(ValueError, match="size must be positive"):
-        ListMoviesUseCase.InputData(size=0)
+        ListMoviesUseCase.InputData(size=0, page=1)
 
 
 @pytest.mark.asyncio
 async def test_list_movies_rejects_blank_title() -> None:
     """A whitespace-only title filter is rejected before the repository is called."""
     with pytest.raises(ValueError, match="title must not be empty when provided"):
-        ListMoviesUseCase.InputData(title="   ", size=10)
+        ListMoviesUseCase.InputData(title="   ", size=10, page=1)
 
 
 @pytest.mark.asyncio
@@ -224,7 +224,7 @@ async def test_list_movies_by_ids_returns_matching_movies() -> None:
     ]
 
     use_case = ListMoviesUseCase(movie_repository=mock_repo)
-    request = ListMoviesUseCase.InputData(ids=("mov-1", "mov-2"), size=2)
+    request = ListMoviesUseCase.InputData(ids=("mov-1", "mov-2"), size=2, page=1)
 
     response = await use_case.execute(request)
 
@@ -245,7 +245,7 @@ async def test_list_movies_by_ids_omits_missing_ids() -> None:
     ]
 
     use_case = ListMoviesUseCase(movie_repository=mock_repo)
-    request = ListMoviesUseCase.InputData(ids=("mov-1", "missing"), size=2)
+    request = ListMoviesUseCase.InputData(ids=("mov-1", "missing"), size=2, page=1)
 
     response = await use_case.execute(request)
 
@@ -263,7 +263,9 @@ async def test_list_movies_by_ids_and_title_applies_and_filter() -> None:
     ]
 
     use_case = ListMoviesUseCase(movie_repository=mock_repo)
-    request = ListMoviesUseCase.InputData(ids=("mov-1", "mov-2"), title="dune", size=2)
+    request = ListMoviesUseCase.InputData(
+        ids=("mov-1", "mov-2"), title="dune", size=2, page=1
+    )
 
     response = await use_case.execute(request)
 
@@ -275,20 +277,20 @@ async def test_list_movies_by_ids_and_title_applies_and_filter() -> None:
 def test_list_movies_rejects_empty_ids() -> None:
     """An empty ids tuple is rejected when explicitly provided."""
     with pytest.raises(ValueError, match="ids must not be empty when provided"):
-        ListMoviesUseCase.InputData(ids=(), size=10)
+        ListMoviesUseCase.InputData(ids=(), size=10, page=1)
 
 
 def test_list_movies_rejects_too_many_ids() -> None:
     """More than MAX_MOVIE_IDS ids is rejected."""
     too_many = tuple(f"mov-{i}" for i in range(101))
     with pytest.raises(TooManyMovieIdsError):
-        ListMoviesUseCase.InputData(ids=too_many, size=101)
+        ListMoviesUseCase.InputData(ids=too_many, size=101, page=1)
 
 
 def test_list_movies_rejects_ids_count_exceeding_size() -> None:
     """The number of ids must not exceed the requested page size."""
     with pytest.raises(ValueError, match="ids count must not exceed size"):
-        ListMoviesUseCase.InputData(ids=("mov-1", "mov-2"), size=1)
+        ListMoviesUseCase.InputData(ids=("mov-1", "mov-2"), size=1, page=1)
 
 
 def test_list_movies_rejects_ids_with_page_other_than_one() -> None:

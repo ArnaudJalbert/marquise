@@ -24,6 +24,7 @@ def _input() -> GetCinemaMoviesUseCase.InputData:
         start_date=datetime(2026, 6, 27, tzinfo=UTC),
         end_date=datetime(2026, 6, 28, tzinfo=UTC),
         size=10,
+        page=1,
     )
 
 
@@ -108,6 +109,7 @@ def test_input_rejects_non_positive_size() -> None:
             start_date=datetime(2026, 6, 27, tzinfo=UTC),
             end_date=datetime(2026, 6, 28, tzinfo=UTC),
             size=0,
+            page=1,
         )
 
 
@@ -141,6 +143,7 @@ def test_input_rejects_invalid_range(
             start_date=start_date,
             end_date=end_date,
             size=10,
+            page=1,
         )
 
 

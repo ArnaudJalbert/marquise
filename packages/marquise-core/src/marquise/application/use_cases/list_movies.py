@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from marquise.application.exceptions import TooManyMovieIdsError
 from marquise.application.repositories import MovieRepository
-from marquise.application.repositories.page import page_window
+from marquise.application.repositories.page import get_page_offset
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
 
@@ -30,10 +30,10 @@ class ListMoviesUseCase:
             size: Max number of items per page.
         """
 
+        page: int
+        size: int
         title: str | None = None
         ids: tuple[str, ...] | None = None
-        page: int = 1
-        size: int = field(kw_only=True)
 
         def __post_init__(self) -> None:
             """Validate input data.
@@ -165,12 +165,10 @@ class ListMoviesUseCase:
             movie_data = [self._to_movie_data(m) for m in movies]
             return self.OutputData(movies=movie_data, total=len(movie_data))
 
-        limit, offset = page_window(input_data.page, input_data.size)
-
         page = await self.movie_repository.find_all(
             title_filter=input_data.title,
-            limit=limit,
-            offset=offset,
+            limit=input_data.size,
+            offset=get_page_offset(input_data.page, input_data.size),
         )
 
         movie_data = [self._to_movie_data(m) for m in page.items]

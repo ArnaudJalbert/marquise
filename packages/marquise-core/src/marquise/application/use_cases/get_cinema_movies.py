@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 
 from marquise.application.exceptions import CinemaNotFoundError
 from marquise.application.repositories import CinemaRepository, ScreeningRepository
-from marquise.application.repositories.page import page_window
+from marquise.application.repositories.page import get_page_offset
 from marquise.domain.value_objects import CinemaId
 
 
@@ -29,8 +29,8 @@ class GetCinemaMoviesUseCase:
         cinema_id: str
         start_date: datetime
         end_date: datetime
-        page: int = 1
-        size: int = field(kw_only=True)
+        page: int
+        size: int
 
         def __post_init__(self) -> None:
             """Validate input data.
@@ -143,14 +143,12 @@ class GetCinemaMoviesUseCase:
         cinema = await self.cinema_repository.find_by_id(cinema_id)
         assert cinema is not None  # existence already verified above
 
-        limit, offset = page_window(input_data.page, input_data.size)
-
         page = await self.screening_repository.find_distinct_movies_by_cinema(
             cinema_id=cinema_id,
             start_date=input_data.start_date,
             end_date=input_data.end_date,
-            limit=limit,
-            offset=offset,
+            limit=input_data.size,
+            offset=get_page_offset(input_data.page, input_data.size),
         )
 
         movie_data = [

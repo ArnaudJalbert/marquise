@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 
 from marquise.application.exceptions import MovieNotFoundError
 from marquise.application.readers import ScreeningReader
 from marquise.application.repositories import MovieRepository
-from marquise.application.repositories.page import page_window
+from marquise.application.repositories.page import get_page_offset
 from marquise.domain.value_objects import MovieId
 
 
@@ -20,9 +20,9 @@ class GetMovieScreeningsQuery:
         """Input data for movie screening summaries."""
 
         movie_id: str
+        page: int
+        size: int
         start: datetime | None = None
-        page: int = 1
-        size: int = field(kw_only=True)
 
         def __post_init__(self) -> None:
             """Validate movie ID and pagination."""
@@ -57,14 +57,13 @@ class GetMovieScreeningsQuery:
             raise MovieNotFoundError(
                 f"A movie with ID '{input_data.movie_id}' was not found"
             )
-        limit, offset = page_window(input_data.page, input_data.size)
         start_filter = (
             {"start_date": input_data.start} if input_data.start is not None else {}
         )
         page = await self.screening_reader.search(
             movie_id=input_data.movie_id,
             **start_filter,
-            limit=limit,
-            offset=offset,
+            limit=input_data.size,
+            offset=get_page_offset(input_data.page, input_data.size),
         )
         return self.OutputData(screenings=tuple(page.items), total=page.total)

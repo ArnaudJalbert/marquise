@@ -90,7 +90,7 @@ async def test_invalid_hours_are_rejected_before_reading(
 
     with pytest.raises(ValueError, match="hours"):
         await query.execute(
-            BrowseScreeningMoviesQuery.InputData(DAY, DAY, size=24, hours=hours)
+            BrowseScreeningMoviesQuery.InputData(DAY, DAY, size=24, hours=hours, page=1)
         )
 
     clock.assert_not_called()
@@ -135,6 +135,7 @@ async def test_filter_values_are_passed_to_the_reader() -> None:
             excluded=True,
         ),
         excluded_cinemas=("c3",),
+        page=1,
     )
 
     await BrowseScreeningMoviesQuery(reader, Mock(return_value=now)).execute(request)
