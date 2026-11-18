@@ -13,7 +13,7 @@ it("requests one movie-first page with inclusive local dates and no metadata fan
   const controller = new AbortController();
   expect(
     await client.fetchScreeningMoviesPage(
-      { start: "2026-11-01", end: "2026-11-02", page: 2 },
+      { start: "2026-11-01", end: "2026-11-02", page: 2, size: 24 },
       controller.signal,
     ),
   ).toEqual(result);
@@ -61,6 +61,7 @@ it("serializes combined movie-first filters with repeated alternatives", async (
     start: "2026-11-01",
     end: "2026-11-05",
     page: 1,
+    size: 24,
     title: "Dune",
     cinemas: ["c1", "c2"],
     languages: ["VO", "VOSTF"],
@@ -103,6 +104,7 @@ it("repeats non-adjacent hour ranges so the API matches them with OR", async () 
   await client.fetchScreeningMoviesPage({
     start: "2026-11-01",
     page: 1,
+    size: 24,
     hours: {
       operator: "is",
       ranges: [
@@ -139,6 +141,7 @@ it("surfaces an invalid hour range rejected by the API", async () => {
     client.fetchScreeningMoviesPage({
       start: "2026-11-01",
       page: 1,
+      size: 24,
       hours: {
         operator: "is_not",
         ranges: [{ start: 21, end: 17 }],
@@ -161,7 +164,7 @@ it("propagates API failure and cancellation without a sample-data fallback", asy
     .mockResolvedValueOnce(new Response("offline", { status: 503 }))
     .mockRejectedValueOnce(new DOMException("Cancelled", "AbortError"));
   const client = new HttpMarquiseClient({ baseUrl: "", fetch });
-  const query = { start: "2026-11-01", end: "2026-11-01", page: 1 };
+  const query = { start: "2026-11-01", end: "2026-11-01", page: 1, size: 24 };
   await expect(client.fetchScreeningMoviesPage(query)).rejects.toBeInstanceOf(
     HttpMarquiseClientError,
   );
