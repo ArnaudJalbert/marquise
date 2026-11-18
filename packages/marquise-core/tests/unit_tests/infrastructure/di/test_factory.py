@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from typing import Any
 from unittest.mock import MagicMock, create_autospec, patch
 
 import asyncpg
@@ -66,54 +69,69 @@ def database() -> MagicMock:
 
 
 @pytest.mark.parametrize(
-    ("area", "field", "use_case_type"),
+    ("path", "use_case_type"),
     [
-        ("cinemas", "create_cinema_use_case", CreateCinemaUseCase),
-        ("cinemas", "delete_cinema_use_case", DeleteCinemaUseCase),
-        ("cinemas", "update_cinema_use_case", UpdateCinemaUseCase),
-        ("cinemas", "list_cinemas_use_case", ListCinemasUseCase),
-        ("cinemas", "get_cinema_use_case", GetCinemaUseCase),
-        ("cinemas", "get_cinema_movies_use_case", GetCinemaMoviesUseCase),
-        ("cinemas", "get_cinema_screenings_query", GetCinemaScreeningsQuery),
-        ("movies", "list_movies_use_case", ListMoviesUseCase),
-        ("movies", "get_movie_use_case", GetMovieUseCase),
-        ("movies", "get_movie_screenings_query", GetMovieScreeningsQuery),
-        ("movies", "refresh_movies_use_case", RefreshMoviesUseCase),
-        ("movies", "merge_movies_use_case", MergeMoviesUseCase),
-        ("screenings", "browse_screening_movies_query", BrowseScreeningMoviesQuery),
-        ("screenings", "count_screening_days_query", CountScreeningDaysQuery),
-        ("screenings", "search_screenings_query", SearchScreeningsQuery),
-        ("screenings", "get_screening_query", GetScreeningQuery),
-        ("screenings", "import_screenings_command", ImportScreeningsCommand),
-        ("sources", "list_registry_sources_use_case", ListRegistrySourcesUseCase),
-        ("sources", "create_source_use_case", CreateSourceUseCase),
-        ("sources", "list_sources_use_case", ListSourcesUseCase),
-        ("sources", "delete_source_use_case", DeleteSourceUseCase),
-        ("sources", "assign_source_use_case", AssignSourceUseCase),
-        ("sources", "unassign_source_use_case", UnassignSourceUseCase),
-        ("sources", "get_cinema_source_use_case", GetCinemaSourceUseCase),
+        ("cinemas.create_cinema_use_case", CreateCinemaUseCase),
+        ("cinemas.delete_cinema_use_case", DeleteCinemaUseCase),
+        ("cinemas.update_cinema_use_case", UpdateCinemaUseCase),
+        ("cinemas.list_cinemas_use_case", ListCinemasUseCase),
+        ("cinemas.get_cinema_use_case", GetCinemaUseCase),
+        ("cinemas.get_cinema_movies_use_case", GetCinemaMoviesUseCase),
+        ("cinemas.get_cinema_screenings_query", GetCinemaScreeningsQuery),
+        ("movies.list_movies_use_case", ListMoviesUseCase),
+        ("movies.get_movie_use_case", GetMovieUseCase),
+        ("movies.get_movie_screenings_query", GetMovieScreeningsQuery),
+        ("movies.refresh_movies_use_case", RefreshMoviesUseCase),
+        ("movies.merge_movies_use_case", MergeMoviesUseCase),
+        ("screenings.browse_screening_movies_query", BrowseScreeningMoviesQuery),
+        ("screenings.count_screening_days_query", CountScreeningDaysQuery),
+        ("screenings.search_screenings_query", SearchScreeningsQuery),
+        ("screenings.get_screening_query", GetScreeningQuery),
+        ("screenings.import_screenings_command", ImportScreeningsCommand),
+        ("sources.list_registry_sources_use_case", ListRegistrySourcesUseCase),
+        ("sources.create_source_use_case", CreateSourceUseCase),
+        ("sources.list_sources_use_case", ListSourcesUseCase),
+        ("sources.delete_source_use_case", DeleteSourceUseCase),
+        ("sources.assign_source_use_case", AssignSourceUseCase),
+        ("sources.unassign_source_use_case", UnassignSourceUseCase),
+        ("sources.get_cinema_source_use_case", GetCinemaSourceUseCase),
         (
-            "sources",
-            "list_cinema_source_assignments_query",
+            "sources.list_cinema_source_assignments_query",
             ListCinemaSourceAssignmentsQuery,
         ),
     ],
 )
 def test_factory_wires_every_use_case_in_its_area(
-    database: MagicMock, area: str, field: str, use_case_type: type
+    database: MagicMock, path: str, use_case_type: type
 ) -> None:
     """Each use case sits in its area under the snake_case name of its class."""
     factory = MarquiseFactory(SETTINGS, database)
 
-    assert isinstance(getattr(getattr(factory, area), field), use_case_type)
+    assert isinstance(_use_case_at(factory, path), use_case_type)
+
+
+@dataclass(frozen=True, slots=True)
+class SchemaCase:
+    """A use case to run through the factory and the table its SQL must name."""
+
+    path: str
+    table: str
+    input_fields: dict[str, str | datetime] = field(default_factory=dict)
 
 
 @pytest.fixture
 def connection(database: MagicMock) -> MagicMock:
-    """Provide the connection the pool hands out, answering every read empty."""
+    """Provide the pool's connection, answering with one cinema and no rows."""
     acquired = create_autospec(asyncpg.Connection, instance=True)
     acquired.fetch.return_value = []
-    acquired.fetchval.return_value = 0
+    acquired.fetchval.return_value = 1
+    acquired.fetchrow.return_value = {
+        "id": "cin-1",
+        "name": "Cinema One",
+        "address": None,
+        "city": None,
+        "website": None,
+    }
 
     @asynccontextmanager
     async def acquire() -> AsyncIterator[MagicMock]:
@@ -125,31 +143,55 @@ def connection(database: MagicMock) -> MagicMock:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("area", "field", "table"),
+    "case",
     [
-        ("cinemas", "list_cinemas_use_case", "cinemas"),
-        ("movies", "list_movies_use_case", "movies"),
-        ("screenings", "search_screenings_query", "screenings"),
-        ("sources", "list_sources_use_case", "source_definitions"),
-        (
-            "sources",
-            "list_cinema_source_assignments_query",
+        SchemaCase("cinemas.list_cinemas_use_case", "cinemas"),
+        SchemaCase(
+            "cinemas.get_cinema_movies_use_case",
+            "screenings",
+            {
+                "cinema_id": "cin-1",
+                "start_date": datetime(2026, 11, 18, tzinfo=UTC),
+                "end_date": datetime(2026, 11, 19, tzinfo=UTC),
+            },
+        ),
+        SchemaCase("movies.list_movies_use_case", "movies"),
+        SchemaCase("screenings.search_screenings_query", "screenings"),
+        SchemaCase("sources.list_sources_use_case", "source_definitions"),
+        SchemaCase(
+            "sources.list_cinema_source_assignments_query",
             "cinema_source_assignments",
         ),
     ],
+    ids=lambda case: case.path,
 )
 async def test_use_cases_query_the_open_pool_in_the_configured_schema(
-    database: MagicMock, connection: MagicMock, area: str, field: str, table: str
+    database: MagicMock, connection: MagicMock, case: SchemaCase
 ) -> None:
     """A use case run through the factory sends its SQL to the configured schema."""
     settings = Settings(database_url=SETTINGS.database_url, schema="custom_schema")
-    use_case = getattr(getattr(MarquiseFactory(settings, database), area), field)
+    use_case = _use_case_at(MarquiseFactory(settings, database), case.path)
 
-    await use_case.execute(use_case.InputData())
+    await use_case.execute(use_case.InputData(**case.input_fields))
 
-    database.pool.acquire.assert_called()
-    executed_sql = " ".join(call.args[0] for call in connection.fetch.call_args_list)
-    assert f'"custom_schema".{table}' in executed_sql
+    assert f'"custom_schema".{case.table}' in _executed_sql(connection)
+
+
+# Any: each path names a different use case type, and callers use its InputData.
+def _use_case_at(factory: MarquiseFactory, path: str) -> Any:
+    """Return the use case at an "area.field" path on the factory."""
+    area, use_case_field = path.split(".")
+    return getattr(getattr(factory, area), use_case_field)
+
+
+def _executed_sql(connection: MagicMock) -> str:
+    """Join the SQL of every read the connection served."""
+    calls = [
+        *connection.fetch.call_args_list,
+        *connection.fetchrow.call_args_list,
+        *connection.fetchval.call_args_list,
+    ]
+    return " ".join(call.args[0] for call in calls)
 
 
 def test_factory_wires_without_touching_the_pool(database: MagicMock) -> None:
