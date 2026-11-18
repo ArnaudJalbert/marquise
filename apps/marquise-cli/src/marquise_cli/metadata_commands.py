@@ -4,7 +4,7 @@ import asyncio
 import sys
 from pathlib import Path
 
-from marquise import create_factory_session
+from marquise_cli.helpers import connected_factory
 from marquise_cli.merge_movies import apply_merge, dry_run_merge, format_merge
 from marquise_cli.refresh_command import run_refresh_movies
 
@@ -13,7 +13,7 @@ def refresh(movie_id: str | None, all_movies: bool) -> int:
     """Refresh a selected movie or every confirmed movie."""
 
     async def run() -> int:
-        async with create_factory_session() as factory:
+        async with connected_factory() as factory:
             return await run_refresh_movies(
                 factory.refresh_movies_use_case,
                 movie_id=movie_id,
@@ -27,7 +27,7 @@ def merge_preview(survivor_id: str, duplicate_ids: list[str]) -> int:
     """Print an exact preview for targeted movie IDs."""
 
     async def run() -> int:
-        async with create_factory_session() as factory:
+        async with connected_factory() as factory:
             result = await dry_run_merge(
                 factory.merge_movies_use_case, survivor_id, tuple(duplicate_ids)
             )
@@ -46,7 +46,7 @@ def merge_apply(survivor_id: str, duplicate_ids: list[str], preview_file: str) -
         return 2
 
     async def run() -> int:
-        async with create_factory_session() as factory:
+        async with connected_factory() as factory:
             result = await apply_merge(
                 factory.merge_movies_use_case,
                 survivor_id,
