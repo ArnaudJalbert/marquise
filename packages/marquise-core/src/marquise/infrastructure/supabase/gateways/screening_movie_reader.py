@@ -6,7 +6,7 @@ from datetime import datetime
 
 import asyncpg
 
-from marquise.application.page import get_page_offset
+from marquise.application.page import page_window
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
 from marquise.domain.constants import MONTREAL_TIME_ZONE
 from marquise.domain.value_objects import HourFilter
@@ -57,7 +57,7 @@ class SupabaseScreeningMovieReadGateway:
                 ''',
                 *self._bind_filter_arguments(request),
                 request.size,
-                get_page_offset(request.page, request.size),
+                page_window(request.page, request.size),
             )
         movies: dict[str, dict] = {}
         for row in rows:

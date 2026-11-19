@@ -20,7 +20,7 @@ class Page[ItemT]:
     total: int
 
 
-def get_page_offset(page: int, size: int) -> int:
+def page_window(page: int, size: int) -> int:
     """Return how many items come before a 1-based page of the given size.
 
     Args:

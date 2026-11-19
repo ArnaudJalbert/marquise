@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from marquise.application.exceptions import CinemaNotFoundError
-from marquise.application.page import get_page_offset
+from marquise.application.page import page_window
 from marquise.application.repositories import CinemaRepository, ScreeningRepository
 from marquise.domain.value_objects import CinemaId
 
@@ -148,7 +148,7 @@ class GetCinemaMoviesUseCase:
             start_date=input_data.start_date,
             end_date=input_data.end_date,
             limit=input_data.size,
-            offset=get_page_offset(input_data.page, input_data.size),
+            offset=page_window(input_data.page, input_data.size),
         )
 
         movie_data = [
