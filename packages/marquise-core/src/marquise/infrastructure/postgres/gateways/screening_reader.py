@@ -1,4 +1,4 @@
-"""Supabase SQL gateway for screening display projections."""
+"""PostgreSQL gateway for screening display projections."""
 
 from __future__ import annotations
 
@@ -23,8 +23,8 @@ def _naive_utc(value: datetime) -> datetime:
     return value.astimezone(UTC).replace(tzinfo=None)
 
 
-class SupabaseScreeningReadGateway:
-    """Read plain screening display rows from Supabase PostgreSQL."""
+class PostgresScreeningReadGateway:
+    """Read plain screening display rows from PostgreSQL."""
 
     def __init__(self, pool: asyncpg.Pool, schema: str = DEFAULT_SCHEMA) -> None:
         """Initialize with an open connection pool and schema."""

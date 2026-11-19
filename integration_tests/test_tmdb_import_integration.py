@@ -12,10 +12,10 @@ from marquise.application.queries.fetch_screenings_from_source import (
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
-from marquise.infrastructure.supabase.gateways.movie import SupabaseMovieGateway
-from marquise.infrastructure.supabase.gateways.screening import SupabaseScreeningGateway
-from marquise.infrastructure.supabase.gateways.screening_reader import (
-    SupabaseScreeningReadGateway,
+from marquise.infrastructure.postgres.gateways.movie import PostgresMovieGateway
+from marquise.infrastructure.postgres.gateways.screening import PostgresScreeningGateway
+from marquise.infrastructure.postgres.gateways.screening_reader import (
+    PostgresScreeningReadGateway,
 )
 from marquise.interface_adapters.repositories.supabase.movie_repository import (
     SupabaseMovieRepository,
@@ -36,8 +36,8 @@ TEST_SCHEMA = "marquise-test"
 @pytest.mark.asyncio
 async def test_import_links_translated_screening_to_known_movie(
     db_pool: asyncpg.Pool,
-    movie_gateway: SupabaseMovieGateway,
-    screening_gateway: SupabaseScreeningGateway,
+    movie_gateway: PostgresMovieGateway,
+    screening_gateway: PostgresScreeningGateway,
 ) -> None:
     """A TMDB match reuses a persisted movie and keeps its details unchanged."""
     movies = SupabaseMovieRepository(movie_gateway)
@@ -92,7 +92,7 @@ async def test_import_links_translated_screening_to_known_movie(
     assert result.imported_count == 1
     request = matcher.execute.await_args.args[0].movies[0]
     assert (request.title, request.release_year) == ("Film traduit", 2025)
-    saved_screenings = await SupabaseScreeningReadGateway(db_pool, TEST_SCHEMA).search()
+    saved_screenings = await PostgresScreeningReadGateway(db_pool, TEST_SCHEMA).search()
     assert saved_screenings.total == 1
     assert saved_screenings.rows[0]["movie_id"] == str(original.id)
     assert await movies.find_by_tmdb_id("777") == original

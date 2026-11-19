@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from marquise.infrastructure.supabase.config import Settings
+from marquise.infrastructure.postgres.config import Settings
 
 
 def test_settings_have_no_defaults() -> None:

@@ -1,4 +1,4 @@
-"""Supabase PostgreSQL implementation of CinemaSourceAssignmentGateway."""
+"""PostgreSQL implementation of CinemaSourceAssignmentGateway."""
 
 from __future__ import annotations
 
@@ -21,8 +21,8 @@ _SOURCE_COLUMNS = (
 _JOINED_COLUMNS = f"{_COLUMNS}, {_CINEMA_COLUMNS}, {_SOURCE_COLUMNS}"
 
 
-class SupabaseCinemaSourceAssignmentGateway:
-    """Concrete assignment gateway backed by Supabase PostgreSQL.
+class PostgresCinemaSourceAssignmentGateway:
+    """Concrete assignment gateway backed by PostgreSQL.
 
     Args:
         pool: An open asyncpg connection pool.

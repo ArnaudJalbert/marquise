@@ -23,7 +23,7 @@ from marquise.infrastructure.di.queries import (
     build_get_screening_query,
     build_search_screenings_query,
 )
-from marquise.infrastructure.supabase.config.settings import Settings
+from marquise.infrastructure.postgres.config.settings import Settings
 from marquise.interface_adapters.repositories.source_registry import SourceRegistry
 
 

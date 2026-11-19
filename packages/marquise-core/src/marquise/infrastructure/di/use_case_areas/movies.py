@@ -16,8 +16,8 @@ from marquise.infrastructure.di.import_use_cases import (
     build_refresh_movies_use_case,
 )
 from marquise.infrastructure.di.queries import build_get_movie_screenings_query
-from marquise.infrastructure.supabase.config.settings import Settings
-from marquise.infrastructure.supabase.gateways.movie import SupabaseMovieGateway
+from marquise.infrastructure.postgres.config.settings import Settings
+from marquise.infrastructure.postgres.gateways.movie import PostgresMovieGateway
 from marquise.interface_adapters.repositories.supabase.movie_repository import (
     SupabaseMovieRepository,
 )
@@ -45,7 +45,7 @@ def build_movie_use_cases(pool: asyncpg.Pool, settings: Settings) -> MovieUseCas
         The movie use cases, all sharing one movie repository.
     """
     movie_repository = SupabaseMovieRepository(
-        gateway=SupabaseMovieGateway(pool=pool, schema=settings.schema)
+        gateway=PostgresMovieGateway(pool=pool, schema=settings.schema)
     )
     return MovieUseCases(
         list_movies_use_case=ListMoviesUseCase(movie_repository=movie_repository),

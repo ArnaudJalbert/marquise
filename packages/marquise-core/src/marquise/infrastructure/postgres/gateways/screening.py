@@ -1,4 +1,4 @@
-"""Supabase PostgreSQL implementation of ScreeningGateway."""
+"""PostgreSQL implementation of ScreeningGateway."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 
 import asyncpg
 
-from marquise.infrastructure.supabase.connection_pool import ConnectionPool
+from marquise.infrastructure.postgres.connection_pool import ConnectionPool
 from marquise.interface_adapters.repositories.protocols.base import (
     GatewayError,
     GatewayPage,
@@ -71,8 +71,8 @@ def _naive_utc(dt: datetime) -> datetime:
     return dt
 
 
-class SupabaseScreeningGateway:
-    """Concrete screening gateway that executes SQL against Supabase PostgreSQL.
+class PostgresScreeningGateway:
+    """Concrete screening gateway that executes SQL against PostgreSQL.
 
     Args:
         pool: An open asyncpg connection pool.

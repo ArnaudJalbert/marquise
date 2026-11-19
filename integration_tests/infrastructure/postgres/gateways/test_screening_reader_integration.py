@@ -1,4 +1,4 @@
-"""Integration tests for SupabaseScreeningReadGateway search SQL."""
+"""Integration tests for PostgresScreeningReadGateway search SQL."""
 
 from __future__ import annotations
 
@@ -7,25 +7,25 @@ from datetime import UTC, datetime
 import asyncpg
 import pytest
 
-from marquise.infrastructure.supabase.gateways.cinema import SupabaseCinemaGateway
-from marquise.infrastructure.supabase.gateways.movie import SupabaseMovieGateway
-from marquise.infrastructure.supabase.gateways.screening import (
-    SupabaseScreeningGateway,
+from marquise.infrastructure.postgres.gateways.cinema import PostgresCinemaGateway
+from marquise.infrastructure.postgres.gateways.movie import PostgresMovieGateway
+from marquise.infrastructure.postgres.gateways.screening import (
+    PostgresScreeningGateway,
 )
-from marquise.infrastructure.supabase.gateways.screening_reader import (
-    SupabaseScreeningReadGateway,
+from marquise.infrastructure.postgres.gateways.screening_reader import (
+    PostgresScreeningReadGateway,
 )
 
 
 @pytest.fixture
-def reader(db_pool: asyncpg.Pool) -> SupabaseScreeningReadGateway:
+def reader(db_pool: asyncpg.Pool) -> PostgresScreeningReadGateway:
     """Provide the screening reader over the test schema."""
-    return SupabaseScreeningReadGateway(db_pool, "marquise-test")
+    return PostgresScreeningReadGateway(db_pool, "marquise-test")
 
 
 async def _seed_parents(
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Create one cinema and two movies for FK constraints."""
     await gateway.save(cinema_id="cin-001", name="Cinema One", address=None, city=None)
@@ -35,10 +35,10 @@ async def _seed_parents(
 
 @pytest.mark.asyncio
 async def test_search_filters_by_title_case_insensitively(
-    reader: SupabaseScreeningReadGateway,
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
+    reader: PostgresScreeningReadGateway,
+    screening_gateway: PostgresScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """A title filter matches a substring regardless of case."""
     await _seed_parents(gateway, movie_gateway)
@@ -64,10 +64,10 @@ async def test_search_filters_by_title_case_insensitively(
 
 @pytest.mark.asyncio
 async def test_search_filters_by_language(
-    reader: SupabaseScreeningReadGateway,
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
+    reader: PostgresScreeningReadGateway,
+    screening_gateway: PostgresScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """A language filter returns only screenings in that language."""
     await _seed_parents(gateway, movie_gateway)
@@ -94,10 +94,10 @@ async def test_search_filters_by_language(
 
 @pytest.mark.asyncio
 async def test_search_filters_by_movie_id_and_cinema_id(
-    reader: SupabaseScreeningReadGateway,
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
+    reader: PostgresScreeningReadGateway,
+    screening_gateway: PostgresScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Movie and cinema ID filters return only screenings that match them."""
     await _seed_parents(gateway, movie_gateway)
@@ -134,10 +134,10 @@ async def test_search_filters_by_movie_id_and_cinema_id(
 
 @pytest.mark.asyncio
 async def test_search_date_bounds_are_inclusive(
-    reader: SupabaseScreeningReadGateway,
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
+    reader: PostgresScreeningReadGateway,
+    screening_gateway: PostgresScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Showtimes at start_date and end_date match; one microsecond past end does not."""
     await _seed_parents(gateway, movie_gateway)
@@ -165,10 +165,10 @@ async def test_search_date_bounds_are_inclusive(
 
 @pytest.mark.asyncio
 async def test_search_total_counts_all_matches_beyond_the_page(
-    reader: SupabaseScreeningReadGateway,
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
+    reader: PostgresScreeningReadGateway,
+    screening_gateway: PostgresScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Limit and offset return the requested slice while total covers all matches."""
     await _seed_parents(gateway, movie_gateway)
@@ -188,10 +188,10 @@ async def test_search_total_counts_all_matches_beyond_the_page(
 
 @pytest.mark.asyncio
 async def test_search_offset_past_total_returns_no_rows_and_true_total(
-    reader: SupabaseScreeningReadGateway,
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
+    reader: PostgresScreeningReadGateway,
+    screening_gateway: PostgresScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """An offset beyond the result set returns no rows but the true total.
 
@@ -214,10 +214,10 @@ async def test_search_offset_past_total_returns_no_rows_and_true_total(
 
 @pytest.mark.asyncio
 async def test_search_pages_are_stable_under_showtime_and_id_ties(
-    reader: SupabaseScreeningReadGateway,
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
+    reader: PostgresScreeningReadGateway,
+    screening_gateway: PostgresScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Rows order by showtime then id, so a page boundary splits a tie without loss."""
     await _seed_parents(gateway, movie_gateway)

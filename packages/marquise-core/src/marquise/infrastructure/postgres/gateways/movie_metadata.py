@@ -4,7 +4,7 @@ from datetime import datetime
 
 from asyncpg.exceptions import UniqueViolationError
 
-from marquise.infrastructure.supabase.connection_pool import ConnectionPool
+from marquise.infrastructure.postgres.connection_pool import ConnectionPool
 from marquise.interface_adapters.repositories.protocols.movie_metadata import (
     MovieMetadataConflictError,
 )
@@ -28,7 +28,7 @@ _PATCH_COLUMNS = (
 )
 
 
-class SupabaseMovieMetadataGateway:
+class PostgresMovieMetadataGateway:
     """Snapshot and compare-and-patch operations on existing stable movie IDs."""
 
     def __init__(self, pool: ConnectionPool, schema: str = "marquise") -> None:

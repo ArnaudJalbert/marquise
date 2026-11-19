@@ -9,8 +9,8 @@ from marquise.infrastructure.di.use_case_areas import (
     build_screening_use_cases,
     build_source_use_cases,
 )
-from marquise.infrastructure.supabase.config.settings import Settings
-from marquise.infrastructure.supabase.database import Database
+from marquise.infrastructure.postgres.config.settings import Settings
+from marquise.infrastructure.postgres.database import Database
 
 
 class MarquiseFactory:

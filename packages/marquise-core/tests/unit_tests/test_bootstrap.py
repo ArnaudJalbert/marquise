@@ -12,7 +12,7 @@ import pytest
 
 from marquise.bootstrap import create_factory_session
 from marquise.infrastructure.di.factory import MarquiseFactory
-from marquise.infrastructure.supabase.database import Database
+from marquise.infrastructure.postgres.database import Database
 
 REQUIRED_ENV = {
     "DATABASE_URL": "postgresql://u:p@localhost:5432/db",
