@@ -7,7 +7,8 @@ interface (application).  No SQL, no asyncpg — pure entity mapping.
 from __future__ import annotations
 
 from marquise.application.exceptions import CinemaIdAlreadyExistsError
-from marquise.application.repositories import CinemaRepository, Page
+from marquise.application.page import Page
+from marquise.application.repositories import CinemaRepository
 from marquise.domain.entities import Cinema
 from marquise.domain.value_objects import CinemaId
 from marquise.interface_adapters.repositories.protocols.cinema import (

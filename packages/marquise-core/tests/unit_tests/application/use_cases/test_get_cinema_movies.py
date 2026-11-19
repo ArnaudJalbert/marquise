@@ -8,9 +8,9 @@ from unittest.mock import create_autospec
 import pytest
 
 from marquise.application.exceptions import CinemaNotFoundError
+from marquise.application.page import Page
 from marquise.application.repositories import (
     CinemaRepository,
-    Page,
     ScreeningRepository,
 )
 from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase

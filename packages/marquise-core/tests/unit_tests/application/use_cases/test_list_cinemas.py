@@ -6,7 +6,8 @@ from unittest.mock import create_autospec
 
 import pytest
 
-from marquise.application.repositories import CinemaRepository, Page
+from marquise.application.page import Page
+from marquise.application.repositories import CinemaRepository
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.domain.entities import Cinema
 from marquise.domain.value_objects import CinemaId

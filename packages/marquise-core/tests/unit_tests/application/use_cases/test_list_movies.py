@@ -7,7 +7,8 @@ from unittest.mock import create_autospec
 import pytest
 
 from marquise.application.exceptions import TooManyMovieIdsError
-from marquise.application.repositories import MovieRepository, Page
+from marquise.application.page import Page
+from marquise.application.repositories import MovieRepository
 from marquise.application.use_cases.list_movies import ListMoviesUseCase
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId

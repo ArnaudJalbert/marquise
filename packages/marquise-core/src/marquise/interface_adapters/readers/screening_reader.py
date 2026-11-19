@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from marquise.application.page import Page
 from marquise.application.readers import ScreeningReader
-from marquise.application.repositories import Page
 from marquise.interface_adapters.readers.screening_read_gateway import (
     ScreeningReadGateway,
 )
