@@ -11,18 +11,18 @@ import pytest
 import pytest_asyncio
 from dotenv import load_dotenv
 
-from marquise.infrastructure.supabase.config import Settings
-from marquise.infrastructure.supabase.database import sanitize_dsn
-from marquise.infrastructure.supabase.gateways.cinema import SupabaseCinemaGateway
-from marquise.infrastructure.supabase.gateways.cinema_source_assignment import (
-    SupabaseCinemaSourceAssignmentGateway,
+from marquise.infrastructure.postgres.config import Settings
+from marquise.infrastructure.postgres.database import sanitize_dsn
+from marquise.infrastructure.postgres.gateways.cinema import PostgresCinemaGateway
+from marquise.infrastructure.postgres.gateways.cinema_source_assignment import (
+    PostgresCinemaSourceAssignmentGateway,
 )
-from marquise.infrastructure.supabase.gateways.movie import SupabaseMovieGateway
-from marquise.infrastructure.supabase.gateways.screening import (
-    SupabaseScreeningGateway,
+from marquise.infrastructure.postgres.gateways.movie import PostgresMovieGateway
+from marquise.infrastructure.postgres.gateways.screening import (
+    PostgresScreeningGateway,
 )
-from marquise.infrastructure.supabase.gateways.source_definition import (
-    SupabaseSourceDefinitionGateway,
+from marquise.infrastructure.postgres.gateways.source_definition import (
+    PostgresSourceDefinitionGateway,
 )
 
 TEST_SCHEMA = "marquise-test"
@@ -73,30 +73,30 @@ async def db_pool(
 
 
 @pytest.fixture
-def gateway(db_pool: asyncpg.Pool) -> SupabaseCinemaGateway:
-    """Provide a SupabaseCinemaGateway on the test schema."""
-    return SupabaseCinemaGateway(pool=db_pool, schema=TEST_SCHEMA)
+def gateway(db_pool: asyncpg.Pool) -> PostgresCinemaGateway:
+    """Provide a PostgresCinemaGateway on the test schema."""
+    return PostgresCinemaGateway(pool=db_pool, schema=TEST_SCHEMA)
 
 
 @pytest.fixture
-def source_definition_gateway(db_pool: asyncpg.Pool) -> SupabaseSourceDefinitionGateway:
-    """Provide a SupabaseSourceDefinitionGateway on the test schema."""
-    return SupabaseSourceDefinitionGateway(pool=db_pool, schema=TEST_SCHEMA)
+def source_definition_gateway(db_pool: asyncpg.Pool) -> PostgresSourceDefinitionGateway:
+    """Provide a PostgresSourceDefinitionGateway on the test schema."""
+    return PostgresSourceDefinitionGateway(pool=db_pool, schema=TEST_SCHEMA)
 
 
 @pytest.fixture
-def assignment_gateway(db_pool: asyncpg.Pool) -> SupabaseCinemaSourceAssignmentGateway:
-    """Provide a SupabaseCinemaSourceAssignmentGateway on the test schema."""
-    return SupabaseCinemaSourceAssignmentGateway(pool=db_pool, schema=TEST_SCHEMA)
+def assignment_gateway(db_pool: asyncpg.Pool) -> PostgresCinemaSourceAssignmentGateway:
+    """Provide a PostgresCinemaSourceAssignmentGateway on the test schema."""
+    return PostgresCinemaSourceAssignmentGateway(pool=db_pool, schema=TEST_SCHEMA)
 
 
 @pytest.fixture
-def movie_gateway(db_pool: asyncpg.Pool) -> SupabaseMovieGateway:
-    """Provide a SupabaseMovieGateway on the test schema."""
-    return SupabaseMovieGateway(pool=db_pool, schema=TEST_SCHEMA)
+def movie_gateway(db_pool: asyncpg.Pool) -> PostgresMovieGateway:
+    """Provide a PostgresMovieGateway on the test schema."""
+    return PostgresMovieGateway(pool=db_pool, schema=TEST_SCHEMA)
 
 
 @pytest.fixture
-def screening_gateway(db_pool: asyncpg.Pool) -> SupabaseScreeningGateway:
-    """Provide a SupabaseScreeningGateway on the test schema."""
-    return SupabaseScreeningGateway(pool=db_pool, schema=TEST_SCHEMA)
+def screening_gateway(db_pool: asyncpg.Pool) -> PostgresScreeningGateway:
+    """Provide a PostgresScreeningGateway on the test schema."""
+    return PostgresScreeningGateway(pool=db_pool, schema=TEST_SCHEMA)

@@ -1,10 +1,10 @@
-"""Supabase PostgreSQL implementation of MovieGateway."""
+"""PostgreSQL implementation of MovieGateway."""
 
 from __future__ import annotations
 
 from asyncpg.exceptions import UniqueViolationError
 
-from marquise.infrastructure.supabase.connection_pool import ConnectionPool
+from marquise.infrastructure.postgres.connection_pool import ConnectionPool
 from marquise.interface_adapters.repositories.protocols.base import (
     GatewayError,
     GatewayPage,
@@ -19,8 +19,8 @@ _COLUMNS = (
 )
 
 
-class SupabaseMovieGateway:
-    """Concrete movie gateway that executes SQL against Supabase PostgreSQL.
+class PostgresMovieGateway:
+    """Concrete movie gateway that executes SQL against PostgreSQL.
 
     Args:
         pool: An open asyncpg connection pool.

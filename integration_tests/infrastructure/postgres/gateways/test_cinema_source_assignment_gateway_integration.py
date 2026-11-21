@@ -1,23 +1,23 @@
-"""Integration tests for SupabaseCinemaSourceAssignmentGateway."""
+"""Integration tests for PostgresCinemaSourceAssignmentGateway."""
 
 from __future__ import annotations
 
 import pytest
 
-from marquise.infrastructure.supabase.gateways.cinema import (
-    SupabaseCinemaGateway,
+from marquise.infrastructure.postgres.gateways.cinema import (
+    PostgresCinemaGateway,
 )
-from marquise.infrastructure.supabase.gateways.cinema_source_assignment import (
-    SupabaseCinemaSourceAssignmentGateway,
+from marquise.infrastructure.postgres.gateways.cinema_source_assignment import (
+    PostgresCinemaSourceAssignmentGateway,
 )
-from marquise.infrastructure.supabase.gateways.source_definition import (
-    SupabaseSourceDefinitionGateway,
+from marquise.infrastructure.postgres.gateways.source_definition import (
+    PostgresSourceDefinitionGateway,
 )
 
 
 async def _seed_parents(
-    gateway: SupabaseCinemaGateway,
-    source_definition_gateway: SupabaseSourceDefinitionGateway,
+    gateway: PostgresCinemaGateway,
+    source_definition_gateway: PostgresSourceDefinitionGateway,
 ) -> None:
     """Create parent rows needed for FK constraints."""
     await gateway.save(cinema_id="cin-001", name="Cinema One", address=None, city=None)
@@ -32,9 +32,9 @@ async def _seed_parents(
 
 @pytest.mark.asyncio
 async def test_assign_and_find(
-    assignment_gateway: SupabaseCinemaSourceAssignmentGateway,
-    gateway: SupabaseCinemaGateway,
-    source_definition_gateway: SupabaseSourceDefinitionGateway,
+    assignment_gateway: PostgresCinemaSourceAssignmentGateway,
+    gateway: PostgresCinemaGateway,
+    source_definition_gateway: PostgresSourceDefinitionGateway,
 ) -> None:
     """Verify an assignment can be upserted and retrieved."""
     await _seed_parents(gateway, source_definition_gateway)
@@ -52,9 +52,9 @@ async def test_assign_and_find(
 
 @pytest.mark.asyncio
 async def test_assign_upserts_existing(
-    assignment_gateway: SupabaseCinemaSourceAssignmentGateway,
-    gateway: SupabaseCinemaGateway,
-    source_definition_gateway: SupabaseSourceDefinitionGateway,
+    assignment_gateway: PostgresCinemaSourceAssignmentGateway,
+    gateway: PostgresCinemaGateway,
+    source_definition_gateway: PostgresSourceDefinitionGateway,
 ) -> None:
     """Verify reassigning the same cinema updates the source name."""
     await _seed_parents(gateway, source_definition_gateway)
@@ -69,9 +69,9 @@ async def test_assign_upserts_existing(
 
 @pytest.mark.asyncio
 async def test_unassign(
-    assignment_gateway: SupabaseCinemaSourceAssignmentGateway,
-    gateway: SupabaseCinemaGateway,
-    source_definition_gateway: SupabaseSourceDefinitionGateway,
+    assignment_gateway: PostgresCinemaSourceAssignmentGateway,
+    gateway: PostgresCinemaGateway,
+    source_definition_gateway: PostgresSourceDefinitionGateway,
 ) -> None:
     """Verify unassign removes the row and returns True."""
     await _seed_parents(gateway, source_definition_gateway)
@@ -83,7 +83,7 @@ async def test_unassign(
 
 @pytest.mark.asyncio
 async def test_unassign_missing(
-    assignment_gateway: SupabaseCinemaSourceAssignmentGateway,
+    assignment_gateway: PostgresCinemaSourceAssignmentGateway,
 ) -> None:
     """Verify unassign returns False when no assignment exists."""
     assert await assignment_gateway.unassign("nonexistent") is False

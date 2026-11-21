@@ -1,4 +1,4 @@
-"""Integration tests for SupabaseScreeningGateway."""
+"""Integration tests for PostgresScreeningGateway."""
 
 from __future__ import annotations
 
@@ -9,20 +9,20 @@ import asyncpg
 import pytest
 
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
-from marquise.infrastructure.supabase.gateways.cinema import (
-    SupabaseCinemaGateway,
+from marquise.infrastructure.postgres.gateways.cinema import (
+    PostgresCinemaGateway,
 )
-from marquise.infrastructure.supabase.gateways.movie import (
-    SupabaseMovieGateway,
+from marquise.infrastructure.postgres.gateways.movie import (
+    PostgresMovieGateway,
 )
-from marquise.infrastructure.supabase.gateways.screening import (
-    SupabaseScreeningGateway,
+from marquise.infrastructure.postgres.gateways.screening import (
+    PostgresScreeningGateway,
 )
-from marquise.infrastructure.supabase.gateways.screening_reader import (
-    SupabaseScreeningReadGateway,
+from marquise.infrastructure.postgres.gateways.screening_reader import (
+    PostgresScreeningReadGateway,
 )
-from marquise.infrastructure.supabase.gateways.source_definition import (
-    SupabaseSourceDefinitionGateway,
+from marquise.infrastructure.postgres.gateways.source_definition import (
+    PostgresSourceDefinitionGateway,
 )
 from marquise.interface_adapters.repositories.protocols.base import GatewayError
 from marquise.interface_adapters.repositories.protocols.screening import (
@@ -34,8 +34,8 @@ from marquise.interface_adapters.repositories.supabase.screening_repository impo
 
 
 async def _seed_parents(
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Create parent rows needed for FK constraints."""
     await gateway.save(cinema_id="cin-001", name="Cinema One", address=None, city=None)
@@ -50,9 +50,9 @@ async def _seed_parents(
 
 @pytest.mark.asyncio
 async def test_save_and_find_by_id(
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
+    screening_gateway: PostgresScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Verify a screening can be saved and then retrieved by ID."""
     await _seed_parents(gateway, movie_gateway)
@@ -76,10 +76,10 @@ async def test_save_and_find_by_id(
 
 @pytest.mark.asyncio
 async def test_checked_write_preserves_id_without_eligibility_policy(
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
-    source_definition_gateway: SupabaseSourceDefinitionGateway,
+    screening_gateway: PostgresScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
+    source_definition_gateway: PostgresSourceDefinitionGateway,
 ) -> None:
     """Storage accepts a checked cross-day change without source/day policy."""
     await _seed_parents(gateway, movie_gateway)
@@ -112,10 +112,10 @@ async def test_checked_write_preserves_id_without_eligibility_policy(
 
 @pytest.mark.asyncio
 async def test_import_reschedules_idempotently_and_preserves_conflicts(
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
-    source_definition_gateway: SupabaseSourceDefinitionGateway,
+    screening_gateway: PostgresScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
+    source_definition_gateway: PostgresSourceDefinitionGateway,
     db_pool: asyncpg.Pool,
 ) -> None:
     """Import chain moves same-source showtimes and refuses source changes."""
@@ -125,7 +125,7 @@ async def test_import_reschedules_idempotently_and_preserves_conflicts(
             name=name, display_name=name, description=None
         )
     command = CreateScreeningsCommand(SupabaseScreeningRepository(screening_gateway))
-    reader = SupabaseScreeningReadGateway(db_pool, "marquise-test")
+    reader = PostgresScreeningReadGateway(db_pool, "marquise-test")
 
     def row(
         showtime: datetime, source_name: str = "cineplex"
@@ -169,9 +169,9 @@ async def test_import_reschedules_idempotently_and_preserves_conflicts(
 
 @pytest.mark.asyncio
 async def test_save_upserts_on_unique_key_conflict(
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
+    screening_gateway: PostgresScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Verify save returns the existing row on conflict."""
     await _seed_parents(gateway, movie_gateway)
@@ -198,9 +198,9 @@ async def test_save_upserts_on_unique_key_conflict(
 
 @pytest.mark.asyncio
 async def test_save_raises_gateway_error_on_external_id_conflict(
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
+    screening_gateway: PostgresScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Verify save raises GatewayError when external_id collides across rows.
 
@@ -231,9 +231,9 @@ async def test_save_raises_gateway_error_on_external_id_conflict(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("existing_target", [False, True])
 async def test_import_skips_external_id_conflict_and_preserves_existing_data(
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
+    screening_gateway: PostgresScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
     db_pool: asyncpg.Pool,
     existing_target: bool,
 ) -> None:
@@ -290,7 +290,7 @@ async def test_import_skips_external_id_conflict_and_preserves_existing_data(
     assert result.screenings[0].movie_title == "Movie C"
     assert await screening_gateway.find_by_id("owner") == owner_before
     assert await screening_gateway.find_by_id("target") == target_before
-    stored_mov_002 = await SupabaseScreeningReadGateway(
+    stored_mov_002 = await PostgresScreeningReadGateway(
         db_pool, "marquise-test"
     ).search(movie_id="mov-002")
     assert [row["id"] for row in stored_mov_002.rows] == (
@@ -309,16 +309,16 @@ async def test_import_skips_external_id_conflict_and_preserves_existing_data(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("external_id", ["14384", None])
 async def test_import_accepts_shared_external_id_across_cinemas(
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
+    screening_gateway: PostgresScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
     db_pool: asyncpg.Pool,
     external_id: str | None,
 ) -> None:
     """Different cinemas import shared or absent IDs and reimport without duplicates."""
     await _seed_parents(gateway, movie_gateway)
     command = CreateScreeningsCommand(SupabaseScreeningRepository(screening_gateway))
-    reader = SupabaseScreeningReadGateway(db_pool, "marquise-test")
+    reader = PostgresScreeningReadGateway(db_pool, "marquise-test")
     showtime = datetime(2026, 10, 7, 17, tzinfo=UTC)
     request = command.InputData(
         screenings=(
@@ -371,9 +371,9 @@ async def test_import_accepts_shared_external_id_across_cinemas(
 
 @pytest.mark.asyncio
 async def test_save_does_not_misclassify_primary_key_conflict(
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
+    screening_gateway: PostgresScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """An unrelated unique violation stays fatal, even when an external ID is set."""
     await _seed_parents(gateway, movie_gateway)
@@ -399,9 +399,9 @@ async def test_save_does_not_misclassify_primary_key_conflict(
 
 @pytest.mark.asyncio
 async def test_find_distinct_movies_by_cinema(
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
+    screening_gateway: PostgresScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Verify distinct movies are returned for a cinema within a date range."""
     await _seed_parents(gateway, movie_gateway)
@@ -436,7 +436,7 @@ async def test_find_distinct_movies_by_cinema(
 
 @pytest.mark.asyncio
 async def test_find_distinct_movies_by_cinema_empty(
-    screening_gateway: SupabaseScreeningGateway,
+    screening_gateway: PostgresScreeningGateway,
 ) -> None:
     """Verify an empty page is returned when no screening matches."""
     page = await screening_gateway.find_distinct_movies_by_cinema(
@@ -450,9 +450,9 @@ async def test_find_distinct_movies_by_cinema_empty(
 
 @pytest.mark.asyncio
 async def test_find_distinct_movies_by_cinema_with_limit_and_offset(
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
+    screening_gateway: PostgresScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Verify limit/offset paginate distinct movies while total reflects all of them."""
     await _seed_parents(gateway, movie_gateway)
@@ -478,9 +478,9 @@ async def test_find_distinct_movies_by_cinema_with_limit_and_offset(
 
 @pytest.mark.asyncio
 async def test_replace_updates_all_fields_by_id(
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
+    screening_gateway: PostgresScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Verify replace writes identity and optional fields for a known ID."""
     await _seed_parents(gateway, movie_gateway)
@@ -531,7 +531,7 @@ async def test_replace_updates_all_fields_by_id(
 
 @pytest.mark.asyncio
 async def test_replace_missing_returns_none(
-    screening_gateway: SupabaseScreeningGateway,
+    screening_gateway: PostgresScreeningGateway,
 ) -> None:
     """Verify replace returns None when the screening ID does not exist."""
     result = await screening_gateway.replace(
@@ -546,9 +546,9 @@ async def test_replace_missing_returns_none(
 
 @pytest.mark.asyncio
 async def test_replace_raises_on_identity_conflict(
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
+    screening_gateway: PostgresScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Verify replace raises GatewayError when identity collides."""
     await _seed_parents(gateway, movie_gateway)
@@ -578,7 +578,7 @@ async def test_replace_raises_on_identity_conflict(
 
 @pytest.mark.asyncio
 async def test_delete_missing_returns_false(
-    screening_gateway: SupabaseScreeningGateway,
+    screening_gateway: PostgresScreeningGateway,
 ) -> None:
     """Verify delete returns false when screening ID does not exist."""
     assert await screening_gateway.delete("scr-delete-missing") is False

@@ -17,13 +17,13 @@ from marquise.application.queries.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
 from marquise.application.queries.search_screenings import SearchScreeningsQuery
-from marquise.infrastructure.supabase.gateways.cinema import SupabaseCinemaGateway
-from marquise.infrastructure.supabase.gateways.movie import SupabaseMovieGateway
-from marquise.infrastructure.supabase.gateways.screening_movie_reader import (
-    SupabaseScreeningMovieReadGateway,
+from marquise.infrastructure.postgres.gateways.cinema import PostgresCinemaGateway
+from marquise.infrastructure.postgres.gateways.movie import PostgresMovieGateway
+from marquise.infrastructure.postgres.gateways.screening_movie_reader import (
+    PostgresScreeningMovieReadGateway,
 )
-from marquise.infrastructure.supabase.gateways.screening_reader import (
-    SupabaseScreeningReadGateway,
+from marquise.infrastructure.postgres.gateways.screening_reader import (
+    PostgresScreeningReadGateway,
 )
 from marquise.interface_adapters.readers.cinema_source_assignment_reader import (
     SupabaseCinemaSourceAssignmentReader,
@@ -43,7 +43,7 @@ from marquise.interface_adapters.repositories.supabase.movie_repository import (
 def _build_screening_reader(pool: asyncpg.Pool, schema: str) -> SupabaseScreeningReader:
     """Build the screening display reader."""
     return SupabaseScreeningReader(
-        gateway=SupabaseScreeningReadGateway(pool=pool, schema=schema)
+        gateway=PostgresScreeningReadGateway(pool=pool, schema=schema)
     )
 
 
@@ -52,7 +52,7 @@ def _build_screening_movie_reader(
 ) -> SupabaseScreeningMovieReader:
     """Build the movie-first screening reader."""
     return SupabaseScreeningMovieReader(
-        gateway=SupabaseScreeningMovieReadGateway(pool, schema)
+        gateway=PostgresScreeningMovieReadGateway(pool, schema)
     )
 
 
@@ -67,7 +67,7 @@ def build_get_cinema_screenings_query(
     """Build cinema-screening query."""
     return GetCinemaScreeningsQuery(
         cinema_repository=SupabaseCinemaRepository(
-            gateway=SupabaseCinemaGateway(pool=pool, schema=schema)
+            gateway=PostgresCinemaGateway(pool=pool, schema=schema)
         ),
         screening_reader=_build_screening_reader(pool, schema),
     )
@@ -79,7 +79,7 @@ def build_get_movie_screenings_query(
     """Build movie-screening query."""
     return GetMovieScreeningsQuery(
         movie_repository=SupabaseMovieRepository(
-            gateway=SupabaseMovieGateway(pool=pool, schema=schema)
+            gateway=PostgresMovieGateway(pool=pool, schema=schema)
         ),
         screening_reader=_build_screening_reader(pool, schema),
     )
@@ -101,10 +101,10 @@ def build_search_screenings_query(
     return SearchScreeningsQuery(
         screening_reader=_build_screening_reader(pool, schema),
         cinema_repository=SupabaseCinemaRepository(
-            gateway=SupabaseCinemaGateway(pool=pool, schema=schema)
+            gateway=PostgresCinemaGateway(pool=pool, schema=schema)
         ),
         movie_repository=SupabaseMovieRepository(
-            gateway=SupabaseMovieGateway(pool=pool, schema=schema)
+            gateway=PostgresMovieGateway(pool=pool, schema=schema)
         ),
     )
 

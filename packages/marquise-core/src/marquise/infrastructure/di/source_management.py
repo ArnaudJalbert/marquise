@@ -11,11 +11,11 @@ from marquise.application.use_cases.delete_source import DeleteSourceUseCase
 from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
-from marquise.infrastructure.supabase.gateways.cinema_source_assignment import (
-    SupabaseCinemaSourceAssignmentGateway,
+from marquise.infrastructure.postgres.gateways.cinema_source_assignment import (
+    PostgresCinemaSourceAssignmentGateway,
 )
-from marquise.infrastructure.supabase.gateways.source_definition import (
-    SupabaseSourceDefinitionGateway,
+from marquise.infrastructure.postgres.gateways.source_definition import (
+    PostgresSourceDefinitionGateway,
 )
 from marquise.interface_adapters.repositories.supabase.cinema_source_assignment_repository import (  # noqa: E501
     SupabaseCinemaSourceAssignmentRepository,
@@ -29,7 +29,7 @@ def _build_source_repository(
     pool: asyncpg.Pool, schema: str
 ) -> SupabaseSourceDefinitionRepository:
     return SupabaseSourceDefinitionRepository(
-        gateway=SupabaseSourceDefinitionGateway(pool=pool, schema=schema)
+        gateway=PostgresSourceDefinitionGateway(pool=pool, schema=schema)
     )
 
 
@@ -37,7 +37,7 @@ def _build_assignment_repository(
     pool: asyncpg.Pool, schema: str
 ) -> SupabaseCinemaSourceAssignmentRepository:
     return SupabaseCinemaSourceAssignmentRepository(
-        gateway=SupabaseCinemaSourceAssignmentGateway(pool=pool, schema=schema)
+        gateway=PostgresCinemaSourceAssignmentGateway(pool=pool, schema=schema)
     )
 
 

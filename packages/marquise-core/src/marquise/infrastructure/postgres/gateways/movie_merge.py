@@ -17,7 +17,7 @@ from marquise.application.movie_workflows import (
     MovieMetadataValues,
     MovieWorkflowConflictError,
 )
-from marquise.infrastructure.supabase.connection_pool import ConnectionPool
+from marquise.infrastructure.postgres.connection_pool import ConnectionPool
 
 
 def _quote(identifier: str) -> str:
@@ -78,7 +78,7 @@ def _snapshot(
     )
 
 
-class SupabaseMovieMergeGateway:
+class PostgresMovieMergeGateway:
     """Provide the merge method for the metadata repository's injected gateway.
 
     No schema is created here. #359 owns persistence composition and schema;

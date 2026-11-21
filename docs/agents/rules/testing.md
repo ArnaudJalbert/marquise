@@ -11,7 +11,7 @@ The test boundary, Python mechanics, web testing and review red flags follow the
 | `domain/` | `unit_tests/domain/` | Nothing |
 | `application/` | `unit_tests/application/` | Repository ABCs via `create_autospec` |
 | `interface_adapters/` | `unit_tests/interface_adapters/` | Gateway `Protocol`s via `create_autospec` |
-| `infrastructure/supabase/gateways/` | `integration_tests/infrastructure/supabase/` | Real disposable database |
+| `infrastructure/postgres/gateways/` | `integration_tests/infrastructure/postgres/` | Real disposable database |
 | `infrastructure/` unit coverage | `unit_tests/infrastructure/` | Fakes, fixtures or stubbed fetchers |
 | Selected `infrastructure/sources/` HTTP clients | `integration_tests/infrastructure/sources/` | Loopback HTTP server |
 | `apps/marquise-api/` | `apps/marquise-api/tests/` | `MarquiseFactory` |

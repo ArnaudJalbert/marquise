@@ -7,7 +7,7 @@ import urllib.parse
 
 import asyncpg
 
-from marquise.infrastructure.supabase.config import Settings
+from marquise.infrastructure.postgres.config import Settings
 
 
 def sanitize_dsn(dsn: str) -> str:
@@ -42,7 +42,7 @@ def sanitize_dsn(dsn: str) -> str:
 
 
 class Database:
-    """Manages an asyncpg connection pool for Supabase PostgreSQL.
+    """Manages an asyncpg connection pool for PostgreSQL.
 
     Handles pool lifecycle (connect / disconnect) and provides access
     to the underlying pool object.

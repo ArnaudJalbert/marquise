@@ -1,8 +1,8 @@
-"""Supabase PostgreSQL implementation of CinemaGateway."""
+"""PostgreSQL implementation of CinemaGateway."""
 
 from __future__ import annotations
 
-from marquise.infrastructure.supabase.connection_pool import ConnectionPool
+from marquise.infrastructure.postgres.connection_pool import ConnectionPool
 from marquise.interface_adapters.repositories.protocols.base import GatewayPage
 
 DEFAULT_SCHEMA = "marquise"
@@ -11,8 +11,8 @@ DEFAULT_SCHEMA = "marquise"
 _COLUMNS = "id, name, address, city, website"
 
 
-class SupabaseCinemaGateway:
-    """Concrete cinema gateway that executes SQL against Supabase PostgreSQL.
+class PostgresCinemaGateway:
+    """Concrete cinema gateway that executes SQL against PostgreSQL.
 
     Args:
         pool: An open asyncpg connection pool.
