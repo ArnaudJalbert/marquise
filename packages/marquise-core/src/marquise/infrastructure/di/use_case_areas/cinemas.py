@@ -45,7 +45,7 @@ class CinemaUseCases:
 def build_cinema_repository(
     pool: asyncpg.Pool, schema: str
 ) -> SupabaseCinemaRepository:
-    """Build the cinema repository over its Supabase gateway."""
+    """Build the cinema repository over its Postgres gateway."""
     return SupabaseCinemaRepository(
         gateway=PostgresCinemaGateway(pool=pool, schema=schema)
     )
