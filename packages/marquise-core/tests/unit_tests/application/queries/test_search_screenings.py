@@ -8,9 +8,10 @@ from unittest.mock import create_autospec
 import pytest
 
 from marquise.application.exceptions import CinemaNotFoundError, MovieNotFoundError
+from marquise.application.page import Page
 from marquise.application.queries.search_screenings import SearchScreeningsQuery
 from marquise.application.readers import ScreeningReader
-from marquise.application.repositories import CinemaRepository, MovieRepository, Page
+from marquise.application.repositories import CinemaRepository, MovieRepository
 from marquise.domain.value_objects import CinemaId, MovieId
 
 

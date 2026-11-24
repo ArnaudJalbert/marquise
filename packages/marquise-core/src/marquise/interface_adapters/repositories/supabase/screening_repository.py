@@ -14,7 +14,8 @@ from marquise.application.exceptions import (
     ScreeningNotFoundError,
 )
 from marquise.application.exceptions.screening import ScreeningWriteConflictError
-from marquise.application.repositories import Page, ScreeningRepository
+from marquise.application.page import Page
+from marquise.application.repositories import ScreeningRepository
 from marquise.domain.entities import Movie, Screening
 from marquise.domain.value_objects import (
     CinemaId,

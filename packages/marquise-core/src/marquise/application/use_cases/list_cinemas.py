@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from marquise.application.page import calculate_page_offset
 from marquise.application.repositories import CinemaRepository
-from marquise.application.repositories.page import get_page_offset
 
 
 class ListCinemasUseCase:
@@ -119,7 +119,7 @@ class ListCinemasUseCase:
         page = await self.cinema_repository.find_all(
             name_filter=input_data.name,
             limit=input_data.size,
-            offset=get_page_offset(input_data.page, input_data.size),
+            offset=calculate_page_offset(input_data.page, input_data.size),
         )
 
         cinema_data = [

@@ -5,11 +5,11 @@ from unittest.mock import Mock, create_autospec
 
 import pytest
 
+from marquise.application.page import Page
 from marquise.application.queries.browse_screening_movies import (
     BrowseScreeningMoviesQuery,
 )
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
-from marquise.application.repositories.page import Page
 from marquise.domain import value_objects
 
 NOW = datetime(2026, 11, 3, 18, tzinfo=UTC)
