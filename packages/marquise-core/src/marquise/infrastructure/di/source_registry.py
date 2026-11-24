@@ -2,21 +2,13 @@
 
 from __future__ import annotations
 
-from marquise.infrastructure.sources.cinemacinema.gateways.source import (
-    CinemaCinemaSource,
-)
-from marquise.infrastructure.sources.cinemamoderne.gateways.source import (
-    CinemaModerneSource,
-)
-from marquise.infrastructure.sources.cinemapublic.gateways.source import (
-    CinemaPublicSource,
-)
-from marquise.infrastructure.sources.cinematheque.gateways.source import (
-    CinemathequeSource,
-)
-from marquise.infrastructure.sources.cineplex.gateways.source import CineplexSource
-from marquise.infrastructure.sources.cinestarz.gateways.source import CineStarzSource
-from marquise.infrastructure.sources.outremont.gateways.source import OutremontSource
+from marquise.infrastructure.sources.cinemacinema import CinemaCinemaSource
+from marquise.infrastructure.sources.cinemamoderne import CinemaModerneSource
+from marquise.infrastructure.sources.cinemapublic import CinemaPublicSource
+from marquise.infrastructure.sources.cinematheque import CinemathequeSource
+from marquise.infrastructure.sources.cineplex import CineplexSource
+from marquise.infrastructure.sources.cinestarz import CineStarzSource
+from marquise.infrastructure.sources.outremont import OutremontSource
 from marquise.interface_adapters.repositories.source_adapters.cinemacinema import (
     CinemaCinemaAdapter,
 )
