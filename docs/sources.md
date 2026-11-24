@@ -1,7 +1,7 @@
 # Showtime sources
 
 How scrapers, adapters, and the registry fit together. Per-source detail lives
-in module docstrings under `infrastructure/sources/<name>/`.
+in each `infrastructure/sources/<name>.py` module docstring.
 
 See also the [architecture rules](agents/rules/architecture.md).
 
@@ -11,7 +11,7 @@ See also the [architecture rules](agents/rules/architecture.md).
 
 Each source has two sides:
 
-1. **Scraper** (`packages/marquise-core/src/marquise/infrastructure/sources/<name>/`)
+1. **Scraper** (`packages/marquise-core/src/marquise/infrastructure/sources/<name>.py`)
    — HTTP/API I/O, returns plain dict rows (`ShowtimeRow` shape).
 2. **Adapter** (`packages/marquise-core/src/marquise/interface_adapters/repositories/source_adapters/<name>.py`)
    — implements `SourceAdapter` protocol; delegates to the scraper gateway.
@@ -28,13 +28,13 @@ Use cases call the registry — they never import scrapers directly.
 
 | Name | Scraper | Adapter |
 |------|---------|---------|
-| `cineplex` | `infrastructure/sources/cineplex/` | `source_adapters/cineplex.py` |
-| `cinemacinema` | `infrastructure/sources/cinemacinema/` | `source_adapters/cinemacinema.py` |
-| `cinemapublic` | `infrastructure/sources/cinemapublic/` | `source_adapters/cinemapublic.py` |
-| `cinestarz` | `infrastructure/sources/cinestarz/` | `source_adapters/cinestarz.py` |
-| `cinemamoderne` | `infrastructure/sources/cinemamoderne/` | `source_adapters/cinemamoderne.py` |
-| `cinematheque` | `infrastructure/sources/cinematheque/` | `source_adapters/cinematheque.py` |
-| `outremont` | `infrastructure/sources/outremont/` | `source_adapters/outremont.py` |
+| `cineplex` | `infrastructure/sources/cineplex.py` | `source_adapters/cineplex.py` |
+| `cinemacinema` | `infrastructure/sources/cinemacinema.py` | `source_adapters/cinemacinema.py` |
+| `cinemapublic` | `infrastructure/sources/cinemapublic.py` | `source_adapters/cinemapublic.py` |
+| `cinestarz` | `infrastructure/sources/cinestarz.py` | `source_adapters/cinestarz.py` |
+| `cinemamoderne` | `infrastructure/sources/cinemamoderne.py` | `source_adapters/cinemamoderne.py` |
+| `cinematheque` | `infrastructure/sources/cinematheque.py` | `source_adapters/cinematheque.py` |
+| `outremont` | `infrastructure/sources/outremont.py` | `source_adapters/outremont.py` |
 
 All paths relative to `packages/marquise-core/src/marquise/`. The `tmdb*.py` files beside them are movie metadata providers, not showtime sources ([docs/providers/tmdb-metadata.md](providers/tmdb-metadata.md)).
 
@@ -45,7 +45,7 @@ Showtimes must emit UTC ISO 8601 timestamps — use
 
 ## Adding a source
 
-1. Add scraper under `infrastructure/sources/<name>/gateways/source.py`.
+1. Add scraper as `infrastructure/sources/<name>.py`.
 2. Add adapter under `interface_adapters/repositories/source_adapters/<name>.py`
    implementing `SourceAdapter` (see `base.py`).
 3. Register in `infrastructure/di/source_registry.py`.
