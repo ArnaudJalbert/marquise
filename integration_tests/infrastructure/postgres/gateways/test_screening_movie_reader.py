@@ -11,7 +11,7 @@ from marquise.infrastructure.postgres.gateways.screening_movie_reader import (
     PostgresScreeningMovieReadGateway,
 )
 from marquise.interface_adapters.readers.screening_movie_reader import (
-    SupabaseScreeningMovieReader,
+    PostgresScreeningMovieReader,
 )
 
 
@@ -60,7 +60,7 @@ async def test_distinct_movie_pages_previews_and_end_metadata(
             VALUES($1,$2,$3,$4,$5,$6)""",
             shows,
         )
-    reader = SupabaseScreeningMovieReader(
+    reader = PostgresScreeningMovieReader(
         PostgresScreeningMovieReadGateway(db_pool, "marquise-test")
     )
     end = datetime(2026, 11, 2, 4, 59, 59, 999999, tzinfo=UTC)
@@ -269,7 +269,7 @@ async def test_day_counts_count_every_matching_screening_by_montreal_day(
                (id,movie_id,cinema_id,showtime,language) VALUES($1,$2,$3,$4,$5)""",
             shows,
         )
-    reader = SupabaseScreeningMovieReader(
+    reader = PostgresScreeningMovieReader(
         PostgresScreeningMovieReadGateway(db_pool, "marquise-test")
     )
     start = datetime(2026, 11, 3, 5, tzinfo=UTC)

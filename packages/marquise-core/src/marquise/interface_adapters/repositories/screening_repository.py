@@ -1,4 +1,4 @@
-"""Supabase repository implementation of ScreeningRepository.
+"""Postgres repository implementation of ScreeningRepository.
 
 Adapts a ``ScreeningGateway`` (infrastructure) into the ``ScreeningRepository``
 interface (application).  No SQL, no asyncpg — pure entity mapping.
@@ -22,16 +22,16 @@ from marquise.domain.value_objects import (
     ScreeningId,
     Showtime,
 )
+from marquise.interface_adapters.repositories._utils import (
+    dict_to_cinema,
+    extract_prefixed,
+    to_movie,
+)
 from marquise.interface_adapters.repositories.protocols.base import GatewayError
 from marquise.interface_adapters.repositories.protocols.screening import (
     ScreeningExternalIdConflictGatewayError,
     ScreeningGateway,
     ScreeningWriteConflictGatewayError,
-)
-from marquise.interface_adapters.repositories.supabase._utils import (
-    dict_to_cinema,
-    extract_prefixed,
-    to_movie,
 )
 
 
@@ -52,8 +52,8 @@ def _parse_datetime(value: datetime) -> datetime:
     return value
 
 
-class SupabaseScreeningRepository(ScreeningRepository):
-    """Screening repository backed by a Supabase PostgreSQL database.
+class PostgresScreeningRepository(ScreeningRepository):
+    """Screening repository backed by a PostgreSQL database.
 
     Parameters
     ----------

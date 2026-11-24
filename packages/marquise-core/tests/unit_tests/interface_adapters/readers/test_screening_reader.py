@@ -12,7 +12,7 @@ from marquise.interface_adapters.readers.screening_read_gateway import (
     ScreeningReadGateway,
 )
 from marquise.interface_adapters.readers.screening_reader import (
-    SupabaseScreeningReader,
+    PostgresScreeningReader,
 )
 from marquise.interface_adapters.repositories.protocols.base import (
     GatewayError,
@@ -44,7 +44,7 @@ async def test_find_by_id_maps_single_exact_projection_lookup() -> None:
         "room": "Room 2",
     }
 
-    result = await SupabaseScreeningReader(gateway=gateway).find_by_id("scr-1")
+    result = await PostgresScreeningReader(gateway=gateway).find_by_id("scr-1")
 
     assert result == ScreeningReader.ScreeningData(
         id="scr-1",
@@ -67,7 +67,7 @@ async def test_find_by_id_returns_none_when_missing() -> None:
     gateway = create_autospec(ScreeningReadGateway, instance=True)
     gateway.find_by_id.return_value = None
 
-    result = await SupabaseScreeningReader(gateway).find_by_id("missing")
+    result = await PostgresScreeningReader(gateway).find_by_id("missing")
 
     assert result is None
     gateway.find_by_id.assert_awaited_once_with("missing")
@@ -83,7 +83,7 @@ async def test_find_by_id_defaults_absent_optional_fields() -> None:
         row.pop(field)
     gateway.find_by_id.return_value = row
 
-    result = await SupabaseScreeningReader(gateway).find_by_id("scr-1")
+    result = await PostgresScreeningReader(gateway).find_by_id("scr-1")
 
     assert result is not None
     assert result.ticket_url is None
@@ -98,7 +98,7 @@ async def test_find_by_id_preserves_aware_showtime() -> None:
     showtime = datetime(2026, 6, 27, 19, 30, tzinfo=UTC)
     gateway.find_by_id.return_value = {**_row(), "showtime": showtime}
 
-    result = await SupabaseScreeningReader(gateway).find_by_id("scr-1")
+    result = await PostgresScreeningReader(gateway).find_by_id("scr-1")
 
     assert result is not None
     assert result.showtime is showtime
@@ -110,7 +110,7 @@ async def test_search_maps_projection_and_delegates_filters_unchanged() -> None:
     gateway = create_autospec(ScreeningReadGateway, instance=True)
     row = _row()
     gateway.search.return_value = GatewayPage(rows=[row], total=12)
-    reader = SupabaseScreeningReader(gateway)
+    reader = PostgresScreeningReader(gateway)
     eastern = timezone(timedelta(hours=-4))
     start = datetime(2026, 6, 27, tzinfo=eastern)
     end = datetime(2026, 6, 28, tzinfo=eastern)
@@ -160,7 +160,7 @@ async def test_search_preserves_gateway_row_order() -> None:
         rows=[{**_row(), "id": "scr-2"}, _row()], total=2
     )
 
-    result = await SupabaseScreeningReader(gateway).search(limit=5)
+    result = await PostgresScreeningReader(gateway).search(limit=5)
 
     assert [item.id for item in result.items] == ["scr-2", "scr-1"]
     assert result.total == 2
@@ -172,7 +172,7 @@ async def test_search_without_filters_delegates_defaults() -> None:
     gateway = create_autospec(ScreeningReadGateway, instance=True)
     gateway.search.return_value = GatewayPage(rows=[_row()], total=1)
 
-    result = await SupabaseScreeningReader(gateway).search()
+    result = await PostgresScreeningReader(gateway).search()
 
     assert len(result.items) == 1
     assert result.total == 1
@@ -194,7 +194,7 @@ async def test_search_empty_page_preserves_gateway_total() -> None:
     gateway = create_autospec(ScreeningReadGateway, instance=True)
     gateway.search.return_value = GatewayPage(rows=[], total=3)
 
-    result = await SupabaseScreeningReader(gateway).search(
+    result = await PostgresScreeningReader(gateway).search(
         movie_title="Odyssey", limit=5, offset=10
     )
 
@@ -219,7 +219,7 @@ async def test_find_by_id_propagates_gateway_failure() -> None:
     gateway.find_by_id.side_effect = GatewayError("projection unavailable")
 
     with pytest.raises(GatewayError, match="projection unavailable"):
-        await SupabaseScreeningReader(gateway).find_by_id("scr-1")
+        await PostgresScreeningReader(gateway).find_by_id("scr-1")
 
     gateway.find_by_id.assert_awaited_once_with("scr-1")
     gateway.search.assert_not_awaited()
@@ -232,7 +232,7 @@ async def test_search_propagates_gateway_failure() -> None:
     gateway.search.side_effect = GatewayError("projection unavailable")
 
     with pytest.raises(GatewayError, match="projection unavailable"):
-        await SupabaseScreeningReader(gateway).search()
+        await PostgresScreeningReader(gateway).search()
 
     gateway.search.assert_awaited_once()
     gateway.find_by_id.assert_not_awaited()

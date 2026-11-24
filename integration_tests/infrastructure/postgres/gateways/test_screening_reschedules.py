@@ -33,17 +33,17 @@ from marquise.infrastructure.postgres.gateways.screening_reader import (
 from marquise.infrastructure.postgres.gateways.source_definition import (
     PostgresSourceDefinitionGateway,
 )
-from marquise.interface_adapters.repositories.supabase.cinema_repository import (
-    SupabaseCinemaRepository,
+from marquise.interface_adapters.repositories.cinema_repository import (
+    PostgresCinemaRepository,
 )
-from marquise.interface_adapters.repositories.supabase.cinema_source_assignment_repository import (  # noqa: E501
-    SupabaseCinemaSourceAssignmentRepository,
+from marquise.interface_adapters.repositories.cinema_source_assignment_repository import (  # noqa: E501
+    PostgresCinemaSourceAssignmentRepository,
 )
-from marquise.interface_adapters.repositories.supabase.movie_repository import (
-    SupabaseMovieRepository,
+from marquise.interface_adapters.repositories.movie_repository import (
+    PostgresMovieRepository,
 )
-from marquise.interface_adapters.repositories.supabase.screening_repository import (
-    SupabaseScreeningRepository,
+from marquise.interface_adapters.repositories.screening_repository import (
+    PostgresScreeningRepository,
 )
 from support.movie_import import import_command
 
@@ -94,7 +94,7 @@ def local(value: str) -> datetime:
 @pytest_asyncio.fixture
 async def import_chain(
     db_pool: asyncpg.Pool,
-) -> tuple[ImportScreeningsCommand, MagicMock, SupabaseScreeningRepository]:
+) -> tuple[ImportScreeningsCommand, MagicMock, PostgresScreeningRepository]:
     """Compose real persistence with only the external source registry mocked."""
     cinema = PostgresCinemaGateway(db_pool, "marquise-test")
     assignment = PostgresCinemaSourceAssignmentGateway(db_pool, "marquise-test")
@@ -108,16 +108,16 @@ async def import_chain(
     await movies.save("digger", "DIGGER", release_year=None)
     await movies.save("parents", "Chers Parents", release_year=None)
     registry = create_autospec(SourceRegistryQuery, instance=True)
-    screenings = SupabaseScreeningRepository(
+    screenings = PostgresScreeningRepository(
         PostgresScreeningGateway(db_pool, "marquise-test")
     )
     command = import_command(
         FetchScreeningsFromSourceQuery(
-            SupabaseCinemaRepository(cinema),
-            SupabaseCinemaSourceAssignmentRepository(assignment),
+            PostgresCinemaRepository(cinema),
+            PostgresCinemaSourceAssignmentRepository(assignment),
             registry,
         ),
-        SupabaseMovieRepository(movies),
+        PostgresMovieRepository(movies),
         CreateScreeningsCommand(screenings),
     )
     return command, registry, screenings
@@ -138,7 +138,7 @@ async def run_import(
 
 async def stored(
     db_pool: asyncpg.Pool,
-    repository: SupabaseScreeningRepository,
+    repository: PostgresScreeningRepository,
     cinema_id: str | None = None,
 ) -> list[Screening]:
     """Read stored screening IDs through the reader, then load domain entities."""
@@ -150,7 +150,7 @@ async def stored(
 
 
 async def read_screening(
-    repository: SupabaseScreeningRepository,
+    repository: PostgresScreeningRepository,
     gateway: PostgresScreeningGateway,
     screening_id: str,
 ) -> Screening:
@@ -203,7 +203,7 @@ async def seed_legacy_cineplex_screenings(db_pool: asyncpg.Pool) -> None:
 @pytest.mark.asyncio
 async def test_all_five_legacy_reschedules_preserve_identity(
     import_chain: tuple[
-        ImportScreeningsCommand, MagicMock, SupabaseScreeningRepository
+        ImportScreeningsCommand, MagicMock, PostgresScreeningRepository
     ],
     screening_gateway: PostgresScreeningGateway,
     db_pool: asyncpg.Pool,
@@ -265,7 +265,7 @@ async def test_all_five_legacy_reschedules_preserve_identity(
 )
 async def test_dst_and_cross_day_refusal(
     import_chain: tuple[
-        ImportScreeningsCommand, MagicMock, SupabaseScreeningRepository
+        ImportScreeningsCommand, MagicMock, PostgresScreeningRepository
     ],
     screening_gateway: PostgresScreeningGateway,
     old: str,
@@ -307,7 +307,7 @@ async def wait_for_screening_lock(connection: asyncpg.Connection) -> None:
 @pytest.mark.asyncio
 async def test_dst_fold_batch_preserves_persisted_owner(
     import_chain: tuple[
-        ImportScreeningsCommand, MagicMock, SupabaseScreeningRepository
+        ImportScreeningsCommand, MagicMock, PostgresScreeningRepository
     ],
     screening_gateway: PostgresScreeningGateway,
 ) -> None:
@@ -341,7 +341,7 @@ async def test_dst_fold_batch_preserves_persisted_owner(
 @pytest.mark.parametrize("external_id", [None, ""])
 async def test_missing_native_id_cannot_reschedule_legacy_blank_owner(
     import_chain: tuple[
-        ImportScreeningsCommand, MagicMock, SupabaseScreeningRepository
+        ImportScreeningsCommand, MagicMock, PostgresScreeningRepository
     ],
     screening_gateway: PostgresScreeningGateway,
     db_pool: asyncpg.Pool,
@@ -370,7 +370,7 @@ async def test_missing_native_id_cannot_reschedule_legacy_blank_owner(
 @pytest.mark.asyncio
 async def test_import_sees_identity_committed_while_insert_waits(
     import_chain: tuple[
-        ImportScreeningsCommand, MagicMock, SupabaseScreeningRepository
+        ImportScreeningsCommand, MagicMock, PostgresScreeningRepository
     ],
     db_pool: asyncpg.Pool,
 ) -> None:
@@ -408,7 +408,7 @@ async def test_import_sees_identity_committed_while_insert_waits(
 )
 async def test_refused_reschedule_preserves_every_row(
     import_chain: tuple[
-        ImportScreeningsCommand, MagicMock, SupabaseScreeningRepository
+        ImportScreeningsCommand, MagicMock, PostgresScreeningRepository
     ],
     screening_gateway: PostgresScreeningGateway,
     db_pool: asyncpg.Pool,
@@ -462,7 +462,7 @@ async def test_refused_reschedule_preserves_every_row(
 @pytest.mark.asyncio
 async def test_same_time_source_takeover_is_refused(
     import_chain: tuple[
-        ImportScreeningsCommand, MagicMock, SupabaseScreeningRepository
+        ImportScreeningsCommand, MagicMock, PostgresScreeningRepository
     ],
     screening_gateway: PostgresScreeningGateway,
     db_pool: asyncpg.Pool,
@@ -502,7 +502,7 @@ async def test_same_time_source_takeover_is_refused(
 @pytest.mark.parametrize("external_id", [None, ""])
 async def test_missing_external_id_never_moves_an_existing_screening(
     import_chain: tuple[
-        ImportScreeningsCommand, MagicMock, SupabaseScreeningRepository
+        ImportScreeningsCommand, MagicMock, PostgresScreeningRepository
     ],
     screening_gateway: PostgresScreeningGateway,
     external_id: str | None,
@@ -533,7 +533,7 @@ async def test_missing_external_id_never_moves_an_existing_screening(
 @pytest.mark.parametrize("external_id", [None, ""])
 async def test_idless_metadata_cannot_attest_a_retained_legacy_id(
     import_chain: tuple[
-        ImportScreeningsCommand, MagicMock, SupabaseScreeningRepository
+        ImportScreeningsCommand, MagicMock, PostgresScreeningRepository
     ],
     screening_gateway: PostgresScreeningGateway,
     db_pool: asyncpg.Pool,
@@ -587,7 +587,7 @@ async def test_idless_metadata_cannot_attest_a_retained_legacy_id(
 )
 async def test_manual_reparent_cannot_transfer_cinema_scoped_ownership(
     import_chain: tuple[
-        ImportScreeningsCommand, MagicMock, SupabaseScreeningRepository
+        ImportScreeningsCommand, MagicMock, PostgresScreeningRepository
     ],
     screening_gateway: PostgresScreeningGateway,
     db_pool: asyncpg.Pool,
@@ -638,7 +638,7 @@ async def test_manual_reparent_cannot_transfer_cinema_scoped_ownership(
 @pytest.mark.asyncio
 async def test_external_id_change_without_source_witness_clears_provenance(
     import_chain: tuple[
-        ImportScreeningsCommand, MagicMock, SupabaseScreeningRepository
+        ImportScreeningsCommand, MagicMock, PostgresScreeningRepository
     ],
     screening_gateway: PostgresScreeningGateway,
 ) -> None:
@@ -667,7 +667,7 @@ async def test_external_id_change_without_source_witness_clears_provenance(
 @pytest.mark.asyncio
 async def test_same_cinema_replace_keeps_provenance_when_native_id_is_unchanged(
     import_chain: tuple[
-        ImportScreeningsCommand, MagicMock, SupabaseScreeningRepository
+        ImportScreeningsCommand, MagicMock, PostgresScreeningRepository
     ],
     screening_gateway: PostgresScreeningGateway,
 ) -> None:
@@ -693,7 +693,7 @@ async def test_same_cinema_replace_keeps_provenance_when_native_id_is_unchanged(
 @pytest.mark.asyncio
 async def test_failed_reschedule_preserves_old_values(
     import_chain: tuple[
-        ImportScreeningsCommand, MagicMock, SupabaseScreeningRepository
+        ImportScreeningsCommand, MagicMock, PostgresScreeningRepository
     ],
     screening_gateway: PostgresScreeningGateway,
     db_pool: asyncpg.Pool,
@@ -744,7 +744,7 @@ async def test_failed_reschedule_preserves_old_values(
 @pytest.mark.asyncio
 async def test_concurrent_source_change_refuses_waiting_reschedule(
     import_chain: tuple[
-        ImportScreeningsCommand, MagicMock, SupabaseScreeningRepository
+        ImportScreeningsCommand, MagicMock, PostgresScreeningRepository
     ],
     screening_gateway: PostgresScreeningGateway,
     db_pool: asyncpg.Pool,
@@ -799,7 +799,7 @@ async def test_concurrent_source_change_refuses_waiting_reschedule(
 @pytest.mark.asyncio
 async def test_concurrent_imports_move_one_screening_without_duplicates(
     import_chain: tuple[
-        ImportScreeningsCommand, MagicMock, SupabaseScreeningRepository
+        ImportScreeningsCommand, MagicMock, PostgresScreeningRepository
     ],
     screening_gateway: PostgresScreeningGateway,
     db_pool: asyncpg.Pool,
@@ -847,7 +847,7 @@ async def test_concurrent_imports_move_one_screening_without_duplicates(
 @pytest.mark.asyncio
 async def test_concurrent_target_arrival_rolls_back_reschedule(
     import_chain: tuple[
-        ImportScreeningsCommand, MagicMock, SupabaseScreeningRepository
+        ImportScreeningsCommand, MagicMock, PostgresScreeningRepository
     ],
     screening_gateway: PostgresScreeningGateway,
     db_pool: asyncpg.Pool,
@@ -935,7 +935,7 @@ async def test_source_provenance_requires_a_registered_source(
 @pytest.mark.asyncio
 async def test_ambiguous_persisted_ownership_never_reschedules_a_candidate(
     import_chain: tuple[
-        ImportScreeningsCommand, MagicMock, SupabaseScreeningRepository
+        ImportScreeningsCommand, MagicMock, PostgresScreeningRepository
     ],
     db_pool: asyncpg.Pool,
     screening_gateway: PostgresScreeningGateway,

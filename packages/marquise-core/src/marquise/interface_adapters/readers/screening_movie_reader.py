@@ -24,7 +24,7 @@ class ScreeningMovieReadGateway(Protocol):
         ...
 
 
-class SupabaseScreeningMovieReader(ScreeningMovieReader):
+class PostgresScreeningMovieReader(ScreeningMovieReader):
     """Adapt an injected gateway without database I/O of its own."""
 
     def __init__(self, gateway: ScreeningMovieReadGateway) -> None:

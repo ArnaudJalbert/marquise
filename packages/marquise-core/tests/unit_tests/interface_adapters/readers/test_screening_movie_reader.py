@@ -7,8 +7,8 @@ import pytest
 
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
 from marquise.interface_adapters.readers.screening_movie_reader import (
+    PostgresScreeningMovieReader,
     ScreeningMovieReadGateway,
-    SupabaseScreeningMovieReader,
 )
 from marquise.interface_adapters.repositories.protocols.base import GatewayPage
 
@@ -45,7 +45,7 @@ async def test_movie_projection_maps_metadata_previews_and_empty_pages() -> None
         total=25,
     )
     now = datetime(2026, 11, 1, 4, tzinfo=UTC)
-    reader = SupabaseScreeningMovieReader(gateway)
+    reader = PostgresScreeningMovieReader(gateway)
     request = ScreeningMovieReader.SearchRequest(now, now, now, 2, 24)
     result = await reader.search(request)
     gateway.search.assert_awaited_once_with(request)
@@ -74,7 +74,7 @@ async def test_day_counts_map_gateway_rows() -> None:
     now = datetime(2026, 11, 3, 5, tzinfo=UTC)
     request = ScreeningMovieReader.DayCountRequest(now, now, now)
 
-    counts = await SupabaseScreeningMovieReader(gateway).count_days(request)
+    counts = await PostgresScreeningMovieReader(gateway).count_days(request)
 
     gateway.count_days.assert_awaited_once_with(request)
     assert counts == [

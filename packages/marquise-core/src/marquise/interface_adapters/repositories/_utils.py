@@ -1,4 +1,4 @@
-"""Shared utility functions for Supabase repository implementations."""
+"""Shared utility functions for Postgres repository implementations."""
 
 from __future__ import annotations
 

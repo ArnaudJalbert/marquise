@@ -1,4 +1,4 @@
-"""Tests for SupabaseMovieRepository."""
+"""Tests for PostgresMovieRepository."""
 
 from __future__ import annotations
 
@@ -8,11 +8,11 @@ import pytest
 
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
+from marquise.interface_adapters.repositories.movie_repository import (
+    PostgresMovieRepository,
+)
 from marquise.interface_adapters.repositories.protocols.base import GatewayPage
 from marquise.interface_adapters.repositories.protocols.movie import MovieGateway
-from marquise.interface_adapters.repositories.supabase.movie_repository import (
-    SupabaseMovieRepository,
-)
 
 
 @pytest.fixture
@@ -81,7 +81,7 @@ async def test_create_or_reuse(sample_movie: Movie) -> None:
         "tmdb_vote_count": 1234,
     }
 
-    repo = SupabaseMovieRepository(gateway=mock_gateway)
+    repo = PostgresMovieRepository(gateway=mock_gateway)
     result = await repo.create_or_reuse(sample_movie)
 
     assert result.id == MovieId(value="mov-123")
@@ -118,7 +118,7 @@ async def test_find_by_tmdb_id(gateway_dict: dict) -> None:
     """A saved TMDB id resolves through the repository to the Movie entity."""
     gateway = create_autospec(MovieGateway, instance=True)
     gateway.find_by_tmdb_id.return_value = {**gateway_dict, "tmdb_id": "42"}
-    repo = SupabaseMovieRepository(gateway)
+    repo = PostgresMovieRepository(gateway)
 
     movie = await repo.find_by_tmdb_id("42")
 
@@ -132,7 +132,7 @@ async def test_find_by_tmdb_id_missing() -> None:
     """An unknown TMDB id returns no Movie."""
     gateway = create_autospec(MovieGateway, instance=True)
     gateway.find_by_tmdb_id.return_value = None
-    assert await SupabaseMovieRepository(gateway).find_by_tmdb_id("999") is None
+    assert await PostgresMovieRepository(gateway).find_by_tmdb_id("999") is None
 
 
 @pytest.mark.asyncio
@@ -141,7 +141,7 @@ async def test_find_by_id(gateway_dict: dict) -> None:
     mock_gateway = create_autospec(MovieGateway, instance=True)
     mock_gateway.find_by_id.return_value = gateway_dict
 
-    repo = SupabaseMovieRepository(gateway=mock_gateway)
+    repo = PostgresMovieRepository(gateway=mock_gateway)
     result = await repo.find_by_id(MovieId(value="mov-123"))
 
     assert result is not None
@@ -156,7 +156,7 @@ async def test_find_by_id_missing() -> None:
     mock_gateway = create_autospec(MovieGateway, instance=True)
     mock_gateway.find_by_id.return_value = None
 
-    repo = SupabaseMovieRepository(gateway=mock_gateway)
+    repo = PostgresMovieRepository(gateway=mock_gateway)
     result = await repo.find_by_id(MovieId(value="mov-999"))
 
     assert result is None
@@ -168,7 +168,7 @@ async def test_find_by_ids(gateway_dict: dict) -> None:
     mock_gateway = create_autospec(MovieGateway, instance=True)
     mock_gateway.find_by_ids.return_value = [gateway_dict]
 
-    repo = SupabaseMovieRepository(gateway=mock_gateway)
+    repo = PostgresMovieRepository(gateway=mock_gateway)
     result = await repo.find_by_ids(
         [MovieId(value="mov-123"), MovieId(value="mov-999")]
     )
@@ -184,7 +184,7 @@ async def test_find_by_ids_omits_missing(gateway_dict: dict) -> None:
     mock_gateway = create_autospec(MovieGateway, instance=True)
     mock_gateway.find_by_ids.return_value = []
 
-    repo = SupabaseMovieRepository(gateway=mock_gateway)
+    repo = PostgresMovieRepository(gateway=mock_gateway)
     result = await repo.find_by_ids([MovieId(value="missing")])
 
     assert result == []
@@ -216,7 +216,7 @@ async def test_create_or_reuse_handles_minimal_movie() -> None:
         "origin_countries": None,
     }
 
-    repo = SupabaseMovieRepository(gateway=mock_gateway)
+    repo = PostgresMovieRepository(gateway=mock_gateway)
     result = await repo.create_or_reuse(movie)
 
     assert result.title == "Minimal"
@@ -272,7 +272,7 @@ async def test_create_or_reuse_handles_none_fields() -> None:
         "origin_countries": None,
     }
 
-    repo = SupabaseMovieRepository(gateway=mock_gateway)
+    repo = PostgresMovieRepository(gateway=mock_gateway)
     result = await repo.create_or_reuse(movie)
 
     assert result.title == "No Info"
@@ -308,7 +308,7 @@ async def test_exists_by_id() -> None:
     mock_gateway = create_autospec(MovieGateway, instance=True)
     mock_gateway.exists_by_id.return_value = True
 
-    repo = SupabaseMovieRepository(gateway=mock_gateway)
+    repo = PostgresMovieRepository(gateway=mock_gateway)
     result = await repo.exists_by_id(MovieId(value="mov-123"))
 
     assert result is True
@@ -321,7 +321,7 @@ async def test_exists_by_id_missing() -> None:
     mock_gateway = create_autospec(MovieGateway, instance=True)
     mock_gateway.exists_by_id.return_value = False
 
-    repo = SupabaseMovieRepository(gateway=mock_gateway)
+    repo = PostgresMovieRepository(gateway=mock_gateway)
     result = await repo.exists_by_id(MovieId(value="mov-999"))
 
     assert result is False
@@ -333,7 +333,7 @@ async def test_find_all_without_filter(gateway_dict: dict) -> None:
     mock_gateway = create_autospec(MovieGateway, instance=True)
     mock_gateway.find_all.return_value = GatewayPage(rows=[gateway_dict], total=1)
 
-    repo = SupabaseMovieRepository(gateway=mock_gateway)
+    repo = PostgresMovieRepository(gateway=mock_gateway)
     result = await repo.find_all()
 
     assert len(result.items) == 1
@@ -350,7 +350,7 @@ async def test_find_all_with_filter(gateway_dict: dict) -> None:
     mock_gateway = create_autospec(MovieGateway, instance=True)
     mock_gateway.find_all.return_value = GatewayPage(rows=[gateway_dict], total=1)
 
-    result = await SupabaseMovieRepository(gateway=mock_gateway).find_all(
+    result = await PostgresMovieRepository(gateway=mock_gateway).find_all(
         title_filter="Incep"
     )
 
@@ -367,7 +367,7 @@ async def test_find_all_with_pagination(gateway_dict: dict) -> None:
     mock_gateway = create_autospec(MovieGateway, instance=True)
     mock_gateway.find_all.return_value = GatewayPage(rows=[gateway_dict], total=50)
 
-    result = await SupabaseMovieRepository(gateway=mock_gateway).find_all(
+    result = await PostgresMovieRepository(gateway=mock_gateway).find_all(
         limit=1, offset=5
     )
 
@@ -382,7 +382,7 @@ async def test_find_all_returns_empty_page() -> None:
     mock_gateway = create_autospec(MovieGateway, instance=True)
     mock_gateway.find_all.return_value = GatewayPage(rows=[], total=0)
 
-    result = await SupabaseMovieRepository(gateway=mock_gateway).find_all(
+    result = await PostgresMovieRepository(gateway=mock_gateway).find_all(
         title_filter="Nonexistent"
     )
 

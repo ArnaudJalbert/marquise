@@ -17,26 +17,26 @@ from marquise.infrastructure.postgres.gateways.cinema_source_assignment import (
 from marquise.infrastructure.postgres.gateways.source_definition import (
     PostgresSourceDefinitionGateway,
 )
-from marquise.interface_adapters.repositories.supabase.cinema_source_assignment_repository import (  # noqa: E501
-    SupabaseCinemaSourceAssignmentRepository,
+from marquise.interface_adapters.repositories.cinema_source_assignment_repository import (  # noqa: E501
+    PostgresCinemaSourceAssignmentRepository,
 )
-from marquise.interface_adapters.repositories.supabase.source_definition_repository import (  # noqa: E501
-    SupabaseSourceDefinitionRepository,
+from marquise.interface_adapters.repositories.source_definition_repository import (  # noqa: E501
+    PostgresSourceDefinitionRepository,
 )
 
 
 def _build_source_repository(
     pool: asyncpg.Pool, schema: str
-) -> SupabaseSourceDefinitionRepository:
-    return SupabaseSourceDefinitionRepository(
+) -> PostgresSourceDefinitionRepository:
+    return PostgresSourceDefinitionRepository(
         gateway=PostgresSourceDefinitionGateway(pool=pool, schema=schema)
     )
 
 
 def _build_assignment_repository(
     pool: asyncpg.Pool, schema: str
-) -> SupabaseCinemaSourceAssignmentRepository:
-    return SupabaseCinemaSourceAssignmentRepository(
+) -> PostgresCinemaSourceAssignmentRepository:
+    return PostgresCinemaSourceAssignmentRepository(
         gateway=PostgresCinemaSourceAssignmentGateway(pool=pool, schema=schema)
     )
 

@@ -21,11 +21,11 @@ from marquise.infrastructure.postgres.gateways.cinema import PostgresCinemaGatew
 from marquise.infrastructure.postgres.gateways.screening import (
     PostgresScreeningGateway,
 )
-from marquise.interface_adapters.repositories.supabase.cinema_repository import (
-    SupabaseCinemaRepository,
+from marquise.interface_adapters.repositories.cinema_repository import (
+    PostgresCinemaRepository,
 )
-from marquise.interface_adapters.repositories.supabase.screening_repository import (
-    SupabaseScreeningRepository,
+from marquise.interface_adapters.repositories.screening_repository import (
+    PostgresScreeningRepository,
 )
 
 
@@ -44,9 +44,9 @@ class CinemaUseCases:
 
 def build_cinema_repository(
     pool: asyncpg.Pool, schema: str
-) -> SupabaseCinemaRepository:
+) -> PostgresCinemaRepository:
     """Build the cinema repository over its Postgres gateway."""
-    return SupabaseCinemaRepository(
+    return PostgresCinemaRepository(
         gateway=PostgresCinemaGateway(pool=pool, schema=schema)
     )
 
@@ -70,7 +70,7 @@ def build_cinema_use_cases(pool: asyncpg.Pool, settings: Settings) -> CinemaUseC
         get_cinema_use_case=GetCinemaUseCase(cinema_repository=cinema_repository),
         get_cinema_movies_use_case=GetCinemaMoviesUseCase(
             cinema_repository=cinema_repository,
-            screening_repository=SupabaseScreeningRepository(
+            screening_repository=PostgresScreeningRepository(
                 gateway=PostgresScreeningGateway(pool=pool, schema=settings.schema)
             ),
         ),
