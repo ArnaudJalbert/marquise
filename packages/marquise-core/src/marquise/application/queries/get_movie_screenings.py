@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from marquise.application.exceptions import MovieNotFoundError
-from marquise.application.page import page_window
+from marquise.application.page import calculate_page_offset
 from marquise.application.readers import ScreeningReader
 from marquise.application.repositories import MovieRepository
 from marquise.domain.value_objects import MovieId
@@ -64,6 +64,6 @@ class GetMovieScreeningsQuery:
             movie_id=input_data.movie_id,
             **start_filter,
             limit=input_data.size,
-            offset=page_window(input_data.page, input_data.size),
+            offset=calculate_page_offset(input_data.page, input_data.size),
         )
         return self.OutputData(screenings=tuple(page.items), total=page.total)
