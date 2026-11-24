@@ -48,8 +48,8 @@ from marquise.application.use_cases.refresh_movies import RefreshMoviesUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.infrastructure.di.factory import MarquiseFactory
-from marquise.infrastructure.supabase.config.settings import Settings
-from marquise.infrastructure.supabase.database import Database
+from marquise.infrastructure.postgres.config.settings import Settings
+from marquise.infrastructure.postgres.database import Database
 from marquise.interface_adapters.repositories.source_registry import SourceRegistry
 
 SETTINGS = Settings(

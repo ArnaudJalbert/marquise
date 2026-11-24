@@ -1,4 +1,4 @@
-"""Integration tests for SupabaseMovieGateway."""
+"""Integration tests for PostgresMovieGateway."""
 
 from __future__ import annotations
 
@@ -6,12 +6,12 @@ import asyncio
 
 import pytest
 
-from marquise.infrastructure.supabase.gateways.movie import SupabaseMovieGateway
+from marquise.infrastructure.postgres.gateways.movie import PostgresMovieGateway
 from marquise.interface_adapters.repositories.protocols.base import GatewayError
 
 
 @pytest.mark.asyncio
-async def test_save_and_find_by_tmdb_id(movie_gateway: SupabaseMovieGateway) -> None:
+async def test_save_and_find_by_tmdb_id(movie_gateway: PostgresMovieGateway) -> None:
     """Postgres persists a TMDB id, and a second lookup finds the same row."""
     saved = await movie_gateway.save(movie_id="mov-42", title="Doomsday", tmdb_id="42")
     assert saved["tmdb_id"] == "42"
@@ -22,7 +22,7 @@ async def test_save_and_find_by_tmdb_id(movie_gateway: SupabaseMovieGateway) -> 
 
 @pytest.mark.asyncio
 async def test_score_round_trip_and_null_upsert_preserves_values(
-    movie_gateway: SupabaseMovieGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """A stored TMDB score survives reads and an unrelated title upsert."""
     saved = await movie_gateway.save(
@@ -37,7 +37,7 @@ async def test_score_round_trip_and_null_upsert_preserves_values(
 
 @pytest.mark.asyncio
 async def test_same_tmdb_id_keeps_existing_movie(
-    movie_gateway: SupabaseMovieGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """A second title for one TMDB id never creates a second movie."""
     await movie_gateway.save(movie_id="original", title="Doomsday", tmdb_id="42")
@@ -52,7 +52,7 @@ async def test_same_tmdb_id_keeps_existing_movie(
 
 @pytest.mark.asyncio
 async def test_title_upsert_cannot_replace_another_tmdb_identity(
-    movie_gateway: SupabaseMovieGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """A same-title film cannot steal an existing movie's TMDB id or metadata."""
     await movie_gateway.save(
@@ -72,7 +72,7 @@ async def test_title_upsert_cannot_replace_another_tmdb_identity(
 
 
 @pytest.mark.asyncio
-async def test_save_and_find_by_id(movie_gateway: SupabaseMovieGateway) -> None:
+async def test_save_and_find_by_id(movie_gateway: PostgresMovieGateway) -> None:
     """Verify a movie can be saved and then retrieved by ID."""
     result = await movie_gateway.save(
         movie_id="mov-001",
@@ -96,14 +96,14 @@ async def test_save_and_find_by_id(movie_gateway: SupabaseMovieGateway) -> None:
 
 
 @pytest.mark.asyncio
-async def test_find_by_id_missing(movie_gateway: SupabaseMovieGateway) -> None:
+async def test_find_by_id_missing(movie_gateway: PostgresMovieGateway) -> None:
     """Verify find_by_id returns None for a non-existent ID."""
     found = await movie_gateway.find_by_id("mov-missing")
     assert found is None
 
 
 @pytest.mark.asyncio
-async def test_find_by_ids(movie_gateway: SupabaseMovieGateway) -> None:
+async def test_find_by_ids(movie_gateway: PostgresMovieGateway) -> None:
     """Verify find_by_ids returns matching rows and omits missing ids."""
     await movie_gateway.save(movie_id="mov-bulk-1", title="Bulk One")
     await movie_gateway.save(movie_id="mov-bulk-2", title="Bulk Two")
@@ -116,14 +116,14 @@ async def test_find_by_ids(movie_gateway: SupabaseMovieGateway) -> None:
 
 
 @pytest.mark.asyncio
-async def test_find_by_ids_empty_list(movie_gateway: SupabaseMovieGateway) -> None:
+async def test_find_by_ids_empty_list(movie_gateway: PostgresMovieGateway) -> None:
     """Verify find_by_ids returns an empty list when no ids match."""
     found = await movie_gateway.find_by_ids(["mov-nonexistent-id"])
     assert found == []
 
 
 @pytest.mark.asyncio
-async def test_exists_by_id(movie_gateway: SupabaseMovieGateway) -> None:
+async def test_exists_by_id(movie_gateway: PostgresMovieGateway) -> None:
     """Verify exists_by_id returns correct results."""
     await movie_gateway.save(movie_id="mov-exists", title="Existing Movie")
 
@@ -132,7 +132,7 @@ async def test_exists_by_id(movie_gateway: SupabaseMovieGateway) -> None:
 
 
 @pytest.mark.asyncio
-async def test_find_by_title(movie_gateway: SupabaseMovieGateway) -> None:
+async def test_find_by_title(movie_gateway: PostgresMovieGateway) -> None:
     """Verify a movie can be found by its title."""
     await movie_gateway.save(
         movie_id="mov-002",
@@ -149,7 +149,7 @@ async def test_find_by_title(movie_gateway: SupabaseMovieGateway) -> None:
 
 
 @pytest.mark.asyncio
-async def test_find_by_title_missing(movie_gateway: SupabaseMovieGateway) -> None:
+async def test_find_by_title_missing(movie_gateway: PostgresMovieGateway) -> None:
     """Verify find_by_title returns None for a non-existent title."""
     found = await movie_gateway.find_by_title("Non Existent Movie")
     assert found is None
@@ -157,7 +157,7 @@ async def test_find_by_title_missing(movie_gateway: SupabaseMovieGateway) -> Non
 
 @pytest.mark.asyncio
 async def test_save_updates_existing_on_title_conflict(
-    movie_gateway: SupabaseMovieGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Verify save upserts when a movie with the same title exists."""
     await movie_gateway.save(
@@ -182,7 +182,7 @@ async def test_save_updates_existing_on_title_conflict(
 
 @pytest.mark.asyncio
 async def test_title_differing_only_by_case_reuses_the_existing_movie(
-    movie_gateway: SupabaseMovieGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Titles are unique ignoring case, so MINOTAUR reuses Minotaur (#644)."""
     await movie_gateway.save(
@@ -199,7 +199,7 @@ async def test_title_differing_only_by_case_reuses_the_existing_movie(
 
 @pytest.mark.asyncio
 async def test_save_handles_minimal_fields(
-    movie_gateway: SupabaseMovieGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Verify a movie can be saved with only required fields."""
     result = await movie_gateway.save(
@@ -218,7 +218,7 @@ async def test_save_handles_minimal_fields(
 
 @pytest.mark.asyncio
 async def test_save_handles_none_fields(
-    movie_gateway: SupabaseMovieGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Verify a movie can be saved with None for optional fields."""
     result = await movie_gateway.save(
@@ -237,7 +237,7 @@ async def test_save_handles_none_fields(
 
 @pytest.mark.asyncio
 async def test_save_does_not_overwrite_with_none_on_conflict(
-    movie_gateway: SupabaseMovieGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Verify upsert does not overwrite known values with None."""
     await movie_gateway.save(
@@ -263,7 +263,7 @@ async def test_save_does_not_overwrite_with_none_on_conflict(
 
 @pytest.mark.asyncio
 async def test_find_all_unbounded_returns_all_rows_with_exact_total(
-    movie_gateway: SupabaseMovieGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Verify find_all with limit=None returns every row and a matching total."""
     for i in range(3):
@@ -282,7 +282,7 @@ async def test_find_all_unbounded_returns_all_rows_with_exact_total(
 
 @pytest.mark.asyncio
 async def test_find_all_with_limit_and_offset_returns_correct_slice_and_total(
-    movie_gateway: SupabaseMovieGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Verify limit/offset return the correct page while total reflects all rows."""
     for i in range(5):
@@ -299,7 +299,7 @@ async def test_find_all_with_limit_and_offset_returns_correct_slice_and_total(
 
 @pytest.mark.asyncio
 async def test_find_all_offset_past_total_returns_empty_rows_with_correct_total(
-    movie_gateway: SupabaseMovieGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Verify an offset beyond the result set returns no rows but the true total."""
     for i in range(2):
@@ -313,7 +313,7 @@ async def test_find_all_offset_past_total_returns_empty_rows_with_correct_total(
 
 @pytest.mark.asyncio
 async def test_find_all_with_title_filter_and_limit(
-    movie_gateway: SupabaseMovieGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Verify title_filter and limit/offset combine correctly."""
     await movie_gateway.save(movie_id="mov-match-1", title="Space Odyssey Downtown")
@@ -337,7 +337,7 @@ async def test_find_all_with_title_filter_and_limit(
     ],
 )
 async def test_concurrent_import_saves_preserve_the_winning_movie(
-    movie_gateway: SupabaseMovieGateway,
+    movie_gateway: PostgresMovieGateway,
     titles: tuple[str, str],
     tmdb_id: str | None,
 ) -> None:
@@ -364,7 +364,7 @@ async def test_concurrent_import_saves_preserve_the_winning_movie(
 
 @pytest.mark.asyncio
 async def test_import_save_rejects_a_conflicting_identity_without_changes(
-    movie_gateway: SupabaseMovieGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Create-or-reuse rejects a title owned by another known film."""
     original = await movie_gateway.save(

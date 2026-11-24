@@ -30,7 +30,7 @@ from marquise.infrastructure.di.source_management import (
     build_unassign_source_use_case,
 )
 from marquise.infrastructure.di.use_case_areas.cinemas import build_cinema_repository
-from marquise.infrastructure.supabase.config.settings import Settings
+from marquise.infrastructure.postgres.config.settings import Settings
 from marquise.interface_adapters.repositories.source_registry import SourceRegistry
 
 

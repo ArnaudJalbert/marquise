@@ -1,14 +1,14 @@
-"""Integration tests for SupabaseCinemaGateway."""
+"""Integration tests for PostgresCinemaGateway."""
 
 from __future__ import annotations
 
 import pytest
 
-from marquise.infrastructure.supabase.gateways.cinema import SupabaseCinemaGateway
+from marquise.infrastructure.postgres.gateways.cinema import PostgresCinemaGateway
 
 
 @pytest.mark.asyncio
-async def test_save_and_find_by_id(gateway: SupabaseCinemaGateway) -> None:
+async def test_save_and_find_by_id(gateway: PostgresCinemaGateway) -> None:
     """Verify a cinema can be saved and then retrieved by ID."""
     result = await gateway.save(
         cinema_id="cin-001",
@@ -29,7 +29,7 @@ async def test_save_and_find_by_id(gateway: SupabaseCinemaGateway) -> None:
 
 @pytest.mark.asyncio
 async def test_save_and_find_by_name_and_address(
-    gateway: SupabaseCinemaGateway,
+    gateway: PostgresCinemaGateway,
 ) -> None:
     """Verify a cinema can be saved and found by name and address."""
     await gateway.save(
@@ -50,7 +50,7 @@ async def test_save_and_find_by_name_and_address(
 
 @pytest.mark.asyncio
 async def test_find_by_name_and_address_with_none_address(
-    gateway: SupabaseCinemaGateway,
+    gateway: PostgresCinemaGateway,
 ) -> None:
     """Verify lookups work when address is None."""
     await gateway.save(
@@ -70,7 +70,7 @@ async def test_find_by_name_and_address_with_none_address(
 
 
 @pytest.mark.asyncio
-async def test_exists_by_id(gateway: SupabaseCinemaGateway) -> None:
+async def test_exists_by_id(gateway: PostgresCinemaGateway) -> None:
     """Verify exists_by_id returns correct results."""
     await gateway.save(
         cinema_id="cin-004",
@@ -85,7 +85,7 @@ async def test_exists_by_id(gateway: SupabaseCinemaGateway) -> None:
 
 
 @pytest.mark.asyncio
-async def test_find_by_id_missing(gateway: SupabaseCinemaGateway) -> None:
+async def test_find_by_id_missing(gateway: PostgresCinemaGateway) -> None:
     """Verify find_by_id returns None for a non-existent ID."""
     found = await gateway.find_by_id("cin-missing")
     assert found is None
@@ -93,7 +93,7 @@ async def test_find_by_id_missing(gateway: SupabaseCinemaGateway) -> None:
 
 @pytest.mark.asyncio
 async def test_find_by_name_and_address_missing(
-    gateway: SupabaseCinemaGateway,
+    gateway: PostgresCinemaGateway,
 ) -> None:
     """Verify find_by_name_and_address returns None for a non-existent cinema."""
     found = await gateway.find_by_name_and_address(
@@ -103,7 +103,7 @@ async def test_find_by_name_and_address_missing(
 
 
 @pytest.mark.asyncio
-async def test_save_updates_existing(gateway: SupabaseCinemaGateway) -> None:
+async def test_save_updates_existing(gateway: PostgresCinemaGateway) -> None:
     """Verify save upserts (updates) an existing cinema."""
     await gateway.save(
         cinema_id="cin-005",
@@ -132,7 +132,7 @@ async def test_save_updates_existing(gateway: SupabaseCinemaGateway) -> None:
 
 @pytest.mark.asyncio
 async def test_find_all_unbounded_returns_all_rows_with_exact_total(
-    gateway: SupabaseCinemaGateway,
+    gateway: PostgresCinemaGateway,
 ) -> None:
     """Verify find_all with limit=None returns every row and a matching total."""
     for i in range(3):
@@ -157,7 +157,7 @@ async def test_find_all_unbounded_returns_all_rows_with_exact_total(
 
 @pytest.mark.asyncio
 async def test_find_all_with_limit_and_offset_returns_correct_slice_and_total(
-    gateway: SupabaseCinemaGateway,
+    gateway: PostgresCinemaGateway,
 ) -> None:
     """Verify limit/offset return the correct page while total reflects all rows."""
     for i in range(5):
@@ -180,7 +180,7 @@ async def test_find_all_with_limit_and_offset_returns_correct_slice_and_total(
 
 @pytest.mark.asyncio
 async def test_find_all_offset_past_total_returns_empty_rows_with_correct_total(
-    gateway: SupabaseCinemaGateway,
+    gateway: PostgresCinemaGateway,
 ) -> None:
     """Verify an offset beyond the result set returns no rows but the true total.
 
@@ -205,7 +205,7 @@ async def test_find_all_offset_past_total_returns_empty_rows_with_correct_total(
 
 @pytest.mark.asyncio
 async def test_find_all_with_name_filter_and_limit(
-    gateway: SupabaseCinemaGateway,
+    gateway: PostgresCinemaGateway,
 ) -> None:
     """Verify name_filter and limit/offset combine correctly."""
     await gateway.save(

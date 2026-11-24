@@ -6,8 +6,8 @@ import asyncpg
 import pytest
 
 from marquise.application.movie_workflows import MergeMoviesInputData
-from marquise.infrastructure.supabase.gateways.movie_merge import (
-    SupabaseMovieMergeGateway,
+from marquise.infrastructure.postgres.gateways.movie_merge import (
+    PostgresMovieMergeGateway,
 )
 
 TABLE = '"marquise-test"'
@@ -15,7 +15,7 @@ TABLE = '"marquise-test"'
 
 async def seed(
     pool: asyncpg.Pool, titles: tuple[str, ...] = ("Fjord", "Fjord VF", "Fjord VO")
-) -> SupabaseMovieMergeGateway:
+) -> PostgresMovieMergeGateway:
     """Seed linked canonical and independent source screenings with all fields."""
     async with pool.acquire() as conn:
         await conn.execute(
@@ -44,7 +44,7 @@ async def seed(
                 str(index),
                 index,
             )
-    return SupabaseMovieMergeGateway(pool, "marquise-test")
+    return PostgresMovieMergeGateway(pool, "marquise-test")
 
 
 async def rows(pool: asyncpg.Pool) -> list[dict]:

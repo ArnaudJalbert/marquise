@@ -7,8 +7,8 @@ import pytest
 
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
 from marquise.domain.value_objects import HourFilter, HourRange
-from marquise.infrastructure.supabase.gateways.screening_movie_reader import (
-    SupabaseScreeningMovieReadGateway,
+from marquise.infrastructure.postgres.gateways.screening_movie_reader import (
+    PostgresScreeningMovieReadGateway,
 )
 from marquise.interface_adapters.readers.screening_movie_reader import (
     SupabaseScreeningMovieReader,
@@ -61,7 +61,7 @@ async def test_distinct_movie_pages_previews_and_end_metadata(
             shows,
         )
     reader = SupabaseScreeningMovieReader(
-        SupabaseScreeningMovieReadGateway(db_pool, "marquise-test")
+        PostgresScreeningMovieReadGateway(db_pool, "marquise-test")
     )
     end = datetime(2026, 11, 2, 4, 59, 59, 999999, tzinfo=UTC)
     first = await reader.search(
@@ -120,7 +120,7 @@ async def test_inclusive_dst_bounds_ordering_and_started_previews(
                 ("next-local-midnight", "outside", datetime(2026, 11, 2, 5)),
             ],
         )
-    gateway = SupabaseScreeningMovieReadGateway(db_pool, "marquise-test")
+    gateway = PostgresScreeningMovieReadGateway(db_pool, "marquise-test")
     start = datetime(2026, 11, 1, 4, tzinfo=UTC)
     end = datetime(2026, 11, 2, 4, 59, 59, 999999, tzinfo=UTC)
     result = await gateway.search(
@@ -160,7 +160,7 @@ async def test_filters_apply_to_qualifying_screenings_before_preview_selection(
                 ("title", "other", "c2", datetime(2026, 11, 4, 1, 45), "VOSTF"),
             ],
         )
-    gateway = SupabaseScreeningMovieReadGateway(db_pool, "marquise-test")
+    gateway = PostgresScreeningMovieReadGateway(db_pool, "marquise-test")
     result = await gateway.search(
         ScreeningMovieReader.SearchRequest(
             start=datetime(2026, 11, 3, 5, tzinfo=UTC),
@@ -208,7 +208,7 @@ async def test_hour_ranges_support_negation_in_montreal_time_and_cinema_exclusio
                 ("11h-c2", "excluded", "c2", datetime(2026, 11, 5, 16)),
             ],
         )
-    gateway = SupabaseScreeningMovieReadGateway(db_pool, "marquise-test")
+    gateway = PostgresScreeningMovieReadGateway(db_pool, "marquise-test")
     now = datetime(2026, 11, 5, 5, tzinfo=UTC)
     result = await gateway.search(
         ScreeningMovieReader.SearchRequest(
@@ -270,7 +270,7 @@ async def test_day_counts_count_every_matching_screening_by_montreal_day(
             shows,
         )
     reader = SupabaseScreeningMovieReader(
-        SupabaseScreeningMovieReadGateway(db_pool, "marquise-test")
+        PostgresScreeningMovieReadGateway(db_pool, "marquise-test")
     )
     start = datetime(2026, 11, 3, 5, tzinfo=UTC)
     end = datetime(2026, 11, 6, 4, 59, 59, 999999, tzinfo=UTC)
@@ -319,7 +319,7 @@ async def test_day_counts_apply_the_listing_filters(db_pool: asyncpg.Pool) -> No
                 ("excluded", "dune", "c3", datetime(2026, 11, 5, 16), "VO"),
             ],
         )
-    gateway = SupabaseScreeningMovieReadGateway(db_pool, "marquise-test")
+    gateway = PostgresScreeningMovieReadGateway(db_pool, "marquise-test")
     now = datetime(2026, 11, 5, 5, tzinfo=UTC)
     request = ScreeningMovieReader.DayCountRequest(
         start=now,

@@ -1,4 +1,4 @@
-"""Supabase PostgreSQL implementation of SourceDefinitionGateway."""
+"""PostgreSQL implementation of SourceDefinitionGateway."""
 
 from __future__ import annotations
 
@@ -11,8 +11,8 @@ DEFAULT_SCHEMA = "marquise"
 _COLUMNS = "name, display_name, description"
 
 
-class SupabaseSourceDefinitionGateway:
-    """Concrete source definition gateway backed by Supabase PostgreSQL.
+class PostgresSourceDefinitionGateway:
+    """Concrete source definition gateway backed by PostgreSQL.
 
     Args:
         pool: An open asyncpg connection pool.

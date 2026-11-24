@@ -11,8 +11,8 @@ import asyncpg
 import pytest
 
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
-from marquise.infrastructure.supabase.gateways.screening_movie_reader import (
-    SupabaseScreeningMovieReadGateway,
+from marquise.infrastructure.postgres.gateways.screening_movie_reader import (
+    PostgresScreeningMovieReadGateway,
 )
 
 
@@ -29,7 +29,7 @@ async def test_search_binds_page_limit_and_offset() -> None:
 
     pool.acquire.side_effect = acquire
     now = datetime(2026, 11, 1, tzinfo=UTC)
-    gateway = SupabaseScreeningMovieReadGateway(pool, "public")
+    gateway = PostgresScreeningMovieReadGateway(pool, "public")
 
     await gateway.search(ScreeningMovieReader.SearchRequest(now, None, now, 3, 24))
 

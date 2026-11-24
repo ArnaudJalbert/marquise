@@ -99,7 +99,7 @@ _refuse-marquise-schema $DISPOSABLE_DATABASE_URL:
     from urllib.parse import unquote
 
     import asyncpg
-    from marquise.infrastructure.supabase.database import sanitize_dsn
+    from marquise.infrastructure.postgres.database import sanitize_dsn
 
     url = os.environ["DISPOSABLE_DATABASE_URL"]
 

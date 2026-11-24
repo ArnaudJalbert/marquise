@@ -1,6 +1,6 @@
 """Security checks for representations of credential-bearing values."""
 
-from marquise.infrastructure.supabase.config import Settings
+from marquise.infrastructure.postgres.config import Settings
 
 
 def test_sensitive_dataclass_reprs_do_not_include_credentials() -> None:

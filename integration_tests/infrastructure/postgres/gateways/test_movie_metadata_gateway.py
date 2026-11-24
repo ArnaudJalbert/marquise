@@ -7,9 +7,9 @@ from pathlib import Path
 import asyncpg
 import pytest
 
-from marquise.infrastructure.supabase.gateways.movie import SupabaseMovieGateway
-from marquise.infrastructure.supabase.gateways.movie_metadata import (
-    SupabaseMovieMetadataGateway,
+from marquise.infrastructure.postgres.gateways.movie import PostgresMovieGateway
+from marquise.infrastructure.postgres.gateways.movie_metadata import (
+    PostgresMovieMetadataGateway,
 )
 from marquise.interface_adapters.repositories.protocols.movie_metadata import (
     MovieMetadataConflictError,
@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[4]
 @pytest.mark.asyncio
 async def test_stable_ids_source_screenings_and_lifecycle(
     db_pool: asyncpg.Pool,
-    movie_gateway: SupabaseMovieGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Pending source becomes enriched and refreshed without touching screenings."""
     await movie_gateway.save(
@@ -45,7 +45,7 @@ async def test_stable_ids_source_screenings_and_lifecycle(
         before_screening = dict(
             await conn.fetchrow(f'SELECT * FROM "{SCHEMA}".screenings')
         )
-    gateway = SupabaseMovieMetadataGateway(db_pool, SCHEMA)
+    gateway = PostgresMovieMetadataGateway(db_pool, SCHEMA)
     pending = await gateway.get("movie")
     assert pending is not None
     assert pending["tmdb_id"] is None and pending["metadata_enriched_at"] is None
@@ -98,13 +98,13 @@ async def test_stable_ids_source_screenings_and_lifecycle(
 @pytest.mark.asyncio
 async def test_legacy_known_identity_is_pending_and_list_order_is_stable(
     db_pool: asyncpg.Pool,
-    movie_gateway: SupabaseMovieGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Legacy ID-bearing rows can receive first enrichment and appear by ID order."""
     await movie_gateway.save("z", "Legacy", tmdb_id="42")
     await movie_gateway.save("a", "Another", tmdb_id="43")
     await movie_gateway.save("unlinked", "Unlinked")
-    gateway = SupabaseMovieMetadataGateway(db_pool, SCHEMA)
+    gateway = PostgresMovieMetadataGateway(db_pool, SCHEMA)
     linked = await gateway.list_tmdb_movies()
     assert [row["id"] for row in linked] == ["a", "z"]
     assert all(row["metadata_enriched_at"] is None for row in linked)
@@ -126,14 +126,14 @@ async def test_legacy_known_identity_is_pending_and_list_order_is_stable(
 )
 async def test_collisions_roll_back_metadata_and_stamp(
     db_pool: asyncpg.Pool,
-    movie_gateway: SupabaseMovieGateway,
+    movie_gateway: PostgresMovieGateway,
     patch: dict,
     identity: str,
 ) -> None:
     """Title and identity collisions leave both movies and completion unchanged."""
     await movie_gateway.save("target", "Source", description="original")
     await movie_gateway.save("owner", "Occupied", tmdb_id="43")
-    gateway = SupabaseMovieMetadataGateway(db_pool, SCHEMA)
+    gateway = PostgresMovieMetadataGateway(db_pool, SCHEMA)
     before = await gateway.get("target")
     owner = await gateway.get("owner")
     assert before is not None
@@ -148,11 +148,11 @@ async def test_collisions_roll_back_metadata_and_stamp(
 @pytest.mark.asyncio
 async def test_identity_reassignment_stale_and_missing_are_refused(
     db_pool: asyncpg.Pool,
-    movie_gateway: SupabaseMovieGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """A fresh revision cannot authorize identity theft; stale and missing IDs fail."""
     await movie_gateway.save("movie", "Source", tmdb_id="42")
-    gateway = SupabaseMovieMetadataGateway(db_pool, SCHEMA)
+    gateway = PostgresMovieMetadataGateway(db_pool, SCHEMA)
     before = await gateway.get("movie")
     assert before is not None
     for movie_id, revision, identity in (
@@ -168,11 +168,11 @@ async def test_identity_reassignment_stale_and_missing_are_refused(
 @pytest.mark.asyncio
 async def test_failed_refresh_keeps_previous_success(
     db_pool: asyncpg.Pool,
-    movie_gateway: SupabaseMovieGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """A database failure during refresh rolls back fields and last success time."""
     await movie_gateway.save("movie", "Source", tmdb_id="42")
-    gateway = SupabaseMovieMetadataGateway(db_pool, SCHEMA)
+    gateway = PostgresMovieMetadataGateway(db_pool, SCHEMA)
     initial = await gateway.get("movie")
     assert initial is not None
     before = await gateway.update_metadata(
@@ -203,11 +203,11 @@ async def test_failed_refresh_keeps_previous_success(
 @pytest.mark.asyncio
 async def test_racing_patches_only_one_revision_wins(
     db_pool: asyncpg.Pool,
-    movie_gateway: SupabaseMovieGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Concurrent writers cannot silently overwrite metadata from one snapshot."""
     await movie_gateway.save("movie", "Source")
-    gateway = SupabaseMovieMetadataGateway(db_pool, SCHEMA)
+    gateway = PostgresMovieMetadataGateway(db_pool, SCHEMA)
     before = await gateway.get("movie")
     assert before is not None
     results = await asyncio.gather(
@@ -232,10 +232,10 @@ async def test_racing_patches_only_one_revision_wins(
 @pytest.mark.asyncio
 async def test_concurrent_identity_claim_has_one_owner(
     db_pool: asyncpg.Pool,
-    movie_gateway: SupabaseMovieGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Different movie locks still rely on unique identity ownership at commit."""
-    gateway = SupabaseMovieMetadataGateway(db_pool, SCHEMA)
+    gateway = PostgresMovieMetadataGateway(db_pool, SCHEMA)
     snapshots = []
     for movie_id in ("a", "b"):
         await movie_gateway.save(movie_id, movie_id)
@@ -259,11 +259,11 @@ async def test_concurrent_identity_claim_has_one_owner(
 @pytest.mark.asyncio
 async def test_create_or_reuse_cannot_overwrite_completed_metadata(
     db_pool: asyncpg.Pool,
-    movie_gateway: SupabaseMovieGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Racing imports reuse the enriched row by title or identity without changes."""
     await movie_gateway.save("movie", "Source")
-    gateway = SupabaseMovieMetadataGateway(db_pool, SCHEMA)
+    gateway = PostgresMovieMetadataGateway(db_pool, SCHEMA)
     before = await gateway.get("movie")
     assert before is not None
     enriched = await gateway.update_metadata(
@@ -299,11 +299,11 @@ async def test_create_or_reuse_cannot_overwrite_completed_metadata(
 @pytest.mark.asyncio
 async def test_ordinary_movie_and_screening_writes_invalidate_revision(
     db_pool: asyncpg.Pool,
-    movie_gateway: SupabaseMovieGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Legacy saves and all screening changes invalidate the previous revision."""
     await movie_gateway.save("movie", "Source")
-    gateway = SupabaseMovieMetadataGateway(db_pool, SCHEMA)
+    gateway = PostgresMovieMetadataGateway(db_pool, SCHEMA)
     previous = await gateway.get("movie")
     assert previous is not None
     statements = [
@@ -336,13 +336,13 @@ async def test_ordinary_movie_and_screening_writes_invalidate_revision(
 )
 async def test_invalid_write_inputs_do_not_stamp(
     db_pool: asyncpg.Pool,
-    movie_gateway: SupabaseMovieGateway,
+    movie_gateway: PostgresMovieGateway,
     identity: str,
     stamp: datetime,
 ) -> None:
     """Empty identity and ambiguous timestamps are rejected before storage."""
     await movie_gateway.save("movie", "Source")
-    gateway = SupabaseMovieMetadataGateway(db_pool, SCHEMA)
+    gateway = PostgresMovieMetadataGateway(db_pool, SCHEMA)
     before = await gateway.get("movie")
     assert before is not None
     with pytest.raises(ValueError):
@@ -379,11 +379,11 @@ async def test_fresh_schemas_are_rerunnable_with_nullable_timezone_stamp(
 @pytest.mark.asyncio
 async def test_reference_round_trip_never_restores_an_old_revision(
     db_pool: asyncpg.Pool,
-    movie_gateway: SupabaseMovieGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Adding then deleting a screening cannot make an old approval valid again."""
     await movie_gateway.save("movie", "Source")
-    gateway = SupabaseMovieMetadataGateway(db_pool, SCHEMA)
+    gateway = PostgresMovieMetadataGateway(db_pool, SCHEMA)
     before = await gateway.get("movie")
     assert before is not None
     async with db_pool.acquire() as conn:
@@ -407,7 +407,7 @@ async def test_reference_round_trip_never_restores_an_old_revision(
 @pytest.mark.asyncio
 async def test_reference_moves_invalidate_both_movies_and_rollback_markers(
     db_pool: asyncpg.Pool,
-    movie_gateway: SupabaseMovieGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """Moves invalidate both owners; rolled-back edits leave snapshots unchanged."""
     for movie_id in ("a", "b", "unrelated"):
@@ -419,7 +419,7 @@ async def test_reference_moves_invalidate_both_movies_and_rollback_markers(
         await conn.execute(f'''INSERT INTO "{SCHEMA}".screenings
             (id, movie_id, cinema_id, showtime)
             VALUES ('screening', 'a', 'cin', '2026-10-30 19:00')''')
-    gateway = SupabaseMovieMetadataGateway(db_pool, SCHEMA)
+    gateway = PostgresMovieMetadataGateway(db_pool, SCHEMA)
     before = {
         movie_id: await gateway.get(movie_id) for movie_id in ("a", "b", "unrelated")
     }

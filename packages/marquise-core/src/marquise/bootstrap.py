@@ -9,8 +9,8 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 
 from marquise.infrastructure.di.factory import MarquiseFactory
-from marquise.infrastructure.supabase.config.settings import Settings
-from marquise.infrastructure.supabase.database import Database
+from marquise.infrastructure.postgres.config.settings import Settings
+from marquise.infrastructure.postgres.database import Database
 
 _REQUIRED_VARIABLES = ("DATABASE_URL", "DATABASE_SCHEMA", "TMDB_API_KEY")
 

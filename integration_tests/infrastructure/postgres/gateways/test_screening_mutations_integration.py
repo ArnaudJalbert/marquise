@@ -8,9 +8,9 @@ from datetime import UTC, datetime
 import asyncpg
 import pytest
 
-from marquise.infrastructure.supabase.gateways.cinema import SupabaseCinemaGateway
-from marquise.infrastructure.supabase.gateways.movie import SupabaseMovieGateway
-from marquise.infrastructure.supabase.gateways.screening import SupabaseScreeningGateway
+from marquise.infrastructure.postgres.gateways.cinema import PostgresCinemaGateway
+from marquise.infrastructure.postgres.gateways.movie import PostgresMovieGateway
+from marquise.infrastructure.postgres.gateways.screening import PostgresScreeningGateway
 from marquise.interface_adapters.repositories.protocols.screening import (
     ScreeningExternalIdConflictGatewayError,
 )
@@ -19,9 +19,9 @@ SHOWTIME = datetime(2026, 6, 7, 19, 30, tzinfo=UTC)
 
 
 async def _seed(
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
-    screening_gateway: SupabaseScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
+    screening_gateway: PostgresScreeningGateway,
 ) -> None:
     """Seed a screening and alternate parents for mutation checks."""
     await gateway.save(cinema_id="cin-old", name="Old Cinema", address=None, city=None)
@@ -41,9 +41,9 @@ async def _seed(
 
 @pytest.mark.asyncio
 async def test_partial_replace_preserves_concurrent_parent_change(
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
-    screening_gateway: SupabaseScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
+    screening_gateway: PostgresScreeningGateway,
 ) -> None:
     """A stale snapshot cannot restore omitted parent or metadata columns."""
     await _seed(gateway, movie_gateway, screening_gateway)
@@ -77,9 +77,9 @@ async def test_partial_replace_preserves_concurrent_parent_change(
 @pytest.mark.asyncio
 async def test_partial_replace_sees_parent_created_while_update_waits(
     db_pool: asyncpg.Pool,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
-    screening_gateway: SupabaseScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
+    screening_gateway: PostgresScreeningGateway,
 ) -> None:
     """A parent committed after the UPDATE snapshot still appears in the result."""
     await _seed(gateway, movie_gateway, screening_gateway)
@@ -143,9 +143,9 @@ async def test_partial_replace_sees_parent_created_while_update_waits(
 
 @pytest.mark.asyncio
 async def test_empty_replace_mask_does_not_write(
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
-    screening_gateway: SupabaseScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
+    screening_gateway: PostgresScreeningGateway,
 ) -> None:
     """An empty patch returns the stored row without applying stale values."""
     await _seed(gateway, movie_gateway, screening_gateway)
@@ -162,9 +162,9 @@ async def test_empty_replace_mask_does_not_write(
 
 @pytest.mark.asyncio
 async def test_replace_external_id_conflict_is_distinct(
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
-    screening_gateway: SupabaseScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
+    screening_gateway: PostgresScreeningGateway,
 ) -> None:
     """Same-cinema external-ID collisions are not mislabeled as identity collisions."""
     await _seed(gateway, movie_gateway, screening_gateway)
@@ -192,9 +192,9 @@ async def test_replace_external_id_conflict_is_distinct(
 @pytest.mark.asyncio
 async def test_replace_unknown_unique_constraint_propagates(
     db_pool: asyncpg.Pool,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
-    screening_gateway: SupabaseScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
+    screening_gateway: PostgresScreeningGateway,
 ) -> None:
     """An unrecognized uniqueness failure retains its database error."""
     await _seed(gateway, movie_gateway, screening_gateway)
@@ -232,9 +232,9 @@ async def test_replace_unknown_unique_constraint_propagates(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("keep_other", [False, True])
 async def test_delete_cleans_only_its_orphan_movie(
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
-    screening_gateway: SupabaseScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
+    screening_gateway: PostgresScreeningGateway,
     keep_other: bool,
 ) -> None:
     """The parent disappears only when its last screening is deleted."""
@@ -258,9 +258,9 @@ async def test_delete_cleans_only_its_orphan_movie(
 
 @pytest.mark.asyncio
 async def test_concurrent_last_screening_deletes_clean_parent(
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
-    screening_gateway: SupabaseScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
+    screening_gateway: PostgresScreeningGateway,
 ) -> None:
     """Concurrent deletes serialize parent cleanup without retaining an orphan."""
     await _seed(gateway, movie_gateway, screening_gateway)
@@ -284,9 +284,9 @@ async def test_concurrent_last_screening_deletes_clean_parent(
 @pytest.mark.asyncio
 async def test_delete_waits_for_inflight_fk_insert_and_preserves_it(
     db_pool: asyncpg.Pool,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
-    screening_gateway: SupabaseScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
+    screening_gateway: PostgresScreeningGateway,
 ) -> None:
     """Cleanup takes a fresh snapshot after waiting for a parent's FK lock."""
     await _seed(gateway, movie_gateway, screening_gateway)
@@ -340,9 +340,9 @@ async def test_delete_waits_for_inflight_fk_insert_and_preserves_it(
 @pytest.mark.asyncio
 async def test_orphan_cleanup_failure_rolls_back_screening_delete(
     db_pool: asyncpg.Pool,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
-    screening_gateway: SupabaseScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
+    screening_gateway: PostgresScreeningGateway,
 ) -> None:
     """A failed movie cleanup cannot leave the screening deletion committed."""
     await _seed(gateway, movie_gateway, screening_gateway)
@@ -375,9 +375,9 @@ async def test_orphan_cleanup_failure_rolls_back_screening_delete(
 
 @pytest.mark.asyncio
 async def test_delete_uses_actual_reparented_movie(
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
-    screening_gateway: SupabaseScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
+    screening_gateway: PostgresScreeningGateway,
 ) -> None:
     """Cleanup targets the deleted row's parent, not an earlier read snapshot."""
     await _seed(gateway, movie_gateway, screening_gateway)

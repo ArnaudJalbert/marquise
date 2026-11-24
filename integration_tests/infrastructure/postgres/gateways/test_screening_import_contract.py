@@ -7,11 +7,11 @@ import pytest_asyncio
 
 from marquise.application.repositories import ScreeningRepository
 from marquise.domain.entities import Screening
-from marquise.infrastructure.supabase.gateways.cinema import SupabaseCinemaGateway
-from marquise.infrastructure.supabase.gateways.movie import SupabaseMovieGateway
-from marquise.infrastructure.supabase.gateways.screening import SupabaseScreeningGateway
-from marquise.infrastructure.supabase.gateways.source_definition import (
-    SupabaseSourceDefinitionGateway,
+from marquise.infrastructure.postgres.gateways.cinema import PostgresCinemaGateway
+from marquise.infrastructure.postgres.gateways.movie import PostgresMovieGateway
+from marquise.infrastructure.postgres.gateways.screening import PostgresScreeningGateway
+from marquise.infrastructure.postgres.gateways.source_definition import (
+    PostgresSourceDefinitionGateway,
 )
 from marquise.interface_adapters.repositories.supabase.screening_repository import (
     SupabaseScreeningRepository,
@@ -26,7 +26,7 @@ from support.screening_import import owner
 
 @pytest_asyncio.fixture
 async def contract_source(
-    source_definition_gateway: SupabaseSourceDefinitionGateway,
+    source_definition_gateway: PostgresSourceDefinitionGateway,
 ) -> None:
     """Persist the source referenced by the shared import contract."""
     await source_definition_gateway.save("cineplex", "Cineplex")
@@ -39,9 +39,9 @@ async def contract_source(
 )
 async def test_postgres_checked_write_contract(
     scenario: Callable[[ScreeningRepository, Screening], Awaitable[None]],
-    screening_gateway: SupabaseScreeningGateway,
-    gateway: SupabaseCinemaGateway,
-    movie_gateway: SupabaseMovieGateway,
+    screening_gateway: PostgresScreeningGateway,
+    gateway: PostgresCinemaGateway,
+    movie_gateway: PostgresMovieGateway,
 ) -> None:
     """PostgreSQL detects stale snapshots and arrivals without policy predicates."""
     await gateway.save("cin", "Cinema", address=None, city=None)

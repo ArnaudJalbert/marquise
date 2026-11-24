@@ -9,8 +9,8 @@ from unittest.mock import AsyncMock, MagicMock, create_autospec
 import asyncpg
 import pytest
 
-from marquise.infrastructure.supabase.config import Settings
-from marquise.infrastructure.supabase.database import Database, sanitize_dsn
+from marquise.infrastructure.postgres.config import Settings
+from marquise.infrastructure.postgres.database import Database, sanitize_dsn
 
 _TEST_SETTINGS = Settings(
     database_url="postgresql://user:pass@localhost:5432/test",
