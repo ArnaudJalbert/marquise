@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 
-from marquise.infrastructure.sources import cinemacinema as cinema
+from marquise.infrastructure.sources import cinemacinema
 
 
 def _svelte_response(root: dict[str, Any]) -> bytes:
@@ -69,7 +69,9 @@ async def test_fetch_showtimes_uses_local_dated_schedule_and_filters_cinema(
 ) -> None:
     """Fetch two local dates, normalize Montreal time, and select the cinema."""
     base_url, routes, requests = local_http
-    monkeypatch.setattr(cinema, "SCHEDULE_URL", f"{base_url}/schedule/__data.json")
+    monkeypatch.setattr(
+        cinemacinema, "SCHEDULE_URL", f"{base_url}/schedule/__data.json"
+    )
     routes["/schedule/__data.json"] = (
         _svelte_response(
             {
@@ -131,7 +133,7 @@ async def test_fetch_showtimes_uses_local_dated_schedule_and_filters_cinema(
         "application/json",
     )
 
-    results = await cinema.CinemaCinemaSource().fetch_showtimes(
+    results = await cinemacinema.CinemaCinemaSource().fetch_showtimes(
         cinema_name=cinema_name,
         start_date=datetime(2026, 2, 10, tzinfo=UTC),
         end_date=datetime(2026, 2, 11, tzinfo=UTC),
@@ -152,7 +154,7 @@ async def test_fetch_movie_detail_parses_local_svelte_data(
     """Fetch a local film page and extract its devalue metadata."""
     base_url, routes, requests = local_http
     monkeypatch.setattr(
-        cinema, "FILM_DETAIL_TPL", f"{base_url}/films/{{slug}}/__data.json"
+        cinemacinema, "FILM_DETAIL_TPL", f"{base_url}/films/{{slug}}/__data.json"
     )
     routes["/films/museum-film/__data.json"] = (
         _svelte_response(
@@ -176,7 +178,7 @@ async def test_fetch_movie_detail_parses_local_svelte_data(
         "application/json",
     )
 
-    detail = await cinema.CinemaCinemaSource().fetch_movie_detail("museum-film")
+    detail = await cinemacinema.CinemaCinemaSource().fetch_movie_detail("museum-film")
 
     assert detail == {
         "description": "A story & another.",

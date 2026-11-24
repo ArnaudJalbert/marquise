@@ -4,8 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from marquise.infrastructure.sources import cinematheque as cinema
-from marquise.infrastructure.sources import cineplex
+from marquise.infrastructure.sources import cinematheque, cineplex
 
 _FIXTURES = (
     Path(__file__).resolve().parents[3]
@@ -24,8 +23,8 @@ async def test_carrie_recovers_linked_evidence_with_ticketing_fallback(
 ) -> None:
     """Recover Carrie facts by performance ID or keep usable ticketing data."""
     base, routes, requests = local_http
-    monkeypatch.setattr(cinema, "BASE_URL", base + "/tickets/")
-    monkeypatch.setattr(cinema, "CINEMA_URL", base + "/en/cinema/")
+    monkeypatch.setattr(cinematheque, "BASE_URL", base + "/tickets/")
+    monkeypatch.setattr(cinematheque, "CINEMA_URL", base + "/en/cinema/")
     schedule = (_FIXTURES / "carrie-schedule.html").read_bytes()
     routes["/tickets/?schdate=2026-10-30"] = (schedule, "text/html")
     index = (_FIXTURES / "carrie-index.html").read_bytes()
@@ -40,10 +39,10 @@ async def test_carrie_recovers_linked_evidence_with_ticketing_fallback(
     elif detail_state == "challenge":
         routes["/en/cinema/carrie/"] = (b"<html>Challenge</html>", "text/html")
 
-    source = cinema.CinemathequeSource()
+    source = cinematheque.CinemathequeSource()
     # Exercise the captured schedule parser independently of today's bootstrap date.
-    rows = cinema._parse_movie_data(
-        cinema._extract_movie_data(schedule.decode()), "2026-10-30"
+    rows = cinematheque._parse_movie_data(
+        cinematheque._extract_movie_data(schedule.decode()), "2026-10-30"
     )
     assert rows[0] == {
         "movie_title": "Carrie (VOSTF)",
@@ -107,8 +106,8 @@ async def test_truncated_detail_preserves_ticketing_facts(
             return schedule
         raise IncompleteRead(b"partial")
 
-    monkeypatch.setattr(cinema, "_fetch", fetch)
-    detail = await cinema.CinemathequeSource().fetch_movie_detail(
+    monkeypatch.setattr(cinematheque, "_fetch", fetch)
+    detail = await cinematheque.CinemathequeSource().fetch_movie_detail(
         "2026-10-30|242894996"
     )
     assert detail is not None
