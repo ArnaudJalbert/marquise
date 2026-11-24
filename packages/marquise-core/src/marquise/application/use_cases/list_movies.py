@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from marquise.application.exceptions import TooManyMovieIdsError
+from marquise.application.page import calculate_page_offset
 from marquise.application.repositories import MovieRepository
-from marquise.application.repositories.page import get_page_offset
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
 
@@ -168,7 +168,7 @@ class ListMoviesUseCase:
         page = await self.movie_repository.find_all(
             title_filter=input_data.title,
             limit=input_data.size,
-            offset=get_page_offset(input_data.page, input_data.size),
+            offset=calculate_page_offset(input_data.page, input_data.size),
         )
 
         movie_data = [self._to_movie_data(m) for m in page.items]

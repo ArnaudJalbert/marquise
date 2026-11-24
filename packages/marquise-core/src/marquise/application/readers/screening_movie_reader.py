@@ -6,8 +6,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import date, datetime
 
+from marquise.application.page import Page
 from marquise.application.readers.screening_reader import ScreeningReader
-from marquise.application.repositories.page import Page
 from marquise.domain.value_objects import HourFilter
 
 

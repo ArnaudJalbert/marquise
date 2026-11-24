@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from marquise.application.page import Page
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
-from marquise.application.repositories.page import Page
 from marquise.interface_adapters.readers.screening_reader import _to_data
 from marquise.interface_adapters.repositories.protocols.base import GatewayPage
 

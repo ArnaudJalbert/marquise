@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 
-from marquise.application.repositories.page import Page
+from marquise.application.page import Page
 
 
 class ScreeningReader(ABC):

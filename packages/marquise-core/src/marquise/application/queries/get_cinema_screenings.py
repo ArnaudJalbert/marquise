@@ -5,9 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from marquise.application.exceptions import CinemaNotFoundError
+from marquise.application.page import calculate_page_offset
 from marquise.application.readers import ScreeningReader
 from marquise.application.repositories import CinemaRepository
-from marquise.application.repositories.page import get_page_offset
 from marquise.domain.value_objects import CinemaId
 
 
@@ -58,6 +58,6 @@ class GetCinemaScreeningsQuery:
         page = await self.screening_reader.search(
             cinema_id=input_data.cinema_id,
             limit=input_data.size,
-            offset=get_page_offset(input_data.page, input_data.size),
+            offset=calculate_page_offset(input_data.page, input_data.size),
         )
         return self.OutputData(screenings=tuple(page.items), total=page.total)
