@@ -1,4 +1,4 @@
-"""Supabase reader for cinema-source assignment display data."""
+"""Postgres reader for cinema-source assignment display data."""
 
 from __future__ import annotations
 
@@ -15,8 +15,8 @@ from marquise.application.readers import (
 DEFAULT_SCHEMA = "marquise"
 
 
-class SupabaseCinemaSourceAssignmentReader(CinemaSourceAssignmentReader):
-    """Read cinema-source assignment display data from Supabase."""
+class PostgresCinemaSourceAssignmentReader(CinemaSourceAssignmentReader):
+    """Read cinema-source assignment display data from Postgres."""
 
     def __init__(self, pool: asyncpg.Pool, schema: str = DEFAULT_SCHEMA) -> None:
         """Initialize with an open connection pool and schema."""

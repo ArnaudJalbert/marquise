@@ -33,7 +33,7 @@ def _to_data(row: dict) -> ScreeningReader.ScreeningData:
     )
 
 
-class SupabaseScreeningReader(ScreeningReader):
+class PostgresScreeningReader(ScreeningReader):
     """Map projections supplied by an injected screening read gateway."""
 
     def __init__(self, gateway: ScreeningReadGateway) -> None:
