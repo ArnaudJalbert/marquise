@@ -1,4 +1,4 @@
-"""Unit tests for SupabaseCinemaSourceAssignmentReader."""
+"""Unit tests for PostgresCinemaSourceAssignmentReader."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import pytest
 
 from marquise.application.readers import CinemaSourceAssignmentData
 from marquise.interface_adapters.readers.cinema_source_assignment_reader import (
-    SupabaseCinemaSourceAssignmentReader,
+    PostgresCinemaSourceAssignmentReader,
 )
 
 
@@ -23,7 +23,7 @@ async def test_list_all_returns_assignment_display_data() -> None:
     pool.acquire.return_value.__aenter__ = AsyncMock(return_value=connection)
     pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
 
-    result = await SupabaseCinemaSourceAssignmentReader(pool).list_all()
+    result = await PostgresCinemaSourceAssignmentReader(pool).list_all()
 
     assert result == [CinemaSourceAssignmentData("cin-001", "Cineplex")]
     connection.fetch.assert_awaited_once()
