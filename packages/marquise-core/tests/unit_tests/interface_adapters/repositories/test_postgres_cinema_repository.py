@@ -1,4 +1,4 @@
-"""Unit tests for SupabaseCinemaRepository with mocked gateway."""
+"""Unit tests for PostgresCinemaRepository with mocked gateway."""
 
 from __future__ import annotations
 
@@ -9,13 +9,13 @@ import pytest
 from marquise.application.exceptions import CinemaIdAlreadyExistsError
 from marquise.domain.entities import Cinema
 from marquise.domain.value_objects import CinemaId
+from marquise.interface_adapters.repositories.cinema_repository import (
+    PostgresCinemaRepository,
+)
 from marquise.interface_adapters.repositories.protocols.base import GatewayPage
 from marquise.interface_adapters.repositories.protocols.cinema import (
     CinemaGateway,
     GatewayError,
-)
-from marquise.interface_adapters.repositories.supabase.cinema_repository import (
-    SupabaseCinemaRepository,
 )
 
 
@@ -26,13 +26,13 @@ def mock_gateway() -> AsyncMock:
 
 
 @pytest.fixture
-def repo(mock_gateway: AsyncMock) -> SupabaseCinemaRepository:
-    """Provide a SupabaseCinemaRepository wired to the mock gateway."""
-    return SupabaseCinemaRepository(gateway=mock_gateway)
+def repo(mock_gateway: AsyncMock) -> PostgresCinemaRepository:
+    """Provide a PostgresCinemaRepository wired to the mock gateway."""
+    return PostgresCinemaRepository(gateway=mock_gateway)
 
 
 @pytest.mark.asyncio
-async def test_save(repo: SupabaseCinemaRepository, mock_gateway: AsyncMock) -> None:
+async def test_save(repo: PostgresCinemaRepository, mock_gateway: AsyncMock) -> None:
     """Verify save delegates to the gateway and maps the result."""
     mock_gateway.save.return_value = {
         "id": "cin-001",
@@ -65,7 +65,7 @@ async def test_save(repo: SupabaseCinemaRepository, mock_gateway: AsyncMock) -> 
 
 @pytest.mark.asyncio
 async def test_save_raises_cinema_id_already_exists_on_gateway_error(
-    repo: SupabaseCinemaRepository, mock_gateway: AsyncMock
+    repo: PostgresCinemaRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify save wraps GatewayError as CinemaIdAlreadyExistsError."""
     mock_gateway.save.side_effect = GatewayError("ID collision")
@@ -84,7 +84,7 @@ async def test_save_raises_cinema_id_already_exists_on_gateway_error(
 
 @pytest.mark.asyncio
 async def test_find_by_id(
-    repo: SupabaseCinemaRepository, mock_gateway: AsyncMock
+    repo: PostgresCinemaRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify find_by_id delegates to the gateway and maps the result."""
     mock_gateway.find_by_id.return_value = {
@@ -104,7 +104,7 @@ async def test_find_by_id(
 
 @pytest.mark.asyncio
 async def test_find_by_id_missing(
-    repo: SupabaseCinemaRepository, mock_gateway: AsyncMock
+    repo: PostgresCinemaRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify find_by_id returns None when the gateway returns None."""
     mock_gateway.find_by_id.return_value = None
@@ -116,7 +116,7 @@ async def test_find_by_id_missing(
 
 @pytest.mark.asyncio
 async def test_find_by_name_and_address(
-    repo: SupabaseCinemaRepository, mock_gateway: AsyncMock
+    repo: PostgresCinemaRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify find_by_name_and_address delegates and maps correctly."""
     mock_gateway.find_by_name_and_address.return_value = {
@@ -136,7 +136,7 @@ async def test_find_by_name_and_address(
 
 @pytest.mark.asyncio
 async def test_find_by_name_and_address_missing(
-    repo: SupabaseCinemaRepository, mock_gateway: AsyncMock
+    repo: PostgresCinemaRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify find_by_name_and_address returns None when not found."""
     mock_gateway.find_by_name_and_address.return_value = None
@@ -148,7 +148,7 @@ async def test_find_by_name_and_address_missing(
 
 @pytest.mark.asyncio
 async def test_exists_by_id(
-    repo: SupabaseCinemaRepository, mock_gateway: AsyncMock
+    repo: PostgresCinemaRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify exists_by_id returns True when the gateway returns True."""
     mock_gateway.exists_by_id.return_value = True
@@ -160,7 +160,7 @@ async def test_exists_by_id(
 
 @pytest.mark.asyncio
 async def test_exists_by_id_missing(
-    repo: SupabaseCinemaRepository, mock_gateway: AsyncMock
+    repo: PostgresCinemaRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify exists_by_id returns False when the gateway returns False."""
     mock_gateway.exists_by_id.return_value = False
@@ -172,7 +172,7 @@ async def test_exists_by_id_missing(
 
 @pytest.mark.asyncio
 async def test_delete_delegates_to_gateway(
-    repo: SupabaseCinemaRepository, mock_gateway: AsyncMock
+    repo: PostgresCinemaRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify delete delegates to the gateway and returns True on success."""
     mock_gateway.delete.return_value = True
@@ -185,7 +185,7 @@ async def test_delete_delegates_to_gateway(
 
 @pytest.mark.asyncio
 async def test_delete_missing(
-    repo: SupabaseCinemaRepository, mock_gateway: AsyncMock
+    repo: PostgresCinemaRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify delete returns False when the gateway returns False."""
     mock_gateway.delete.return_value = False
@@ -196,7 +196,7 @@ async def test_delete_missing(
 
 
 @pytest.mark.asyncio
-async def test_update(repo: SupabaseCinemaRepository, mock_gateway: AsyncMock) -> None:
+async def test_update(repo: PostgresCinemaRepository, mock_gateway: AsyncMock) -> None:
     """Verify update delegates to the gateway and maps the result."""
     mock_gateway.update.return_value = {
         "id": "cin-001",
@@ -229,7 +229,7 @@ async def test_update(repo: SupabaseCinemaRepository, mock_gateway: AsyncMock) -
 
 @pytest.mark.asyncio
 async def test_update_not_found(
-    repo: SupabaseCinemaRepository, mock_gateway: AsyncMock
+    repo: PostgresCinemaRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify update returns None when the gateway finds no row to update."""
     mock_gateway.update.return_value = None
@@ -249,7 +249,7 @@ async def test_update_not_found(
 
 @pytest.mark.asyncio
 async def test_find_all_without_filter(
-    repo: SupabaseCinemaRepository, mock_gateway: AsyncMock
+    repo: PostgresCinemaRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify find_all without filter returns all mapped cinemas."""
     mock_gateway.find_all.return_value = GatewayPage(
@@ -285,7 +285,7 @@ async def test_find_all_without_filter(
 
 @pytest.mark.asyncio
 async def test_find_all_with_filter(
-    repo: SupabaseCinemaRepository, mock_gateway: AsyncMock
+    repo: PostgresCinemaRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify find_all with filter delegates the filter to the gateway."""
     mock_gateway.find_all.return_value = GatewayPage(
@@ -312,7 +312,7 @@ async def test_find_all_with_filter(
 
 @pytest.mark.asyncio
 async def test_find_all_with_pagination(
-    repo: SupabaseCinemaRepository, mock_gateway: AsyncMock
+    repo: PostgresCinemaRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify find_all forwards limit/offset and surfaces the gateway's total."""
     mock_gateway.find_all.return_value = GatewayPage(
@@ -337,7 +337,7 @@ async def test_find_all_with_pagination(
 
 @pytest.mark.asyncio
 async def test_find_all_empty(
-    repo: SupabaseCinemaRepository, mock_gateway: AsyncMock
+    repo: PostgresCinemaRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify find_all returns an empty page when no cinemas match."""
     mock_gateway.find_all.return_value = GatewayPage(rows=[], total=0)

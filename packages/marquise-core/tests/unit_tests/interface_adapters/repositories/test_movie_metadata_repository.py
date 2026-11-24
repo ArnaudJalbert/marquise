@@ -12,17 +12,17 @@ from marquise.application.movie_workflows import (
     MovieMetadataValues,
     MovieWorkflowConflictError,
 )
+from marquise.interface_adapters.repositories import (
+    movie_metadata_repository,
+)
 from marquise.interface_adapters.repositories.protocols.movie_metadata import (
     MovieMergeGateway,
     MovieMetadataConflictError,
     MovieMetadataGateway,
 )
-from marquise.interface_adapters.repositories.supabase import (
-    movie_metadata_repository,
-)
 
-SupabaseMovieMetadataRepository = (
-    movie_metadata_repository.SupabaseMovieMetadataRepository
+PostgresMovieMetadataRepository = (
+    movie_metadata_repository.PostgresMovieMetadataRepository
 )
 
 
@@ -46,7 +46,7 @@ async def test_snapshot_reads_include_legacy_pending_identities() -> None:
     gateway.get.return_value = row
     gateway.find_by_tmdb_id.return_value = row
     gateway.list_tmdb_movies.return_value = [row]
-    repository = SupabaseMovieMetadataRepository(gateway, merge)
+    repository = PostgresMovieMetadataRepository(gateway, merge)
     expected = MovieMetadataSnapshot(
         movie_id="movie",
         revision="revision",
@@ -75,7 +75,7 @@ async def test_missing_snapshot_reads_return_none() -> None:
     gateway = create_autospec(MovieMetadataGateway, instance=True)
     gateway.get.return_value = gateway.find_by_tmdb_id.return_value = None
     gateway.list_tmdb_movies.return_value = []
-    repository = SupabaseMovieMetadataRepository(
+    repository = PostgresMovieMetadataRepository(
         gateway,
         create_autospec(MovieMergeGateway, instance=True),
     )
@@ -97,7 +97,7 @@ async def test_patch_mapping_keeps_none_and_passes_stable_id_revision() -> None:
         "metadata_enriched_at": stamp,
         "screening_ids": [],
     }
-    repository = SupabaseMovieMetadataRepository(
+    repository = PostgresMovieMetadataRepository(
         gateway,
         create_autospec(MovieMergeGateway, instance=True),
     )
@@ -135,7 +135,7 @@ async def test_conflict_translation_preserves_application_error_contract() -> No
     """Stale and collision failures cross the adapter as the agreed error type."""
     gateway = create_autospec(MovieMetadataGateway, instance=True)
     gateway.update_metadata.side_effect = MovieMetadataConflictError("stale")
-    repository = SupabaseMovieMetadataRepository(
+    repository = PostgresMovieMetadataRepository(
         gateway,
         create_autospec(MovieMergeGateway, instance=True),
     )
@@ -156,7 +156,7 @@ async def test_merge_is_delegated_to_independent_transaction() -> None:
     request = MergeMoviesInputData("survivor", ("duplicate",))
     result = MergeMoviesOutputData("blocked", (), blockers=("missing",))
     merge.merge.return_value = result
-    repository = SupabaseMovieMetadataRepository(gateway, merge)
+    repository = PostgresMovieMetadataRepository(gateway, merge)
     assert await repository.merge(request) is result
     merge.merge.assert_awaited_once_with(request)
     gateway.update_metadata.assert_not_awaited()
@@ -178,7 +178,7 @@ async def test_legacy_empty_collection_strings_remain_missing() -> None:
         "genres": "",
         "origin_countries": "",
     }
-    repository = SupabaseMovieMetadataRepository(
+    repository = PostgresMovieMetadataRepository(
         gateway,
         create_autospec(MovieMergeGateway, instance=True),
     )

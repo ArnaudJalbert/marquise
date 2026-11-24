@@ -1,4 +1,4 @@
-"""Tests for SupabaseScreeningRepository."""
+"""Tests for PostgresScreeningRepository."""
 
 from __future__ import annotations
 
@@ -28,8 +28,8 @@ from marquise.interface_adapters.repositories.protocols.screening import (
     ScreeningExternalIdConflictGatewayError,
     ScreeningGateway,
 )
-from marquise.interface_adapters.repositories.supabase.screening_repository import (
-    SupabaseScreeningRepository,
+from marquise.interface_adapters.repositories.screening_repository import (
+    PostgresScreeningRepository,
 )
 
 
@@ -121,7 +121,7 @@ async def test_save(
         inserted=True,
     )
 
-    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    repo = PostgresScreeningRepository(gateway=mock_gateway)
     result = await repo.save(sample_screening)
 
     assert result.id == ScreeningId(value="scr-123")
@@ -158,7 +158,7 @@ async def test_translates_external_id_conflict(
         "A screening with external_id='486899' already exists"
     )
     getattr(mock_gateway, operation).side_effect = error
-    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    repo = PostgresScreeningRepository(gateway=mock_gateway)
 
     with pytest.raises(
         ScreeningExternalIdConflictError, match="external_id='486899'"
@@ -180,7 +180,7 @@ async def test_unrelated_gateway_error_is_not_a_duplicate(
     mock_gateway = create_autospec(ScreeningGateway, instance=True)
     error = GatewayError("Database unavailable")
     mock_gateway.save.side_effect = error
-    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    repo = PostgresScreeningRepository(gateway=mock_gateway)
 
     with pytest.raises(GatewayError, match="Database unavailable") as raised:
         await repo.save(sample_screening)
@@ -208,7 +208,7 @@ async def test_save_raises_when_row_already_exists(
         inserted=False,
     )
 
-    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    repo = PostgresScreeningRepository(gateway=mock_gateway)
 
     with pytest.raises(ScreeningAlreadyExistsError):
         await repo.save(sample_screening)
@@ -234,7 +234,7 @@ async def test_save_with_timezone_aware_datetime(
         inserted=True,
     )
 
-    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    repo = PostgresScreeningRepository(gateway=mock_gateway)
     result = await repo.save(sample_screening)
 
     assert result.showtime.value.tzinfo == UTC
@@ -263,7 +263,7 @@ async def test_find_distinct_movies_by_cinema() -> None:
         rows=[movie_row], total=1
     )
 
-    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    repo = PostgresScreeningRepository(gateway=mock_gateway)
     start = datetime(2026, 6, 7, tzinfo=UTC)
     end = datetime(2026, 6, 7, 23, 59, 59, tzinfo=UTC)
     result = await repo.find_distinct_movies_by_cinema(
@@ -294,7 +294,7 @@ async def test_find_distinct_movies_by_cinema_empty() -> None:
         rows=[], total=0
     )
 
-    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    repo = PostgresScreeningRepository(gateway=mock_gateway)
     result = await repo.find_distinct_movies_by_cinema(
         cinema_id=CinemaId(value="cin-empty"),
         start_date=datetime(2026, 6, 7, tzinfo=UTC),
@@ -335,7 +335,7 @@ async def test_replace(
         language="V.O.",
     )
 
-    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    repo = PostgresScreeningRepository(gateway=mock_gateway)
     fields = frozenset(
         {
             "movie_id",
@@ -373,7 +373,7 @@ async def test_replace_raises_not_found(sample_screening: Screening) -> None:
     mock_gateway = create_autospec(ScreeningGateway, instance=True)
     mock_gateway.replace.return_value = None
 
-    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    repo = PostgresScreeningRepository(gateway=mock_gateway)
     with pytest.raises(ScreeningNotFoundError, match="scr-123"):
         await repo.replace(sample_screening, fields=frozenset({"room"}))
 
@@ -386,7 +386,7 @@ async def test_replace_raises_already_exists_on_gateway_error(
     mock_gateway = create_autospec(ScreeningGateway, instance=True)
     mock_gateway.replace.side_effect = GatewayError("already exists")
 
-    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    repo = PostgresScreeningRepository(gateway=mock_gateway)
     with pytest.raises(ScreeningAlreadyExistsError, match="already exists"):
         await repo.replace(
             sample_screening, fields=frozenset({"movie_id", "cinema_id", "showtime"})
@@ -411,7 +411,7 @@ async def test_replace_preserves_mask_and_maps_current_parents(
         "cinema__name": "Concurrent Cinema",
         "room": None,
     }
-    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    repo = PostgresScreeningRepository(gateway=mock_gateway)
 
     result = await repo.replace(sample_screening, fields=fields)
 
@@ -431,7 +431,7 @@ async def test_delete_delegates_to_gateway() -> None:
     mock_gateway = create_autospec(ScreeningGateway, instance=True)
     mock_gateway.delete.return_value = True
 
-    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    repo = PostgresScreeningRepository(gateway=mock_gateway)
     result = await repo.delete(ScreeningId(value="scr-123"))
 
     assert result is True
@@ -444,7 +444,7 @@ async def test_delete_missing_returns_false() -> None:
     mock_gateway = create_autospec(ScreeningGateway, instance=True)
     mock_gateway.delete.return_value = False
 
-    repo = SupabaseScreeningRepository(gateway=mock_gateway)
+    repo = PostgresScreeningRepository(gateway=mock_gateway)
     result = await repo.delete(ScreeningId(value="scr-missing"))
 
     assert result is False

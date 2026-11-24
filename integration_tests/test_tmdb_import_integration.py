@@ -17,11 +17,11 @@ from marquise.infrastructure.postgres.gateways.screening import PostgresScreenin
 from marquise.infrastructure.postgres.gateways.screening_reader import (
     PostgresScreeningReadGateway,
 )
-from marquise.interface_adapters.repositories.supabase.movie_repository import (
-    SupabaseMovieRepository,
+from marquise.interface_adapters.repositories.movie_repository import (
+    PostgresMovieRepository,
 )
-from marquise.interface_adapters.repositories.supabase.screening_repository import (
-    SupabaseScreeningRepository,
+from marquise.interface_adapters.repositories.screening_repository import (
+    PostgresScreeningRepository,
 )
 from support.movie_import import (
     autospec_use_case,
@@ -40,8 +40,8 @@ async def test_import_links_translated_screening_to_known_movie(
     screening_gateway: PostgresScreeningGateway,
 ) -> None:
     """A TMDB match reuses a persisted movie and keeps its details unchanged."""
-    movies = SupabaseMovieRepository(movie_gateway)
-    screenings = SupabaseScreeningRepository(screening_gateway)
+    movies = PostgresMovieRepository(movie_gateway)
+    screenings = PostgresScreeningRepository(screening_gateway)
     original = Movie(
         id=MovieId("known-movie"),
         title="Original Film",

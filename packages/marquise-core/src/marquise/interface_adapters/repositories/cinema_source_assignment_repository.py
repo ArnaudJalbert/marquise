@@ -1,4 +1,4 @@
-"""Supabase repository implementation of CinemaSourceAssignmentRepository.
+"""Postgres repository implementation of CinemaSourceAssignmentRepository.
 
 Adapts a ``CinemaSourceAssignmentGateway`` (infrastructure) into the
 ``CinemaSourceAssignmentRepository`` interface (application).  No SQL, no
@@ -13,13 +13,13 @@ from marquise.application.exceptions import (
 from marquise.application.repositories import CinemaSourceAssignmentRepository
 from marquise.domain.entities import CinemaSourceAssignment, SourceDefinition
 from marquise.domain.value_objects import CinemaId, SourceName
+from marquise.interface_adapters.repositories._utils import (
+    dict_to_cinema,
+    extract_prefixed,
+)
 from marquise.interface_adapters.repositories.protocols.cinema import GatewayError
 from marquise.interface_adapters.repositories.protocols.cinema_source_assignment import (  # noqa: E501
     CinemaSourceAssignmentGateway,
-)
-from marquise.interface_adapters.repositories.supabase._utils import (
-    dict_to_cinema,
-    extract_prefixed,
 )
 
 
@@ -32,8 +32,8 @@ def _dict_to_source_definition(data: dict) -> SourceDefinition:
     )
 
 
-class SupabaseCinemaSourceAssignmentRepository(CinemaSourceAssignmentRepository):
-    """Cinema-source assignment repository backed by Supabase PostgreSQL.
+class PostgresCinemaSourceAssignmentRepository(CinemaSourceAssignmentRepository):
+    """Cinema-source assignment repository backed by PostgreSQL.
 
     Parameters
     ----------

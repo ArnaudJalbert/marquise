@@ -13,8 +13,8 @@ from marquise.infrastructure.postgres.gateways.screening import PostgresScreenin
 from marquise.infrastructure.postgres.gateways.source_definition import (
     PostgresSourceDefinitionGateway,
 )
-from marquise.interface_adapters.repositories.supabase.screening_repository import (
-    SupabaseScreeningRepository,
+from marquise.interface_adapters.repositories.screening_repository import (
+    PostgresScreeningRepository,
 )
 from support.screening_contract import (
     assert_checked_writes,
@@ -46,4 +46,4 @@ async def test_postgres_checked_write_contract(
     """PostgreSQL detects stale snapshots and arrivals without policy predicates."""
     await gateway.save("cin", "Cinema", address=None, city=None)
     await movie_gateway.save("movie", "Film", release_year=None)
-    await scenario(SupabaseScreeningRepository(screening_gateway), owner())
+    await scenario(PostgresScreeningRepository(screening_gateway), owner())

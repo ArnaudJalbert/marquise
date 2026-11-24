@@ -1,4 +1,4 @@
-"""Supabase repository implementation of CinemaRepository.
+"""Postgres repository implementation of CinemaRepository.
 
 Adapts a ``CinemaGateway`` (infrastructure) into the ``CinemaRepository``
 interface (application).  No SQL, no asyncpg — pure entity mapping.
@@ -17,8 +17,8 @@ from marquise.interface_adapters.repositories.protocols.cinema import (
 )
 
 
-class SupabaseCinemaRepository(CinemaRepository):
-    """Cinema repository backed by a Supabase PostgreSQL database.
+class PostgresCinemaRepository(CinemaRepository):
+    """Cinema repository backed by a PostgreSQL database.
 
     Parameters
     ----------

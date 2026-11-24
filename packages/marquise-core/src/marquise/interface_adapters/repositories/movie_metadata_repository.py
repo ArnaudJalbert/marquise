@@ -18,7 +18,7 @@ from marquise.interface_adapters.repositories.protocols.movie_metadata import (
 )
 
 
-class SupabaseMovieMetadataRepository(MovieMetadataRepository):
+class PostgresMovieMetadataRepository(MovieMetadataRepository):
     """Metadata adapter with separately injected merge transaction support."""
 
     def __init__(

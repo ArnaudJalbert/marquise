@@ -1,4 +1,4 @@
-"""Supabase repository implementation of MovieRepository.
+"""Postgres repository implementation of MovieRepository.
 
 Adapts a ``MovieGateway`` (infrastructure) into the ``MovieRepository``
 interface (application).  No SQL, no asyncpg — pure entity mapping.
@@ -10,12 +10,12 @@ from marquise.application.page import Page
 from marquise.application.repositories import MovieRepository
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
+from marquise.interface_adapters.repositories._utils import to_movie
 from marquise.interface_adapters.repositories.protocols.movie import MovieGateway
-from marquise.interface_adapters.repositories.supabase._utils import to_movie
 
 
-class SupabaseMovieRepository(MovieRepository):
-    """Movie repository backed by a Supabase PostgreSQL database.
+class PostgresMovieRepository(MovieRepository):
+    """Movie repository backed by a PostgreSQL database.
 
     Parameters
     ----------

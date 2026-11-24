@@ -32,11 +32,11 @@ from marquise.interface_adapters.readers.screening_movie_reader import (
     SupabaseScreeningMovieReader,
 )
 from marquise.interface_adapters.readers.screening_reader import SupabaseScreeningReader
-from marquise.interface_adapters.repositories.supabase.cinema_repository import (
-    SupabaseCinemaRepository,
+from marquise.interface_adapters.repositories.cinema_repository import (
+    PostgresCinemaRepository,
 )
-from marquise.interface_adapters.repositories.supabase.movie_repository import (
-    SupabaseMovieRepository,
+from marquise.interface_adapters.repositories.movie_repository import (
+    PostgresMovieRepository,
 )
 
 
@@ -66,7 +66,7 @@ def build_get_cinema_screenings_query(
 ) -> GetCinemaScreeningsQuery:
     """Build cinema-screening query."""
     return GetCinemaScreeningsQuery(
-        cinema_repository=SupabaseCinemaRepository(
+        cinema_repository=PostgresCinemaRepository(
             gateway=PostgresCinemaGateway(pool=pool, schema=schema)
         ),
         screening_reader=_build_screening_reader(pool, schema),
@@ -78,7 +78,7 @@ def build_get_movie_screenings_query(
 ) -> GetMovieScreeningsQuery:
     """Build movie-screening query."""
     return GetMovieScreeningsQuery(
-        movie_repository=SupabaseMovieRepository(
+        movie_repository=PostgresMovieRepository(
             gateway=PostgresMovieGateway(pool=pool, schema=schema)
         ),
         screening_reader=_build_screening_reader(pool, schema),
@@ -100,10 +100,10 @@ def build_search_screenings_query(
     """Build screening-search query."""
     return SearchScreeningsQuery(
         screening_reader=_build_screening_reader(pool, schema),
-        cinema_repository=SupabaseCinemaRepository(
+        cinema_repository=PostgresCinemaRepository(
             gateway=PostgresCinemaGateway(pool=pool, schema=schema)
         ),
-        movie_repository=SupabaseMovieRepository(
+        movie_repository=PostgresMovieRepository(
             gateway=PostgresMovieGateway(pool=pool, schema=schema)
         ),
     )

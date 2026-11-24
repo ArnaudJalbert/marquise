@@ -1,4 +1,4 @@
-"""Supabase repository implementation of SourceDefinitionRepository.
+"""Postgres repository implementation of SourceDefinitionRepository.
 
 Adapts a ``SourceDefinitionGateway`` (infrastructure) into the
 ``SourceDefinitionRepository`` interface (application).  No SQL, no
@@ -19,8 +19,8 @@ from marquise.interface_adapters.repositories.protocols.source_definition import
 )
 
 
-class SupabaseSourceDefinitionRepository(SourceDefinitionRepository):
-    """Source definition repository backed by a Supabase PostgreSQL database.
+class PostgresSourceDefinitionRepository(SourceDefinitionRepository):
+    """Source definition repository backed by a PostgreSQL database.
 
     Parameters
     ----------

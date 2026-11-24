@@ -1,4 +1,4 @@
-"""Unit tests for SupabaseSourceDefinitionRepository with mocked gateway."""
+"""Unit tests for PostgresSourceDefinitionRepository with mocked gateway."""
 
 from __future__ import annotations
 
@@ -13,8 +13,8 @@ from marquise.interface_adapters.repositories.protocols.cinema import GatewayErr
 from marquise.interface_adapters.repositories.protocols.source_definition import (
     SourceDefinitionGateway,
 )
-from marquise.interface_adapters.repositories.supabase.source_definition_repository import (  # noqa: E501
-    SupabaseSourceDefinitionRepository,
+from marquise.interface_adapters.repositories.source_definition_repository import (  # noqa: E501
+    PostgresSourceDefinitionRepository,
 )
 
 
@@ -27,9 +27,9 @@ def mock_gateway() -> AsyncMock:
 @pytest.fixture
 def repo(
     mock_gateway: AsyncMock,
-) -> SupabaseSourceDefinitionRepository:
-    """Provide a SupabaseSourceDefinitionRepository wired to the mock gateway."""
-    return SupabaseSourceDefinitionRepository(gateway=mock_gateway)
+) -> PostgresSourceDefinitionRepository:
+    """Provide a PostgresSourceDefinitionRepository wired to the mock gateway."""
+    return PostgresSourceDefinitionRepository(gateway=mock_gateway)
 
 
 def _gateway_row(
@@ -46,7 +46,7 @@ def _gateway_row(
 
 @pytest.mark.asyncio
 async def test_save(
-    repo: SupabaseSourceDefinitionRepository, mock_gateway: AsyncMock
+    repo: PostgresSourceDefinitionRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify save delegates to the gateway and maps the result."""
     mock_gateway.save.return_value = _gateway_row()
@@ -64,7 +64,7 @@ async def test_save(
 
 @pytest.mark.asyncio
 async def test_save_raises_on_gateway_error(
-    repo: SupabaseSourceDefinitionRepository, mock_gateway: AsyncMock
+    repo: PostgresSourceDefinitionRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify save wraps GatewayError as SourceAlreadyExistsError."""
     mock_gateway.save.side_effect = GatewayError("name collision")
@@ -79,7 +79,7 @@ async def test_save_raises_on_gateway_error(
 
 @pytest.mark.asyncio
 async def test_find_by_name(
-    repo: SupabaseSourceDefinitionRepository, mock_gateway: AsyncMock
+    repo: PostgresSourceDefinitionRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify find_by_name delegates to the gateway and maps the result."""
     mock_gateway.find_by_name.return_value = _gateway_row()
@@ -93,7 +93,7 @@ async def test_find_by_name(
 
 @pytest.mark.asyncio
 async def test_find_by_name_missing(
-    repo: SupabaseSourceDefinitionRepository, mock_gateway: AsyncMock
+    repo: PostgresSourceDefinitionRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify find_by_name returns None when the gateway returns None."""
     mock_gateway.find_by_name.return_value = None
@@ -105,7 +105,7 @@ async def test_find_by_name_missing(
 
 @pytest.mark.asyncio
 async def test_find_all(
-    repo: SupabaseSourceDefinitionRepository, mock_gateway: AsyncMock
+    repo: PostgresSourceDefinitionRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify find_all returns all mapped source definitions."""
     mock_gateway.find_all.return_value = [
@@ -123,7 +123,7 @@ async def test_find_all(
 
 @pytest.mark.asyncio
 async def test_find_all_empty(
-    repo: SupabaseSourceDefinitionRepository, mock_gateway: AsyncMock
+    repo: PostgresSourceDefinitionRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify find_all returns empty list when no sources exist."""
     mock_gateway.find_all.return_value = []
@@ -134,7 +134,7 @@ async def test_find_all_empty(
 
 @pytest.mark.asyncio
 async def test_delete_delegates_to_gateway(
-    repo: SupabaseSourceDefinitionRepository, mock_gateway: AsyncMock
+    repo: PostgresSourceDefinitionRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify delete delegates to the gateway and returns True."""
     mock_gateway.delete.return_value = True
@@ -146,7 +146,7 @@ async def test_delete_delegates_to_gateway(
 
 @pytest.mark.asyncio
 async def test_delete_missing(
-    repo: SupabaseSourceDefinitionRepository, mock_gateway: AsyncMock
+    repo: PostgresSourceDefinitionRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify delete returns False when the gateway returns False."""
     mock_gateway.delete.return_value = False

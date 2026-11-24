@@ -1,4 +1,4 @@
-"""Unit tests for SupabaseCinemaSourceAssignmentRepository with mocked gateway."""
+"""Unit tests for PostgresCinemaSourceAssignmentRepository with mocked gateway."""
 
 from __future__ import annotations
 
@@ -9,12 +9,12 @@ import pytest
 from marquise.application.exceptions import CinemaSourceAssignmentAlreadyExistsError
 from marquise.domain.entities import Cinema, CinemaSourceAssignment, SourceDefinition
 from marquise.domain.value_objects import CinemaId, SourceName
+from marquise.interface_adapters.repositories.cinema_source_assignment_repository import (  # noqa: E501
+    PostgresCinemaSourceAssignmentRepository,
+)
 from marquise.interface_adapters.repositories.protocols.cinema import GatewayError
 from marquise.interface_adapters.repositories.protocols.cinema_source_assignment import (  # noqa: E501
     CinemaSourceAssignmentGateway,
-)
-from marquise.interface_adapters.repositories.supabase.cinema_source_assignment_repository import (  # noqa: E501
-    SupabaseCinemaSourceAssignmentRepository,
 )
 
 
@@ -27,9 +27,9 @@ def mock_gateway() -> AsyncMock:
 @pytest.fixture
 def repo(
     mock_gateway: AsyncMock,
-) -> SupabaseCinemaSourceAssignmentRepository:
+) -> PostgresCinemaSourceAssignmentRepository:
     """Provide a repository wired to the mock gateway."""
-    return SupabaseCinemaSourceAssignmentRepository(gateway=mock_gateway)
+    return PostgresCinemaSourceAssignmentRepository(gateway=mock_gateway)
 
 
 @pytest.fixture
@@ -61,7 +61,7 @@ def _gateway_row() -> dict:
 
 @pytest.mark.asyncio
 async def test_assign(
-    repo: SupabaseCinemaSourceAssignmentRepository,
+    repo: PostgresCinemaSourceAssignmentRepository,
     mock_gateway: AsyncMock,
     sample_cinema: Cinema,
     sample_source: SourceDefinition,
@@ -84,7 +84,7 @@ async def test_assign(
 
 @pytest.mark.asyncio
 async def test_assign_raises_on_gateway_error(
-    repo: SupabaseCinemaSourceAssignmentRepository,
+    repo: PostgresCinemaSourceAssignmentRepository,
     mock_gateway: AsyncMock,
     sample_cinema: Cinema,
     sample_source: SourceDefinition,
@@ -101,7 +101,7 @@ async def test_assign_raises_on_gateway_error(
 
 @pytest.mark.asyncio
 async def test_unassign(
-    repo: SupabaseCinemaSourceAssignmentRepository, mock_gateway: AsyncMock
+    repo: PostgresCinemaSourceAssignmentRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify unassign delegates to the gateway and returns True."""
     mock_gateway.unassign.return_value = True
@@ -113,7 +113,7 @@ async def test_unassign(
 
 @pytest.mark.asyncio
 async def test_unassign_missing(
-    repo: SupabaseCinemaSourceAssignmentRepository, mock_gateway: AsyncMock
+    repo: PostgresCinemaSourceAssignmentRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify unassign returns False when no assignment exists."""
     mock_gateway.unassign.return_value = False
@@ -124,7 +124,7 @@ async def test_unassign_missing(
 
 @pytest.mark.asyncio
 async def test_find_by_cinema_id(
-    repo: SupabaseCinemaSourceAssignmentRepository, mock_gateway: AsyncMock
+    repo: PostgresCinemaSourceAssignmentRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify find_by_cinema_id delegates and maps the result."""
     mock_gateway.find_by_cinema_id.return_value = _gateway_row()
@@ -138,7 +138,7 @@ async def test_find_by_cinema_id(
 
 @pytest.mark.asyncio
 async def test_find_by_cinema_id_missing(
-    repo: SupabaseCinemaSourceAssignmentRepository, mock_gateway: AsyncMock
+    repo: PostgresCinemaSourceAssignmentRepository, mock_gateway: AsyncMock
 ) -> None:
     """Verify find_by_cinema_id returns None when not found."""
     mock_gateway.find_by_cinema_id.return_value = None

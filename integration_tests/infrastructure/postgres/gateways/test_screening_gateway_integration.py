@@ -28,8 +28,8 @@ from marquise.interface_adapters.repositories.protocols.base import GatewayError
 from marquise.interface_adapters.repositories.protocols.screening import (
     ScreeningExternalIdConflictGatewayError,
 )
-from marquise.interface_adapters.repositories.supabase.screening_repository import (
-    SupabaseScreeningRepository,
+from marquise.interface_adapters.repositories.screening_repository import (
+    PostgresScreeningRepository,
 )
 
 
@@ -124,7 +124,7 @@ async def test_import_reschedules_idempotently_and_preserves_conflicts(
         await source_definition_gateway.save(
             name=name, display_name=name, description=None
         )
-    command = CreateScreeningsCommand(SupabaseScreeningRepository(screening_gateway))
+    command = CreateScreeningsCommand(PostgresScreeningRepository(screening_gateway))
     reader = PostgresScreeningReadGateway(db_pool, "marquise-test")
 
     def row(
@@ -258,7 +258,7 @@ async def test_import_skips_external_id_conflict_and_preserves_existing_data(
         )
     owner_before = await screening_gateway.find_by_id("owner")
     target_before = await screening_gateway.find_by_id("target")
-    command = CreateScreeningsCommand(SupabaseScreeningRepository(screening_gateway))
+    command = CreateScreeningsCommand(PostgresScreeningRepository(screening_gateway))
 
     result = await command.execute(
         command.InputData(
@@ -317,7 +317,7 @@ async def test_import_accepts_shared_external_id_across_cinemas(
 ) -> None:
     """Different cinemas import shared or absent IDs and reimport without duplicates."""
     await _seed_parents(gateway, movie_gateway)
-    command = CreateScreeningsCommand(SupabaseScreeningRepository(screening_gateway))
+    command = CreateScreeningsCommand(PostgresScreeningRepository(screening_gateway))
     reader = PostgresScreeningReadGateway(db_pool, "marquise-test")
     showtime = datetime(2026, 10, 7, 17, tzinfo=UTC)
     request = command.InputData(

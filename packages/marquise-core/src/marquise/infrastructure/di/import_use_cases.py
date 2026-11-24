@@ -34,23 +34,23 @@ from marquise.infrastructure.postgres.gateways.screening import (
     PostgresScreeningGateway,
 )
 from marquise.infrastructure.sources.tmdb_metadata import TmdbMetadataHttpSource
+from marquise.interface_adapters.repositories.cinema_repository import (
+    PostgresCinemaRepository,
+)
+from marquise.interface_adapters.repositories.cinema_source_assignment_repository import (  # noqa: E501
+    PostgresCinemaSourceAssignmentRepository,
+)
+from marquise.interface_adapters.repositories.movie_metadata_repository import (  # noqa: E501
+    PostgresMovieMetadataRepository,
+)
+from marquise.interface_adapters.repositories.movie_repository import (
+    PostgresMovieRepository,
+)
+from marquise.interface_adapters.repositories.screening_repository import (
+    PostgresScreeningRepository,
+)
 from marquise.interface_adapters.repositories.source_adapters.tmdb_metadata import (
     TmdbMetadataAdapter,
-)
-from marquise.interface_adapters.repositories.supabase.cinema_repository import (
-    SupabaseCinemaRepository,
-)
-from marquise.interface_adapters.repositories.supabase.cinema_source_assignment_repository import (  # noqa: E501
-    SupabaseCinemaSourceAssignmentRepository,
-)
-from marquise.interface_adapters.repositories.supabase.movie_metadata_repository import (  # noqa: E501
-    SupabaseMovieMetadataRepository,
-)
-from marquise.interface_adapters.repositories.supabase.movie_repository import (
-    SupabaseMovieRepository,
-)
-from marquise.interface_adapters.repositories.supabase.screening_repository import (
-    SupabaseScreeningRepository,
 )
 
 
@@ -61,10 +61,10 @@ def build_fetch_screenings_use_case(
 ) -> FetchScreeningsFromSourceQuery:
     """Build source-screening fetch query."""
     return FetchScreeningsFromSourceQuery(
-        cinema_repository=SupabaseCinemaRepository(
+        cinema_repository=PostgresCinemaRepository(
             gateway=PostgresCinemaGateway(pool=pool, schema=schema)
         ),
-        assignment_repository=SupabaseCinemaSourceAssignmentRepository(
+        assignment_repository=PostgresCinemaSourceAssignmentRepository(
             gateway=PostgresCinemaSourceAssignmentGateway(pool=pool, schema=schema)
         ),
         source_registry=source_registry,
@@ -76,7 +76,7 @@ def build_find_stored_movies_query(
 ) -> FindStoredMoviesQuery:
     """Build the stored movie lookup."""
     return FindStoredMoviesQuery(
-        movie_repository=SupabaseMovieRepository(
+        movie_repository=PostgresMovieRepository(
             gateway=PostgresMovieGateway(pool=pool, schema=schema)
         )
     )
@@ -87,7 +87,7 @@ def build_create_movies_use_case(
 ) -> CreateMoviesCommand:
     """Build movie creation."""
     return CreateMoviesCommand(
-        movie_repository=SupabaseMovieRepository(
+        movie_repository=PostgresMovieRepository(
             gateway=PostgresMovieGateway(pool=pool, schema=schema)
         )
     )
@@ -95,9 +95,9 @@ def build_create_movies_use_case(
 
 def _build_movie_metadata_repository(
     pool: asyncpg.Pool, schema: str
-) -> SupabaseMovieMetadataRepository:
+) -> PostgresMovieMetadataRepository:
     """Build stable-ID movie persistence with its merge gateway."""
-    return SupabaseMovieMetadataRepository(
+    return PostgresMovieMetadataRepository(
         PostgresMovieMetadataGateway(pool, schema),
         PostgresMovieMergeGateway(pool, schema),
     )
@@ -139,7 +139,7 @@ def build_create_screenings_use_case(
 ) -> CreateScreeningsCommand:
     """Build screening creation command."""
     return CreateScreeningsCommand(
-        screening_repository=SupabaseScreeningRepository(
+        screening_repository=PostgresScreeningRepository(
             gateway=PostgresScreeningGateway(pool=pool, schema=schema)
         )
     )
