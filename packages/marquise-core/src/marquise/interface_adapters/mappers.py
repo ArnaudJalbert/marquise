@@ -1,7 +1,10 @@
-"""Shared utility functions for Postgres repository implementations."""
+"""Shared mappers from gateway rows to entities and read models."""
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
+from marquise.application.readers import ScreeningReader
 from marquise.domain.entities import Cinema, Movie
 from marquise.domain.value_objects import CinemaId, MovieId
 
@@ -19,8 +22,8 @@ def extract_prefixed(data: dict, prefix: str) -> dict:
     return {k[len(prefix) :]: v for k, v in data.items() if k.startswith(prefix)}
 
 
-def dict_to_cinema(data: dict) -> Cinema:
-    """Convert a prefixed cinema dict into a Cinema entity.
+def to_cinema(data: dict) -> Cinema:
+    """Convert gateway cinema data into a Cinema entity.
 
     Args:
         data: A dict with ``id``, ``name``, ``address``, ``city``,
@@ -32,9 +35,9 @@ def dict_to_cinema(data: dict) -> Cinema:
     return Cinema(
         id=CinemaId(value=data["id"]),
         name=data["name"],
-        address=data.get("address"),
-        city=data.get("city"),
-        website=data.get("website"),
+        address=data["address"],
+        city=data["city"],
+        website=data["website"],
     )
 
 
@@ -68,4 +71,33 @@ def to_movie(data: dict) -> Movie:
         tmdb_id=data.get("tmdb_id"),
         tmdb_rating=data.get("tmdb_rating"),
         tmdb_vote_count=data.get("tmdb_vote_count"),
+    )
+
+
+def _aware_utc(value: datetime) -> datetime:
+    """Treat naive database timestamps as UTC."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value
+
+
+def to_screening_data(row: dict) -> ScreeningReader.ScreeningData:
+    """Map a screening display row without hydrating movie or cinema entities.
+
+    Args:
+        row: The gateway row with screening display columns.
+
+    Returns:
+        The matching screening read model.
+    """
+    return ScreeningReader.ScreeningData(
+        id=row["id"],
+        movie_id=row["movie_id"],
+        movie_title=row["movie_title"],
+        cinema_id=row["cinema_id"],
+        cinema_name=row["cinema_name"],
+        showtime=_aware_utc(row["showtime"]),
+        ticket_url=row.get("ticket_url"),
+        room=row.get("room"),
+        language=row.get("language"),
     )

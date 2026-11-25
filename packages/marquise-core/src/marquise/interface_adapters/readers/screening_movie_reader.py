@@ -6,7 +6,7 @@ from typing import Protocol
 
 from marquise.application.page import Page
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
-from marquise.interface_adapters.readers.screening_reader import _to_data
+from marquise.interface_adapters.mappers import to_screening_data
 from marquise.interface_adapters.repositories.protocols.base import GatewayPage
 
 
@@ -50,7 +50,7 @@ class PostgresScreeningMovieReader(ScreeningMovieReader):
                     poster_url=row["poster_url"],
                     tmdb_rating=row["tmdb_rating"],
                     tmdb_vote_count=row["tmdb_vote_count"],
-                    screenings=tuple(_to_data(s) for s in row["screenings"]),
+                    screenings=tuple(to_screening_data(s) for s in row["screenings"]),
                 )
                 for row in result.rows
             ],
