@@ -6,7 +6,6 @@ from datetime import UTC, datetime
 
 import asyncpg
 
-from marquise.infrastructure.postgres.connection_pool import ConnectionPool
 from marquise.interface_adapters.repositories.protocols.base import (
     GatewayError,
     GatewayPage,
@@ -16,8 +15,6 @@ from marquise.interface_adapters.repositories.protocols.screening import (
     ScreeningExternalIdConflictGatewayError,
     ScreeningWriteConflictGatewayError,
 )
-
-DEFAULT_SCHEMA = "marquise"
 
 _COLUMNS = (
     "id, movie_id, cinema_id, showtime, external_id, source_name, "
@@ -76,11 +73,10 @@ class PostgresScreeningGateway:
 
     Args:
         pool: An open asyncpg connection pool.
-        schema: The database schema where the screenings table lives
-            (default ``marquise``).
+        schema: The database schema where the screenings table lives.
     """
 
-    def __init__(self, pool: ConnectionPool, schema: str = DEFAULT_SCHEMA) -> None:
+    def __init__(self, pool: asyncpg.Pool, schema: str) -> None:
         self._pool = pool
         self._schema = schema
         self._table = f'"{schema}".screenings'

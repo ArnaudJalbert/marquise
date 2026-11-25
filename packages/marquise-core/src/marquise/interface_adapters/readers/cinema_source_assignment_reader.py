@@ -7,23 +7,20 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import asyncpg
 
-from marquise.application.readers import (
-    CinemaSourceAssignmentData,
-    CinemaSourceAssignmentReader,
-)
-
-DEFAULT_SCHEMA = "marquise"
+from marquise.application.readers import CinemaSourceAssignmentReader
 
 
 class PostgresCinemaSourceAssignmentReader(CinemaSourceAssignmentReader):
     """Read cinema-source assignment display data from Postgres."""
 
-    def __init__(self, pool: asyncpg.Pool, schema: str = DEFAULT_SCHEMA) -> None:
+    def __init__(self, pool: asyncpg.Pool, schema: str) -> None:
         """Initialize with an open connection pool and schema."""
         self._pool = pool
         self._schema = schema
 
-    async def list_all(self) -> list[CinemaSourceAssignmentData]:
+    async def list_all(
+        self,
+    ) -> list[CinemaSourceAssignmentReader.CinemaSourceAssignmentData]:
         """Return every cinema-source assignment's display data."""
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(
@@ -35,4 +32,7 @@ class PostgresCinemaSourceAssignmentReader(CinemaSourceAssignmentReader):
                 ORDER BY a.cinema_id
                 """
             )
-        return [CinemaSourceAssignmentData(**dict(row)) for row in rows]
+        return [
+            CinemaSourceAssignmentReader.CinemaSourceAssignmentData(**dict(row))
+            for row in rows
+        ]

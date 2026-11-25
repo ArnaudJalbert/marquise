@@ -8,7 +8,6 @@ import asyncpg
 
 from marquise.interface_adapters.repositories.protocols.base import GatewayPage
 
-DEFAULT_SCHEMA = "marquise"
 _COLUMNS = (
     "s.id, s.movie_id, s.cinema_id, s.showtime,"
     " s.ticket_url, s.room, s.language,"
@@ -26,7 +25,7 @@ def _naive_utc(value: datetime) -> datetime:
 class PostgresScreeningReadGateway:
     """Read plain screening display rows from PostgreSQL."""
 
-    def __init__(self, pool: asyncpg.Pool, schema: str = DEFAULT_SCHEMA) -> None:
+    def __init__(self, pool: asyncpg.Pool, schema: str) -> None:
         """Initialize with an open connection pool and schema."""
         self._pool = pool
         self._schema = schema
