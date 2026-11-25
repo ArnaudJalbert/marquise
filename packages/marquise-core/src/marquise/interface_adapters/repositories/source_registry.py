@@ -6,7 +6,7 @@ translates ``Cinema`` entities into source-specific parameters.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 from marquise.application.repositories import (
     MovieEnrichmentData,
@@ -14,6 +14,7 @@ from marquise.application.repositories import (
     SourceRegistryQuery,
 )
 from marquise.domain.entities import Cinema, SourceDefinition
+from marquise.interface_adapters.mappers import to_aware_utc
 from marquise.interface_adapters.repositories.source_adapters.base import (
     SourceAdapter,
 )
@@ -28,7 +29,7 @@ def _parse_showtime(raw: str) -> datetime:
         raw: The raw showtime string from a source.
 
     Returns:
-        A timezone-aware datetime object (defaults to UTC if no tz).
+        A timezone-aware UTC datetime (naive input is assumed UTC).
 
     Raises:
         ValueError: If the string cannot be parsed.
@@ -37,9 +38,7 @@ def _parse_showtime(raw: str) -> datetime:
         dt = datetime.fromisoformat(raw)
     except ValueError:
         dt = datetime.strptime(raw, "%Y-%m-%dT%I:%M %p")
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=UTC)
-    return dt
+    return to_aware_utc(dt)
 
 
 class SourceRegistry(SourceRegistryQuery):

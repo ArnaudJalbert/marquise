@@ -24,6 +24,7 @@ import certifi
 
 from marquise.domain.constants import MONTREAL_TIME_ZONE
 from marquise.infrastructure.sources._timezone import montreal_local_to_utc_iso
+from marquise.interface_adapters.mappers import to_aware_utc
 
 _SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 
@@ -293,18 +294,6 @@ def _get_date_range(
     return start, end
 
 
-def _as_utc(value: datetime) -> datetime:
-    """Return *value* as a timezone-aware UTC datetime.
-
-    Args:
-        value: A naive or aware datetime.
-
-    Returns:
-        The datetime with UTC tzinfo (naive inputs are assumed UTC).
-    """
-    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
-
-
 def _needed_offsets(
     first_initial_date: str | None,
     range_end: datetime,
@@ -369,8 +358,8 @@ def fetch_showtimes(
         )
 
     range_start, range_end = _get_date_range(start_date, end_date)
-    range_start = _as_utc(range_start)
-    range_end = _as_utc(range_end)
+    range_start = to_aware_utc(range_start)
+    range_end = to_aware_utc(range_end)
 
     # ------------------------------------------------------------------
     # 1.  Fetch the initial page to get the first ~2 weeks with prices.

@@ -39,6 +39,8 @@ from typing import Any
 
 import certifi
 
+from marquise.interface_adapters.mappers import to_aware_utc
+
 _SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 
 HOST = "theatreoutremont.tuxedobillet.com"
@@ -271,18 +273,6 @@ def _get_date_range(
     return start, end
 
 
-def _as_utc(value: datetime) -> datetime:
-    """Return *value* as a timezone-aware UTC datetime.
-
-    Args:
-        value: A naive or aware datetime.
-
-    Returns:
-        The datetime with UTC tzinfo (naive inputs are assumed UTC).
-    """
-    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
-
-
 def fetch_showtimes(
     start_date: datetime | None = None,
     end_date: datetime | None = None,
@@ -303,8 +293,8 @@ def fetch_showtimes(
         ``language``.
     """
     range_start, range_end = _get_date_range(start_date, end_date)
-    range_start = _as_utc(range_start)
-    range_end = _as_utc(range_end)
+    range_start = to_aware_utc(range_start)
+    range_end = to_aware_utc(range_end)
 
     database_url, token, channel = _bootstrap()
     category_names = _read_category_names(database_url, token, channel)

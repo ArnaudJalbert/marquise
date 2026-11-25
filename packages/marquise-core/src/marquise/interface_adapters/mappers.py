@@ -75,17 +75,17 @@ def to_movie(data: dict) -> Movie:
 
 
 def to_aware_utc(value: datetime) -> datetime:
-    """Treat a naive gateway timestamp as UTC.
+    """Return a datetime as a timezone-aware UTC datetime.
 
     Args:
         value: A naive datetime holding UTC, or an aware datetime.
 
     Returns:
-        An aware datetime. Aware input is returned unchanged.
+        An aware UTC datetime. Aware input shifts to the same UTC instant.
     """
     if value.tzinfo is None:
         return value.replace(tzinfo=UTC)
-    return value
+    return value.astimezone(UTC)
 
 
 def to_screening_data(row: dict) -> ScreeningReader.ScreeningData:
