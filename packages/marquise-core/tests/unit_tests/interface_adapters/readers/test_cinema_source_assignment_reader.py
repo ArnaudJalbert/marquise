@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from marquise.application.readers import CinemaSourceAssignmentData
+from marquise.application.readers import CinemaSourceAssignmentReader
 from marquise.interface_adapters.readers.cinema_source_assignment_reader import (
     PostgresCinemaSourceAssignmentReader,
 )
@@ -27,5 +27,7 @@ async def test_list_all_returns_assignment_display_data() -> None:
         pool, "marquise-test"
     ).list_all()
 
-    assert result == [CinemaSourceAssignmentData("cin-001", "Cineplex")]
+    assert result == [
+        CinemaSourceAssignmentReader.CinemaSourceAssignmentData("cin-001", "Cineplex")
+    ]
     connection.fetch.assert_awaited_once()

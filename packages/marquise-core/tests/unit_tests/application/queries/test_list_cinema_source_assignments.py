@@ -9,10 +9,7 @@ import pytest
 from marquise.application.queries.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
-from marquise.application.readers import (
-    CinemaSourceAssignmentData,
-    CinemaSourceAssignmentReader,
-)
+from marquise.application.readers import CinemaSourceAssignmentReader
 
 
 @pytest.mark.asyncio
@@ -20,7 +17,9 @@ async def test_list_cinema_source_assignments_returns_reader_data() -> None:
     """Verify query returns every assignment read model unchanged."""
     reader = create_autospec(CinemaSourceAssignmentReader, instance=True)
     expected = [
-        CinemaSourceAssignmentData(cinema_id="cin-001", source_display_name="Cineplex")
+        CinemaSourceAssignmentReader.CinemaSourceAssignmentData(
+            cinema_id="cin-001", source_display_name="Cineplex"
+        )
     ]
     reader.list_all.return_value = expected
     query = ListCinemaSourceAssignmentsQuery(reader)

@@ -6,7 +6,6 @@ from datetime import UTC, datetime
 
 import asyncpg
 
-from marquise.infrastructure.postgres.connection_pool import ConnectionPool
 from marquise.interface_adapters.repositories.protocols.base import (
     GatewayError,
     GatewayPage,
@@ -77,7 +76,7 @@ class PostgresScreeningGateway:
         schema: The database schema where the screenings table lives.
     """
 
-    def __init__(self, pool: ConnectionPool, schema: str) -> None:
+    def __init__(self, pool: asyncpg.Pool, schema: str) -> None:
         self._pool = pool
         self._schema = schema
         self._table = f'"{schema}".screenings'

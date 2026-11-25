@@ -6,16 +6,15 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 
-@dataclass(frozen=True, slots=True)
-class CinemaSourceAssignmentData:
-    """Display data for one cinema-source assignment."""
-
-    cinema_id: str
-    source_display_name: str
-
-
 class CinemaSourceAssignmentReader(ABC):
     """Read cinema-source assignments without constructing domain entities."""
+
+    @dataclass(frozen=True, slots=True)
+    class CinemaSourceAssignmentData:
+        """Display data for one cinema-source assignment."""
+
+        cinema_id: str
+        source_display_name: str
 
     @abstractmethod
     async def list_all(self) -> list[CinemaSourceAssignmentData]:
