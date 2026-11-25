@@ -13,10 +13,7 @@ from marquise.application.exceptions import (
 from marquise.application.repositories import CinemaSourceAssignmentRepository
 from marquise.domain.entities import CinemaSourceAssignment, SourceDefinition
 from marquise.domain.value_objects import CinemaId, SourceName
-from marquise.interface_adapters.repositories._utils import (
-    dict_to_cinema,
-    extract_prefixed,
-)
+from marquise.interface_adapters.mappers import extract_prefixed, to_cinema
 from marquise.interface_adapters.repositories.protocols.cinema import GatewayError
 from marquise.interface_adapters.repositories.protocols.cinema_source_assignment import (  # noqa: E501
     CinemaSourceAssignmentGateway,
@@ -113,7 +110,7 @@ class PostgresCinemaSourceAssignmentRepository(CinemaSourceAssignmentRepository)
         Returns:
             A new CinemaSourceAssignment entity populated with the dict values.
         """
-        cinema = dict_to_cinema(extract_prefixed(data, "cinema__"))
+        cinema = to_cinema(extract_prefixed(data, "cinema__"))
         source = _dict_to_source_definition(extract_prefixed(data, "source__"))
         return CinemaSourceAssignment(
             cinema=cinema,

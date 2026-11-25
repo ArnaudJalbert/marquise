@@ -11,6 +11,7 @@ from marquise.application.page import Page
 from marquise.application.repositories import CinemaRepository
 from marquise.domain.entities import Cinema
 from marquise.domain.value_objects import CinemaId
+from marquise.interface_adapters.mappers import to_cinema
 from marquise.interface_adapters.repositories.protocols.cinema import (
     CinemaGateway,
     GatewayError,
@@ -57,7 +58,7 @@ class PostgresCinemaRepository(CinemaRepository):
             )
         except GatewayError as exc:
             raise CinemaIdAlreadyExistsError(str(exc)) from exc
-        return self._to_entity(data)
+        return to_cinema(data)
 
     async def find_by_id(self, cinema_id: CinemaId) -> Cinema | None:
         """Retrieve a cinema by ID.
@@ -69,7 +70,7 @@ class PostgresCinemaRepository(CinemaRepository):
             The matching cinema entity, or None if not found.
         """
         data = await self._gateway.find_by_id(cinema_id=str(cinema_id))
-        return self._to_entity(data) if data is not None else None
+        return to_cinema(data) if data is not None else None
 
     async def find_by_name_and_address(
         self, name: str, address: str | None
@@ -84,7 +85,7 @@ class PostgresCinemaRepository(CinemaRepository):
             The matching cinema entity, or None if not found.
         """
         data = await self._gateway.find_by_name_and_address(name=name, address=address)
-        return self._to_entity(data) if data is not None else None
+        return to_cinema(data) if data is not None else None
 
     async def exists_by_id(self, cinema_id: CinemaId) -> bool:
         """Check whether a cinema exists with the given ID.
@@ -120,7 +121,7 @@ class PostgresCinemaRepository(CinemaRepository):
             name_filter=name_filter, limit=limit, offset=offset
         )
         return Page(
-            items=[self._to_entity(row) for row in gateway_page.rows],
+            items=[to_cinema(row) for row in gateway_page.rows],
             total=gateway_page.total,
         )
 
@@ -141,7 +142,7 @@ class PostgresCinemaRepository(CinemaRepository):
             city=cinema.city,
             website=cinema.website,
         )
-        return self._to_entity(data) if data is not None else None
+        return to_cinema(data) if data is not None else None
 
     async def delete(self, cinema_id: CinemaId) -> bool:
         """Delete a cinema by its unique identifier.
@@ -153,21 +154,3 @@ class PostgresCinemaRepository(CinemaRepository):
             True if a cinema was deleted, False otherwise.
         """
         return await self._gateway.delete(cinema_id=str(cinema_id))
-
-    @staticmethod
-    def _to_entity(data: dict) -> Cinema:
-        """Map a raw gateway dict to a Cinema domain entity.
-
-        Args:
-            data: The dict returned by the gateway.
-
-        Returns:
-            A new Cinema entity populated with the dict values.
-        """
-        return Cinema(
-            id=CinemaId(value=data["id"]),
-            name=data["name"],
-            address=data["address"],
-            city=data["city"],
-            website=data["website"],
-        )

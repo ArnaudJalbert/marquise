@@ -2,35 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 from marquise.application.page import Page
 from marquise.application.readers import ScreeningReader
+from marquise.interface_adapters.mappers import to_screening_data
 from marquise.interface_adapters.readers.screening_read_gateway import (
     ScreeningReadGateway,
 )
-
-
-def _aware_utc(value: datetime) -> datetime:
-    """Treat naive database timestamps as UTC."""
-    if value.tzinfo is None:
-        return value.replace(tzinfo=UTC)
-    return value
-
-
-def _to_data(row: dict) -> ScreeningReader.ScreeningData:
-    """Map a display row without hydrating movie or cinema entities."""
-    return ScreeningReader.ScreeningData(
-        id=row["id"],
-        movie_id=row["movie_id"],
-        movie_title=row["movie_title"],
-        cinema_id=row["cinema_id"],
-        cinema_name=row["cinema_name"],
-        showtime=_aware_utc(row["showtime"]),
-        ticket_url=row.get("ticket_url"),
-        room=row.get("room"),
-        language=row.get("language"),
-    )
 
 
 class PostgresScreeningReader(ScreeningReader):
@@ -45,7 +24,7 @@ class PostgresScreeningReader(ScreeningReader):
     ) -> ScreeningReader.ScreeningData | None:
         """Return one display projection for an exact ID, or None if missing."""
         row = await self._gateway.find_by_id(screening_id)
-        return _to_data(row) if row is not None else None
+        return to_screening_data(row) if row is not None else None
 
     async def search(
         self,
@@ -69,4 +48,6 @@ class PostgresScreeningReader(ScreeningReader):
             limit=limit,
             offset=offset,
         )
-        return Page(items=[_to_data(row) for row in page.rows], total=page.total)
+        return Page(
+            items=[to_screening_data(row) for row in page.rows], total=page.total
+        )

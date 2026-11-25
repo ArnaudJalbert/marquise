@@ -10,7 +10,7 @@ from marquise.application.page import Page
 from marquise.application.repositories import MovieRepository
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
-from marquise.interface_adapters.repositories._utils import to_movie
+from marquise.interface_adapters.mappers import to_movie
 from marquise.interface_adapters.repositories.protocols.movie import MovieGateway
 
 

@@ -22,9 +22,9 @@ from marquise.domain.value_objects import (
     ScreeningId,
     Showtime,
 )
-from marquise.interface_adapters.repositories._utils import (
-    dict_to_cinema,
+from marquise.interface_adapters.mappers import (
     extract_prefixed,
+    to_cinema,
     to_movie,
 )
 from marquise.interface_adapters.repositories.protocols.base import GatewayError
@@ -240,7 +240,7 @@ class PostgresScreeningRepository(ScreeningRepository):
             A new Screening entity populated with the dict values.
         """
         movie = to_movie(extract_prefixed(data, "movie__"))
-        cinema = dict_to_cinema(extract_prefixed(data, "cinema__"))
+        cinema = to_cinema(extract_prefixed(data, "cinema__"))
         return Screening(
             id=ScreeningId(value=data["id"]),
             movie=movie,
