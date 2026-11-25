@@ -4,10 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from marquise.application.readers import (
-    CinemaSourceAssignmentData,
-    CinemaSourceAssignmentReader,
-)
+from marquise.application.readers import CinemaSourceAssignmentReader
 
 
 class ListCinemaSourceAssignmentsQuery:
@@ -21,7 +18,7 @@ class ListCinemaSourceAssignmentsQuery:
     class OutputData:
         """Output data containing cinema-source assignments."""
 
-        assignments: list[CinemaSourceAssignmentData]
+        assignments: list[CinemaSourceAssignmentReader.CinemaSourceAssignmentData]
 
     def __init__(self, reader: CinemaSourceAssignmentReader) -> None:
         """Initialize with cinema-source assignment reader."""
