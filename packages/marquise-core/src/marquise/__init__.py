@@ -46,6 +46,7 @@ from marquise.application.queries.count_screening_days import CountScreeningDays
 from marquise.application.queries.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
+from marquise.application.queries.get_cinema import GetCinemaQuery
 from marquise.application.queries.get_cinema_screenings import (
     GetCinemaScreeningsQuery,
 )
@@ -63,7 +64,6 @@ from marquise.application.use_cases.create_screenings import CreateScreeningsCom
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
-from marquise.application.use_cases.get_cinema import GetCinemaUseCase
 from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
 from marquise.application.use_cases.get_movie import GetMovieUseCase
 from marquise.application.use_cases.import_screenings import ImportScreeningsCommand
@@ -120,9 +120,9 @@ __all__ = [
     "DeleteSourceUseCase",
     "FetchScreeningsFromSourceQuery",
     "GetCinemaMoviesUseCase",
+    "GetCinemaQuery",
     "GetCinemaScreeningsQuery",
     "GetCinemaSourceQuery",
-    "GetCinemaUseCase",
     "GetMovieScreeningsQuery",
     "GetMovieUseCase",
     "GetScreeningQuery",

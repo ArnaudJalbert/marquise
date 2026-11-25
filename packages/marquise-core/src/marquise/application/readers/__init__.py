@@ -1,5 +1,6 @@
 """Application read ports and display data."""
 
+from marquise.application.readers.cinema_reader import CinemaReader
 from marquise.application.readers.cinema_source_assignment_reader import (
     CinemaSourceAssignmentReader,
 )
@@ -9,6 +10,7 @@ from marquise.application.readers.source_definition_reader import (
 )
 
 __all__ = [
+    "CinemaReader",
     "CinemaSourceAssignmentReader",
     "ScreeningReader",
     "SourceDefinitionReader",

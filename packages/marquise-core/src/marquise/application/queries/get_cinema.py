@@ -1,16 +1,15 @@
-"""Get cinema by ID use case (read-only)."""
+"""Query one cinema's display data without constructing domain entities."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 from marquise.application.exceptions import CinemaNotFoundError
-from marquise.application.repositories import CinemaRepository
-from marquise.domain.value_objects import CinemaId
+from marquise.application.readers import CinemaReader
 
 
-class GetCinemaUseCase:
-    """Use case for retrieving a single cinema by its ID."""
+class GetCinemaQuery:
+    """Retrieve one cinema projection through an injected reader."""
 
     @dataclass(frozen=True, slots=True)
     class InputData:
@@ -49,13 +48,13 @@ class GetCinemaUseCase:
         city: str | None = None
         website: str | None = None
 
-    def __init__(self, cinema_repository: CinemaRepository) -> None:
-        """Initialize the use case.
+    def __init__(self, cinema_reader: CinemaReader) -> None:
+        """Initialize the query.
 
         Args:
-            cinema_repository: A repository for querying cinemas.
+            cinema_reader: A reader for cinema display data.
         """
-        self.cinema_repository = cinema_repository
+        self._cinema_reader = cinema_reader
 
     async def execute(self, input_data: InputData) -> OutputData:
         """Retrieve a cinema by its ID.
@@ -69,16 +68,13 @@ class GetCinemaUseCase:
         Raises:
             CinemaNotFoundError: If no cinema with the given ID exists.
         """
-        cinema = await self.cinema_repository.find_by_id(
-            CinemaId(value=input_data.cinema_id)
-        )
+        cinema = await self._cinema_reader.find_by_id(input_data.cinema_id)
         if cinema is None:
             raise CinemaNotFoundError(
                 f"A cinema with ID '{input_data.cinema_id}' was not found"
             )
-
         return self.OutputData(
-            id=str(cinema.id),
+            id=cinema.id,
             name=cinema.name,
             address=cinema.address,
             city=cinema.city,

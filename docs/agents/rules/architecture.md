@@ -25,8 +25,8 @@ Apps reach core only through `packages/marquise-core/src/marquise/__init__.py` (
 from marquise import create_factory_session
 
 async with create_factory_session() as factory:
-    use_case = factory.cinemas.get_cinema_use_case
-    result = await use_case.execute(use_case.InputData(cinema_id="..."))
+    query = factory.cinemas.get_cinema_query
+    result = await query.execute(query.InputData(cinema_id="..."))
 ```
 
 - Apps import only `marquise`, never `marquise.domain`, `marquise.application`, `marquise.interface_adapters` or `marquise.infrastructure`. **Enforced:** `packages/marquise-core/tests/unit_tests/test_import_boundary.py`.

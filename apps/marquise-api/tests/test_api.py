@@ -23,8 +23,8 @@ from marquise import (
     CinemaUseCases,
     CountScreeningDaysQuery,
     GetCinemaMoviesUseCase,
+    GetCinemaQuery,
     GetCinemaScreeningsQuery,
-    GetCinemaUseCase,
     GetMovieScreeningsQuery,
     GetMovieUseCase,
     GetScreeningQuery,
@@ -56,7 +56,7 @@ def factory() -> MagicMock:
     fake.cinemas.list_cinemas_use_case = create_autospec(
         ListCinemasUseCase, instance=True
     )
-    fake.cinemas.get_cinema_use_case = create_autospec(GetCinemaUseCase, instance=True)
+    fake.cinemas.get_cinema_query = create_autospec(GetCinemaQuery, instance=True)
     fake.cinemas.get_cinema_screenings_query = create_autospec(
         GetCinemaScreeningsQuery, instance=True
     )
@@ -274,7 +274,7 @@ def test_list_cinemas_size_out_of_range_is_rejected(
 
 def test_get_cinema(client: TestClient, factory: MagicMock) -> None:
     """GET /cinemas/{id} returns the cinema."""
-    factory.cinemas.get_cinema_use_case.execute.return_value = SimpleNamespace(
+    factory.cinemas.get_cinema_query.execute.return_value = SimpleNamespace(
         id="cin-1",
         name="Cinema One",
         address="123 Rue Sainte-Catherine",
@@ -291,16 +291,14 @@ def test_get_cinema(client: TestClient, factory: MagicMock) -> None:
     assert body["address"] == "123 Rue Sainte-Catherine"
     assert body["city"] == "Montréal"
     assert body["website"] is None
-    factory.cinemas.get_cinema_use_case.execute.assert_awaited_once_with(
-        GetCinemaUseCase.InputData(cinema_id="cin-1")
+    factory.cinemas.get_cinema_query.execute.assert_awaited_once_with(
+        GetCinemaQuery.InputData(cinema_id="cin-1")
     )
 
 
 def test_get_cinema_not_found(client: TestClient, factory: MagicMock) -> None:
     """A missing cinema yields 404 with the standard error envelope."""
-    factory.cinemas.get_cinema_use_case.execute.side_effect = CinemaNotFoundError(
-        "nope"
-    )
+    factory.cinemas.get_cinema_query.execute.side_effect = CinemaNotFoundError("nope")
 
     response = client.get("/v1/cinemas/missing")
 
@@ -312,7 +310,7 @@ def test_get_cinema_not_found(client: TestClient, factory: MagicMock) -> None:
 
 def test_get_cinema_is_cached(client: TestClient, factory: MagicMock) -> None:
     """A second request for the same cinema reuses the cached response."""
-    factory.cinemas.get_cinema_use_case.execute.return_value = SimpleNamespace(
+    factory.cinemas.get_cinema_query.execute.return_value = SimpleNamespace(
         id="cin-1",
         name="Cinema One",
         address=None,
@@ -328,7 +326,7 @@ def test_get_cinema_is_cached(client: TestClient, factory: MagicMock) -> None:
     assert first.headers.get("X-FastAPI-Cache") == "MISS"
     assert second.headers.get("X-FastAPI-Cache") == "HIT"
     assert second.json() == first.json()
-    factory.cinemas.get_cinema_use_case.execute.assert_awaited_once()
+    factory.cinemas.get_cinema_query.execute.assert_awaited_once()
 
 
 def test_different_cinemas_have_separate_cache_entries(
@@ -336,7 +334,7 @@ def test_different_cinemas_have_separate_cache_entries(
 ) -> None:
     """Requests for different cinema IDs have separate cache entries."""
 
-    def mock_execute(request: GetCinemaUseCase.InputData) -> SimpleNamespace:
+    def mock_execute(request: GetCinemaQuery.InputData) -> SimpleNamespace:
         return SimpleNamespace(
             id=request.cinema_id,
             name=f"Cinema {request.cinema_id}",
@@ -345,7 +343,7 @@ def test_different_cinemas_have_separate_cache_entries(
             website=None,
         )
 
-    factory.cinemas.get_cinema_use_case.execute.side_effect = mock_execute
+    factory.cinemas.get_cinema_query.execute.side_effect = mock_execute
 
     response1 = client.get("/v1/cinemas/cin-1")
     response2 = client.get("/v1/cinemas/cin-2")
@@ -354,14 +352,14 @@ def test_different_cinemas_have_separate_cache_entries(
     assert response1.json()["id"] == "cin-1"
     assert response2.json()["id"] == "cin-2"
     assert response1_again.json() == response1.json()
-    assert factory.cinemas.get_cinema_use_case.execute.call_count == 2
+    assert factory.cinemas.get_cinema_query.execute.call_count == 2
 
 
 def test_get_cinema_not_found_errors_are_not_cached(
     client: TestClient, factory: MagicMock
 ) -> None:
     """404 responses are not cached; repeat requests re-execute the use case."""
-    factory.cinemas.get_cinema_use_case.execute.side_effect = CinemaNotFoundError(
+    factory.cinemas.get_cinema_query.execute.side_effect = CinemaNotFoundError(
         "not found"
     )
 
@@ -370,7 +368,7 @@ def test_get_cinema_not_found_errors_are_not_cached(
 
     assert response1.status_code == 404
     assert response2.status_code == 404
-    assert factory.cinemas.get_cinema_use_case.execute.call_count == 2
+    assert factory.cinemas.get_cinema_query.execute.call_count == 2
 
 
 def test_get_cinema_screenings_pagination(

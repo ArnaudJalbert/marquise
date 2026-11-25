@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from marquise.application.readers import ScreeningReader
+from marquise.application.readers import CinemaReader, ScreeningReader
 from marquise.domain.entities import Cinema, Movie
 from marquise.domain.value_objects import CinemaId, MovieId
 
@@ -107,4 +107,22 @@ def to_screening_data(row: dict) -> ScreeningReader.ScreeningData:
         ticket_url=row.get("ticket_url"),
         room=row.get("room"),
         language=row.get("language"),
+    )
+
+
+def to_cinema_data(row: dict) -> CinemaReader.CinemaData:
+    """Map a cinema display row without hydrating a Cinema entity.
+
+    Args:
+        row: The gateway row with cinema display columns.
+
+    Returns:
+        The matching cinema read model.
+    """
+    return CinemaReader.CinemaData(
+        id=row["id"],
+        name=row["name"],
+        address=row["address"],
+        city=row["city"],
+        website=row["website"],
     )
