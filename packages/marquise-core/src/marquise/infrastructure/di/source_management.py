@@ -8,7 +8,6 @@ from marquise.application.repositories import CinemaRepository
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
-from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
 from marquise.application.use_cases.list_sources import ListSourcesUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.infrastructure.postgres.gateways.cinema_source_assignment import (
@@ -78,14 +77,5 @@ def build_unassign_source_use_case(
 ) -> UnassignSourceUseCase:
     """Build cinema-source unassignment use case."""
     return UnassignSourceUseCase(
-        assignment_repository=_build_assignment_repository(pool, schema)
-    )
-
-
-def build_get_cinema_source_use_case(
-    pool: asyncpg.Pool, schema: str
-) -> GetCinemaSourceUseCase:
-    """Build cinema-source lookup use case."""
-    return GetCinemaSourceUseCase(
         assignment_repository=_build_assignment_repository(pool, schema)
     )

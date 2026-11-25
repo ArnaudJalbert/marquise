@@ -45,7 +45,7 @@ EXPECTED_PUBLIC_SURFACE: set[str] = {
     "FetchScreeningsFromSourceQuery",
     "GetCinemaMoviesUseCase",
     "GetCinemaScreeningsQuery",
-    "GetCinemaSourceUseCase",
+    "GetCinemaSourceQuery",
     "GetCinemaUseCase",
     "GetMovieScreeningsQuery",
     "GetMovieUseCase",

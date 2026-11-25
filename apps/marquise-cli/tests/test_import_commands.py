@@ -13,7 +13,7 @@ from conftest import Command, FactorySession, make_cinema_data, stub_factory
 from marquise import (
     CinemaNotFoundError,
     CinemaSourceAssignmentNotFoundError,
-    GetCinemaSourceUseCase,
+    GetCinemaSourceQuery,
     ImportScreeningsCommand,
     ListCinemasUseCase,
     SourceNotFoundError,
@@ -77,16 +77,16 @@ async def test_run_import_cinema_looks_up_source_and_spins_full_import(
     mock_factory: MagicMock,
 ) -> None:
     """Verify source lookup and full import retain direct DTOs and spinner."""
-    get_source_use_case = create_autospec(GetCinemaSourceUseCase, instance=True)
-    get_source_use_case.InputData = GetCinemaSourceUseCase.InputData
-    get_source_use_case.execute = AsyncMock(
-        return_value=GetCinemaSourceUseCase.OutputData(
+    get_source_query = create_autospec(GetCinemaSourceQuery, instance=True)
+    get_source_query.InputData = GetCinemaSourceQuery.InputData
+    get_source_query.execute = AsyncMock(
+        return_value=GetCinemaSourceQuery.OutputData(
             cinema_id="cin-001",
             source_name="cinemacinema",
             source_display_name="Cinéma Cinéma",
         )
     )
-    mock_factory.sources.get_cinema_source_use_case = get_source_use_case
+    mock_factory.sources.get_cinema_source_query = get_source_query
     import_result = ImportScreeningsCommand.OutputData(
         "cin-001", "Test Cinema", "cinemacinema", (), 0, 0, 0, 0
     )
@@ -111,8 +111,8 @@ async def test_run_import_cinema_looks_up_source_and_spins_full_import(
     ):
         await run_import_cinema(mock_factory)
 
-    get_source_use_case.execute.assert_awaited_once_with(
-        GetCinemaSourceUseCase.InputData(cinema_id="cin-001")
+    get_source_query.execute.assert_awaited_once_with(
+        GetCinemaSourceQuery.InputData(cinema_id="cin-001")
     )
     import_screenings.assert_awaited_once_with(
         mock_factory,
@@ -353,8 +353,8 @@ IMPORT_SELECTIONS = {
 IMPORT_LOOKUP = (
     ("import", "cinema"),
     cinema_command,
-    "sources.get_cinema_source_use_case",
-    GetCinemaSourceUseCase,
+    "sources.get_cinema_source_query",
+    GetCinemaSourceQuery,
     IMPORT_SELECTIONS,
 )
 IMPORT = (

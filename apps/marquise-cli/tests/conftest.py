@@ -16,7 +16,7 @@ from marquise import (
     CreateSourceUseCase,
     DeleteCinemaUseCase,
     DeleteSourceUseCase,
-    GetCinemaSourceUseCase,
+    GetCinemaSourceQuery,
     ListCinemasUseCase,
     MarquiseFactory,
     MovieUseCases,
@@ -143,12 +143,12 @@ def command(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> 
 def _stub_factory_with_cineplex_source() -> MagicMock:
     """Provide a factory whose source lookup resolves to Cineplex."""
     factory = stub_factory()
-    source = create_autospec(GetCinemaSourceUseCase, instance=True)
-    source.InputData = GetCinemaSourceUseCase.InputData
-    source.execute.return_value = GetCinemaSourceUseCase.OutputData(
+    source = create_autospec(GetCinemaSourceQuery, instance=True)
+    source.InputData = GetCinemaSourceQuery.InputData
+    source.execute.return_value = GetCinemaSourceQuery.OutputData(
         "cin-001", "cineplex", "Cineplex"
     )
-    factory.sources.get_cinema_source_use_case = source
+    factory.sources.get_cinema_source_query = source
     return factory
 
 

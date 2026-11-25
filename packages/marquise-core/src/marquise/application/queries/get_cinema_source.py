@@ -1,18 +1,18 @@
-"""Get cinema source use case."""
+"""Get cinema source query."""
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 from marquise.application.exceptions import CinemaSourceAssignmentNotFoundError
-from marquise.application.repositories import (
-    CinemaSourceAssignmentRepository,
-)
-from marquise.domain.value_objects import CinemaId
+from marquise.application.readers import CinemaSourceAssignmentReader
+
+logger = logging.getLogger(__name__)
 
 
-class GetCinemaSourceUseCase:
-    """Use case for retrieving the source assigned to a cinema."""
+class GetCinemaSourceQuery:
+    """Retrieve the source assigned to a cinema through an injected reader."""
 
     @dataclass(frozen=True, slots=True)
     class InputData:
@@ -28,8 +28,11 @@ class GetCinemaSourceUseCase:
             """Validate input data.
 
             Raises:
+                TypeError: If ``cinema_id`` is not a string.
                 ValueError: If ``cinema_id`` is empty or whitespace-only.
             """
+            if not isinstance(self.cinema_id, str):
+                raise TypeError("cinema_id must be a string")
             if not self.cinema_id.strip():
                 raise ValueError("cinema_id must not be empty")
 
@@ -47,16 +50,9 @@ class GetCinemaSourceUseCase:
         source_name: str
         source_display_name: str
 
-    def __init__(
-        self,
-        assignment_repository: CinemaSourceAssignmentRepository,
-    ) -> None:
-        """Initialize the use case.
-
-        Args:
-            assignment_repository: Repository for assignment lookups.
-        """
-        self.assignment_repository = assignment_repository
+    def __init__(self, reader: CinemaSourceAssignmentReader) -> None:
+        """Initialize with the cinema-source assignment reader."""
+        self._reader = reader
 
     async def execute(self, input_data: InputData) -> OutputData:
         """Retrieve the source assigned to a cinema.
@@ -71,16 +67,18 @@ class GetCinemaSourceUseCase:
             CinemaSourceAssignmentNotFoundError: If no assignment exists
                 for the given cinema.
         """
-        cinema_id = CinemaId(value=input_data.cinema_id)
-
-        assignment = await self.assignment_repository.find_by_cinema_id(cinema_id)
+        assignment = await self._reader.find_by_cinema_id(input_data.cinema_id)
         if assignment is None:
             raise CinemaSourceAssignmentNotFoundError(
                 f"No source assignment found for cinema '{input_data.cinema_id}'"
             )
-
+        logger.debug(
+            "Cinema %s reads from source %s",
+            assignment.cinema_id,
+            assignment.source_name,
+        )
         return self.OutputData(
-            cinema_id=input_data.cinema_id,
-            source_name=str(assignment.source.name),
-            source_display_name=assignment.source.display_name,
+            cinema_id=assignment.cinema_id,
+            source_name=assignment.source_name,
+            source_display_name=assignment.source_display_name,
         )
