@@ -31,7 +31,7 @@ _PATCH_COLUMNS = (
 class PostgresMovieMetadataGateway:
     """Snapshot and compare-and-patch operations on existing stable movie IDs."""
 
-    def __init__(self, pool: asyncpg.Pool, schema: str = "marquise") -> None:
+    def __init__(self, pool: asyncpg.Pool, schema: str) -> None:
         self._pool = pool
         quoted = schema.replace('"', '""')
         self._movies = f'"{quoted}".movies'

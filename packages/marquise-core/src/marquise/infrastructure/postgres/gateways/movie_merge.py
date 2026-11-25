@@ -84,7 +84,7 @@ class PostgresMovieMergeGateway:
     #355 connects this method to MovieMetadataRepository.merge.
     """
 
-    def __init__(self, pool: asyncpg.Pool, schema: str = "marquise") -> None:
+    def __init__(self, pool: asyncpg.Pool, schema: str) -> None:
         self._pool = pool
         self._schema = schema
         self._movies = f"{_quote(schema)}.movies"

@@ -6,8 +6,6 @@ import asyncpg
 
 from marquise.interface_adapters.repositories.protocols.base import GatewayError
 
-DEFAULT_SCHEMA = "marquise"
-
 _COLUMNS = "name, display_name, description"
 
 
@@ -16,11 +14,10 @@ class PostgresSourceDefinitionGateway:
 
     Args:
         pool: An open asyncpg connection pool.
-        schema: The database schema where the source_definitions table lives
-            (default ``marquise``).
+        schema: The database schema where the source_definitions table lives.
     """
 
-    def __init__(self, pool: asyncpg.Pool, schema: str = DEFAULT_SCHEMA) -> None:
+    def __init__(self, pool: asyncpg.Pool, schema: str) -> None:
         """Initialize the gateway.
 
         Args:

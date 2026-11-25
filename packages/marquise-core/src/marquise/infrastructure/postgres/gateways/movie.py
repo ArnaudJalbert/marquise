@@ -10,8 +10,6 @@ from marquise.interface_adapters.repositories.protocols.base import (
     GatewayPage,
 )
 
-DEFAULT_SCHEMA = "marquise"
-
 _COLUMNS = (
     "id, title, release_year, directors, cast_members, duration_minutes, description,"
     " poster_url, trailer_url, genres, original_title, rating,"
@@ -24,11 +22,10 @@ class PostgresMovieGateway:
 
     Args:
         pool: An open asyncpg connection pool.
-        schema: The database schema where the movies table lives
-            (default ``marquise``).
+        schema: The database schema where the movies table lives.
     """
 
-    def __init__(self, pool: asyncpg.Pool, schema: str = DEFAULT_SCHEMA) -> None:
+    def __init__(self, pool: asyncpg.Pool, schema: str) -> None:
         self._pool = pool
         self._table = f'"{schema}".movies'
 
