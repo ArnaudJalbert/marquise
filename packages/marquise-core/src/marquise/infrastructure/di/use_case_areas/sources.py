@@ -9,6 +9,7 @@ import asyncpg
 from marquise.application.queries.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
+from marquise.application.queries.list_sources import ListSourcesQuery
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
@@ -16,17 +17,16 @@ from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseC
 from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
-from marquise.application.use_cases.list_sources import ListSourcesUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.infrastructure.di.queries import (
     build_list_cinema_source_assignments_query,
+    build_list_sources_query,
 )
 from marquise.infrastructure.di.source_management import (
     build_assign_source_use_case,
     build_create_source_use_case,
     build_delete_source_use_case,
     build_get_cinema_source_use_case,
-    build_list_sources_use_case,
     build_unassign_source_use_case,
 )
 from marquise.infrastructure.di.use_case_areas.cinemas import build_cinema_repository
@@ -40,7 +40,7 @@ class SourceUseCases:
 
     list_registry_sources_use_case: ListRegistrySourcesUseCase
     create_source_use_case: CreateSourceUseCase
-    list_sources_use_case: ListSourcesUseCase
+    list_sources_query: ListSourcesQuery
     delete_source_use_case: DeleteSourceUseCase
     assign_source_use_case: AssignSourceUseCase
     unassign_source_use_case: UnassignSourceUseCase
@@ -67,7 +67,7 @@ def build_source_use_cases(
             registry=source_registry
         ),
         create_source_use_case=build_create_source_use_case(pool, schema),
-        list_sources_use_case=build_list_sources_use_case(pool, schema),
+        list_sources_query=build_list_sources_query(pool, schema),
         delete_source_use_case=build_delete_source_use_case(pool, schema),
         assign_source_use_case=build_assign_source_use_case(
             pool, schema, build_cinema_repository(pool, schema)

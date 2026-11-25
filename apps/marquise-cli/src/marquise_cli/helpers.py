@@ -54,8 +54,8 @@ async def _read_cinema_page(
 
 async def select_source(factory: MarquiseFactory, prompt: str) -> str | None:
     """Let the user pick a source interactively from a list."""
-    list_sources_use_case = factory.sources.list_sources_use_case
-    response = await list_sources_use_case.execute(list_sources_use_case.InputData())
+    list_sources_query = factory.sources.list_sources_query
+    response = await list_sources_query.execute(list_sources_query.InputData())
     if not response.sources:
         print("No sources available.")
         return None

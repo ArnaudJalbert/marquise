@@ -12,7 +12,7 @@ from rich.table import Table
 from marquise import (
     CreateSourceUseCase,
     ListRegistrySourcesUseCase,
-    ListSourcesUseCase,
+    ListSourcesQuery,
     MarquiseFactory,
     SourceAlreadyExistsError,
 )
@@ -52,7 +52,7 @@ async def _load_sources(
     factory: MarquiseFactory,
 ) -> tuple[
     list[ListRegistrySourcesUseCase.SourceEntry],
-    list[ListSourcesUseCase.SourceData],
+    ListSourcesQuery.OutputData,
 ]:
     """Load registry and registered source definitions."""
     registry_use_case = factory.sources.list_registry_sources_use_case
@@ -60,12 +60,12 @@ async def _load_sources(
         registry_use_case.execute(registry_use_case.InputData()),
         description="Fetching available sources...",
     )
-    list_use_case = factory.sources.list_sources_use_case
+    list_query = factory.sources.list_sources_query
     registered_response = await run_spinner(
-        list_use_case.execute(list_use_case.InputData()),
+        list_query.execute(list_query.InputData()),
         description="Fetching registered sources...",
     )
-    return registry_response.sources, registered_response.sources
+    return registry_response.sources, registered_response
 
 
 async def _register_source(
@@ -123,8 +123,8 @@ def _exit_failed(error: Exception) -> NoReturn:
 
 async def run_register_sources(factory: MarquiseFactory) -> None:
     """Register every source missing from persistent source definitions."""
-    registry_sources, registered_sources = await _load_sources(factory)
-    registered_names = {source.name for source in registered_sources}
+    registry_sources, registered = await _load_sources(factory)
+    registered_names = {source.name for source in registered.sources}
     new_sources = [
         source for source in registry_sources if source.name not in registered_names
     ]

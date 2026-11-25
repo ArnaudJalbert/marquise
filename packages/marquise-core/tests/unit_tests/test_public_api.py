@@ -55,7 +55,7 @@ EXPECTED_PUBLIC_SURFACE: set[str] = {
     "ListCinemasUseCase",
     "ListMoviesUseCase",
     "ListRegistrySourcesUseCase",
-    "ListSourcesUseCase",
+    "ListSourcesQuery",
     "MarquiseFactory",
     "CinemaUseCases",
     "MovieUseCases",

@@ -104,35 +104,6 @@ async def test_find_by_name_missing(
 
 
 @pytest.mark.asyncio
-async def test_find_all(
-    repo: PostgresSourceDefinitionRepository, mock_gateway: AsyncMock
-) -> None:
-    """Verify find_all returns all mapped source definitions."""
-    mock_gateway.find_all.return_value = [
-        _gateway_row(name="cineplex", display_name="Cineplex"),
-        _gateway_row(name="cinema_du_parc", display_name="Cinema du Parc"),
-    ]
-
-    result = await repo.find_all()
-
-    assert len(result) == 2
-    assert result[0].name == SourceName(value="cineplex")
-    assert result[1].name == SourceName(value="cinema_du_parc")
-    mock_gateway.find_all.assert_awaited_once()
-
-
-@pytest.mark.asyncio
-async def test_find_all_empty(
-    repo: PostgresSourceDefinitionRepository, mock_gateway: AsyncMock
-) -> None:
-    """Verify find_all returns empty list when no sources exist."""
-    mock_gateway.find_all.return_value = []
-
-    result = await repo.find_all()
-    assert result == []
-
-
-@pytest.mark.asyncio
 async def test_delete_delegates_to_gateway(
     repo: PostgresSourceDefinitionRepository, mock_gateway: AsyncMock
 ) -> None:

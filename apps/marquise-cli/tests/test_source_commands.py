@@ -18,7 +18,7 @@ from marquise import (
     DeleteSourceUseCase,
     ListCinemasUseCase,
     ListRegistrySourcesUseCase,
-    ListSourcesUseCase,
+    ListSourcesQuery,
     SourceNotFoundError,
     UnassignSourceUseCase,
 )
@@ -48,11 +48,11 @@ def _registry_use_case(sources: list[_SourceEntry]) -> MagicMock:
     return use_case
 
 
-def _list_use_case(sources: list[_SourceEntry]) -> MagicMock:
-    """Build configured registered-source use-case mock."""
-    use_case = create_autospec(ListSourcesUseCase, instance=True)
-    use_case.execute = AsyncMock(return_value=SimpleNamespace(sources=sources))
-    return use_case
+def _list_query(sources: list[_SourceEntry]) -> MagicMock:
+    """Build configured registered-source query mock."""
+    query = create_autospec(ListSourcesQuery, instance=True)
+    query.execute = AsyncMock(return_value=SimpleNamespace(sources=sources))
+    return query
 
 
 @pytest.mark.asyncio
@@ -61,8 +61,8 @@ async def test_select_source_executes_list_use_case_and_handles_cancellation(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Verify source selection lists sources directly and preserves cancellation."""
-    list_sources_use_case = _list_use_case([_SourceEntry("cinemacinema")])
-    mock_factory.sources.list_sources_use_case = list_sources_use_case
+    list_sources_query = _list_query([_SourceEntry("cinemacinema")])
+    mock_factory.sources.list_sources_query = list_sources_query
 
     with patch("marquise_cli.helpers.questionary.select") as select:
         select.return_value.ask_async = AsyncMock(return_value="__exit__")
@@ -70,8 +70,8 @@ async def test_select_source_executes_list_use_case_and_handles_cancellation(
 
     assert selected is None
     assert "Cancelled." in capsys.readouterr().out
-    list_sources_use_case.InputData.assert_called_once_with()
-    list_sources_use_case.execute.assert_awaited_once()
+    list_sources_query.InputData.assert_called_once_with()
+    list_sources_query.execute.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -98,19 +98,19 @@ async def test_select_cinema_executes_list_use_case_and_handles_cancellation(
 
 
 @pytest.mark.asyncio
-async def test_source_list_executes_list_use_case(
+async def test_source_list_executes_list_query(
     mock_factory: MagicMock,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Verify source listing executes direct use case and cleans up factory."""
-    list_sources_use_case = _list_use_case([_SourceEntry("cinemacinema")])
-    mock_factory.sources.list_sources_use_case = list_sources_use_case
+    list_sources_query = _list_query([_SourceEntry("cinemacinema")])
+    mock_factory.sources.list_sources_query = list_sources_query
 
     await run_list_registered_sources(mock_factory)
 
     assert "cinemacinema" in capsys.readouterr().out
-    list_sources_use_case.InputData.assert_called_once_with()
-    list_sources_use_case.execute.assert_awaited_once()
+    list_sources_query.InputData.assert_called_once_with()
+    list_sources_query.execute.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -182,7 +182,7 @@ async def test_source_register_new_source(
     mock_factory.sources.list_registry_sources_use_case = _registry_use_case(
         [_SourceEntry("cinemacinema")]
     )
-    mock_factory.sources.list_sources_use_case = _list_use_case([])
+    mock_factory.sources.list_sources_query = _list_query([])
     mock_factory.sources.create_source_use_case = create_use_case
 
     with patch("marquise_cli.source_commands.register_command.questionary") as mock_q:
@@ -209,7 +209,7 @@ async def test_source_register_all_existing(
     mock_factory.sources.list_registry_sources_use_case = _registry_use_case(
         [_SourceEntry("cinemacinema")]
     )
-    mock_factory.sources.list_sources_use_case = _list_use_case(
+    mock_factory.sources.list_sources_query = _list_query(
         [_SourceEntry("cinemacinema")]
     )
     mock_factory.sources.create_source_use_case = create_use_case
@@ -230,7 +230,7 @@ async def test_source_unregister_success(
     mock_factory.sources.list_registry_sources_use_case = _registry_use_case(
         [_SourceEntry("cinemacinema")]
     )
-    mock_factory.sources.list_sources_use_case = _list_use_case(
+    mock_factory.sources.list_sources_query = _list_query(
         [_SourceEntry("cinemacinema")]
     )
     mock_factory.sources.delete_source_use_case = delete_use_case
@@ -256,7 +256,7 @@ async def test_source_unregister_no_selection(
     mock_factory.sources.list_registry_sources_use_case = _registry_use_case(
         [_SourceEntry("cinemacinema")]
     )
-    mock_factory.sources.list_sources_use_case = _list_use_case(
+    mock_factory.sources.list_sources_query = _list_query(
         [_SourceEntry("cinemacinema")]
     )
     mock_factory.sources.delete_source_use_case = delete_use_case
@@ -276,7 +276,7 @@ async def test_source_unregister_empty_db(
     """Verify source unregister exits when database has no sources."""
     delete_use_case = create_autospec(DeleteSourceUseCase, instance=True)
     mock_factory.sources.list_registry_sources_use_case = _registry_use_case([])
-    mock_factory.sources.list_sources_use_case = _list_use_case([])
+    mock_factory.sources.list_sources_query = _list_query([])
     mock_factory.sources.delete_source_use_case = delete_use_case
 
     await run_unregister_sources(mock_factory)
@@ -294,7 +294,7 @@ async def test_source_unregister_cancelled_at_confirm(
     mock_factory.sources.list_registry_sources_use_case = _registry_use_case(
         [_SourceEntry("cinemacinema")]
     )
-    mock_factory.sources.list_sources_use_case = _list_use_case(
+    mock_factory.sources.list_sources_query = _list_query(
         [_SourceEntry("cinemacinema")]
     )
     mock_factory.sources.delete_source_use_case = delete_use_case
@@ -320,7 +320,7 @@ async def test_source_unregister_partial_failure(
     mock_factory.sources.list_registry_sources_use_case = _registry_use_case(
         [_SourceEntry("cinemacinema")]
     )
-    mock_factory.sources.list_sources_use_case = _list_use_case(
+    mock_factory.sources.list_sources_query = _list_query(
         [_SourceEntry("cinemacinema")]
     )
     mock_factory.sources.delete_source_use_case = delete_use_case

@@ -77,9 +77,9 @@ async def run_unregister_sources(factory: MarquiseFactory) -> None:
         registry_use_case.execute(registry_use_case.InputData()),
         description="Fetching available sources...",
     )
-    list_use_case = factory.sources.list_sources_use_case
+    list_query = factory.sources.list_sources_query
     registered_response = await run_spinner(
-        list_use_case.execute(list_use_case.InputData()),
+        list_query.execute(list_query.InputData()),
         description="Fetching registered sources...",
     )
     if not registered_response.sources:

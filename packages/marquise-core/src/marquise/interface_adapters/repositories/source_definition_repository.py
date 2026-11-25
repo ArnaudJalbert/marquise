@@ -71,15 +71,6 @@ class PostgresSourceDefinitionRepository(SourceDefinitionRepository):
         data = await self._gateway.find_by_name(name=str(name))
         return self._to_entity(data) if data is not None else None
 
-    async def find_all(self) -> list[SourceDefinition]:
-        """Retrieve all registered source definitions.
-
-        Returns:
-            A list of all source definition entities.
-        """
-        rows = await self._gateway.find_all()
-        return [self._to_entity(row) for row in rows]
-
     async def delete(self, name: SourceName) -> bool:
         """Delete a source definition by its name.
 

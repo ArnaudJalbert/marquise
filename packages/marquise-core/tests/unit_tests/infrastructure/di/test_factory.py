@@ -26,6 +26,7 @@ from marquise.application.queries.get_screening import GetScreeningQuery
 from marquise.application.queries.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
+from marquise.application.queries.list_sources import ListSourcesQuery
 from marquise.application.queries.search_screenings import SearchScreeningsQuery
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
@@ -42,7 +43,6 @@ from marquise.application.use_cases.list_movies import ListMoviesUseCase
 from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
-from marquise.application.use_cases.list_sources import ListSourcesUseCase
 from marquise.application.use_cases.merge_movies import MergeMoviesUseCase
 from marquise.application.use_cases.refresh_movies import RefreshMoviesUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
@@ -89,7 +89,7 @@ def database() -> MagicMock:
         ("screenings.import_screenings_command", ImportScreeningsCommand),
         ("sources.list_registry_sources_use_case", ListRegistrySourcesUseCase),
         ("sources.create_source_use_case", CreateSourceUseCase),
-        ("sources.list_sources_use_case", ListSourcesUseCase),
+        ("sources.list_sources_query", ListSourcesQuery),
         ("sources.delete_source_use_case", DeleteSourceUseCase),
         ("sources.assign_source_use_case", AssignSourceUseCase),
         ("sources.unassign_source_use_case", UnassignSourceUseCase),
@@ -160,7 +160,7 @@ def connection(database: MagicMock) -> MagicMock:
         SchemaCase(
             "screenings.search_screenings_query", "screenings", {"page": 1, "size": 10}
         ),
-        SchemaCase("sources.list_sources_use_case", "source_definitions"),
+        SchemaCase("sources.list_sources_query", "source_definitions"),
         SchemaCase(
             "sources.list_cinema_source_assignments_query",
             "cinema_source_assignments",
