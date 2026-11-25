@@ -9,12 +9,12 @@ import pytest
 from marquise.application.exceptions import CinemaSourceAssignmentAlreadyExistsError
 from marquise.domain.entities import Cinema, CinemaSourceAssignment, SourceDefinition
 from marquise.domain.value_objects import CinemaId, SourceName
+from marquise.interface_adapters.gateways.base import GatewayError
+from marquise.interface_adapters.gateways.cinema_source_assignment import (  # noqa: E501
+    CinemaSourceAssignmentGateway,
+)
 from marquise.interface_adapters.repositories.cinema_source_assignment_repository import (  # noqa: E501
     PostgresCinemaSourceAssignmentRepository,
-)
-from marquise.interface_adapters.repositories.protocols.cinema import GatewayError
-from marquise.interface_adapters.repositories.protocols.cinema_source_assignment import (  # noqa: E501
-    CinemaSourceAssignmentGateway,
 )
 
 

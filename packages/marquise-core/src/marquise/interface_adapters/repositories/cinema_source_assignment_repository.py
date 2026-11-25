@@ -13,11 +13,11 @@ from marquise.application.exceptions import (
 from marquise.application.repositories import CinemaSourceAssignmentRepository
 from marquise.domain.entities import CinemaSourceAssignment, SourceDefinition
 from marquise.domain.value_objects import CinemaId, SourceName
-from marquise.interface_adapters.mappers import extract_prefixed, to_cinema
-from marquise.interface_adapters.repositories.protocols.cinema import GatewayError
-from marquise.interface_adapters.repositories.protocols.cinema_source_assignment import (  # noqa: E501
+from marquise.interface_adapters.gateways.base import GatewayError
+from marquise.interface_adapters.gateways.cinema_source_assignment import (  # noqa: E501
     CinemaSourceAssignmentGateway,
 )
+from marquise.interface_adapters.mappers import extract_prefixed, to_cinema
 
 
 def _dict_to_source_definition(data: dict) -> SourceDefinition:

@@ -11,7 +11,7 @@ from marquise.application.movie_workflows import (
     MovieMetadataValues,
     MovieWorkflowConflictError,
 )
-from marquise.interface_adapters.repositories.protocols.movie_metadata import (
+from marquise.interface_adapters.gateways.movie_metadata import (
     MovieMergeGateway,
     MovieMetadataConflictError,
     MovieMetadataGateway,

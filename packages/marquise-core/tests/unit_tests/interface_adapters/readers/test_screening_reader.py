@@ -8,15 +8,15 @@ from unittest.mock import create_autospec
 import pytest
 
 from marquise.application.readers import ScreeningReader
-from marquise.interface_adapters.readers.screening_read_gateway import (
+from marquise.interface_adapters.gateways.base import (
+    GatewayError,
+    GatewayPage,
+)
+from marquise.interface_adapters.gateways.screening_reader import (
     ScreeningReadGateway,
 )
 from marquise.interface_adapters.readers.screening_reader import (
     PostgresScreeningReader,
-)
-from marquise.interface_adapters.repositories.protocols.base import (
-    GatewayError,
-    GatewayPage,
 )
 
 
