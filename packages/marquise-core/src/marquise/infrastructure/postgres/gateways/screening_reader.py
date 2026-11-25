@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 import asyncpg
 
+from marquise.infrastructure.postgres.timestamps import to_naive_utc
 from marquise.interface_adapters.repositories.protocols.base import GatewayPage
 
 _COLUMNS = (
@@ -13,13 +14,6 @@ _COLUMNS = (
     " s.ticket_url, s.room, s.language,"
     " m.title AS movie_title, c.name AS cinema_name"
 )
-
-
-def _naive_utc(value: datetime) -> datetime:
-    """Convert an aware datetime to naive UTC for PostgreSQL."""
-    if value.tzinfo is None:
-        return value
-    return value.astimezone(UTC).replace(tzinfo=None)
 
 
 class PostgresScreeningReadGateway:
@@ -71,9 +65,9 @@ class PostgresScreeningReadGateway:
         if cinema_id is not None:
             add_condition("s.cinema_id =", cinema_id)
         if start_date is not None:
-            add_condition("s.showtime >=", _naive_utc(start_date))
+            add_condition("s.showtime >=", to_naive_utc(start_date))
         if end_date is not None:
-            add_condition("s.showtime <=", _naive_utc(end_date))
+            add_condition("s.showtime <=", to_naive_utc(end_date))
         if language is not None:
             add_condition("s.language =", language)
 

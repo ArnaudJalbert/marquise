@@ -74,8 +74,15 @@ def to_movie(data: dict) -> Movie:
     )
 
 
-def _aware_utc(value: datetime) -> datetime:
-    """Treat naive database timestamps as UTC."""
+def to_aware_utc(value: datetime) -> datetime:
+    """Treat a naive gateway timestamp as UTC.
+
+    Args:
+        value: A naive datetime holding UTC, or an aware datetime.
+
+    Returns:
+        An aware datetime. Aware input is returned unchanged.
+    """
     if value.tzinfo is None:
         return value.replace(tzinfo=UTC)
     return value
@@ -96,7 +103,7 @@ def to_screening_data(row: dict) -> ScreeningReader.ScreeningData:
         movie_title=row["movie_title"],
         cinema_id=row["cinema_id"],
         cinema_name=row["cinema_name"],
-        showtime=_aware_utc(row["showtime"]),
+        showtime=to_aware_utc(row["showtime"]),
         ticket_url=row.get("ticket_url"),
         room=row.get("room"),
         language=row.get("language"),

@@ -6,7 +6,7 @@ interface (application).  No SQL, no asyncpg — pure entity mapping.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 from marquise.application.exceptions import (
     ScreeningAlreadyExistsError,
@@ -24,6 +24,7 @@ from marquise.domain.value_objects import (
 )
 from marquise.interface_adapters.mappers import (
     extract_prefixed,
+    to_aware_utc,
     to_cinema,
     to_movie,
 )
@@ -33,23 +34,6 @@ from marquise.interface_adapters.repositories.protocols.screening import (
     ScreeningGateway,
     ScreeningWriteConflictGatewayError,
 )
-
-
-def _parse_datetime(value: datetime) -> datetime:
-    """Normalize a gateway datetime to a timezone-aware UTC datetime.
-
-    The screening gateway always returns ``datetime`` objects from asyncpg.
-    Naive values are assumed to be in UTC and made timezone-aware.
-
-    Args:
-        value: A datetime object returned by the gateway.
-
-    Returns:
-        A timezone-aware datetime.
-    """
-    if value.tzinfo is None:
-        return value.replace(tzinfo=UTC)
-    return value
 
 
 class PostgresScreeningRepository(ScreeningRepository):
@@ -102,7 +86,7 @@ class PostgresScreeningRepository(ScreeningRepository):
             id=ScreeningId(value=outcome.row["id"]),
             movie=screening.movie,
             cinema=screening.cinema,
-            showtime=Showtime(value=_parse_datetime(outcome.row["showtime"])),
+            showtime=Showtime(value=to_aware_utc(outcome.row["showtime"])),
             external_id=outcome.row.get("external_id"),
             source_name=outcome.row.get("source_name"),
             ticket_url=outcome.row.get("ticket_url"),
@@ -245,7 +229,7 @@ class PostgresScreeningRepository(ScreeningRepository):
             id=ScreeningId(value=data["id"]),
             movie=movie,
             cinema=cinema,
-            showtime=Showtime(value=_parse_datetime(data["showtime"])),
+            showtime=Showtime(value=to_aware_utc(data["showtime"])),
             external_id=data.get("external_id"),
             source_name=data.get("source_name"),
             ticket_url=data.get("ticket_url"),
@@ -260,7 +244,7 @@ def _persistence_data(screening: Screening) -> dict:
         "id": str(screening.id),
         "movie_id": str(screening.movie.id),
         "cinema_id": str(screening.cinema.id),
-        "showtime": screening.showtime.value.astimezone(UTC).replace(tzinfo=None),
+        "showtime": screening.showtime.value,
         "external_id": screening.external_id,
         "source_name": screening.source_name,
         "ticket_url": screening.ticket_url,
