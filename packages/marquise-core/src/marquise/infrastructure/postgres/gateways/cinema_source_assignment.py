@@ -6,8 +6,6 @@ import asyncpg
 
 from marquise.interface_adapters.repositories.protocols.base import GatewayError
 
-DEFAULT_SCHEMA = "marquise"
-
 _COLUMNS = "cinema_id, source_name"
 _CINEMA_COLUMNS = (
     "c.id AS cinema__id, c.name AS cinema__name,"
@@ -27,10 +25,10 @@ class PostgresCinemaSourceAssignmentGateway:
     Args:
         pool: An open asyncpg connection pool.
         schema: The database schema where the cinema_source_assignments table
-            lives (default ``marquise``).
+            lives.
     """
 
-    def __init__(self, pool: asyncpg.Pool, schema: str = DEFAULT_SCHEMA) -> None:
+    def __init__(self, pool: asyncpg.Pool, schema: str) -> None:
         """Initialize the gateway.
 
         Args:

@@ -12,13 +12,11 @@ from marquise.application.readers import (
     CinemaSourceAssignmentReader,
 )
 
-DEFAULT_SCHEMA = "marquise"
-
 
 class PostgresCinemaSourceAssignmentReader(CinemaSourceAssignmentReader):
     """Read cinema-source assignment display data from Postgres."""
 
-    def __init__(self, pool: asyncpg.Pool, schema: str = DEFAULT_SCHEMA) -> None:
+    def __init__(self, pool: asyncpg.Pool, schema: str) -> None:
         """Initialize with an open connection pool and schema."""
         self._pool = pool
         self._schema = schema

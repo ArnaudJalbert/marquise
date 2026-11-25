@@ -23,7 +23,9 @@ async def test_list_all_returns_assignment_display_data() -> None:
     pool.acquire.return_value.__aenter__ = AsyncMock(return_value=connection)
     pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
 
-    result = await PostgresCinemaSourceAssignmentReader(pool).list_all()
+    result = await PostgresCinemaSourceAssignmentReader(
+        pool, "marquise-test"
+    ).list_all()
 
     assert result == [CinemaSourceAssignmentData("cin-001", "Cineplex")]
     connection.fetch.assert_awaited_once()
