@@ -17,7 +17,6 @@ from marquise.application.movie_workflows import (
     MovieMetadataValues,
     MovieWorkflowConflictError,
 )
-from marquise.infrastructure.postgres.connection_pool import ConnectionPool
 
 
 def _quote(identifier: str) -> str:
@@ -85,7 +84,7 @@ class PostgresMovieMergeGateway:
     #355 connects this method to MovieMetadataRepository.merge.
     """
 
-    def __init__(self, pool: ConnectionPool, schema: str = "marquise") -> None:
+    def __init__(self, pool: asyncpg.Pool, schema: str = "marquise") -> None:
         self._pool = pool
         self._schema = schema
         self._movies = f"{_quote(schema)}.movies"
