@@ -31,7 +31,9 @@ from marquise.infrastructure.di.source_management import (
 )
 from marquise.infrastructure.di.use_case_areas.cinemas import build_cinema_repository
 from marquise.infrastructure.postgres.config.settings import Settings
-from marquise.interface_adapters.repositories.source_registry import SourceRegistry
+from marquise.interface_adapters.sources.scraper_source_registry import (
+    ScraperSourceRegistry,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,7 +51,7 @@ class SourceUseCases:
 
 
 def build_source_use_cases(
-    pool: asyncpg.Pool, settings: Settings, source_registry: SourceRegistry
+    pool: asyncpg.Pool, settings: Settings, source_registry: ScraperSourceRegistry
 ) -> SourceUseCases:
     """Wire every source and cinema-source assignment use case and query.
 

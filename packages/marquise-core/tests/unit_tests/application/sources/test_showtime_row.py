@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from marquise.application.repositories.source_registry_query import ShowtimeRow
+from marquise.application.sources import ShowtimeRow
 
 
 def test_showtime_row_accepts_valid_row() -> None:

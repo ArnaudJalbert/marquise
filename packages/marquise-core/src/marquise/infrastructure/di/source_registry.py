@@ -9,33 +9,35 @@ from marquise.infrastructure.sources.cinematheque import CinemathequeSource
 from marquise.infrastructure.sources.cineplex import CineplexSource
 from marquise.infrastructure.sources.cinestarz import CineStarzSource
 from marquise.infrastructure.sources.outremont import OutremontSource
-from marquise.interface_adapters.repositories.source_adapters.cinemacinema import (
+from marquise.interface_adapters.sources.cinemacinema import (
     CinemaCinemaAdapter,
 )
-from marquise.interface_adapters.repositories.source_adapters.cinemamoderne import (
+from marquise.interface_adapters.sources.cinemamoderne import (
     CinemaModerneAdapter,
 )
-from marquise.interface_adapters.repositories.source_adapters.cinemapublic import (
+from marquise.interface_adapters.sources.cinemapublic import (
     CinemaPublicAdapter,
 )
-from marquise.interface_adapters.repositories.source_adapters.cinematheque import (
+from marquise.interface_adapters.sources.cinematheque import (
     CinemathequeAdapter,
 )
-from marquise.interface_adapters.repositories.source_adapters.cineplex import (
+from marquise.interface_adapters.sources.cineplex import (
     CineplexAdapter,
 )
-from marquise.interface_adapters.repositories.source_adapters.cinestarz import (
+from marquise.interface_adapters.sources.cinestarz import (
     CineStarzAdapter,
 )
-from marquise.interface_adapters.repositories.source_adapters.outremont import (
+from marquise.interface_adapters.sources.outremont import (
     OutremontAdapter,
 )
-from marquise.interface_adapters.repositories.source_registry import SourceRegistry
+from marquise.interface_adapters.sources.scraper_source_registry import (
+    ScraperSourceRegistry,
+)
 
 
-def build_source_registry() -> SourceRegistry:
+def build_source_registry() -> ScraperSourceRegistry:
     """Build registry containing every configured showtime source."""
-    registry = SourceRegistry()
+    registry = ScraperSourceRegistry()
     registry.register("cinemacinema", CinemaCinemaAdapter(CinemaCinemaSource()))
     registry.register("cinemamoderne", CinemaModerneAdapter(CinemaModerneSource()))
     registry.register("cinemapublic", CinemaPublicAdapter(CinemaPublicSource()))

@@ -12,7 +12,7 @@ from marquise.domain.value_objects import CinemaId
 from marquise.interface_adapters.gateways.showtime_source import (
     ShowtimeSource,
 )
-from marquise.interface_adapters.repositories.source_adapters.cinestarz import (
+from marquise.interface_adapters.sources.cinestarz import (
     CineStarzAdapter,
 )
 

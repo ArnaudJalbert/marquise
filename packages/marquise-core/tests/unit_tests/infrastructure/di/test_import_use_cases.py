@@ -8,7 +8,9 @@ from marquise.application.queries.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
 from marquise.application.queries.find_stored_movies import FindStoredMoviesQuery
-from marquise.application.repositories import SourceRegistryQuery
+from marquise.application.sources import (
+    SourceRegistry,
+)
 from marquise.application.use_cases.create_movies import CreateMoviesCommand
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.infrastructure.di.import_use_cases import (
@@ -23,7 +25,7 @@ from marquise.infrastructure.di.import_use_cases import (
 def test_fetch_builder_wires_pool_schema_and_registry() -> None:
     """Fetch query receives explicit pool, schema, and source registry."""
     pool = MagicMock()
-    registry = create_autospec(SourceRegistryQuery, instance=True)
+    registry = create_autospec(SourceRegistry, instance=True)
 
     query = build_fetch_screenings_use_case(pool, "test_schema", registry)
 

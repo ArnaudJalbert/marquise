@@ -8,14 +8,14 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from marquise.application.repositories import (
+from marquise.application.sources import (
     MovieEnrichmentData,
     ShowtimeRow,
-    SourceRegistryQuery,
+    SourceRegistry,
 )
 from marquise.domain.entities import Cinema, SourceDefinition
 from marquise.interface_adapters.mappers import to_aware_utc
-from marquise.interface_adapters.repositories.source_adapters.base import (
+from marquise.interface_adapters.sources.base import (
     SourceAdapter,
 )
 
@@ -41,12 +41,12 @@ def _parse_showtime(raw: str) -> datetime:
     return to_aware_utc(dt)
 
 
-class SourceRegistry(SourceRegistryQuery):
+class ScraperSourceRegistry(SourceRegistry):
     """Maps source names to concrete ``SourceAdapter`` instances.
 
     Typical wiring in the DI container::
 
-        registry = SourceRegistry()
+        registry = ScraperSourceRegistry()
         registry.register("cinemacinema", CinemaCinemaAdapter())
     """
 

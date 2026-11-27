@@ -9,19 +9,11 @@ from marquise.application.repositories.screening_repository import ScreeningRepo
 from marquise.application.repositories.source_definition_repository import (
     SourceDefinitionRepository,
 )
-from marquise.application.repositories.source_registry_query import (
-    MovieEnrichmentData,
-    ShowtimeRow,
-    SourceRegistryQuery,
-)
 
 __all__ = [
     "CinemaRepository",
     "CinemaSourceAssignmentRepository",
-    "MovieEnrichmentData",
     "MovieRepository",
     "ScreeningRepository",
-    "ShowtimeRow",
     "SourceDefinitionRepository",
-    "SourceRegistryQuery",
 ]

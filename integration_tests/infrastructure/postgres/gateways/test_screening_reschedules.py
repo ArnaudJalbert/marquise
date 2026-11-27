@@ -13,9 +13,9 @@ import pytest_asyncio
 from marquise.application.queries.fetch_screenings_from_source import (
     FetchScreeningsFromSourceQuery,
 )
-from marquise.application.repositories.source_registry_query import (
+from marquise.application.sources import (
     ShowtimeRow,
-    SourceRegistryQuery,
+    SourceRegistry,
 )
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.import_screenings import ImportScreeningsCommand
@@ -107,7 +107,7 @@ async def import_chain(
         await assignment.assign(cinema_id, "cineplex")
     await movies.save("digger", "DIGGER", release_year=None)
     await movies.save("parents", "Chers Parents", release_year=None)
-    registry = create_autospec(SourceRegistryQuery, instance=True)
+    registry = create_autospec(SourceRegistry, instance=True)
     screenings = PostgresScreeningRepository(
         PostgresScreeningGateway(db_pool, "marquise-test")
     )

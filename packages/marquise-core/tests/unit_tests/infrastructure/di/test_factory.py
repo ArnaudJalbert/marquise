@@ -50,7 +50,9 @@ from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
 from marquise.infrastructure.di.factory import MarquiseFactory
 from marquise.infrastructure.postgres.config.settings import Settings
 from marquise.infrastructure.postgres.database import Database
-from marquise.interface_adapters.repositories.source_registry import SourceRegistry
+from marquise.interface_adapters.sources.scraper_source_registry import (
+    ScraperSourceRegistry,
+)
 
 SETTINGS = Settings(
     database_url="postgresql://u:p@localhost:5432/db",
@@ -213,7 +215,7 @@ def test_factory_builds_the_source_registry_once(database: MagicMock) -> None:
     """Import and registry listing share one source registry."""
     with patch(
         "marquise.infrastructure.di.factory.build_source_registry",
-        return_value=SourceRegistry(),
+        return_value=ScraperSourceRegistry(),
     ) as build_source_registry:
         MarquiseFactory(SETTINGS, database)
 
