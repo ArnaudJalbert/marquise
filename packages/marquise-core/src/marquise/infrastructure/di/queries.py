@@ -10,6 +10,7 @@ from marquise.application.queries.browse_screening_movies import (
     BrowseScreeningMoviesQuery,
 )
 from marquise.application.queries.count_screening_days import CountScreeningDaysQuery
+from marquise.application.queries.get_cinema import GetCinemaQuery
 from marquise.application.queries.get_cinema_screenings import GetCinemaScreeningsQuery
 from marquise.application.queries.get_cinema_source import GetCinemaSourceQuery
 from marquise.application.queries.get_movie_screenings import GetMovieScreeningsQuery
@@ -20,6 +21,9 @@ from marquise.application.queries.list_cinema_source_assignments import (
 from marquise.application.queries.list_sources import ListSourcesQuery
 from marquise.application.queries.search_screenings import SearchScreeningsQuery
 from marquise.infrastructure.postgres.gateways.cinema import PostgresCinemaGateway
+from marquise.infrastructure.postgres.gateways.cinema_reader import (
+    PostgresCinemaReadGateway,
+)
 from marquise.infrastructure.postgres.gateways.cinema_source_assignment_reader import (
     PostgresCinemaSourceAssignmentReadGateway,
 )
@@ -33,6 +37,7 @@ from marquise.infrastructure.postgres.gateways.screening_reader import (
 from marquise.infrastructure.postgres.gateways.source_definition_reader import (
     PostgresSourceDefinitionReadGateway,
 )
+from marquise.interface_adapters.readers.cinema_reader import PostgresCinemaReader
 from marquise.interface_adapters.readers.cinema_source_assignment_reader import (
     PostgresCinemaSourceAssignmentReader,
 )
@@ -79,6 +84,15 @@ def _build_cinema_source_assignment_reader(
 def build_get_screening_query(pool: asyncpg.Pool, schema: str) -> GetScreeningQuery:
     """Build the single-screening query with its display reader."""
     return GetScreeningQuery(screening_reader=_build_screening_reader(pool, schema))
+
+
+def build_get_cinema_query(pool: asyncpg.Pool, schema: str) -> GetCinemaQuery:
+    """Build the single-cinema query with its display reader."""
+    return GetCinemaQuery(
+        cinema_reader=PostgresCinemaReader(
+            gateway=PostgresCinemaReadGateway(pool=pool, schema=schema)
+        )
+    )
 
 
 def build_get_cinema_screenings_query(

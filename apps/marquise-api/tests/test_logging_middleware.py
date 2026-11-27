@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 
 from marquise import (
     CinemaUseCases,
-    GetCinemaUseCase,
+    GetCinemaQuery,
     GetMovieUseCase,
     ListCinemasUseCase,
     MarquiseFactory,
@@ -90,7 +90,7 @@ def factory() -> MagicMock:
     fake.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
         cinemas=[], total=0
     )
-    fake.cinemas.get_cinema_use_case = create_autospec(GetCinemaUseCase, instance=True)
+    fake.cinemas.get_cinema_query = create_autospec(GetCinemaQuery, instance=True)
     fake.movies = create_autospec(MovieUseCases, instance=True)
     fake.movies.get_movie_use_case = create_autospec(GetMovieUseCase, instance=True)
     return fake

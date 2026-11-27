@@ -7,6 +7,9 @@ import inspect
 import pytest
 
 from marquise.infrastructure.postgres.gateways.cinema import PostgresCinemaGateway
+from marquise.infrastructure.postgres.gateways.cinema_reader import (
+    PostgresCinemaReadGateway,
+)
 from marquise.infrastructure.postgres.gateways.cinema_source_assignment import (
     PostgresCinemaSourceAssignmentGateway,
 )
@@ -38,6 +41,7 @@ from marquise.infrastructure.postgres.gateways.source_definition import (
     "schema_bound_class",
     [
         PostgresCinemaGateway,
+        PostgresCinemaReadGateway,
         PostgresCinemaSourceAssignmentGateway,
         PostgresMovieGateway,
         PostgresMovieMergeGateway,

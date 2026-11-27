@@ -1,0 +1,22 @@
+"""Adapter mapping cinema display rows to application read models."""
+
+from __future__ import annotations
+
+from marquise.application.readers import CinemaReader
+from marquise.interface_adapters.mappers import to_cinema_data
+from marquise.interface_adapters.readers.cinema_read_gateway import (
+    CinemaReadGateway,
+)
+
+
+class PostgresCinemaReader(CinemaReader):
+    """Map projections supplied by an injected cinema read gateway."""
+
+    def __init__(self, gateway: CinemaReadGateway) -> None:
+        """Initialize with the plain-data gateway."""
+        self._gateway = gateway
+
+    async def find_by_id(self, cinema_id: str) -> CinemaReader.CinemaData | None:
+        """Return one display projection for an exact ID, or None if missing."""
+        row = await self._gateway.find_by_id(cinema_id)
+        return to_cinema_data(row) if row is not None else None

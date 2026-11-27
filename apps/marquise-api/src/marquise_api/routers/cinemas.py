@@ -10,8 +10,8 @@ from fastapi_pagination import Page, Params
 
 from marquise import (
     GetCinemaMoviesUseCase,
+    GetCinemaQuery,
     GetCinemaScreeningsQuery,
-    GetCinemaUseCase,
     ListCinemasUseCase,
     MarquiseFactory,
 )
@@ -69,8 +69,8 @@ async def get_cinema(
     factory: MarquiseFactory = Depends(get_factory),
 ) -> CinemaResponse:
     """Retrieve a single cinema by its ID."""
-    output = await factory.cinemas.get_cinema_use_case.execute(
-        GetCinemaUseCase.InputData(cinema_id=cinema_id)
+    output = await factory.cinemas.get_cinema_query.execute(
+        GetCinemaQuery.InputData(cinema_id=cinema_id)
     )
     return CinemaResponse.model_validate(output)
 

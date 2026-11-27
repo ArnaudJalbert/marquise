@@ -6,16 +6,19 @@ from dataclasses import dataclass
 
 import asyncpg
 
+from marquise.application.queries.get_cinema import GetCinemaQuery
 from marquise.application.queries.get_cinema_screenings import (
     GetCinemaScreeningsQuery,
 )
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
-from marquise.application.use_cases.get_cinema import GetCinemaUseCase
 from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
 from marquise.application.use_cases.update_cinema import UpdateCinemaUseCase
-from marquise.infrastructure.di.queries import build_get_cinema_screenings_query
+from marquise.infrastructure.di.queries import (
+    build_get_cinema_query,
+    build_get_cinema_screenings_query,
+)
 from marquise.infrastructure.postgres.config.settings import Settings
 from marquise.infrastructure.postgres.gateways.cinema import PostgresCinemaGateway
 from marquise.infrastructure.postgres.gateways.screening import (
@@ -37,7 +40,7 @@ class CinemaUseCases:
     delete_cinema_use_case: DeleteCinemaUseCase
     update_cinema_use_case: UpdateCinemaUseCase
     list_cinemas_use_case: ListCinemasUseCase
-    get_cinema_use_case: GetCinemaUseCase
+    get_cinema_query: GetCinemaQuery
     get_cinema_movies_use_case: GetCinemaMoviesUseCase
     get_cinema_screenings_query: GetCinemaScreeningsQuery
 
@@ -67,7 +70,7 @@ def build_cinema_use_cases(pool: asyncpg.Pool, settings: Settings) -> CinemaUseC
         delete_cinema_use_case=DeleteCinemaUseCase(cinema_repository=cinema_repository),
         update_cinema_use_case=UpdateCinemaUseCase(cinema_repository=cinema_repository),
         list_cinemas_use_case=ListCinemasUseCase(cinema_repository=cinema_repository),
-        get_cinema_use_case=GetCinemaUseCase(cinema_repository=cinema_repository),
+        get_cinema_query=build_get_cinema_query(pool, settings.schema),
         get_cinema_movies_use_case=GetCinemaMoviesUseCase(
             cinema_repository=cinema_repository,
             screening_repository=PostgresScreeningRepository(

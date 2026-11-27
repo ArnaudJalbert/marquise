@@ -16,6 +16,7 @@ from marquise.application.queries.browse_screening_movies import (
     BrowseScreeningMoviesQuery,
 )
 from marquise.application.queries.count_screening_days import CountScreeningDaysQuery
+from marquise.application.queries.get_cinema import GetCinemaQuery
 from marquise.application.queries.get_cinema_screenings import (
     GetCinemaScreeningsQuery,
 )
@@ -34,7 +35,6 @@ from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
-from marquise.application.use_cases.get_cinema import GetCinemaUseCase
 from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
 from marquise.application.use_cases.get_movie import GetMovieUseCase
 from marquise.application.use_cases.import_screenings import ImportScreeningsCommand
@@ -74,7 +74,7 @@ def database() -> MagicMock:
         ("cinemas.delete_cinema_use_case", DeleteCinemaUseCase),
         ("cinemas.update_cinema_use_case", UpdateCinemaUseCase),
         ("cinemas.list_cinemas_use_case", ListCinemasUseCase),
-        ("cinemas.get_cinema_use_case", GetCinemaUseCase),
+        ("cinemas.get_cinema_query", GetCinemaQuery),
         ("cinemas.get_cinema_movies_use_case", GetCinemaMoviesUseCase),
         ("cinemas.get_cinema_screenings_query", GetCinemaScreeningsQuery),
         ("movies.list_movies_use_case", ListMoviesUseCase),
