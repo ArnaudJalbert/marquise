@@ -5,7 +5,7 @@ from datetime import datetime
 import asyncpg
 from asyncpg.exceptions import UniqueViolationError
 
-from marquise.interface_adapters.repositories.protocols.movie_metadata import (
+from marquise.interface_adapters.gateways.movie_metadata import (
     MovieMetadataConflictError,
 )
 

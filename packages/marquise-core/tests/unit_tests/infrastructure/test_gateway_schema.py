@@ -1,4 +1,4 @@
-"""Contract tests: Postgres gateways and readers take the schema from DI."""
+"""Contract tests: Postgres gateways take the schema from DI."""
 
 from __future__ import annotations
 
@@ -9,6 +9,9 @@ import pytest
 from marquise.infrastructure.postgres.gateways.cinema import PostgresCinemaGateway
 from marquise.infrastructure.postgres.gateways.cinema_source_assignment import (
     PostgresCinemaSourceAssignmentGateway,
+)
+from marquise.infrastructure.postgres.gateways.cinema_source_assignment_reader import (
+    PostgresCinemaSourceAssignmentReadGateway,
 )
 from marquise.infrastructure.postgres.gateways.movie import PostgresMovieGateway
 from marquise.infrastructure.postgres.gateways.movie_merge import (
@@ -29,9 +32,6 @@ from marquise.infrastructure.postgres.gateways.screening_reader import (
 from marquise.infrastructure.postgres.gateways.source_definition import (
     PostgresSourceDefinitionGateway,
 )
-from marquise.interface_adapters.readers.cinema_source_assignment_reader import (
-    PostgresCinemaSourceAssignmentReader,
-)
 
 
 @pytest.mark.parametrize(
@@ -46,13 +46,13 @@ from marquise.interface_adapters.readers.cinema_source_assignment_reader import 
         PostgresScreeningMovieReadGateway,
         PostgresScreeningReadGateway,
         PostgresSourceDefinitionGateway,
-        PostgresCinemaSourceAssignmentReader,
+        PostgresCinemaSourceAssignmentReadGateway,
     ],
 )
 def test_schema_has_no_default(schema_bound_class: type) -> None:
-    """Scenario: building a gateway or reader without a schema is impossible.
+    """Scenario: building a gateway without a schema is impossible.
 
-    Given a Postgres gateway or reader class, when its constructor is
+    Given a Postgres gateway class, when its constructor is
     inspected, then ``schema`` is required so only ``settings.schema`` from DI
     can choose it.
     """

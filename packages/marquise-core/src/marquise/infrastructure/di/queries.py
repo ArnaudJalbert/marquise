@@ -11,6 +11,7 @@ from marquise.application.queries.browse_screening_movies import (
 )
 from marquise.application.queries.count_screening_days import CountScreeningDaysQuery
 from marquise.application.queries.get_cinema_screenings import GetCinemaScreeningsQuery
+from marquise.application.queries.get_cinema_source import GetCinemaSourceQuery
 from marquise.application.queries.get_movie_screenings import GetMovieScreeningsQuery
 from marquise.application.queries.get_screening import GetScreeningQuery
 from marquise.application.queries.list_cinema_source_assignments import (
@@ -19,6 +20,9 @@ from marquise.application.queries.list_cinema_source_assignments import (
 from marquise.application.queries.list_sources import ListSourcesQuery
 from marquise.application.queries.search_screenings import SearchScreeningsQuery
 from marquise.infrastructure.postgres.gateways.cinema import PostgresCinemaGateway
+from marquise.infrastructure.postgres.gateways.cinema_source_assignment_reader import (
+    PostgresCinemaSourceAssignmentReadGateway,
+)
 from marquise.infrastructure.postgres.gateways.movie import PostgresMovieGateway
 from marquise.infrastructure.postgres.gateways.screening_movie_reader import (
     PostgresScreeningMovieReadGateway,
@@ -63,6 +67,15 @@ def _build_screening_movie_reader(
     )
 
 
+def _build_cinema_source_assignment_reader(
+    pool: asyncpg.Pool, schema: str
+) -> PostgresCinemaSourceAssignmentReader:
+    """Build the cinema-source assignment display reader."""
+    return PostgresCinemaSourceAssignmentReader(
+        gateway=PostgresCinemaSourceAssignmentReadGateway(pool=pool, schema=schema)
+    )
+
+
 def build_get_screening_query(pool: asyncpg.Pool, schema: str) -> GetScreeningQuery:
     """Build the single-screening query with its display reader."""
     return GetScreeningQuery(screening_reader=_build_screening_reader(pool, schema))
@@ -97,7 +110,16 @@ def build_list_cinema_source_assignments_query(
 ) -> ListCinemaSourceAssignmentsQuery:
     """Build cinema-source assignment query."""
     return ListCinemaSourceAssignmentsQuery(
-        reader=PostgresCinemaSourceAssignmentReader(pool=pool, schema=schema)
+        reader=_build_cinema_source_assignment_reader(pool, schema)
+    )
+
+
+def build_get_cinema_source_query(
+    pool: asyncpg.Pool, schema: str
+) -> GetCinemaSourceQuery:
+    """Build cinema-source lookup query."""
+    return GetCinemaSourceQuery(
+        reader=_build_cinema_source_assignment_reader(pool, schema)
     )
 
 

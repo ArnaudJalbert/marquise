@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 import asyncpg
 
+from marquise.application.queries.get_cinema_source import GetCinemaSourceQuery
 from marquise.application.queries.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
@@ -13,12 +14,12 @@ from marquise.application.queries.list_sources import ListSourcesQuery
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
-from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
 from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.infrastructure.di.queries import (
+    build_get_cinema_source_query,
     build_list_cinema_source_assignments_query,
     build_list_sources_query,
 )
@@ -26,7 +27,6 @@ from marquise.infrastructure.di.source_management import (
     build_assign_source_use_case,
     build_create_source_use_case,
     build_delete_source_use_case,
-    build_get_cinema_source_use_case,
     build_unassign_source_use_case,
 )
 from marquise.infrastructure.di.use_case_areas.cinemas import build_cinema_repository
@@ -44,7 +44,7 @@ class SourceUseCases:
     delete_source_use_case: DeleteSourceUseCase
     assign_source_use_case: AssignSourceUseCase
     unassign_source_use_case: UnassignSourceUseCase
-    get_cinema_source_use_case: GetCinemaSourceUseCase
+    get_cinema_source_query: GetCinemaSourceQuery
     list_cinema_source_assignments_query: ListCinemaSourceAssignmentsQuery
 
 
@@ -73,7 +73,7 @@ def build_source_use_cases(
             pool, schema, build_cinema_repository(pool, schema)
         ),
         unassign_source_use_case=build_unassign_source_use_case(pool, schema),
-        get_cinema_source_use_case=build_get_cinema_source_use_case(pool, schema),
+        get_cinema_source_query=build_get_cinema_source_query(pool, schema),
         list_cinema_source_assignments_query=(
             build_list_cinema_source_assignments_query(pool, schema)
         ),

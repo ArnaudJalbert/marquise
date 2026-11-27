@@ -8,13 +8,11 @@ from marquise.application.repositories import CinemaRepository
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
-from marquise.application.use_cases.get_cinema_source import GetCinemaSourceUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.infrastructure.di.source_management import (
     build_assign_source_use_case,
     build_create_source_use_case,
     build_delete_source_use_case,
-    build_get_cinema_source_use_case,
     build_unassign_source_use_case,
 )
 
@@ -44,14 +42,12 @@ def test_assignment_builders_wire_explicit_collaborators() -> None:
 
     assign = build_assign_source_use_case(pool, "test_schema", cinema_repository)
     unassign = build_unassign_source_use_case(pool, "test_schema")
-    get_source = build_get_cinema_source_use_case(pool, "test_schema")
 
     assert isinstance(assign, AssignSourceUseCase)
     assert isinstance(unassign, UnassignSourceUseCase)
-    assert isinstance(get_source, GetCinemaSourceUseCase)
     assert assign.cinema_repository is cinema_repository
     assert assign.source_definition_repository._gateway._pool is pool
-    for use_case in (assign, unassign, get_source):
+    for use_case in (assign, unassign):
         assert use_case.assignment_repository._gateway._pool is pool
         assert use_case.assignment_repository._gateway._schema == "test_schema"
     pool.acquire.assert_not_called()

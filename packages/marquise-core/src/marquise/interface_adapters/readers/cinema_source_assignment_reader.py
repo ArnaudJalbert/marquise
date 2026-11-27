@@ -1,38 +1,32 @@
-"""Postgres reader for cinema-source assignment display data."""
+"""Adapter mapping cinema-source assignment rows to application read models."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    import asyncpg
-
 from marquise.application.readers import CinemaSourceAssignmentReader
+from marquise.interface_adapters.readers.cinema_source_assignment_read_gateway import (
+    CinemaSourceAssignmentReadGateway,
+)
 
 
 class PostgresCinemaSourceAssignmentReader(CinemaSourceAssignmentReader):
-    """Read cinema-source assignment display data from Postgres."""
+    """Map projections supplied by an injected assignment read gateway."""
 
-    def __init__(self, pool: asyncpg.Pool, schema: str) -> None:
-        """Initialize with an open connection pool and schema."""
-        self._pool = pool
-        self._schema = schema
+    def __init__(self, gateway: CinemaSourceAssignmentReadGateway) -> None:
+        """Initialize with the plain-data gateway."""
+        self._gateway = gateway
 
     async def list_all(
         self,
     ) -> list[CinemaSourceAssignmentReader.CinemaSourceAssignmentData]:
         """Return every cinema-source assignment's display data."""
-        async with self._pool.acquire() as conn:
-            rows = await conn.fetch(
-                f"""
-                SELECT a.cinema_id, sd.display_name AS source_display_name
-                FROM "{self._schema}".cinema_source_assignments a
-                JOIN "{self._schema}".source_definitions sd
-                    ON a.source_name = sd.name
-                ORDER BY a.cinema_id
-                """
-            )
         return [
-            CinemaSourceAssignmentReader.CinemaSourceAssignmentData(**dict(row))
-            for row in rows
+            self.CinemaSourceAssignmentData(**row)
+            for row in await self._gateway.list_all()
         ]
+
+    async def find_by_cinema_id(
+        self, cinema_id: str
+    ) -> CinemaSourceAssignmentReader.CinemaSourceAssignmentData | None:
+        """Return one cinema's assignment, or None when it has no source."""
+        row = await self._gateway.find_by_cinema_id(cinema_id)
+        return self.CinemaSourceAssignmentData(**row) if row is not None else None

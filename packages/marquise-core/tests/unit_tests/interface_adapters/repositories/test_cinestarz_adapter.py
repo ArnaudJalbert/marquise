@@ -9,7 +9,7 @@ import pytest
 
 from marquise.domain.entities import Cinema
 from marquise.domain.value_objects import CinemaId
-from marquise.interface_adapters.repositories.protocols.showtime_source import (
+from marquise.interface_adapters.gateways.showtime_source import (
     ShowtimeSource,
 )
 from marquise.interface_adapters.repositories.source_adapters.cinestarz import (

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncpg
 
-from marquise.interface_adapters.repositories.protocols.base import GatewayPage
+from marquise.interface_adapters.gateways.base import GatewayPage
 
 _COLUMNS = "id, name, address, city, website"
 

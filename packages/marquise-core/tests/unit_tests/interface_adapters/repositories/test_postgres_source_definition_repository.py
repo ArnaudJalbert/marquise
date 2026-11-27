@@ -9,8 +9,8 @@ import pytest
 from marquise.application.exceptions import SourceAlreadyExistsError
 from marquise.domain.entities import SourceDefinition
 from marquise.domain.value_objects import SourceName
-from marquise.interface_adapters.repositories.protocols.cinema import GatewayError
-from marquise.interface_adapters.repositories.protocols.source_definition import (
+from marquise.interface_adapters.gateways.base import GatewayError
+from marquise.interface_adapters.gateways.source_definition import (
     SourceDefinitionGateway,
 )
 from marquise.interface_adapters.repositories.source_definition_repository import (  # noqa: E501

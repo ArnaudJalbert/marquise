@@ -115,9 +115,9 @@ async def run_import_cinema(factory: MarquiseFactory) -> None:
     cinema = await select_cinema(factory, "Select a cinema to import showtimes for:")
     if cinema is None:
         return
-    get_source_use_case = factory.sources.get_cinema_source_use_case
-    assignment = await get_source_use_case.execute(
-        get_source_use_case.InputData(cinema_id=cinema.id)
+    get_source_query = factory.sources.get_cinema_source_query
+    assignment = await get_source_query.execute(
+        get_source_query.InputData(cinema_id=cinema.id)
     )
     print(f"  Cinema:        {cinema.name}")
     print(f"  Assigned source: {assignment.source_display_name}")

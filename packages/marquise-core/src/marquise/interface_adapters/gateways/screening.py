@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
-from marquise.interface_adapters.repositories.protocols.base import (
+from marquise.interface_adapters.gateways.base import (
     GatewayError,
     GatewayPage,
 )

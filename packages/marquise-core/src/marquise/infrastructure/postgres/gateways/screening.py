@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 import asyncpg
 
-from marquise.interface_adapters.repositories.protocols.base import (
+from marquise.infrastructure.postgres.timestamps import to_naive_utc
+from marquise.interface_adapters.gateways.base import (
     GatewayError,
     GatewayPage,
 )
-from marquise.interface_adapters.repositories.protocols.screening import (
+from marquise.interface_adapters.gateways.screening import (
     SaveOutcome,
     ScreeningExternalIdConflictGatewayError,
     ScreeningWriteConflictGatewayError,
@@ -54,18 +55,9 @@ _PLAIN_MOVIE_COLUMNS = (
 )
 
 
-def _naive_utc(dt: datetime) -> datetime:
-    """Convert a timezone-aware datetime to naive UTC, or pass through if naive.
-
-    Args:
-        dt: The datetime to convert.
-
-    Returns:
-        A naive datetime in UTC.
-    """
-    if dt.tzinfo is not None:
-        return dt.astimezone(UTC).replace(tzinfo=None)
-    return dt
+def _to_stored_row(data: dict) -> dict:
+    """Copy screening persistence data with its showtime in stored form."""
+    return {**data, "showtime": to_naive_utc(data["showtime"])}
 
 
 class PostgresScreeningGateway:
@@ -130,7 +122,7 @@ class PostgresScreeningGateway:
                     screening_id,
                     movie_id,
                     cinema_id,
-                    _naive_utc(showtime),
+                    to_naive_utc(showtime),
                     external_id,
                     source_name,
                     ticket_url,
@@ -151,7 +143,7 @@ class PostgresScreeningGateway:
                     "WHERE cinema_id = $1 AND movie_id = $2 AND showtime = $3",
                     cinema_id,
                     movie_id,
-                    _naive_utc(showtime),
+                    to_naive_utc(showtime),
                 )
         if row is None:
             raise GatewayError("Screening disappeared after the identity conflict")
@@ -176,7 +168,7 @@ class PostgresScreeningGateway:
                 "ORDER BY s.id",
                 cinema_id,
                 movie_id,
-                _naive_utc(showtime),
+                to_naive_utc(showtime),
                 external_id,
             )
         return [dict(row) for row in rows]
@@ -190,13 +182,16 @@ class PostgresScreeningGateway:
         The fresh read after locking detects rows committed during lock waits.
         No source ownership or calendar eligibility rule is evaluated here.
         """
+        stored_expected = tuple(_to_stored_row(row) for row in expected)
         async with self._pool.acquire() as conn:
             try:
                 async with conn.transaction(isolation="read_committed"):
-                    await self._check_import_snapshot(conn, incoming, expected)
+                    await self._check_import_snapshot(
+                        conn, _to_stored_row(incoming), stored_expected
+                    )
                     return await self._persist_import(
                         conn,
-                        proposed,
+                        _to_stored_row(proposed),
                         replacing=any(row["id"] == proposed["id"] for row in expected),
                     )
             except (asyncpg.UniqueViolationError, asyncpg.DeadlockDetectedError) as exc:
@@ -301,7 +296,7 @@ class PostgresScreeningGateway:
         values: dict[str, str | datetime | None] = {
             "movie_id": movie_id,
             "cinema_id": cinema_id,
-            "showtime": _naive_utc(showtime),
+            "showtime": to_naive_utc(showtime),
             "external_id": external_id,
             "ticket_url": ticket_url,
             "room": room,
@@ -463,7 +458,7 @@ class PostgresScreeningGateway:
             columns, not prefixed) and the total count of distinct movies
             matching the cinema and date range, ignoring ``limit``/``offset``.
         """
-        params = (cinema_id, _naive_utc(start_date), _naive_utc(end_date))
+        params = (cinema_id, to_naive_utc(start_date), to_naive_utc(end_date))
         where_clause = (
             "WHERE s.cinema_id = $1 AND s.showtime >= $2 AND s.showtime <= $3"
         )

@@ -14,7 +14,7 @@ from marquise.application.repositories import (
 )
 from marquise.domain.entities import Cinema, CinemaSourceAssignment, SourceDefinition
 from marquise.domain.value_objects import CinemaId, SourceName
-from marquise.interface_adapters.repositories.protocols.showtime_source import (
+from marquise.interface_adapters.gateways.showtime_source import (
     ShowtimeSource,
 )
 from marquise.interface_adapters.repositories.source_adapters.cinematheque import (
