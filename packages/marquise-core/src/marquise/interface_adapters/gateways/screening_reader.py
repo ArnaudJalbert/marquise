@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Protocol
 
-from marquise.interface_adapters.repositories.protocols.base import GatewayPage
+from marquise.interface_adapters.gateways.base import GatewayPage
 
 
 class ScreeningReadGateway(Protocol):

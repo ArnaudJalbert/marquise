@@ -11,11 +11,11 @@ from marquise.application.page import Page
 from marquise.application.repositories import CinemaRepository
 from marquise.domain.entities import Cinema
 from marquise.domain.value_objects import CinemaId
-from marquise.interface_adapters.mappers import to_cinema
-from marquise.interface_adapters.repositories.protocols.cinema import (
+from marquise.interface_adapters.gateways.cinema import (
     CinemaGateway,
     GatewayError,
 )
+from marquise.interface_adapters.mappers import to_cinema
 
 
 class PostgresCinemaRepository(CinemaRepository):

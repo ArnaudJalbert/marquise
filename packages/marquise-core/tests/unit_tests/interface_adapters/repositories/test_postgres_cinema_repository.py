@@ -9,13 +9,13 @@ import pytest
 from marquise.application.exceptions import CinemaIdAlreadyExistsError
 from marquise.domain.entities import Cinema
 from marquise.domain.value_objects import CinemaId
-from marquise.interface_adapters.repositories.cinema_repository import (
-    PostgresCinemaRepository,
-)
-from marquise.interface_adapters.repositories.protocols.base import GatewayPage
-from marquise.interface_adapters.repositories.protocols.cinema import (
+from marquise.interface_adapters.gateways.base import GatewayPage
+from marquise.interface_adapters.gateways.cinema import (
     CinemaGateway,
     GatewayError,
+)
+from marquise.interface_adapters.repositories.cinema_repository import (
+    PostgresCinemaRepository,
 )
 
 

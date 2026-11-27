@@ -10,8 +10,8 @@ from marquise.application.page import calculate_page_offset
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
 from marquise.domain.constants import MONTREAL_TIME_ZONE
 from marquise.domain.value_objects import HourFilter
-from marquise.infrastructure.postgres.gateways.screening_reader import _naive_utc
-from marquise.interface_adapters.repositories.protocols.base import GatewayPage
+from marquise.infrastructure.postgres.timestamps import to_naive_utc
+from marquise.interface_adapters.gateways.base import GatewayPage
 
 type _FilterRequest = (
     ScreeningMovieReader.SearchRequest | ScreeningMovieReader.DayCountRequest
@@ -140,9 +140,9 @@ class PostgresScreeningMovieReadGateway:
     ) -> tuple[datetime | str | list[str] | list[int] | bool | None, ...]:
         """Return the values bound to the shared filter's $1 to $10."""
         return (
-            _naive_utc(request.start),
+            to_naive_utc(request.start),
             cls._bind_end_argument(request.end),
-            _naive_utc(request.now),
+            to_naive_utc(request.now),
             cls._bind_title_argument(request.title),
             list(request.cinemas),
             list(request.languages),
@@ -153,7 +153,7 @@ class PostgresScreeningMovieReadGateway:
     @staticmethod
     def _bind_end_argument(end: datetime | None) -> datetime | None:
         """Return the naive UTC end bound, or None for an open-ended window."""
-        return None if end is None else _naive_utc(end)
+        return None if end is None else to_naive_utc(end)
 
     @staticmethod
     def _bind_title_argument(title: str | None) -> str | None:

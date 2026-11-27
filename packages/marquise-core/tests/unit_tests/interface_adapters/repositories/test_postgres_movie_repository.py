@@ -8,11 +8,11 @@ import pytest
 
 from marquise.domain.entities import Movie
 from marquise.domain.value_objects import MovieId
+from marquise.interface_adapters.gateways.base import GatewayPage
+from marquise.interface_adapters.gateways.movie import MovieGateway
 from marquise.interface_adapters.repositories.movie_repository import (
     PostgresMovieRepository,
 )
-from marquise.interface_adapters.repositories.protocols.base import GatewayPage
-from marquise.interface_adapters.repositories.protocols.movie import MovieGateway
 
 
 @pytest.fixture

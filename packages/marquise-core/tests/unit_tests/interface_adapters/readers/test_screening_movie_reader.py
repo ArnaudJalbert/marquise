@@ -6,11 +6,13 @@ from unittest.mock import create_autospec
 import pytest
 
 from marquise.application.readers.screening_movie_reader import ScreeningMovieReader
-from marquise.interface_adapters.readers.screening_movie_reader import (
-    PostgresScreeningMovieReader,
+from marquise.interface_adapters.gateways.base import GatewayPage
+from marquise.interface_adapters.gateways.screening_movie_reader import (
     ScreeningMovieReadGateway,
 )
-from marquise.interface_adapters.repositories.protocols.base import GatewayPage
+from marquise.interface_adapters.readers.screening_movie_reader import (
+    PostgresScreeningMovieReader,
+)
 
 
 @pytest.mark.asyncio

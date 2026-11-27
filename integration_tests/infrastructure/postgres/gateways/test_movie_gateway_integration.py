@@ -7,7 +7,7 @@ import asyncio
 import pytest
 
 from marquise.infrastructure.postgres.gateways.movie import PostgresMovieGateway
-from marquise.interface_adapters.repositories.protocols.base import GatewayError
+from marquise.interface_adapters.gateways.base import GatewayError
 
 
 @pytest.mark.asyncio
