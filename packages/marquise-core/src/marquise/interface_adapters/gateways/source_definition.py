@@ -44,14 +44,6 @@ class SourceDefinitionGateway(Protocol):
         """
         ...
 
-    async def find_all(self) -> list[dict]:
-        """Retrieve all source definition rows.
-
-        Returns:
-            A list of dicts representing source definition rows.
-        """
-        ...
-
     async def delete(self, name: str) -> bool:
         """Delete a source definition by name.
 

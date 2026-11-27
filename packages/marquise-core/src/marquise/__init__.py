@@ -55,6 +55,7 @@ from marquise.application.queries.get_screening import GetScreeningQuery
 from marquise.application.queries.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
+from marquise.application.queries.list_sources import ListSourcesQuery
 from marquise.application.queries.search_screenings import SearchScreeningsQuery
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
@@ -71,7 +72,6 @@ from marquise.application.use_cases.list_movies import ListMoviesUseCase
 from marquise.application.use_cases.list_registry_sources import (
     ListRegistrySourcesUseCase,
 )
-from marquise.application.use_cases.list_sources import ListSourcesUseCase
 from marquise.application.use_cases.merge_movies import MergeMoviesUseCase
 from marquise.application.use_cases.refresh_movies import RefreshMoviesUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
@@ -131,7 +131,7 @@ __all__ = [
     "ListCinemasUseCase",
     "ListMoviesUseCase",
     "ListRegistrySourcesUseCase",
-    "ListSourcesUseCase",
+    "ListSourcesQuery",
     "MarquiseFactory",
     "CinemaUseCases",
     "MovieUseCases",

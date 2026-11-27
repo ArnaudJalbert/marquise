@@ -36,15 +36,6 @@ class SourceDefinitionRepository(ABC):
         ...
 
     @abstractmethod
-    async def find_all(self) -> list[SourceDefinition]:
-        """Retrieve all registered source definitions.
-
-        Returns:
-            A list of all source definitions.
-        """
-        ...
-
-    @abstractmethod
     async def delete(self, name: SourceName) -> bool:
         """Delete a source definition by its name.
 

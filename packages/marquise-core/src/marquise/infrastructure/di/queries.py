@@ -17,6 +17,7 @@ from marquise.application.queries.get_screening import GetScreeningQuery
 from marquise.application.queries.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
+from marquise.application.queries.list_sources import ListSourcesQuery
 from marquise.application.queries.search_screenings import SearchScreeningsQuery
 from marquise.infrastructure.postgres.gateways.cinema import PostgresCinemaGateway
 from marquise.infrastructure.postgres.gateways.cinema_source_assignment_reader import (
@@ -29,6 +30,9 @@ from marquise.infrastructure.postgres.gateways.screening_movie_reader import (
 from marquise.infrastructure.postgres.gateways.screening_reader import (
     PostgresScreeningReadGateway,
 )
+from marquise.infrastructure.postgres.gateways.source_definition_reader import (
+    PostgresSourceDefinitionReadGateway,
+)
 from marquise.interface_adapters.readers.cinema_source_assignment_reader import (
     PostgresCinemaSourceAssignmentReader,
 )
@@ -36,6 +40,9 @@ from marquise.interface_adapters.readers.screening_movie_reader import (
     PostgresScreeningMovieReader,
 )
 from marquise.interface_adapters.readers.screening_reader import PostgresScreeningReader
+from marquise.interface_adapters.readers.source_definition_reader import (
+    PostgresSourceDefinitionReader,
+)
 from marquise.interface_adapters.repositories.cinema_repository import (
     PostgresCinemaRepository,
 )
@@ -113,6 +120,15 @@ def build_get_cinema_source_query(
     """Build cinema-source lookup query."""
     return GetCinemaSourceQuery(
         reader=_build_cinema_source_assignment_reader(pool, schema)
+    )
+
+
+def build_list_sources_query(pool: asyncpg.Pool, schema: str) -> ListSourcesQuery:
+    """Build registered-source listing query."""
+    return ListSourcesQuery(
+        source_definition_reader=PostgresSourceDefinitionReader(
+            gateway=PostgresSourceDefinitionReadGateway(pool=pool, schema=schema)
+        )
     )
 
 

@@ -8,13 +8,11 @@ from marquise.application.repositories import CinemaRepository
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
-from marquise.application.use_cases.list_sources import ListSourcesUseCase
 from marquise.application.use_cases.unassign_source import UnassignSourceUseCase
 from marquise.infrastructure.di.source_management import (
     build_assign_source_use_case,
     build_create_source_use_case,
     build_delete_source_use_case,
-    build_list_sources_use_case,
     build_unassign_source_use_case,
 )
 
@@ -25,13 +23,11 @@ def test_source_definition_builders_use_supplied_pool_and_schema() -> None:
 
     use_cases = (
         build_create_source_use_case(pool, "test_schema"),
-        build_list_sources_use_case(pool, "test_schema"),
         build_delete_source_use_case(pool, "test_schema"),
     )
 
     assert isinstance(use_cases[0], CreateSourceUseCase)
-    assert isinstance(use_cases[1], ListSourcesUseCase)
-    assert isinstance(use_cases[2], DeleteSourceUseCase)
+    assert isinstance(use_cases[1], DeleteSourceUseCase)
     for use_case in use_cases:
         gateway = use_case.source_repository._gateway
         assert gateway._pool is pool

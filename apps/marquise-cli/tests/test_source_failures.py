@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, create_autospec
 
 import pytest
@@ -12,7 +13,7 @@ from marquise import (
     CreateSourceUseCase,
     DeleteSourceUseCase,
     ListRegistrySourcesUseCase,
-    ListSourcesUseCase,
+    ListSourcesQuery,
     SourceAlreadyExistsError,
     SourceNotFoundError,
 )
@@ -30,10 +31,10 @@ def source_factory(mock_factory: MagicMock) -> MagicMock:
             for name in ("first", "second", "third")
         ]
     )
-    listing = create_autospec(ListSourcesUseCase, instance=True)
-    listing.execute.return_value = ListSourcesUseCase.OutputData(sources=[])
+    listing = create_autospec(ListSourcesQuery, instance=True)
+    listing.execute.return_value = ListSourcesQuery.OutputData(sources=[])
     mock_factory.sources.list_registry_sources_use_case = registry
-    mock_factory.sources.list_sources_use_case = listing
+    mock_factory.sources.list_sources_query = listing
     mock_factory.sources.create_source_use_case = mock_use_case(CreateSourceUseCase)
     mock_factory.sources.delete_source_use_case = mock_use_case(DeleteSourceUseCase)
     return mock_factory
@@ -133,17 +134,15 @@ def _assert_stopped_after_second(
     assert session.closed
 
 
-def _show_sources(
-    factory: MagicMock, sources: list[ListSourcesUseCase.SourceData]
-) -> None:
+def _show_sources(factory: MagicMock, sources: list[SimpleNamespace]) -> None:
     """List the given sources as already registered."""
-    factory.sources.list_sources_use_case.execute.return_value = (
-        ListSourcesUseCase.OutputData(sources=sources)
+    factory.sources.list_sources_query.execute.return_value = (
+        ListSourcesQuery.OutputData(sources=sources)
     )
 
 
 _REGISTERED_SOURCES = [
-    ListSourcesUseCase.SourceData(name=name, display_name=name)
+    SimpleNamespace(name=name, display_name=name)
     for name in ("first", "second", "third")
 ]
 
@@ -158,7 +157,7 @@ class SourceErrorCase:
     """Configure a source command, its registered sources and its failure."""
 
     command: str
-    registered_sources: list[ListSourcesUseCase.SourceData]
+    registered_sources: list[SimpleNamespace]
     failure: Exception
 
 

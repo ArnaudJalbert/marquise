@@ -81,18 +81,6 @@ class PostgresSourceDefinitionGateway:
             )
         return dict(row) if row is not None else None
 
-    async def find_all(self) -> list[dict]:
-        """Retrieve all source definition rows.
-
-        Returns:
-            A list of dicts representing source definition rows.
-        """
-        async with self._pool.acquire() as conn:
-            rows = await conn.fetch(
-                f"SELECT {_COLUMNS} FROM {self._table} ORDER BY name"
-            )
-        return [dict(r) for r in rows]
-
     async def delete(self, name: str) -> bool:
         """Delete a source definition by name.
 
