@@ -11,7 +11,7 @@ import pytest
 from marquise.infrastructure.postgres.gateways.cinema import PostgresCinemaGateway
 from marquise.infrastructure.postgres.gateways.movie import PostgresMovieGateway
 from marquise.infrastructure.postgres.gateways.screening import PostgresScreeningGateway
-from marquise.interface_adapters.repositories.protocols.screening import (
+from marquise.interface_adapters.gateways.screening import (
     ScreeningExternalIdConflictGatewayError,
 )
 

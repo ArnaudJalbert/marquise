@@ -24,8 +24,8 @@ from marquise.infrastructure.postgres.gateways.screening_reader import (
 from marquise.infrastructure.postgres.gateways.source_definition import (
     PostgresSourceDefinitionGateway,
 )
-from marquise.interface_adapters.repositories.protocols.base import GatewayError
-from marquise.interface_adapters.repositories.protocols.screening import (
+from marquise.interface_adapters.gateways.base import GatewayError
+from marquise.interface_adapters.gateways.screening import (
     ScreeningExternalIdConflictGatewayError,
 )
 from marquise.interface_adapters.repositories.screening_repository import (

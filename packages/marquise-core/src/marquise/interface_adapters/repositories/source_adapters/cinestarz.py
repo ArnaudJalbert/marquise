@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any
 
 from marquise.domain.entities import Cinema
-from marquise.interface_adapters.repositories.protocols.showtime_source import (
+from marquise.interface_adapters.gateways.showtime_source import (
     ShowtimeSource,
 )
 

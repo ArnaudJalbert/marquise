@@ -7,7 +7,7 @@ from marquise.application.movie_workflows import (
     MergeMoviesInputData,
     MergeMoviesOutputData,
 )
-from marquise.interface_adapters.repositories.protocols.base import GatewayError
+from marquise.interface_adapters.gateways.base import GatewayError
 
 
 class MovieMetadataConflictError(GatewayError):

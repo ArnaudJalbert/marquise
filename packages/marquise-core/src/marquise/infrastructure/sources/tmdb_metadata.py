@@ -20,7 +20,7 @@ from marquise.application.exceptions import (
     MetadataUnavailableError,
 )
 from marquise.application.metadata import MetadataBatch
-from marquise.interface_adapters.repositories.protocols.tmdb_metadata_source import (
+from marquise.interface_adapters.gateways.tmdb_metadata_source import (
     TmdbMetadataError,
 )
 

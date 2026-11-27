@@ -11,7 +11,7 @@ from marquise.application.readers.screening_movie_reader import ScreeningMovieRe
 from marquise.domain.constants import MONTREAL_TIME_ZONE
 from marquise.domain.value_objects import HourFilter
 from marquise.infrastructure.postgres.gateways.screening_reader import _naive_utc
-from marquise.interface_adapters.repositories.protocols.base import GatewayPage
+from marquise.interface_adapters.gateways.base import GatewayPage
 
 type _FilterRequest = (
     ScreeningMovieReader.SearchRequest | ScreeningMovieReader.DayCountRequest
