@@ -9,7 +9,7 @@ import questionary
 from rich.console import Console
 
 from marquise import (
-    CreateCinemaUseCase,
+    GetCinemaQuery,
     ListCinemasUseCase,
     MarquiseFactory,
     UpdateCinemaUseCase,
@@ -105,7 +105,7 @@ async def select_cinema(
 
 def print_cinema(
     heading: str,
-    cinema: CreateCinemaUseCase.OutputData | UpdateCinemaUseCase.OutputData,
+    cinema: GetCinemaQuery.OutputData | UpdateCinemaUseCase.OutputData,
 ) -> None:
     """Print a saved cinema's details under a heading."""
     print(heading)

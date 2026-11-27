@@ -11,40 +11,52 @@ from marquise import (
     AssignSourceUseCase,
     CinemaAlreadyExistsError,
     CinemaIdAlreadyExistsError,
-    CreateCinemaUseCase,
+    CreateCinemaCommand,
+    GetCinemaQuery,
 )
 from marquise_cli.cinema_commands.create_command import run_create
 
 
-def _mock_create_use_case(
-    response: SimpleNamespace | None = None,
+def _mock_create_command(
+    response: CreateCinemaCommand.OutputData | None = None,
     error: Exception | None = None,
 ) -> MagicMock:
-    """Provide a mocked create-cinema use case."""
-    use_case = create_autospec(CreateCinemaUseCase, instance=True)
-    use_case.execute = AsyncMock(side_effect=error, return_value=response)
-    use_case.InputData = CreateCinemaUseCase.InputData
-    return use_case
+    """Provide a mocked create-cinema command."""
+    command = create_autospec(CreateCinemaCommand, instance=True)
+    command.execute = AsyncMock(side_effect=error, return_value=response)
+    command.InputData = CreateCinemaCommand.InputData
+    return command
 
 
-def _created_cinema() -> CreateCinemaUseCase.OutputData:
-    """Provide cinema output for create command tests."""
-    return CreateCinemaUseCase.OutputData(
-        id="cin-001",
-        name="Test Cinema",
-        address="123 Test St",
-        city="Montreal",
-        website="https://example.com",
+def _created_cinema() -> CreateCinemaCommand.OutputData:
+    """Provide the created cinema's ID for create command tests."""
+    return CreateCinemaCommand.OutputData(cinema_id="cin-001")
+
+
+def _mock_get_cinema_query() -> MagicMock:
+    """Provide a mocked query that reads the created cinema back."""
+    query = create_autospec(GetCinemaQuery, instance=True)
+    query.execute = AsyncMock(
+        return_value=GetCinemaQuery.OutputData(
+            id="cin-001",
+            name="Test Cinema",
+            address="123 Test St",
+            city="Montreal",
+            website="https://example.com",
+        )
     )
+    query.InputData = GetCinemaQuery.InputData
+    return query
 
 
 @pytest.mark.asyncio
 async def test_cinema_create_success(
     mock_factory: MagicMock, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Verify cinema create uses the direct use case and prints details."""
-    use_case = _mock_create_use_case(response=_created_cinema())
-    mock_factory.cinemas.create_cinema_use_case = use_case
+    """Cinema create runs the command, then prints the cinema read back by ID."""
+    create_command = _mock_create_command(response=_created_cinema())
+    mock_factory.cinemas.create_cinema_command = create_command
+    mock_factory.cinemas.get_cinema_query = _mock_get_cinema_query()
 
     with patch(
         "marquise_cli.cinema_commands.create_command.questionary.confirm"
@@ -62,13 +74,15 @@ async def test_cinema_create_success(
     assert "Cinema created:" in captured.out
     assert "cin-001" in captured.out
     assert "Test Cinema" in captured.out
-    use_case.execute.assert_awaited_once()
-    request = use_case.execute.call_args.args[0]
-    assert isinstance(request, CreateCinemaUseCase.InputData)
+    create_command.execute.assert_awaited_once()
+    request = create_command.execute.call_args.args[0]
+    assert isinstance(request, CreateCinemaCommand.InputData)
     assert request.name == "Test Cinema"
     assert request.address == "123 Test St"
     assert request.city == "Montreal"
     assert request.website == "https://example.com"
+    query_request = mock_factory.cinemas.get_cinema_query.execute.call_args.args[0]
+    assert query_request == GetCinemaQuery.InputData(cinema_id="cin-001")
 
 
 @pytest.mark.asyncio
@@ -76,12 +90,13 @@ async def test_cinema_create_assigns_source_after_success(
     mock_factory: MagicMock, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Verify successful creation can assign a selected source."""
-    use_case = _mock_create_use_case(response=_created_cinema())
+    create_command = _mock_create_command(response=_created_cinema())
     assign_use_case = create_autospec(AssignSourceUseCase, instance=True)
     assign_use_case.execute = AsyncMock(
         return_value=SimpleNamespace(cinema_id="cin-001", source_name="cineplex")
     )
-    mock_factory.cinemas.create_cinema_use_case = use_case
+    mock_factory.cinemas.create_cinema_command = create_command
+    mock_factory.cinemas.get_cinema_query = _mock_get_cinema_query()
     mock_factory.sources.assign_source_use_case = assign_use_case
 
     with (
@@ -104,7 +119,7 @@ async def test_cinema_create_assigns_source_after_success(
 
     captured = capsys.readouterr()
     assert "Source assigned:" in captured.out
-    request = use_case.execute.call_args.args[0]
+    request = create_command.execute.call_args.args[0]
     assert request.address is None
     assert request.city is None
     assert request.website is None
@@ -119,9 +134,10 @@ async def test_cinema_create_declines_source_assignment(
     mock_factory: MagicMock,
 ) -> None:
     """Verify declining source assignment leaves cinema created."""
-    use_case = _mock_create_use_case(response=_created_cinema())
+    create_command = _mock_create_command(response=_created_cinema())
     assign_use_case = create_autospec(AssignSourceUseCase, instance=True)
-    mock_factory.cinemas.create_cinema_use_case = use_case
+    mock_factory.cinemas.create_cinema_command = create_command
+    mock_factory.cinemas.get_cinema_query = _mock_get_cinema_query()
     mock_factory.sources.assign_source_use_case = assign_use_case
 
     with (
@@ -151,10 +167,11 @@ async def test_cinema_create_assignment_failure(
     mock_factory: MagicMock, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Verify source assignment errors are reported after creation."""
-    use_case = _mock_create_use_case(response=_created_cinema())
+    create_command = _mock_create_command(response=_created_cinema())
     assign_use_case = create_autospec(AssignSourceUseCase, instance=True)
     assign_use_case.execute = AsyncMock(side_effect=ValueError("Source unavailable"))
-    mock_factory.cinemas.create_cinema_use_case = use_case
+    mock_factory.cinemas.create_cinema_command = create_command
+    mock_factory.cinemas.get_cinema_query = _mock_get_cinema_query()
     mock_factory.sources.assign_source_use_case = assign_use_case
 
     with (
@@ -196,9 +213,10 @@ async def test_cinema_create_failure(
     error: Exception,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Every create use-case error is shown and exits unsuccessfully."""
-    use_case = _mock_create_use_case(error=error)
-    mock_factory.cinemas.create_cinema_use_case = use_case
+    """Every create command error is shown and exits unsuccessfully."""
+    create_command = _mock_create_command(error=error)
+    mock_factory.cinemas.create_cinema_command = create_command
+    mock_factory.cinemas.get_cinema_query = _mock_get_cinema_query()
 
     with pytest.raises(SystemExit):
         await run_create(
@@ -219,7 +237,7 @@ async def test_cinema_create_unexpected_failure_propagates(
     mock_factory: MagicMock,
 ) -> None:
     """Unexpected create failures propagate after factory cleanup."""
-    mock_factory.cinemas.create_cinema_use_case = _mock_create_use_case(
+    mock_factory.cinemas.create_cinema_command = _mock_create_command(
         error=RuntimeError("database unavailable")
     )
 

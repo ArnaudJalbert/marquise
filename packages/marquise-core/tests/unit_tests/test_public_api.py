@@ -36,7 +36,7 @@ EXPECTED_PUBLIC_SURFACE: set[str] = {
     "CinemaNotFoundError",
     "CinemaSourceAssignmentAlreadyExistsError",
     "CinemaSourceAssignmentNotFoundError",
-    "CreateCinemaUseCase",
+    "CreateCinemaCommand",
     "CreateScreeningsCommand",
     "ImportScreeningsCommand",
     "CreateSourceUseCase",

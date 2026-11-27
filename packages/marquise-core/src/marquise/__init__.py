@@ -59,7 +59,7 @@ from marquise.application.queries.list_cinema_source_assignments import (
 from marquise.application.queries.list_sources import ListSourcesQuery
 from marquise.application.queries.search_screenings import SearchScreeningsQuery
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
-from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
+from marquise.application.use_cases.create_cinema import CreateCinemaCommand
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
@@ -112,7 +112,7 @@ __all__ = [
     "CinemaNotFoundError",
     "CinemaSourceAssignmentAlreadyExistsError",
     "CinemaSourceAssignmentNotFoundError",
-    "CreateCinemaUseCase",
+    "CreateCinemaCommand",
     "CreateScreeningsCommand",
     "ImportScreeningsCommand",
     "CreateSourceUseCase",

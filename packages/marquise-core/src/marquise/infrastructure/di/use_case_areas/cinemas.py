@@ -10,7 +10,7 @@ from marquise.application.queries.get_cinema import GetCinemaQuery
 from marquise.application.queries.get_cinema_screenings import (
     GetCinemaScreeningsQuery,
 )
-from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
+from marquise.application.use_cases.create_cinema import CreateCinemaCommand
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
 from marquise.application.use_cases.get_cinema_movies import GetCinemaMoviesUseCase
 from marquise.application.use_cases.list_cinemas import ListCinemasUseCase
@@ -36,7 +36,7 @@ from marquise.interface_adapters.repositories.screening_repository import (
 class CinemaUseCases:
     """Wired use cases and queries that read and change cinemas."""
 
-    create_cinema_use_case: CreateCinemaUseCase
+    create_cinema_command: CreateCinemaCommand
     delete_cinema_use_case: DeleteCinemaUseCase
     update_cinema_use_case: UpdateCinemaUseCase
     list_cinemas_use_case: ListCinemasUseCase
@@ -66,7 +66,7 @@ def build_cinema_use_cases(pool: asyncpg.Pool, settings: Settings) -> CinemaUseC
     """
     cinema_repository = build_cinema_repository(pool, settings.schema)
     return CinemaUseCases(
-        create_cinema_use_case=CreateCinemaUseCase(cinema_repository=cinema_repository),
+        create_cinema_command=CreateCinemaCommand(cinema_repository=cinema_repository),
         delete_cinema_use_case=DeleteCinemaUseCase(cinema_repository=cinema_repository),
         update_cinema_use_case=UpdateCinemaUseCase(cinema_repository=cinema_repository),
         list_cinemas_use_case=ListCinemasUseCase(cinema_repository=cinema_repository),

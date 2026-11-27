@@ -12,7 +12,6 @@ from marquise import (
     CinemaIdAlreadyExistsError,
     CinemaNotFoundError,
     CinemaSourceAssignmentAlreadyExistsError,
-    CreateCinemaUseCase,
     MarquiseFactory,
     SourceNotFoundError,
 )
@@ -25,12 +24,12 @@ async def _create_cinema(
     address: str | None,
     city: str | None,
     website: str | None,
-) -> CreateCinemaUseCase.OutputData:
-    """Create a cinema and display its details."""
+) -> str:
+    """Create a cinema and return its ID."""
     try:
-        create_cinema_use_case = factory.cinemas.create_cinema_use_case
-        response = await create_cinema_use_case.execute(
-            create_cinema_use_case.InputData(
+        create_cinema_command = factory.cinemas.create_cinema_command
+        created = await create_cinema_command.execute(
+            create_cinema_command.InputData(
                 name=name,
                 address=address,
                 city=city,
@@ -41,8 +40,16 @@ async def _create_cinema(
         print(f"There was an error when creating the cinema: {error}", file=sys.stderr)
         raise SystemExit(1) from error
 
-    print_cinema("Cinema created:", response)
-    return response
+    return created.cinema_id
+
+
+async def _print_created_cinema(factory: MarquiseFactory, cinema_id: str) -> None:
+    """Read the new cinema back and display its details."""
+    get_cinema_query = factory.cinemas.get_cinema_query
+    cinema = await get_cinema_query.execute(
+        get_cinema_query.InputData(cinema_id=cinema_id)
+    )
+    print_cinema("Cinema created:", cinema)
 
 
 async def _assign_source(factory: MarquiseFactory, cinema_id: str) -> None:
@@ -90,14 +97,15 @@ async def run_create(
     website: str | None,
 ) -> None:
     """Create a cinema and optionally assign a source."""
-    cinema = await _create_cinema(
+    cinema_id = await _create_cinema(
         factory,
         name=name,
         address=address,
         city=city,
         website=website,
     )
-    await _assign_source(factory, cinema.id)
+    await _print_created_cinema(factory, cinema_id)
+    await _assign_source(factory, cinema_id)
 
 
 def create(
