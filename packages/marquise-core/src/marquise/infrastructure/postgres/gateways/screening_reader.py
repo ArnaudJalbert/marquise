@@ -7,7 +7,7 @@ from datetime import datetime
 import asyncpg
 
 from marquise.infrastructure.postgres.timestamps import to_naive_utc
-from marquise.interface_adapters.repositories.protocols.base import GatewayPage
+from marquise.interface_adapters.gateways.base import GatewayPage
 
 _COLUMNS = (
     "s.id, s.movie_id, s.cinema_id, s.showtime,"

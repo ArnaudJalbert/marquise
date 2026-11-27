@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncpg
 
-from marquise.interface_adapters.repositories.protocols.base import GatewayError
+from marquise.interface_adapters.gateways.base import GatewayError
 
 _COLUMNS = "cinema_id, source_name"
 _CINEMA_COLUMNS = (

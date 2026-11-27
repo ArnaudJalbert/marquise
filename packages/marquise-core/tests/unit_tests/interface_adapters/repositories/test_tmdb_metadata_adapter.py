@@ -17,7 +17,7 @@ from marquise.application.exceptions import (
 )
 from marquise.application.metadata import ProviderIdentity
 from marquise.infrastructure.sources.tmdb_metadata import TmdbMetadataHttpSource
-from marquise.interface_adapters.repositories.protocols.tmdb_metadata_source import (
+from marquise.interface_adapters.gateways.tmdb_metadata_source import (
     TmdbMetadataSource,
 )
 from marquise.interface_adapters.repositories.source_adapters.tmdb_metadata import (

@@ -25,7 +25,7 @@ from marquise.infrastructure.sources.tmdb_metadata import (
     TmdbMetadataHttpSource,
     _NoRedirect,
 )
-from marquise.interface_adapters.repositories.protocols.tmdb_metadata_source import (
+from marquise.interface_adapters.gateways.tmdb_metadata_source import (
     TmdbMetadataError,
 )
 

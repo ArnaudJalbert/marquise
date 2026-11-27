@@ -6,10 +6,10 @@ from datetime import datetime
 
 from marquise.application.page import Page
 from marquise.application.readers import ScreeningReader
-from marquise.interface_adapters.mappers import to_screening_data
-from marquise.interface_adapters.readers.screening_read_gateway import (
+from marquise.interface_adapters.gateways.screening_reader import (
     ScreeningReadGateway,
 )
+from marquise.interface_adapters.mappers import to_screening_data
 
 
 class PostgresScreeningReader(ScreeningReader):

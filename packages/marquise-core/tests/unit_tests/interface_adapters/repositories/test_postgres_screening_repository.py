@@ -19,11 +19,11 @@ from marquise.domain.value_objects import (
     ScreeningId,
     Showtime,
 )
-from marquise.interface_adapters.repositories.protocols.base import (
+from marquise.interface_adapters.gateways.base import (
     GatewayError,
     GatewayPage,
 )
-from marquise.interface_adapters.repositories.protocols.screening import (
+from marquise.interface_adapters.gateways.screening import (
     SaveOutcome,
     ScreeningExternalIdConflictGatewayError,
     ScreeningGateway,

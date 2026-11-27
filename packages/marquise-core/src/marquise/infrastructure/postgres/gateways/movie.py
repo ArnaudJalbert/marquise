@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncpg
 from asyncpg.exceptions import UniqueViolationError
 
-from marquise.interface_adapters.repositories.protocols.base import (
+from marquise.interface_adapters.gateways.base import (
     GatewayError,
     GatewayPage,
 )

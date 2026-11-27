@@ -7,11 +7,11 @@ from datetime import datetime
 import asyncpg
 
 from marquise.infrastructure.postgres.timestamps import to_naive_utc
-from marquise.interface_adapters.repositories.protocols.base import (
+from marquise.interface_adapters.gateways.base import (
     GatewayError,
     GatewayPage,
 )
-from marquise.interface_adapters.repositories.protocols.screening import (
+from marquise.interface_adapters.gateways.screening import (
     SaveOutcome,
     ScreeningExternalIdConflictGatewayError,
     ScreeningWriteConflictGatewayError,

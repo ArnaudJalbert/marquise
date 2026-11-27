@@ -22,17 +22,17 @@ from marquise.domain.value_objects import (
     ScreeningId,
     Showtime,
 )
+from marquise.interface_adapters.gateways.base import GatewayError
+from marquise.interface_adapters.gateways.screening import (
+    ScreeningExternalIdConflictGatewayError,
+    ScreeningGateway,
+    ScreeningWriteConflictGatewayError,
+)
 from marquise.interface_adapters.mappers import (
     extract_prefixed,
     to_aware_utc,
     to_cinema,
     to_movie,
-)
-from marquise.interface_adapters.repositories.protocols.base import GatewayError
-from marquise.interface_adapters.repositories.protocols.screening import (
-    ScreeningExternalIdConflictGatewayError,
-    ScreeningGateway,
-    ScreeningWriteConflictGatewayError,
 )
 
 

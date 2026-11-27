@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from marquise.interface_adapters.repositories.protocols.base import (
+from marquise.interface_adapters.gateways.base import (
     GatewayError,
     GatewayPage,
 )
