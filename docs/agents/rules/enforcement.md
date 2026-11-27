@@ -31,6 +31,7 @@ Check `Rules test` is a planned AST test in `packages/marquise-core/tests/unit_t
 
 | Rule | Home | Check | Status |
 |---|---|---|---|
+| A state change is a `*Command`, a read is a `*Query`, and no class ends in `UseCase` | `coding-use-cases` | Review | Review |
 | Dependencies are required, with no default or `\| None` | `coding-use-cases` | Rules test | Planned |
 | A use case never resolves a dependency | `coding-use-cases` | Rules test: no calls in `__init__` | Planned |
 | Only a coordinator injects use cases | `coding-use-cases` | Rules test: injects a use case means no loops or conditions | Planned |

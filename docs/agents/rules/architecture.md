@@ -15,7 +15,7 @@ The layer rules, boundaries, injection and review gate come from the shared `cod
 | Composition root | `packages/marquise-core/src/marquise/infrastructure/di/` |
 | Delivery | `apps/marquise-api`, `apps/marquise-cli` |
 
-Inside `application/` are `use_cases/` (`*UseCase`, plus a few `*Command` import writes), `queries/` (`*Query`), `repositories/`, `readers/`, and `exceptions/`. `metadata.py` and `movie_workflows.py` hold the metadata contracts ([docs/metadata-contracts.md](../../metadata-contracts.md)).
+Inside `application/` are `use_cases/` (commands, `*Command`), `queries/` (`*Query`), `repositories/`, `readers/`, and `exceptions/`. `metadata.py` and `movie_workflows.py` hold the metadata contracts ([docs/metadata-contracts.md](../../metadata-contracts.md)).
 
 ## Public facade
 
