@@ -31,7 +31,7 @@ from marquise.application.queries.list_cinema_source_assignments import (
 from marquise.application.queries.list_sources import ListSourcesQuery
 from marquise.application.queries.search_screenings import SearchScreeningsQuery
 from marquise.application.use_cases.assign_source import AssignSourceUseCase
-from marquise.application.use_cases.create_cinema import CreateCinemaUseCase
+from marquise.application.use_cases.create_cinema import CreateCinemaCommand
 from marquise.application.use_cases.create_source import CreateSourceUseCase
 from marquise.application.use_cases.delete_cinema import DeleteCinemaUseCase
 from marquise.application.use_cases.delete_source import DeleteSourceUseCase
@@ -70,7 +70,7 @@ def database() -> MagicMock:
 @pytest.mark.parametrize(
     ("path", "use_case_type"),
     [
-        ("cinemas.create_cinema_use_case", CreateCinemaUseCase),
+        ("cinemas.create_cinema_command", CreateCinemaCommand),
         ("cinemas.delete_cinema_use_case", DeleteCinemaUseCase),
         ("cinemas.update_cinema_use_case", UpdateCinemaUseCase),
         ("cinemas.list_cinemas_use_case", ListCinemasUseCase),
