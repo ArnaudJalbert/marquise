@@ -14,7 +14,7 @@ from marquise.application.repositories import CinemaSourceAssignmentRepository
 from marquise.domain.entities import CinemaSourceAssignment, SourceDefinition
 from marquise.domain.value_objects import CinemaId, SourceName
 from marquise.interface_adapters.gateways.base import GatewayError
-from marquise.interface_adapters.gateways.cinema_source_assignment import (  # noqa: E501
+from marquise.interface_adapters.gateways.cinema_source_assignment import (
     CinemaSourceAssignmentGateway,
 )
 from marquise.interface_adapters.mappers import extract_prefixed, to_cinema

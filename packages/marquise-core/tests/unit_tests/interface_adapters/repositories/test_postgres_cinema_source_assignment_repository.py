@@ -10,7 +10,7 @@ from marquise.application.exceptions import CinemaSourceAssignmentAlreadyExistsE
 from marquise.domain.entities import Cinema, CinemaSourceAssignment, SourceDefinition
 from marquise.domain.value_objects import CinemaId, SourceName
 from marquise.interface_adapters.gateways.base import GatewayError
-from marquise.interface_adapters.gateways.cinema_source_assignment import (  # noqa: E501
+from marquise.interface_adapters.gateways.cinema_source_assignment import (
     CinemaSourceAssignmentGateway,
 )
 from marquise.interface_adapters.repositories.cinema_source_assignment_repository import (  # noqa: E501
