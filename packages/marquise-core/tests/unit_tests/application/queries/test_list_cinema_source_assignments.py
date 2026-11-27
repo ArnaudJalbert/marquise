@@ -18,7 +18,9 @@ async def test_list_cinema_source_assignments_returns_reader_data() -> None:
     reader = create_autospec(CinemaSourceAssignmentReader, instance=True)
     expected = [
         CinemaSourceAssignmentReader.CinemaSourceAssignmentData(
-            cinema_id="cin-001", source_display_name="Cineplex"
+            cinema_id="cin-001",
+            source_name="cineplex",
+            source_display_name="Cineplex",
         )
     ]
     reader.list_all.return_value = expected
