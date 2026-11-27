@@ -249,3 +249,29 @@ async def test_cinema_create_unexpected_failure_propagates(
             city=None,
             website=None,
         )
+
+
+@pytest.mark.asyncio
+async def test_cinema_create_read_back_failure_propagates(
+    mock_factory: MagicMock,
+) -> None:
+    """A failed read-back raises after one creation and never assigns a source."""
+    create_command = _mock_create_command(response=_created_cinema())
+    get_cinema_query = _mock_get_cinema_query()
+    get_cinema_query.execute.side_effect = RuntimeError("database unavailable")
+    assign_use_case = create_autospec(AssignSourceUseCase, instance=True)
+    mock_factory.cinemas.create_cinema_command = create_command
+    mock_factory.cinemas.get_cinema_query = get_cinema_query
+    mock_factory.sources.assign_source_use_case = assign_use_case
+
+    with pytest.raises(RuntimeError, match="database unavailable"):
+        await run_create(
+            mock_factory,
+            name="Test Cinema",
+            address=None,
+            city=None,
+            website=None,
+        )
+
+    create_command.execute.assert_awaited_once()
+    assign_use_case.execute.assert_not_awaited()
