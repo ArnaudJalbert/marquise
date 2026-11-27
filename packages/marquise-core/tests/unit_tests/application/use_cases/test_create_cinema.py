@@ -68,6 +68,41 @@ async def test_create_cinema_saves_cinema_and_returns_its_id(
 
 
 @pytest.mark.asyncio
+async def test_create_cinema_saves_absent_optional_fields_as_none(
+    command: CreateCinemaCommand, cinema_repository: CinemaRepository
+) -> None:
+    """A cinema created with only a name is saved with no address, city or website."""
+    await command.execute(command.InputData(name="Test Cinema"))
+
+    saved = cinema_repository.save.await_args.args[0]
+    assert (saved.address, saved.city, saved.website) == (None, None, None)
+
+
+@pytest.mark.parametrize("field", ["name", "address", "city", "website"])
+@pytest.mark.asyncio
+async def test_create_cinema_rejects_blank_field(
+    command: CreateCinemaCommand, field: str
+) -> None:
+    """A blank name, or a blank optional field when given, is rejected."""
+    fields = {"name": "Test Cinema", field: "   "}
+
+    with pytest.raises(ValueError, match=f"{field} must not be empty"):
+        await command.execute(command.InputData(**fields))
+
+
+@pytest.mark.parametrize("field", ["name", "address", "city", "website"])
+@pytest.mark.asyncio
+async def test_create_cinema_rejects_non_string_field(
+    command: CreateCinemaCommand, field: str
+) -> None:
+    """A field that is not a string is rejected."""
+    fields = {"name": "Test Cinema", field: 42}
+
+    with pytest.raises(TypeError, match=f"{field} must be a string"):
+        await command.execute(command.InputData(**fields))
+
+
+@pytest.mark.asyncio
 async def test_create_cinema_rejects_duplicate_name_and_address(
     command: CreateCinemaCommand,
     cinema_repository: CinemaRepository,
