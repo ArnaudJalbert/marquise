@@ -17,7 +17,7 @@ from marquise import (
     DeleteCinemaUseCase,
     DeleteSourceUseCase,
     GetCinemaSourceQuery,
-    ListCinemasUseCase,
+    ListCinemasQuery,
     MarquiseFactory,
     MovieUseCases,
     ScreeningUseCases,
@@ -30,7 +30,7 @@ UseCaseType = type[
     CreateSourceUseCase
     | DeleteCinemaUseCase
     | DeleteSourceUseCase
-    | ListCinemasUseCase
+    | ListCinemasQuery
     | UpdateCinemaUseCase
 ]
 
@@ -95,9 +95,9 @@ def mock_use_case(use_case_type: UseCaseType) -> MagicMock:
 
 
 @pytest.fixture
-def mock_list_cinemas_use_case() -> MagicMock:
-    """Provide a mocked ListCinemasUseCase."""
-    return mock_use_case(ListCinemasUseCase)
+def mock_list_cinemas_query() -> MagicMock:
+    """Provide a mocked ListCinemasQuery."""
+    return mock_use_case(ListCinemasQuery)
 
 
 def make_cinema_data(
@@ -106,9 +106,9 @@ def make_cinema_data(
     address: str | None = "123 Test St",
     city: str | None = "Montreal",
     website: str | None = "https://example.com",
-) -> ListCinemasUseCase.CinemaData:
+) -> ListCinemasQuery.CinemaData:
     """Build a CinemaData instance for test setup."""
-    return ListCinemasUseCase.CinemaData(
+    return ListCinemasQuery.CinemaData(
         id=cinema_id,
         name=name,
         address=address,
@@ -154,7 +154,7 @@ def _stub_factory_with_cineplex_source() -> MagicMock:
 
 def _stub_selections(
     module: ModuleType,
-    selections: dict[str, ListCinemasUseCase.CinemaData | str | tuple[date, date]],
+    selections: dict[str, ListCinemasQuery.CinemaData | str | tuple[date, date]],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Replace interactive selection prompts with fixed answers."""

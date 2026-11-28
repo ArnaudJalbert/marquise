@@ -9,7 +9,7 @@ from rich import box
 from rich.table import Table
 from rich.text import Text
 
-from marquise import ListCinemasUseCase, MarquiseFactory
+from marquise import ListCinemasQuery, MarquiseFactory
 from marquise_cli.helpers import (
     connected_factory,
     console,
@@ -32,7 +32,7 @@ def _website_text(website: str) -> Text:
 
 
 def _build_table(
-    cinemas: list[ListCinemasUseCase.CinemaData],
+    cinemas: list[ListCinemasQuery.CinemaData],
     source_names: dict[str, str],
     verbose: bool,
 ) -> Table:

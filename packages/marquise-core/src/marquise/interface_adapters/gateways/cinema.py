@@ -4,12 +4,9 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from marquise.interface_adapters.gateways.base import (
-    GatewayError,
-    GatewayPage,
-)
+from marquise.interface_adapters.gateways.base import GatewayError
 
-__all__ = ["CinemaGateway", "GatewayError", "GatewayPage"]
+__all__ = ["CinemaGateway", "GatewayError"]
 
 
 class CinemaGateway(Protocol):
@@ -111,25 +108,5 @@ class CinemaGateway(Protocol):
 
         Returns:
             True if a row was deleted, False otherwise.
-        """
-        ...
-
-    async def find_all(
-        self,
-        name_filter: str | None = None,
-        limit: int | None = None,
-        offset: int = 0,
-    ) -> GatewayPage:
-        """Retrieve cinemas, optionally filtered by name and paginated.
-
-        Args:
-            name_filter: An optional substring to match against cinema names
-                (case-insensitive). If None, all cinemas are returned.
-            limit: Max number of rows to return. If None, all matching rows
-                are returned unbounded.
-            offset: Number of matching rows to skip before returning results.
-
-        Returns:
-            A ``GatewayPage`` with the matching rows and the total count.
         """
         ...

@@ -28,7 +28,7 @@ from marquise import (
     GetMovieScreeningsQuery,
     GetMovieUseCase,
     GetScreeningQuery,
-    ListCinemasUseCase,
+    ListCinemasQuery,
     ListMoviesUseCase,
     MarquiseFactory,
     MovieNotFoundError,
@@ -53,9 +53,7 @@ def factory() -> MagicMock:
     """Provide fake factory with autospecced read use cases."""
     fake = create_autospec(MarquiseFactory, instance=True)
     fake.cinemas = create_autospec(CinemaUseCases, instance=True)
-    fake.cinemas.list_cinemas_use_case = create_autospec(
-        ListCinemasUseCase, instance=True
-    )
+    fake.cinemas.list_cinemas_query = create_autospec(ListCinemasQuery, instance=True)
     fake.cinemas.get_cinema_query = create_autospec(GetCinemaQuery, instance=True)
     fake.cinemas.get_cinema_screenings_query = create_autospec(
         GetCinemaScreeningsQuery, instance=True
@@ -155,7 +153,7 @@ def test_ready_is_exempt_from_rate_limiting(
 
 def test_list_cinemas(client: TestClient, factory: MagicMock) -> None:
     """GET /cinemas returns the use case's cinemas."""
-    factory.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+    factory.cinemas.list_cinemas_query.execute.return_value = SimpleNamespace(
         cinemas=[
             SimpleNamespace(
                 id="cin-1",
@@ -184,15 +182,15 @@ def test_list_cinemas_executes_use_case_dto(
     client: TestClient, factory: MagicMock
 ) -> None:
     """GET /cinemas executes list use case with filter and pagination DTO."""
-    factory.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+    factory.cinemas.list_cinemas_query.execute.return_value = SimpleNamespace(
         cinemas=[], total=0
     )
 
     response = client.get("/v1/cinemas", params={"name": "Cineplex"})
 
     assert response.status_code == 200
-    factory.cinemas.list_cinemas_use_case.execute.assert_awaited_once_with(
-        ListCinemasUseCase.InputData(name="Cineplex", page=1, size=50)
+    factory.cinemas.list_cinemas_query.execute.assert_awaited_once_with(
+        ListCinemasQuery.InputData(name="Cineplex", page=1, size=50)
     )
 
 
@@ -238,7 +236,7 @@ def test_list_cinemas_pagination(client: TestClient, factory: MagicMock) -> None
     the router passes params through and reports ``total`` from the
     response rather than computing it from the page length.
     """
-    factory.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+    factory.cinemas.list_cinemas_query.execute.return_value = SimpleNamespace(
         cinemas=[
             SimpleNamespace(
                 id="cin-1", name="Cinema 1", address=None, city=None, website=None
@@ -258,8 +256,8 @@ def test_list_cinemas_pagination(client: TestClient, factory: MagicMock) -> None
     assert body["total"] == 5
     assert body["page"] == 2
     assert body["size"] == 2
-    factory.cinemas.list_cinemas_use_case.execute.assert_awaited_once_with(
-        ListCinemasUseCase.InputData(name=None, page=2, size=2)
+    factory.cinemas.list_cinemas_query.execute.assert_awaited_once_with(
+        ListCinemasQuery.InputData(name=None, page=2, size=2)
     )
 
 
@@ -692,7 +690,7 @@ def test_list_movies_size_out_of_range_is_rejected(
 
 def test_list_cinemas_is_cached(client: TestClient, factory: MagicMock) -> None:
     """A second identical request reuses the cached result instead of re-executing."""
-    factory.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+    factory.cinemas.list_cinemas_query.execute.return_value = SimpleNamespace(
         cinemas=[
             SimpleNamespace(
                 id="cin-1",
@@ -713,7 +711,7 @@ def test_list_cinemas_is_cached(client: TestClient, factory: MagicMock) -> None:
     assert second.status_code == 200
     assert second.headers.get("X-FastAPI-Cache") == "HIT"
     assert first.json() == second.json()
-    factory.cinemas.list_cinemas_use_case.execute.assert_awaited_once()
+    factory.cinemas.list_cinemas_query.execute.assert_awaited_once()
 
 
 def test_get_movie_is_cached(client: TestClient, factory: MagicMock) -> None:
@@ -854,7 +852,7 @@ def test_list_cinemas_with_name_filter_creates_separate_cache_entry(
 ) -> None:
     """Query parameter differences create separate cache entries."""
 
-    def mock_list(request: ListCinemasUseCase.InputData) -> SimpleNamespace:
+    def mock_list(request: ListCinemasQuery.InputData) -> SimpleNamespace:
         if request.name == "Cineplex":
             cinemas = [
                 SimpleNamespace(
@@ -877,7 +875,7 @@ def test_list_cinemas_with_name_filter_creates_separate_cache_entry(
             ]
         return SimpleNamespace(cinemas=cinemas, total=len(cinemas))
 
-    factory.cinemas.list_cinemas_use_case.execute.side_effect = mock_list
+    factory.cinemas.list_cinemas_query.execute.side_effect = mock_list
 
     response1 = client.get("/v1/cinemas", params={"name": "Cineplex"})
     response2 = client.get("/v1/cinemas", params={"name": "Landmark"})
@@ -887,7 +885,7 @@ def test_list_cinemas_with_name_filter_creates_separate_cache_entry(
     assert response2.json()["items"][0]["name"] == "Landmark Cinemas"
     assert response1_again.json() == response1.json()
     assert response1_again.headers.get("X-FastAPI-Cache") == "HIT"
-    assert factory.cinemas.list_cinemas_use_case.execute.call_count == 2
+    assert factory.cinemas.list_cinemas_query.execute.call_count == 2
 
 
 def test_cors_not_configured_by_default(
@@ -911,7 +909,7 @@ def test_cors_headers_present_when_configured(
 ) -> None:
     """CORS headers are returned when MARQUISE_API_CORS_ORIGINS is set."""
     monkeypatch.setenv("MARQUISE_API_CORS_ORIGINS", "http://localhost:3000")
-    factory.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+    factory.cinemas.list_cinemas_query.execute.return_value = SimpleNamespace(
         cinemas=[], total=0
     )
     client = client_opener(factory)
@@ -932,7 +930,7 @@ def test_cors_preflight_when_configured(
 ) -> None:
     """OPTIONS preflight requests return CORS headers when configured."""
     monkeypatch.setenv("MARQUISE_API_CORS_ORIGINS", "http://localhost:3000")
-    factory.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+    factory.cinemas.list_cinemas_query.execute.return_value = SimpleNamespace(
         cinemas=[], total=0
     )
     client = client_opener(factory)
@@ -960,7 +958,7 @@ def test_cors_origin_not_allowed_rejected(
 ) -> None:
     """Requests from an origin not in the allowed list get no CORS headers."""
     monkeypatch.setenv("MARQUISE_API_CORS_ORIGINS", "http://localhost:3000")
-    factory.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+    factory.cinemas.list_cinemas_query.execute.return_value = SimpleNamespace(
         cinemas=[], total=0
     )
     client = client_opener(factory)
@@ -978,7 +976,7 @@ def test_rate_limit_headers_present_on_success(
     client: TestClient, factory: MagicMock
 ) -> None:
     """A normal request under the limit reports rate-limit headers."""
-    factory.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+    factory.cinemas.list_cinemas_query.execute.return_value = SimpleNamespace(
         cinemas=[], total=0
     )
 
@@ -997,7 +995,7 @@ def test_rate_limit_exceeded_returns_429(
 ) -> None:
     """A client exceeding the configured rate limit gets a 429 with Retry-After."""
     monkeypatch.setenv("MARQUISE_API_RATE_LIMIT", "1/minute")
-    factory.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+    factory.cinemas.list_cinemas_query.execute.return_value = SimpleNamespace(
         cinemas=[], total=0
     )
     client = client_opener(factory)
@@ -1032,7 +1030,7 @@ def test_rate_limit_is_configurable_via_env_var(
 ) -> None:
     """A higher configured limit allows more requests before a 429."""
     monkeypatch.setenv("MARQUISE_API_RATE_LIMIT", "5/minute")
-    factory.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+    factory.cinemas.list_cinemas_query.execute.return_value = SimpleNamespace(
         cinemas=[], total=0
     )
     client = client_opener(factory)

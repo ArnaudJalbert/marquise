@@ -12,7 +12,7 @@ from marquise import (
     GetCinemaMoviesUseCase,
     GetCinemaQuery,
     GetCinemaScreeningsQuery,
-    ListCinemasUseCase,
+    ListCinemasQuery,
     MarquiseFactory,
 )
 from marquise_api.dependencies import get_factory
@@ -45,8 +45,8 @@ async def list_cinemas(
     factory: MarquiseFactory = Depends(get_factory),
 ) -> Page[CinemaResponse]:
     """List cinemas, optionally filtered by name."""
-    output = await factory.cinemas.list_cinemas_use_case.execute(
-        ListCinemasUseCase.InputData(name=name, page=params.page, size=params.size)
+    output = await factory.cinemas.list_cinemas_query.execute(
+        ListCinemasQuery.InputData(name=name, page=params.page, size=params.size)
     )
     return Page.create(
         items=[CinemaResponse.model_validate(c) for c in output.cinemas],
