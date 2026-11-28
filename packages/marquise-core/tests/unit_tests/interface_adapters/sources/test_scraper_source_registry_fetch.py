@@ -1,4 +1,4 @@
-"""Tests for SourceRegistry.fetch_showtimes."""
+"""Tests for ScraperSourceRegistry.fetch_showtimes."""
 
 from __future__ import annotations
 
@@ -7,13 +7,15 @@ from unittest.mock import create_autospec
 
 import pytest
 
-from marquise.application.repositories.source_registry_query import ShowtimeRow
+from marquise.application.sources import ShowtimeRow
 from marquise.domain.entities import Cinema, SourceDefinition
 from marquise.domain.value_objects import CinemaId, SourceName
-from marquise.interface_adapters.repositories.source_adapters.base import (
+from marquise.interface_adapters.sources.base import (
     SourceAdapter,
 )
-from marquise.interface_adapters.repositories.source_registry import SourceRegistry
+from marquise.interface_adapters.sources.scraper_source_registry import (
+    ScraperSourceRegistry,
+)
 
 
 @pytest.fixture
@@ -41,7 +43,7 @@ async def test_fetch_showtimes_adapts_dicts_to_showtime_rows(
     sample_source_definition: SourceDefinition,
 ) -> None:
     """Test fetch_showtimes maps raw dicts to ShowtimeRow dataclasses."""
-    registry = SourceRegistry()
+    registry = ScraperSourceRegistry()
     mock_adapter = create_autospec(SourceAdapter, instance=True)
     mock_adapter.fetch_showtimes.return_value = [
         {
@@ -83,7 +85,7 @@ async def test_fetch_showtimes_handles_empty_result(
     sample_source_definition: SourceDefinition,
 ) -> None:
     """Test fetch_showtimes returns empty list when adapter returns empty."""
-    registry = SourceRegistry()
+    registry = ScraperSourceRegistry()
     mock_adapter = create_autospec(SourceAdapter, instance=True)
     mock_adapter.fetch_showtimes.return_value = []
 
@@ -104,7 +106,7 @@ async def test_fetch_showtimes_raises_key_error_for_unknown_source(
     sample_cinema: Cinema,
 ) -> None:
     """Test fetch_showtimes raises KeyError for unknown source."""
-    registry = SourceRegistry()
+    registry = ScraperSourceRegistry()
     unknown = SourceDefinition(
         name=SourceName(value="unknown"),
         display_name="Unknown",
@@ -125,7 +127,7 @@ async def test_fetch_showtimes_skips_rows_without_showtime(
     sample_source_definition: SourceDefinition,
 ) -> None:
     """Test fetch_showtimes skips rows that have no showtime key."""
-    registry = SourceRegistry()
+    registry = ScraperSourceRegistry()
     mock_adapter = create_autospec(SourceAdapter, instance=True)
     mock_adapter.fetch_showtimes.return_value = [
         {"movie_title": "Only Title"},

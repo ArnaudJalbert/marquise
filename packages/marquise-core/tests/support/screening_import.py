@@ -11,9 +11,11 @@ from marquise.application.repositories import (
     CinemaSourceAssignmentRepository,
     MovieRepository,
     ScreeningRepository,
-    SourceRegistryQuery,
 )
-from marquise.application.repositories.source_registry_query import ShowtimeRow
+from marquise.application.sources import (
+    ShowtimeRow,
+    SourceRegistry,
+)
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.import_screenings import ImportScreeningsCommand
 from marquise.domain.entities import (
@@ -60,7 +62,7 @@ async def run_import(
             name=SourceName(incoming.source_name or "cineplex"), display_name="Source"
         ),
     )
-    source = create_autospec(SourceRegistryQuery, instance=True)
+    source = create_autospec(SourceRegistry, instance=True)
     source.fetch_showtimes.return_value = [
         ShowtimeRow(
             row.movie.title,

@@ -8,7 +8,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from marquise.application.repositories import SourceRegistryQuery
+from marquise.application.sources import (
+    SourceRegistry,
+)
 
 
 class ListRegistrySourcesUseCase:
@@ -45,11 +47,11 @@ class ListRegistrySourcesUseCase:
 
         sources: list[ListRegistrySourcesUseCase.SourceEntry]
 
-    def __init__(self, registry: SourceRegistryQuery) -> None:
+    def __init__(self, registry: SourceRegistry) -> None:
         """Initialize the use case.
 
         Args:
-            registry: A ``SourceRegistryQuery`` implementation for
+            registry: A ``SourceRegistry`` implementation for
                 querying available source gateways.
         """
         self._registry = registry

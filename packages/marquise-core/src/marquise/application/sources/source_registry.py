@@ -1,8 +1,8 @@
-"""Application-layer interfaces for querying source gateways.
+"""Application port for showtime sources.
 
-Defines contracts for fetching showtimes and enriching movie data from
-external sources.  The concrete ``SourceRegistry`` in
-``interface_adapters/repositories/`` implements these interfaces.
+Defines the contract for fetching showtimes and enriching movie data from
+external sources.  ``ScraperSourceRegistry`` in
+``interface_adapters/sources/`` implements it.
 """
 
 from __future__ import annotations
@@ -87,8 +87,8 @@ class MovieEnrichmentData:
     identity_title: str | None = None
 
 
-class SourceRegistryQuery(ABC):
-    """Interface for listing available showtime source gateways."""
+class SourceRegistry(ABC):
+    """Port for the registered showtime sources."""
 
     @abstractmethod
     def list_available(self) -> list[str]:

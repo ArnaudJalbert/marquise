@@ -18,9 +18,11 @@ from marquise.application.queries.fetch_screenings_from_source import (
 from marquise.application.repositories import (
     CinemaRepository,
     CinemaSourceAssignmentRepository,
+)
+from marquise.application.sources import (
     MovieEnrichmentData,
     ShowtimeRow,
-    SourceRegistryQuery,
+    SourceRegistry,
 )
 from marquise.domain.entities import (
     Cinema,
@@ -61,7 +63,7 @@ async def test_fetch_resolves_entities_and_returns_movies_and_screenings() -> No
     mock_assignment_repo = create_autospec(
         CinemaSourceAssignmentRepository, instance=True
     )
-    mock_registry = create_autospec(SourceRegistryQuery, instance=True)
+    mock_registry = create_autospec(SourceRegistry, instance=True)
 
     mock_cinema_repo.find_by_id.return_value = CINEMA
     mock_assignment_repo.find_by_cinema_id.return_value = ASSIGNMENT
@@ -119,7 +121,7 @@ async def test_fetch_handles_missing_movie_detail_gracefully() -> None:
     mock_assignment_repo = create_autospec(
         CinemaSourceAssignmentRepository, instance=True
     )
-    mock_registry = create_autospec(SourceRegistryQuery, instance=True)
+    mock_registry = create_autospec(SourceRegistry, instance=True)
 
     mock_cinema_repo.find_by_id.return_value = CINEMA
     mock_assignment_repo.find_by_cinema_id.return_value = ASSIGNMENT
@@ -162,7 +164,7 @@ async def test_fetch_dedupes_movies_by_title() -> None:
     mock_assignment_repo = create_autospec(
         CinemaSourceAssignmentRepository, instance=True
     )
-    mock_registry = create_autospec(SourceRegistryQuery, instance=True)
+    mock_registry = create_autospec(SourceRegistry, instance=True)
 
     mock_cinema_repo.find_by_id.return_value = CINEMA
     mock_assignment_repo.find_by_cinema_id.return_value = ASSIGNMENT
@@ -212,7 +214,7 @@ async def test_fetch_dedupes_identifiers() -> None:
     mock_assignment_repo = create_autospec(
         CinemaSourceAssignmentRepository, instance=True
     )
-    mock_registry = create_autospec(SourceRegistryQuery, instance=True)
+    mock_registry = create_autospec(SourceRegistry, instance=True)
 
     mock_cinema_repo.find_by_id.return_value = CINEMA
     mock_assignment_repo.find_by_cinema_id.return_value = ASSIGNMENT
@@ -258,7 +260,7 @@ async def test_fetch_raises_when_cinema_not_found() -> None:
         assignment_repository=create_autospec(
             CinemaSourceAssignmentRepository, instance=True
         ),
-        source_registry=create_autospec(SourceRegistryQuery, instance=True),
+        source_registry=create_autospec(SourceRegistry, instance=True),
     )
 
     with pytest.raises(CinemaNotFoundError, match="cin-999"):
@@ -278,7 +280,7 @@ async def test_fetch_bounds_movie_detail_concurrency() -> None:
     mock_assignment_repo = create_autospec(
         CinemaSourceAssignmentRepository, instance=True
     )
-    mock_registry = create_autospec(SourceRegistryQuery, instance=True)
+    mock_registry = create_autospec(SourceRegistry, instance=True)
     mock_cinema_repo.find_by_id.return_value = CINEMA
     mock_assignment_repo.find_by_cinema_id.return_value = ASSIGNMENT
     mock_registry.fetch_showtimes.return_value = [
@@ -326,7 +328,7 @@ async def test_fetch_raises_when_no_assignment() -> None:
     query = FetchScreeningsFromSourceQuery(
         cinema_repository=mock_cinema_repo,
         assignment_repository=mock_assignment_repo,
-        source_registry=create_autospec(SourceRegistryQuery, instance=True),
+        source_registry=create_autospec(SourceRegistry, instance=True),
     )
 
     with pytest.raises(CinemaSourceAssignmentNotFoundError):
@@ -344,7 +346,7 @@ async def test_import_window_uses_montreal_days_across_dst() -> None:
     """Seven local dates include both DST offsets and exclude adjacent dates."""
     cinema_repo = create_autospec(CinemaRepository, instance=True)
     assignment_repo = create_autospec(CinemaSourceAssignmentRepository, instance=True)
-    registry = create_autospec(SourceRegistryQuery, instance=True)
+    registry = create_autospec(SourceRegistry, instance=True)
     cinema_repo.find_by_id.return_value = CINEMA
     assignment_repo.find_by_cinema_id.return_value = ASSIGNMENT
     registry.fetch_showtimes.return_value = [

@@ -11,7 +11,9 @@ from marquise.application.queries.fetch_screenings_from_source import (
 )
 from marquise.application.queries.find_stored_movies import FindStoredMoviesQuery
 from marquise.application.queries.link_screenings import LinkScreeningsQuery
-from marquise.application.repositories import SourceRegistryQuery
+from marquise.application.sources import (
+    SourceRegistry,
+)
 from marquise.application.use_cases.create_movies import CreateMoviesCommand
 from marquise.application.use_cases.create_screenings import CreateScreeningsCommand
 from marquise.application.use_cases.enrich_movies import EnrichMoviesUseCase
@@ -34,6 +36,9 @@ from marquise.infrastructure.postgres.gateways.screening import (
     PostgresScreeningGateway,
 )
 from marquise.infrastructure.sources.tmdb_metadata import TmdbMetadataHttpSource
+from marquise.interface_adapters.metadata.tmdb import (
+    TmdbMetadataAdapter,
+)
 from marquise.interface_adapters.repositories.cinema_repository import (
     PostgresCinemaRepository,
 )
@@ -49,15 +54,12 @@ from marquise.interface_adapters.repositories.movie_repository import (
 from marquise.interface_adapters.repositories.screening_repository import (
     PostgresScreeningRepository,
 )
-from marquise.interface_adapters.repositories.source_adapters.tmdb_metadata import (
-    TmdbMetadataAdapter,
-)
 
 
 def build_fetch_screenings_use_case(
     pool: asyncpg.Pool,
     schema: str,
-    source_registry: SourceRegistryQuery,
+    source_registry: SourceRegistry,
 ) -> FetchScreeningsFromSourceQuery:
     """Build source-screening fetch query."""
     return FetchScreeningsFromSourceQuery(

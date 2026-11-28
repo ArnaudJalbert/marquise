@@ -14,8 +14,10 @@ from marquise.application.exceptions import (
 from marquise.application.repositories import (
     CinemaRepository,
     CinemaSourceAssignmentRepository,
+)
+from marquise.application.sources import (
     MovieEnrichmentData,
-    SourceRegistryQuery,
+    SourceRegistry,
 )
 from marquise.domain.constants import MONTREAL_TIME_ZONE
 from marquise.domain.entities import Movie
@@ -85,7 +87,7 @@ class FetchScreeningsFromSourceQuery:
         self,
         cinema_repository: CinemaRepository,
         assignment_repository: CinemaSourceAssignmentRepository,
-        source_registry: SourceRegistryQuery,
+        source_registry: SourceRegistry,
     ) -> None:
         self.cinema_repository = cinema_repository
         self.assignment_repository = assignment_repository
@@ -211,7 +213,7 @@ class FetchScreeningsFromSourceQuery:
 
 
 async def _fetch_movie_detail(
-    source_registry: SourceRegistryQuery,
+    source_registry: SourceRegistry,
     source_name: str,
     identifier: str,
     semaphore: asyncio.Semaphore,
@@ -230,7 +232,7 @@ async def _fetch_movie_detail(
 
 
 async def _fetch_movie_details(
-    source_registry: SourceRegistryQuery,
+    source_registry: SourceRegistry,
     source_name: str,
     identifiers: list[str],
 ) -> list[MovieEnrichmentData | Exception]:

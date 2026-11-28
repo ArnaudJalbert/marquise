@@ -24,7 +24,9 @@ from marquise.infrastructure.di.queries import (
     build_search_screenings_query,
 )
 from marquise.infrastructure.postgres.config.settings import Settings
-from marquise.interface_adapters.repositories.source_registry import SourceRegistry
+from marquise.interface_adapters.sources.scraper_source_registry import (
+    ScraperSourceRegistry,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,7 +41,7 @@ class ScreeningUseCases:
 
 
 def build_screening_use_cases(
-    pool: asyncpg.Pool, settings: Settings, source_registry: SourceRegistry
+    pool: asyncpg.Pool, settings: Settings, source_registry: ScraperSourceRegistry
 ) -> ScreeningUseCases:
     """Wire every screening query and the screening import command.
 

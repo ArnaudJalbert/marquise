@@ -20,7 +20,7 @@ from marquise.infrastructure.sources.tmdb_metadata import TmdbMetadataHttpSource
 from marquise.interface_adapters.gateways.tmdb_metadata_source import (
     TmdbMetadataSource,
 )
-from marquise.interface_adapters.repositories.source_adapters.tmdb_metadata import (
+from marquise.interface_adapters.metadata.tmdb import (
     TmdbMetadataAdapter,
 )
 

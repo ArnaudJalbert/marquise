@@ -17,10 +17,12 @@ from marquise.domain.value_objects import CinemaId, SourceName
 from marquise.interface_adapters.gateways.showtime_source import (
     ShowtimeSource,
 )
-from marquise.interface_adapters.repositories.source_adapters.cinematheque import (
+from marquise.interface_adapters.sources.cinematheque import (
     CinemathequeAdapter,
 )
-from marquise.interface_adapters.repositories.source_registry import SourceRegistry
+from marquise.interface_adapters.sources.scraper_source_registry import (
+    ScraperSourceRegistry,
+)
 
 
 @pytest.mark.asyncio
@@ -54,7 +56,7 @@ async def test_source_evidence_reaches_structured_import_without_changing_screen
         if available
         else None
     )
-    registry = SourceRegistry()
+    registry = ScraperSourceRegistry()
     registry.register("cinematheque", CinemathequeAdapter(gateway))
     cinema = Cinema(
         id=CinemaId(value="cin-cinematheque"), name="Cinémathèque québécoise"
