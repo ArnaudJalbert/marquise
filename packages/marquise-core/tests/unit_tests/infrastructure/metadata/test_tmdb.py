@@ -21,7 +21,7 @@ from marquise.application.exceptions import (
     MetadataRequestRefusedError,
     MetadataUnavailableError,
 )
-from marquise.infrastructure.sources.tmdb_metadata import (
+from marquise.infrastructure.metadata.tmdb import (
     TmdbMetadataHttpSource,
     _NoRedirect,
 )

@@ -2,7 +2,7 @@
 
 Issue #358 defines the shared seam for parent #349. Imports, movie refresh and
 movie merge use these contracts: `infrastructure/di/import_use_cases.py` wires
-TmdbMetadataAdapter, `MarquiseFactory` exposes `refresh_movies_use_case` and
+TmdbMetadataAdapter (`interface_adapters/metadata/tmdb.py`), `MarquiseFactory` exposes `refresh_movies_use_case` and
 `merge_movies_use_case`, and the CLI runs `movie refresh`, `movie merge-preview`
 and `movie merge-apply`.
 

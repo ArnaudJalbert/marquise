@@ -38,7 +38,7 @@ Use cases call the `SourceRegistry` port — they never import scrapers directly
 | `cinematheque` | `infrastructure/sources/cinematheque.py` | `interface_adapters/sources/cinematheque.py` |
 | `outremont` | `infrastructure/sources/outremont.py` | `interface_adapters/sources/outremont.py` |
 
-All paths relative to `packages/marquise-core/src/marquise/`. The `tmdb*.py` files beside them are movie metadata providers, not showtime sources ([docs/providers/tmdb-metadata.md](providers/tmdb-metadata.md)). Their adapter is `interface_adapters/metadata/tmdb.py`.
+All paths relative to `packages/marquise-core/src/marquise/`. TMDB is a movie metadata provider, not a showtime source, so it lives under `metadata/` ([docs/providers/tmdb-metadata.md](providers/tmdb-metadata.md)).
 
 Showtimes must emit UTC ISO 8601 timestamps — use
 `infrastructure/sources/_timezone.py` for Montreal-local sources.
