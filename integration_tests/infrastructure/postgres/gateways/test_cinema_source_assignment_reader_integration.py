@@ -19,7 +19,7 @@ from marquise.infrastructure.postgres.gateways.source_definition import (
 
 
 @pytest.fixture
-def reader(db_pool: asyncpg.Pool) -> PostgresCinemaSourceAssignmentReadGateway:
+def read_gateway(db_pool: asyncpg.Pool) -> PostgresCinemaSourceAssignmentReadGateway:
     """Provide the assignment read gateway over the test schema."""
     return PostgresCinemaSourceAssignmentReadGateway(db_pool, "marquise-test")
 
@@ -43,10 +43,10 @@ async def assigned(
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("assigned")
 async def test_list_all_returns_rows_ordered_by_cinema(
-    reader: PostgresCinemaSourceAssignmentReadGateway,
+    read_gateway: PostgresCinemaSourceAssignmentReadGateway,
 ) -> None:
     """Every assignment comes back with its source names, ordered by cinema ID."""
-    rows = await reader.list_all()
+    rows = await read_gateway.list_all()
 
     assert rows == [
         {
@@ -65,10 +65,10 @@ async def test_list_all_returns_rows_ordered_by_cinema(
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("assigned")
 async def test_find_by_cinema_id_returns_assigned_row(
-    reader: PostgresCinemaSourceAssignmentReadGateway,
+    read_gateway: PostgresCinemaSourceAssignmentReadGateway,
 ) -> None:
     """An assigned cinema returns its source name and display name."""
-    assert await reader.find_by_cinema_id("cin-001") == {
+    assert await read_gateway.find_by_cinema_id("cin-001") == {
         "cinema_id": "cin-001",
         "source_name": "cineplex",
         "source_display_name": "Cineplex",
@@ -78,7 +78,7 @@ async def test_find_by_cinema_id_returns_assigned_row(
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("assigned")
 async def test_find_by_cinema_id_returns_none_when_unassigned(
-    reader: PostgresCinemaSourceAssignmentReadGateway,
+    read_gateway: PostgresCinemaSourceAssignmentReadGateway,
 ) -> None:
     """A cinema with no assignment returns None."""
-    assert await reader.find_by_cinema_id("cin-003") is None
+    assert await read_gateway.find_by_cinema_id("cin-003") is None
