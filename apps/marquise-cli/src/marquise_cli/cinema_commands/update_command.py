@@ -9,14 +9,14 @@ import questionary
 
 from marquise import (
     CinemaNotFoundError,
-    ListCinemasUseCase,
+    ListCinemasQuery,
     MarquiseFactory,
     UpdateCinemaUseCase,
 )
 from marquise_cli.helpers import connected_factory, print_cinema, select_cinema
 
 
-def _field_choices(cinema: ListCinemasUseCase.CinemaData) -> list[questionary.Choice]:
+def _field_choices(cinema: ListCinemasQuery.CinemaData) -> list[questionary.Choice]:
     """Build field choices with current values."""
     return [
         questionary.Choice(
@@ -36,7 +36,7 @@ async def _collect_value(field: str, current: str | None) -> str | None:
 
 
 async def _collect_updates(
-    cinema: ListCinemasUseCase.CinemaData,
+    cinema: ListCinemasQuery.CinemaData,
 ) -> dict[str, str | None] | None:
     """Prompt for fields and replacement values."""
     fields = await questionary.checkbox(

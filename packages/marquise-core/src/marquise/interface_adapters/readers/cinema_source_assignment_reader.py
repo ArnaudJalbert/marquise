@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from marquise.application.readers import CinemaSourceAssignmentReader
-from marquise.interface_adapters.readers.cinema_source_assignment_read_gateway import (
+from marquise.interface_adapters.gateways.cinema_source_assignment_reader import (
     CinemaSourceAssignmentReadGateway,
 )
 

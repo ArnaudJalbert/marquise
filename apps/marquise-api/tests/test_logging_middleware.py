@@ -15,7 +15,7 @@ from marquise import (
     CinemaUseCases,
     GetCinemaQuery,
     GetMovieUseCase,
-    ListCinemasUseCase,
+    ListCinemasQuery,
     MarquiseFactory,
     MovieNotFoundError,
     MovieUseCases,
@@ -84,10 +84,8 @@ def factory() -> MagicMock:
     """Provide fake factory with autospecced read use cases."""
     fake = create_autospec(MarquiseFactory, instance=True)
     fake.cinemas = create_autospec(CinemaUseCases, instance=True)
-    fake.cinemas.list_cinemas_use_case = create_autospec(
-        ListCinemasUseCase, instance=True
-    )
-    fake.cinemas.list_cinemas_use_case.execute.return_value = SimpleNamespace(
+    fake.cinemas.list_cinemas_query = create_autospec(ListCinemasQuery, instance=True)
+    fake.cinemas.list_cinemas_query.execute.return_value = SimpleNamespace(
         cinemas=[], total=0
     )
     fake.cinemas.get_cinema_query = create_autospec(GetCinemaQuery, instance=True)

@@ -7,7 +7,7 @@ from unittest.mock import create_autospec
 import pytest
 
 from marquise.application.readers import CinemaSourceAssignmentReader
-from marquise.interface_adapters.readers.cinema_source_assignment_read_gateway import (
+from marquise.interface_adapters.gateways.cinema_source_assignment_reader import (
     CinemaSourceAssignmentReadGateway,
 )
 from marquise.interface_adapters.readers.cinema_source_assignment_reader import (
