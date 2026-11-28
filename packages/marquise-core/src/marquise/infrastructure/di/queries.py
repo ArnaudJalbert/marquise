@@ -18,6 +18,7 @@ from marquise.application.queries.get_screening import GetScreeningQuery
 from marquise.application.queries.list_cinema_source_assignments import (
     ListCinemaSourceAssignmentsQuery,
 )
+from marquise.application.queries.list_cinemas import ListCinemasQuery
 from marquise.application.queries.list_sources import ListSourcesQuery
 from marquise.application.queries.search_screenings import SearchScreeningsQuery
 from marquise.infrastructure.postgres.gateways.cinema import PostgresCinemaGateway
@@ -86,13 +87,21 @@ def build_get_screening_query(pool: asyncpg.Pool, schema: str) -> GetScreeningQu
     return GetScreeningQuery(screening_reader=_build_screening_reader(pool, schema))
 
 
+def _build_cinema_reader(pool: asyncpg.Pool, schema: str) -> PostgresCinemaReader:
+    """Build the cinema display reader."""
+    return PostgresCinemaReader(
+        gateway=PostgresCinemaReadGateway(pool=pool, schema=schema)
+    )
+
+
 def build_get_cinema_query(pool: asyncpg.Pool, schema: str) -> GetCinemaQuery:
     """Build the single-cinema query with its display reader."""
-    return GetCinemaQuery(
-        cinema_reader=PostgresCinemaReader(
-            gateway=PostgresCinemaReadGateway(pool=pool, schema=schema)
-        )
-    )
+    return GetCinemaQuery(cinema_reader=_build_cinema_reader(pool, schema))
+
+
+def build_list_cinemas_query(pool: asyncpg.Pool, schema: str) -> ListCinemasQuery:
+    """Build the cinema listing query with its display reader."""
+    return ListCinemasQuery(cinema_reader=_build_cinema_reader(pool, schema))
 
 
 def build_get_cinema_screenings_query(

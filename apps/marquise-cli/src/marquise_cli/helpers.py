@@ -10,7 +10,7 @@ from rich.console import Console
 
 from marquise import (
     GetCinemaQuery,
-    ListCinemasUseCase,
+    ListCinemasQuery,
     MarquiseFactory,
     UpdateCinemaUseCase,
     create_factory_session,
@@ -23,7 +23,7 @@ _CINEMAS_PER_PAGE = 100
 
 async def list_every_cinema(
     factory: MarquiseFactory, name: str | None
-) -> list[ListCinemasUseCase.CinemaData]:
+) -> list[ListCinemasQuery.CinemaData]:
     """Read every cinema matching the name filter, one page at a time.
 
     Args:
@@ -33,11 +33,11 @@ async def list_every_cinema(
     Returns:
         Every matching cinema, in repository order.
     """
-    use_case = factory.cinemas.list_cinemas_use_case
-    cinemas: list[ListCinemasUseCase.CinemaData] = []
+    query = factory.cinemas.list_cinemas_query
+    cinemas: list[ListCinemasQuery.CinemaData] = []
     page = 1
     while True:
-        output = await _read_cinema_page(use_case, page, name)
+        output = await _read_cinema_page(query, page, name)
         cinemas.extend(output.cinemas)
         if not output.cinemas or len(cinemas) >= output.total:
             return cinemas
@@ -45,10 +45,10 @@ async def list_every_cinema(
 
 
 async def _read_cinema_page(
-    use_case: ListCinemasUseCase, page: int, name: str | None
-) -> ListCinemasUseCase.OutputData:
-    return await use_case.execute(
-        use_case.InputData(page=page, size=_CINEMAS_PER_PAGE, name=name)
+    query: ListCinemasQuery, page: int, name: str | None
+) -> ListCinemasQuery.OutputData:
+    return await query.execute(
+        query.InputData(page=page, size=_CINEMAS_PER_PAGE, name=name)
     )
 
 
@@ -79,7 +79,7 @@ async def select_source(factory: MarquiseFactory, prompt: str) -> str | None:
 async def select_cinema(
     factory: MarquiseFactory,
     prompt: str,
-) -> ListCinemasUseCase.CinemaData | None:
+) -> ListCinemasQuery.CinemaData | None:
     """Let user select a cinema, or cancel."""
     cinemas = await list_every_cinema(factory, name=None)
     if not cinemas:

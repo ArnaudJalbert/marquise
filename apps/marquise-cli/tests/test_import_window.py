@@ -6,22 +6,22 @@ from unittest.mock import MagicMock, call, create_autospec, patch
 import pytest
 
 from conftest import FactorySession, make_cinema_data
-from marquise import ImportScreeningsCommand, ListCinemasUseCase
+from marquise import ImportScreeningsCommand, ListCinemasQuery
 from marquise_cli.app import main
 
 
 @pytest.fixture
 def bulk_import_factory(mock_factory: MagicMock) -> MagicMock:
     """Provide two cinemas with successful import results."""
-    cinemas = create_autospec(ListCinemasUseCase, instance=True)
-    cinemas.execute.return_value = ListCinemasUseCase.OutputData(
+    cinemas = create_autospec(ListCinemasQuery, instance=True)
+    cinemas.execute.return_value = ListCinemasQuery.OutputData(
         cinemas=[make_cinema_data("cin-1"), make_cinema_data("cin-2")], total=2
     )
     imports = create_autospec(ImportScreeningsCommand, instance=True)
     imports.execute.return_value = ImportScreeningsCommand.OutputData(
         "cin-1", "Test Cinema", "cineplex", (), 0, 0, 0, 0
     )
-    mock_factory.cinemas.list_cinemas_use_case = cinemas
+    mock_factory.cinemas.list_cinemas_query = cinemas
     mock_factory.screenings.import_screenings_command = imports
     return mock_factory
 

@@ -1,15 +1,15 @@
-"""List cinemas use case."""
+"""List cinemas query."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 from marquise.application.page import calculate_page_offset
-from marquise.application.repositories import CinemaRepository
+from marquise.application.readers import CinemaReader
 
 
-class ListCinemasUseCase:
-    """Use case for listing one page of cinemas with optional name filtering."""
+class ListCinemasQuery:
+    """Query one page of cinemas with optional name filtering."""
 
     @dataclass(frozen=True, slots=True)
     class InputData:
@@ -85,7 +85,7 @@ class ListCinemasUseCase:
                 limit/offset.
         """
 
-        cinemas: list[ListCinemasUseCase.CinemaData]
+        cinemas: list[ListCinemasQuery.CinemaData]
         total: int
 
         def __post_init__(self) -> None:
@@ -97,13 +97,13 @@ class ListCinemasUseCase:
             if self.total < 0:
                 raise ValueError("total must not be negative")
 
-    def __init__(self, cinema_repository: CinemaRepository) -> None:
-        """Initialize the use case.
+    def __init__(self, cinema_reader: CinemaReader) -> None:
+        """Initialize the query.
 
         Args:
-            cinema_repository: A repository for querying cinemas.
+            cinema_reader: A reader for cinema display data.
         """
-        self.cinema_repository = cinema_repository
+        self._cinema_reader = cinema_reader
 
     async def execute(self, input_data: InputData) -> OutputData:
         """List one page of cinemas, optionally filtered by name.
@@ -116,7 +116,7 @@ class ListCinemasUseCase:
             The output data containing the matching page of cinemas and the
             total count.
         """
-        page = await self.cinema_repository.find_all(
+        page = await self._cinema_reader.search(
             name_filter=input_data.name,
             limit=input_data.size,
             offset=calculate_page_offset(input_data.page, input_data.size),
@@ -124,13 +124,13 @@ class ListCinemasUseCase:
 
         cinema_data = [
             self.CinemaData(
-                id=str(c.id),
-                name=c.name,
-                address=c.address,
-                city=c.city,
-                website=c.website,
+                id=cinema.id,
+                name=cinema.name,
+                address=cinema.address,
+                city=cinema.city,
+                website=cinema.website,
             )
-            for c in page.items
+            for cinema in page.items
         ]
 
         return self.OutputData(cinemas=cinema_data, total=page.total)

@@ -8,13 +8,13 @@ from unittest.mock import AsyncMock, MagicMock, create_autospec
 import pytest
 
 from conftest import make_cinema_data, mock_use_case
-from marquise import ListCinemaSourceAssignmentsQuery, ListCinemasUseCase
+from marquise import ListCinemaSourceAssignmentsQuery, ListCinemasQuery
 from marquise_cli.cinema_commands.list_command import run_list_cinemas
 
 
-def _list_use_case(response: ListCinemasUseCase.OutputData) -> MagicMock:
+def _list_query(response: ListCinemasQuery.OutputData) -> MagicMock:
     """Build configured cinema-list use-case mock."""
-    use_case = mock_use_case(ListCinemasUseCase)
+    use_case = mock_use_case(ListCinemasQuery)
     use_case.execute.return_value = response
     return use_case
 
@@ -41,10 +41,10 @@ async def test_cinema_list_success(
             website=None,
         ),
     ]
-    list_cinemas_use_case = _list_use_case(
-        ListCinemasUseCase.OutputData(cinemas=cinemas, total=len(cinemas))
+    list_cinemas_query = _list_query(
+        ListCinemasQuery.OutputData(cinemas=cinemas, total=len(cinemas))
     )
-    mock_factory.cinemas.list_cinemas_use_case = list_cinemas_use_case
+    mock_factory.cinemas.list_cinemas_query = list_cinemas_query
 
     await run_list_cinemas(mock_factory)
 
@@ -54,8 +54,8 @@ async def test_cinema_list_success(
     assert "Cinema du Parc" in captured.out
     assert "Quartier Latin" in captured.out
     assert "Montreal" in captured.out
-    list_cinemas_use_case.execute.assert_awaited_once_with(
-        ListCinemasUseCase.InputData(page=1, size=100)
+    list_cinemas_query.execute.assert_awaited_once_with(
+        ListCinemasQuery.InputData(page=1, size=100)
     )
 
 
@@ -65,10 +65,8 @@ async def test_cinema_list_empty(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Verify cinema list shows 'No cinemas found' when empty."""
-    list_cinemas_use_case = _list_use_case(
-        ListCinemasUseCase.OutputData(cinemas=[], total=0)
-    )
-    mock_factory.cinemas.list_cinemas_use_case = list_cinemas_use_case
+    list_cinemas_query = _list_query(ListCinemasQuery.OutputData(cinemas=[], total=0))
+    mock_factory.cinemas.list_cinemas_query = list_cinemas_query
 
     await run_list_cinemas(mock_factory)
 
@@ -81,11 +79,9 @@ async def test_cinema_list_failure(
     mock_factory: MagicMock,
 ) -> None:
     """Unexpected list failures propagate to the caller."""
-    list_cinemas_use_case = _list_use_case(
-        ListCinemasUseCase.OutputData(cinemas=[], total=0)
-    )
-    list_cinemas_use_case.execute.side_effect = ValueError("Something went wrong")
-    mock_factory.cinemas.list_cinemas_use_case = list_cinemas_use_case
+    list_cinemas_query = _list_query(ListCinemasQuery.OutputData(cinemas=[], total=0))
+    list_cinemas_query.execute.side_effect = ValueError("Something went wrong")
+    mock_factory.cinemas.list_cinemas_query = list_cinemas_query
 
     with pytest.raises(ValueError, match="Something went wrong"):
         await run_list_cinemas(mock_factory)
@@ -113,8 +109,8 @@ async def test_cinema_list_verbose(
             website=None,
         ),
     ]
-    list_cinemas_use_case = _list_use_case(
-        ListCinemasUseCase.OutputData(cinemas=cinemas, total=len(cinemas))
+    list_cinemas_query = _list_query(
+        ListCinemasQuery.OutputData(cinemas=cinemas, total=len(cinemas))
     )
     mock_assignment_query = create_autospec(
         ListCinemaSourceAssignmentsQuery, instance=True
@@ -130,7 +126,7 @@ async def test_cinema_list_verbose(
             ]
         )
     )
-    mock_factory.cinemas.list_cinemas_use_case = list_cinemas_use_case
+    mock_factory.cinemas.list_cinemas_query = list_cinemas_query
     mock_factory.sources.list_cinema_source_assignments_query = mock_assignment_query
 
     await run_list_cinemas(mock_factory, verbose=True)
@@ -160,12 +156,10 @@ async def test_cinema_list_renders_markup_like_cinema_name(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Verify cinema names containing Rich markup render literally."""
-    list_cinemas_use_case = _list_use_case(
-        ListCinemasUseCase.OutputData(
-            cinemas=[make_cinema_data(name="[/bold]")], total=1
-        )
+    list_cinemas_query = _list_query(
+        ListCinemasQuery.OutputData(cinemas=[make_cinema_data(name="[/bold]")], total=1)
     )
-    mock_factory.cinemas.list_cinemas_use_case = list_cinemas_use_case
+    mock_factory.cinemas.list_cinemas_query = list_cinemas_query
 
     await run_list_cinemas(mock_factory)
 
@@ -196,13 +190,11 @@ async def test_cinema_list_with_name_filter(
     mock_factory: MagicMock,
 ) -> None:
     """Verify cinema list --name passes filter to use case."""
-    list_cinemas_use_case = _list_use_case(
-        ListCinemasUseCase.OutputData(cinemas=[], total=0)
-    )
-    mock_factory.cinemas.list_cinemas_use_case = list_cinemas_use_case
+    list_cinemas_query = _list_query(ListCinemasQuery.OutputData(cinemas=[], total=0))
+    mock_factory.cinemas.list_cinemas_query = list_cinemas_query
 
     await run_list_cinemas(mock_factory, name="Parc")
 
-    list_cinemas_use_case.execute.assert_awaited_once_with(
-        ListCinemasUseCase.InputData(page=1, size=100, name="Parc")
+    list_cinemas_query.execute.assert_awaited_once_with(
+        ListCinemasQuery.InputData(page=1, size=100, name="Parc")
     )

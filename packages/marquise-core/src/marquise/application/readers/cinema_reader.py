@@ -5,6 +5,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+from marquise.application.page import Page
+
 
 class CinemaReader(ABC):
     """Read cinema display data without constructing domain entities."""
@@ -22,4 +24,14 @@ class CinemaReader(ABC):
     @abstractmethod
     async def find_by_id(self, cinema_id: str) -> CinemaData | None:
         """Return one cinema projection, or None when its ID is missing."""
+        ...
+
+    @abstractmethod
+    async def search(
+        self, name_filter: str | None, limit: int, offset: int
+    ) -> Page[CinemaReader.CinemaData]:
+        """Return one page of cinemas ordered by name, plus the true total.
+
+        A name filter matches a case-insensitive substring of the name.
+        """
         ...

@@ -16,7 +16,7 @@ from marquise import (
     CinemaSourceAssignmentNotFoundError,
     CreateSourceUseCase,
     DeleteSourceUseCase,
-    ListCinemasUseCase,
+    ListCinemasQuery,
     ListRegistrySourcesUseCase,
     ListSourcesQuery,
     SourceNotFoundError,
@@ -80,11 +80,11 @@ async def test_select_cinema_executes_list_use_case_and_handles_cancellation(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Verify cinema selection lists cinemas directly and preserves cancellation."""
-    list_cinemas_use_case = mock_use_case(ListCinemasUseCase)
-    list_cinemas_use_case.execute.return_value = ListCinemasUseCase.OutputData(
+    list_cinemas_query = mock_use_case(ListCinemasQuery)
+    list_cinemas_query.execute.return_value = ListCinemasQuery.OutputData(
         cinemas=[make_cinema_data()], total=1
     )
-    mock_factory.cinemas.list_cinemas_use_case = list_cinemas_use_case
+    mock_factory.cinemas.list_cinemas_query = list_cinemas_query
 
     with patch("marquise_cli.helpers.questionary.select") as select:
         select.return_value.ask_async = AsyncMock(return_value="__exit__")
@@ -92,8 +92,8 @@ async def test_select_cinema_executes_list_use_case_and_handles_cancellation(
 
     assert selected is None
     assert "Cancelled." in capsys.readouterr().out
-    list_cinemas_use_case.execute.assert_awaited_once_with(
-        ListCinemasUseCase.InputData(page=1, size=100)
+    list_cinemas_query.execute.assert_awaited_once_with(
+        ListCinemasQuery.InputData(page=1, size=100)
     )
 
 
