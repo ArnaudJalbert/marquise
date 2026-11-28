@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 from marquise.application.page import calculate_page_offset
 from marquise.application.readers import CinemaReader
+
+logger = logging.getLogger(__name__)
 
 
 class ListCinemasQuery:
@@ -57,24 +60,6 @@ class ListCinemasQuery:
         city: str | None = None
         website: str | None = None
 
-        def __post_init__(self) -> None:
-            """Validate cinema data.
-
-            Raises:
-                ValueError: If id or name is empty, or if optional fields
-                    are provided but whitespace-only.
-            """
-            if not self.id.strip():
-                raise ValueError("id must not be empty")
-            if not self.name.strip():
-                raise ValueError("name must not be empty")
-            if self.address is not None and not self.address.strip():
-                raise ValueError("address must not be empty when provided")
-            if self.city is not None and not self.city.strip():
-                raise ValueError("city must not be empty when provided")
-            if self.website is not None and not self.website.strip():
-                raise ValueError("website must not be empty when provided")
-
     @dataclass(frozen=True, slots=True)
     class OutputData:
         """Output data containing the list of cinemas.
@@ -87,15 +72,6 @@ class ListCinemasQuery:
 
         cinemas: list[ListCinemasQuery.CinemaData]
         total: int
-
-        def __post_init__(self) -> None:
-            """Validate output data.
-
-            Raises:
-                ValueError: If total is negative.
-            """
-            if self.total < 0:
-                raise ValueError("total must not be negative")
 
     def __init__(self, cinema_reader: CinemaReader) -> None:
         """Initialize the query.
@@ -132,5 +108,13 @@ class ListCinemasQuery:
             )
             for cinema in page.items
         ]
+        logger.debug(
+            "Listed %d of %d cinemas on page %d (size %d, name filter: %s)",
+            len(cinema_data),
+            page.total,
+            input_data.page,
+            input_data.size,
+            input_data.name is not None,
+        )
 
         return self.OutputData(cinemas=cinema_data, total=page.total)
