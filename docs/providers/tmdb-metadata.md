@@ -3,7 +3,7 @@
 Issue #350 consumes the application-owned contracts from #358. Parent #349 owns
 policy. Imports, refresh and merge use this path.
 
-Construct TmdbMetadataHttpSource with a key and inject it into TmdbMetadataAdapter.
+Construct TmdbMetadataHttpSource (`infrastructure/metadata/tmdb.py`) with a key and inject it into TmdbMetadataAdapter (`interface_adapters/metadata/tmdb.py`).
 The adapter implements MetadataRepository; neither class selects a match or
 replaces persisted movie fields. `infrastructure/di/import_use_cases.py` builds both.
 

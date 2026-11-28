@@ -21,6 +21,7 @@ from marquise.application.use_cases.import_screenings import ImportScreeningsCom
 from marquise.application.use_cases.match_movies import MatchMoviesUseCase
 from marquise.application.use_cases.merge_movies import MergeMoviesUseCase
 from marquise.application.use_cases.refresh_movies import RefreshMoviesUseCase
+from marquise.infrastructure.metadata.tmdb import TmdbMetadataHttpSource
 from marquise.infrastructure.postgres.gateways.cinema import PostgresCinemaGateway
 from marquise.infrastructure.postgres.gateways.cinema_source_assignment import (
     PostgresCinemaSourceAssignmentGateway,
@@ -35,7 +36,6 @@ from marquise.infrastructure.postgres.gateways.movie_metadata import (
 from marquise.infrastructure.postgres.gateways.screening import (
     PostgresScreeningGateway,
 )
-from marquise.infrastructure.sources.tmdb_metadata import TmdbMetadataHttpSource
 from marquise.interface_adapters.metadata.tmdb import (
     TmdbMetadataAdapter,
 )

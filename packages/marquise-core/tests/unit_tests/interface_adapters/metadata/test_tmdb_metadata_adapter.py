@@ -16,7 +16,7 @@ from marquise.application.exceptions import (
     MetadataUnavailableError,
 )
 from marquise.application.metadata import ProviderIdentity
-from marquise.infrastructure.sources.tmdb_metadata import TmdbMetadataHttpSource
+from marquise.infrastructure.metadata.tmdb import TmdbMetadataHttpSource
 from marquise.interface_adapters.gateways.tmdb_metadata_source import (
     TmdbMetadataSource,
 )
